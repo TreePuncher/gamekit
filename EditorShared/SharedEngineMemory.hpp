@@ -131,6 +131,16 @@ struct InterProcessQueue
 		items[(tail++) % items.size()] = e;
 	}
 
+	void push_front(TY&& e)
+	{
+		auto l = boost::interprocess::scoped_lock{ m };
+
+		if ((tail - head) + 1 > items.size())
+			items.resize(items.size() * 2);
+
+		items[(tail++) % items.size()] = std::move(e);
+	}
+
 	std::optional<TY> pop_back()
 	{
 		auto l = boost::interprocess::scoped_lock{ m };
@@ -156,21 +166,75 @@ struct InterProcessQueue
 /************************************************************************************************/
 
 
-
 class EditorPlayerState;
+class ResponseInterface;
+
+class IPCAllocator : public FlexKit::iAllocator
+{
+public:
+	IPCAllocator(FlexKit::iAllocator* IN_allocator) :
+		allocator{ IN_allocator } {}
+
+	void* malloc(size_t s)
+	{
+		boost::interprocess::scoped_lock l{ m };
+		return allocator->malloc(s);
+	}
+
+	void  free(void* _ptr)
+	{
+		boost::interprocess::scoped_lock l{ m };
+		allocator->free(_ptr);
+	}
+
+	void* _aligned_malloc(size_t s, size_t A = 0x10)
+	{
+		boost::interprocess::scoped_lock l{ m };
+		return allocator->_aligned_malloc(s, A);
+	}
+
+	void  _aligned_free(void* _ptr)
+	{
+		boost::interprocess::scoped_lock l{ m };
+		return allocator->_aligned_free(_ptr);
+	}
+
+	void  clear(void)
+	{
+		boost::interprocess::scoped_lock l{ m };
+		return allocator->clear();
+	}
+
+	void* malloc_Debug(size_t s, const char* MD, size_t MDSectionSize)
+	{
+		boost::interprocess::scoped_lock l{ m };
+
+		return allocator->malloc_Debug(s, MD, MDSectionSize);
+	}
+
+	operator FlexKit::iAllocator* () { return this; }
+
+private:
+
+	FlexKit::iAllocator* allocator;
+	boost::interprocess::interprocess_mutex m;
+};
 
 struct SharedEngineMemory
 {
 	char							blockTag[32];
-	FlexKit::BlockAllocator			blockAllocator;
+	FlexKit::BlockAllocator			sharedAllocator;
+	IPCAllocator					blockAllocator { sharedAllocator };
+
+
 	SharedComponents*				components = nullptr;
 	mapped_region					mapped;
 	HWND							targetWindow;
 	FlexKit::GameObject*			currentGameObject = nullptr;
 
-	InterProcessQueue<FlexKit::Vector<std::byte>>	inputQueue;
-	InterProcessQueue<FlexKit::Vector<std::byte>>	outputQueue;
-
+	InterProcessQueue<FlexKit::Vector<std::byte>>			inputQueue;
+	InterProcessQueue<FlexKit::Vector<std::byte>>			outputQueue;
+	FlexKit::Vector<std::unique_ptr<ResponseInterface>>		responders;
 
 	void PushMessageToPlayer(auto& message)
 	{

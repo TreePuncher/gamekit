@@ -74,10 +74,7 @@ public:
 
 	void resizeEvent(QResizeEvent* evt) override;
 
-	void Update(
-		double							dT,
-		FlexKit::UpdateDispatcher&		dispatcher,
-		FlexKit::ThreadSafeAllocator&	allocator);
+	void ProcessMessages();
 
 	void RenderStatic(
 		FlexKit::UpdateDispatcher&		dispatcher,

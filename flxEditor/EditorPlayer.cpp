@@ -44,7 +44,11 @@ UpdateTask* EditorPlayerState::Update(EngineCore&, UpdateDispatcher&, double dT)
 	while (shared->inputQueue.size())
 	{
 		auto message = shared->inputQueue.pop_back();
+
 		auto& temp = message.value();
+		if (!temp.size())
+			continue;
+
 		FlexKit::Blob blob{ (const char*)temp.data(), temp.size() };
 		FlexKit::LoadBlobArchiveContext loader{ blob };
 
@@ -60,11 +64,13 @@ UpdateTask* EditorPlayerState::Update(EngineCore&, UpdateDispatcher&, double dT)
 /************************************************************************************************/
 
 
-UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
+UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
 	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), float4{ 1.0f, 0.0f, 1.0f, 1.0f });
+
+	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetBlockMemory());
 
 	return nullptr;
 }
@@ -127,7 +133,7 @@ void EditorPlayerState::SendErrorMessage(const std::string& message)
 {
 	struct ErrorMessage : public FlexKit::Serializable<ErrorMessage, EditorMessageInterface, GetTypeGUID(ResizeMessage)>
 	{
-		void Do() override
+		void Do(SharedEngineMemory*) override
 		{
 			FK_LOG_ERROR(message.c_str());
 		}

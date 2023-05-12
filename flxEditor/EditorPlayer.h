@@ -24,7 +24,15 @@ struct MessageInterface : public FlexKit::SerializableInterface<GetTypeGUID(Mess
 
 struct EditorMessageInterface : public FlexKit::SerializableInterface<GetTypeGUID(EditorMessageInterface)>
 {
-	virtual void Do() = 0;
+	virtual void Do(SharedEngineMemory* shared) = 0;
+};
+
+
+struct ResponseInterface
+{
+	virtual void Respond(EditorMessageInterface& message) = 0;
+
+	uint64_t messageUUID;
 };
 
 

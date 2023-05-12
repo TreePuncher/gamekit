@@ -32,11 +32,7 @@ struct Vertex
 struct Forward_VS_OUT
 {
 	float4 POS 		: SV_POSITION;
-	float  depth    : DEPTH;
-	float3 Normal	: NORMAL;
-	float3 Tangent	: TANGENT;
 	float2 UV		: TEXCOORD;
-	float3 Bitangent : BITANGENT;
 };
 
 
@@ -49,11 +45,7 @@ Forward_VS_OUT Forward_VS(Vertex In)
 	const float3 POS_VS = mul(View, float4(POS_WS, 1));
 
 	Forward_VS_OUT Out;
-	Out.depth		= -POS_VS.z / MaxZ;
 	Out.POS			= mul(PV, float4(POS_WS, 1));
-	Out.Normal		= normalize(mul(WT, float4(In.Normal, 0.0f)));
-	Out.Tangent		= normalize(mul(WT, float4(In.Tangent, 0.0f)));
-	Out.Bitangent	= cross(Out.Tangent, Out.Normal);
 	Out.UV			= In.UV;
 
 	return Out;
@@ -77,32 +69,19 @@ struct VertexSkinned
 
 Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 {
-	//float4 P = float4(In.POS_Blend, 0.0f);
-	//float4 N = float4(In.Normal_Blend, 0.0f);
-	//float4 T = float4(In.Tangent_Blend, 0.0f);
-
 	float4 P = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float4 T = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 W = float4(In.Weights.xyz, 1 - In.Weights.x - In.Weights.y - In.Weights.z);
 
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)
 	{
 		P += mul(Poses[In.Indices[I]], float4(In.POS, 1)) * W[I];
-		N += mul(Poses[In.Indices[I]], float4(In.Normal, 0)) * W[I];
-		T += mul(Poses[In.Indices[I]], float4(In.Tangent, 0)) * W[I];
 	}
 
 	const float3 POS_WS = mul(WT, float4(P.xyz, 1));
-	const float3 POS_VS = mul(View, float4(POS_WS, 1));
 
 	Forward_VS_OUT Out;
-	Out.depth		= -POS_VS.z / MaxZ;
 	Out.POS			= mul(PV, float4(POS_WS, 1));
-	Out.Normal		= normalize(mul(WT, float4(N.xyz, 0.0f)));
-	Out.Tangent		= normalize(mul(WT, float4(T.xyz, 0.0f)));
-	Out.Bitangent	= cross(Out.Tangent, Out.Normal);
 	Out.UV			= In.UV;
 
 	return Out;

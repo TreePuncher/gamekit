@@ -699,10 +699,188 @@ SceneBrushEditorComponent::SceneBrushEditorComponent(EditorProject& IN_project, 
 	, viewport	{ IN_viewport } {}
 
 
+struct RemoteComponentUIContext
+{
+	FlexKit::GameObject&		gameObject;
+	SharedEngineMemory*			shared;
+
+	std::shared_ptr<MessageInterface>	lastMessage;
+	uint64_t							lastMessageUUID;
+
+	template<typename ... TY_args>
+	struct ReturnContext
+	{
+		RemoteComponentUIContext& context;
+
+		template<typename FN_TY>
+		RemoteComponentUIContext& Respond(FN_TY responseFn)
+		{
+			struct Response : public ResponseInterface
+			{
+				Response(
+					FlexKit::GameObject&	IN_gameObject,
+					FN_TY					IN_response,
+					uint64_t				IN_messageUUID) :
+						gameObject	{ IN_gameObject		},
+						response	{ IN_response		},
+						messageUUID	{ IN_messageUUID	} {}
+
+				FlexKit::GameObject&	gameObject;
+				FN_TY					response;
+				uint64_t				messageUUID = -1;
+
+				void Respond(EditorMessageInterface& fetchMessage) override
+				{
+					auto fetchTyped = static_cast<FlexKit::GetLastArg<TY_args...>&>(fetchMessage);
+
+					response(gameObject, fetchTyped.data);
+				}
+			};
+
+			auto response =
+				std::make_unique<Response>(
+						context.gameObject,
+						responseFn,
+						context.lastMessageUUID);
+
+			context.shared->responders.emplace_back(std::move(response));
+
+			return context;
+		}
+	};
+
+	template<size_t MessageID>
+	RemoteComponentUIContext& Apply(auto fn)
+	{
+		struct Wrapper : public FlexKit::Serializable<Wrapper, MessageInterface, MessageID>
+		{
+			Wrapper(FlexKit::GameObject* gameObject = nullptr) :
+				gameObjectAddr{ (uint64_t)gameObject } {}
+
+			uint64_t gameObjectAddr;
+			uint64_t messageUUID = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+			void Do(EditorPlayerState& playerState) override
+			{
+				decltype(fn) fn2;
+				fn2(*reinterpret_cast<FlexKit::GameObject*>(gameObjectAddr));
+			}
+
+			void Serialize(auto& archive)
+			{
+				archive& gameObjectAddr;
+			}
+		};
+
+		auto temp = std::make_shared<Wrapper>(&gameObject);
+		shared->PushMessageToPlayer(temp);
+
+		lastMessage		= temp;
+		lastMessageUUID	= temp->messageUUID;
+
+		return *this;
+	}
+
+	template<size_t MessageID>
+	auto Retrieve(auto fn)
+	{
+		using FetchResultTY = decltype(fn(std::declval<FlexKit::GameObject&>()));
+
+		struct FetchMessage : public FlexKit::Serializable<FetchMessage, EditorMessageInterface, MessageID>
+		{
+			FetchResultTY data;
+			uint64_t messageUUID;
+
+			void Do(SharedEngineMemory* shared) override
+			{
+				auto res = std::ranges::find_if(
+					shared->responders,
+					[&](auto& rhs)
+					{
+						return messageUUID == messageUUID;
+					});
+
+				if (res)
+				{
+					(*res)->Respond(*this);
+					shared->responders.remove_unstable(res);
+				}
+			}
+
+			void Serialize(auto& archive)
+			{
+				archive& data;
+			}
+		};
+
+		struct Wrapper : public FlexKit::Serializable<Wrapper, MessageInterface, MessageID + 1>
+		{
+			Wrapper(FlexKit::GameObject* gameObject = nullptr) :
+				gameObjectAddr{ (uint64_t)gameObject } {}
+
+			uint64_t gameObjectAddr;
+			uint64_t messageUUID		= std::chrono::high_resolution_clock::now().time_since_epoch().count();
+
+			void Do(EditorPlayerState& playerState) override
+			{
+				decltype(fn) fn2;
+				auto res	= fn2(*reinterpret_cast<FlexKit::GameObject*>(gameObjectAddr));
+
+				auto temp			= std::make_shared<FetchMessage>();
+				temp->data			= res;
+				temp->messageUUID	= messageUUID;
+
+				playerState.shared->PushMessageToEditor(temp);
+			}
+
+			void Serialize(auto& archive)
+			{
+				archive& gameObjectAddr;
+				archive& messageUUID;
+			}
+		};
+
+		auto temp = std::make_shared<Wrapper>(&gameObject);
+		shared->PushMessageToPlayer(temp);
+
+		lastMessage		= temp;
+		lastMessageUUID = temp->messageUUID;
+
+		return ReturnContext<FetchResultTY, Wrapper, FetchMessage>{ *this };
+	}
+};
+
 void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
 	if (remoteObject)
 	{
+		auto remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
+
+		panelCtx.AddButton("Test",
+			[&, inspector = panelCtx.inspector, remoteContext]()
+			{
+				auto& brush = static_cast<FlexKit::BrushView&>(component);
+
+				remoteContext->Retrieve<GetCRC32("Test1")>(
+					[](FlexKit::GameObject& gameObject)
+					{
+						auto meshes = FlexKit::GetBrush(gameObject)->meshes;
+
+						struct Data
+						{
+							uint64_t x = 0;
+						} datass{ meshes.size() + 1234 };
+
+						return datass;
+					}).
+					Respond(
+					[&](FlexKit::GameObject&, auto datass)
+					{
+						std::cout << "Test Value " << datass.x << "\n";
+						FK_LOG_INFO("test Value = %u", datass.x);
+					});
+			});
+
 		panelCtx.AddText(fmt::format("Remote Inspection Not Available!"));
 		return;
 	}

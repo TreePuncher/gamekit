@@ -264,6 +264,17 @@ namespace FlexKit
 			});
 	}
 
+	void OrbitCameraPitch(
+		GameObject& gameObject,
+		const float	t)
+	{
+		Apply(gameObject,
+			[&](OrbitCameraBehavior& orbitCamera)
+			{
+				orbitCamera.Rotate({ t, 0, 0 });
+			});
+	}
+
 	void OrbitCameraYaw(
 		GameObject& gameObject,
 		const float t)

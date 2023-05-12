@@ -1303,7 +1303,7 @@ namespace FlexKit
 						FK_LOG_9("Submitting %u", a.sync.syncCounter);
 
 						renderSystem.Submit(a.contexts);
-						renderSystem.SignalDirect(tickets.syncCounter);
+						renderSystem.SignalDirect(tickets.syncCounter + submissions.size());
 					}
 				});
 		}

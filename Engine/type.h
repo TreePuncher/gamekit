@@ -155,7 +155,7 @@ namespace FlexKit
 		return CRC;
 	}
 
-#define GetCRC32(A) ~IDGen<sizeof(A)-2>::GetHash(A);
+#define GetCRC32(A) ~FlexKit::IDGen<sizeof(A)-2>::GetHash(A)
 
 	template<size_t SIZE, typename TY>
 	constexpr Type_t GenerateTypeGUID(const TY& A)

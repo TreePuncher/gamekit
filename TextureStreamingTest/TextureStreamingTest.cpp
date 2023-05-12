@@ -83,8 +83,10 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	SetCameraAspectRatio(orbitComponent.camera, renderWindow.GetAspectRatio());
 	SetCameraFOV(orbitComponent.camera, (float)pi / 4.0f);
 
+	//OrbitCameraPitch(orbitCamera, float(pi / 2.0f));
 	OrbitCameraTranslate(orbitCamera, { 0, 3, 0 });
 }
+
 
 /************************************************************************************************/
 
@@ -242,7 +244,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	if (streamingUpdates)
 		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
 
-
 	return nullptr;
 }
 
@@ -259,7 +260,6 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	depthBuffer.Increment();
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-	core.RenderSystem.WaitForGPU();
 }
 
 

@@ -148,20 +148,20 @@ namespace FlexKit
 
 			TextureResourceBlob textureHeader;
 			ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader));
-
+			
 			if (IsDDS((DeviceFormat)textureHeader.format))
 			{
 				Close();
-
+			
 				auto res = CreateDDSDecompressor(readContext, MIPlevel, asset, allocator);
-
+			
 				FK_ASSERT(res, "Failed to create texture asset decompressor!");
-
+			
 				decompressor    = res;
 				format          = decompressor->GetFormat(); // TODO: correctly extract the format
 				currentLevel    = MIPlevel;
 				currentAsset    = asset;
-
+			
 				return res != nullptr;
 			}
 			else
@@ -228,17 +228,17 @@ namespace FlexKit
 			return decompressor->GetTextureWH();
 		}
 
-		ReadContext     readContext;
-		DeviceFormat    format;
-		iDecompressor*  decompressor = nullptr;
-		AssetHandle     currentAsset = -1;
-		uint8_t         currentLevel = -1;
-		iAllocator*     allocator;
+		ReadContext		readContext;
+		DeviceFormat	format;
+		iDecompressor*	decompressor = nullptr;
+		AssetHandle		currentAsset = -1;
+		uint8_t			currentLevel = -1;
+		iAllocator*		allocator;
 	};
 
 
-	inline const PSOHandle TEXTUREFEEDBACKPASS                  = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
-	inline const PSOHandle TEXTUREFEEDBACKANIMATEDPASS          = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKANIMATEDPASS));
+	inline const PSOHandle TEXTUREFEEDBACKPASS			= PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
+	inline const PSOHandle TEXTUREFEEDBACKANIMATEDPASS	= PSOHandle(GetTypeGUID(TEXTUREFEEDBACKANIMATEDPASS));
 
 	
 	/************************************************************************************************/
@@ -449,7 +449,9 @@ namespace FlexKit
 		void LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue);
 
 		gpuTileList		UpdateTileStates	(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
-		BlockAllocation	AllocateTiles		(const gpuTileID* begin, const gpuTileID* end);
+		BlockAllocation	AllocateTiles		(const gpuTileID* begin, const gpuTileID* end, iAllocator& allocator);
+
+		size_t			TilesAllocated() const noexcept;
 
 		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;

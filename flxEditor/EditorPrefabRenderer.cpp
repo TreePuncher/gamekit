@@ -224,6 +224,7 @@ struct PlayerContext
 	InterProcessQueue<FlexKit::Vector<std::byte>>&	inputQueue;
 	InterProcessQueue<FlexKit::Vector<std::byte>>&	outputQueue;
 	iAllocator&										sharedMemory;
+	SharedEngineMemory*								shared;
 
 	boost::process::child child;
 
@@ -240,7 +241,8 @@ struct PlayerContext
 
 		memcpy(outputBlob.data(), blob.data(), outputBlob.size());
 
-		inputQueue.push_front(outputBlob);
+		inputQueue.push_front(std::move(outputBlob));
+		int x = 0;
 	}
 };
 
@@ -281,6 +283,7 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 		shared->inputQueue,
 		shared->outputQueue,
 		shared->blockAllocator,
+		shared,
 		boost::process::child(
 			"flxEditor.exe",
 			boost::process::args(std::format("--player", IN_renderer.GetSharedAddress())),
@@ -319,10 +322,7 @@ EditorPrefabPreview::~EditorPrefabPreview()
 /************************************************************************************************/
 
 
-void EditorPrefabPreview::Update(
-	double							dT,
-	FlexKit::UpdateDispatcher&		dispatcher,
-	FlexKit::ThreadSafeAllocator&	allocator)
+void EditorPrefabPreview::ProcessMessages()
 {
 	if (!playerContext->child.running())
 	{	// Restart Player!
@@ -332,13 +332,17 @@ void EditorPrefabPreview::Update(
 	{
 		auto message	= playerContext->outputQueue.pop_back();
 		auto& temp		= message.value();
+
+		if (!temp.size())
+			continue;
+
 		FlexKit::Blob					blob	{ (const char*)temp.data(), temp.size() };
 		FlexKit::LoadBlobArchiveContext	loader	{ blob };
 
 		std::shared_ptr<EditorMessageInterface> freshMessage;
 		loader& freshMessage;
 
-		freshMessage->Do();
+		freshMessage->Do(playerContext->shared);
 	}
 }
 

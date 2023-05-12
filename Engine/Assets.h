@@ -483,9 +483,21 @@ namespace FlexKit
 		operator bool() const noexcept;
 
 
-		GUID_t					guid; // Currently read asset
-		ReadContextInterface*	pimpl;
-		iAllocator*				allocator;
+		struct CustomDeleter
+		{
+			iAllocator* allocator;
+
+			void operator ()(void* _ptr)
+			{
+				allocator->free(_ptr);
+			}
+		};
+
+		using pimpl_ptr = std::unique_ptr<ReadContextInterface, CustomDeleter>;
+
+		GUID_t			guid; // Currently read asset
+		pimpl_ptr		pimpl;
+		iAllocator*		allocator;
 	};
 
 

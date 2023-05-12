@@ -16,17 +16,14 @@ RWByteAddressBuffer ClearTarget : register(u0);
 [numthreads(1024, 1, 1)]
 void Clear(uint3 threadID : SV_DispatchThreadID)
 {
-	uint size = 0;
-	ClearTarget.GetDimensions(size);
-
-	if(threadID.x < (end - begin) && begin + threadID.x * 16 < size)
+	if(threadID.x < (end - begin))
 		ClearTarget.Store4(begin + threadID.x * 16, uint4(clearValueX, clearValueY, clearValueZ, clearValueW));
 }
 
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -352,7 +352,6 @@ namespace FlexKit
 				ReserveConstantBufferFunction	reserveCB,
 				iAllocator*						tempAllocator);
 
-
 		BackgroundEnvironmentPass& BackgroundPass(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
@@ -362,7 +361,6 @@ namespace FlexKit
 				ReserveConstantBufferFunction	reserveCB,
 				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
-
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
 				UpdateDispatcher&				dispatcher,
@@ -377,7 +375,6 @@ namespace FlexKit
 				const float						t,
 				iAllocator*						tempMemory);
 
-
 		BilateralBlurPass&  BilateralBlur(
 				FrameGraph&						frameGraph,
 				const ResourceHandle			source,
@@ -390,7 +387,6 @@ namespace FlexKit
 				ReserveConstantBufferFunction	reserveCB,
 				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
-
 
 		ToneMap& RenderPBR_ToneMapping(
 				UpdateDispatcher&				dispatcher,
