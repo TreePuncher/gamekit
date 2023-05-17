@@ -372,6 +372,8 @@ namespace FlexKit
 			}
 		}
 
+		FK_LOG_ERROR("ReadContext::ReadAsset: Failed to find asset!");
+
 		return RAC_ERROR;
 	}
 
@@ -485,6 +487,7 @@ namespace FlexKit
 
 					if (!FlexKit::ReadResource(F, t, I, NewResource))
 					{
+						FK_LOG_ERROR("Failed to load asset!");
 						FK_ASSERT(false, "FAILED TO LOAD RESOURCE!");
 					}
 					else
@@ -502,7 +505,7 @@ namespace FlexKit
 			}
 		}
 
-		return RHandle;
+		return Resources.failureHandler(ID);
 	}
 
 
@@ -578,7 +581,10 @@ namespace FlexKit
 		size_t read_res     = fread(&resourceSize, 1, 8, F);
 
 		if (!(resourceSize + position < resourceFileSize))
+		{
+			FK_LOG_ERROR("Failed to read resource!");
 			return false;
+		}
 
 		seek_res                = fseek(F, (long)position, SEEK_SET);
 		const size_t readSize   = fread(out, 1, resourceSize, F);

@@ -175,9 +175,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void BrushView::SetMaterial(MaterialHandle material) noexcept
+	BrushView& BrushView::SetMaterial(MaterialHandle material) noexcept
 	{
 		GetComponent()[brush].material = material;
+
+		return *this;
 	}
 
 
@@ -677,15 +679,9 @@ namespace FlexKit
 		{
 			GUID_t guid;
 			memcpy(&guid, buffer + sizeof(BrushComponentBlob) + sizeof(GUID_t) * I, sizeof(GUID_t));
-			auto triMesh = FindMesh(guid);
+			auto triMesh = GetMesh(guid);
 
-			if (!triMesh)
-				triMesh = LoadTriMeshIntoTable(renderSystem.GetImmediateCopyQueue(), guid);
-
-			if (triMesh == InvalidHandle)
-				return;
-
-			brush->PushMesh(triMesh.value());
+			brush->PushMesh(triMesh);
 		}
 
 		SetBoundingSphereFromMesh(gameObject);

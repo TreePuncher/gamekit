@@ -14,7 +14,6 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
 	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
 
-	brushComponent		{ IN_framework.core.GetBlockMemory(), IN_framework.GetRenderSystem() },
 	materialComponent	{ IN_framework.GetRenderSystem(), textureEngine, IN_framework.core.GetBlockMemory() },
 
 	physX				{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },

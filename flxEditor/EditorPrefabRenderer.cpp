@@ -215,34 +215,24 @@ struct LoadEntityContext : public LoadEntityContextInterface
 /************************************************************************************************/
 
 
-
 template<typename TY>
 concept IPCMessage = std::is_base_of_v<MessageInterface, typename TY::element_type>;
 
 struct PlayerContext
 {
-	InterProcessQueue<FlexKit::Vector<std::byte>>&	inputQueue;
-	InterProcessQueue<FlexKit::Vector<std::byte>>&	outputQueue;
-	iAllocator&										sharedMemory;
-	SharedEngineMemory*								shared;
+	iAllocator&								sharedMemory;
+	SharedEngineMemory*						shared;
 
 	boost::process::child child;
 
 	void push_message(IPCMessage auto& message)
 	{
-		FlexKit::SaveArchiveContext archive;
+		shared->PushMessageToPlayer(message);
+	}
 
-		archive& message;
-		auto blob = archive.GetBlob();
-
-		FlexKit::Vector<std::byte> outputBlob{ sharedMemory };
-
-		outputBlob.resize(blob.buffer.size());
-
-		memcpy(outputBlob.data(), blob.data(), outputBlob.size());
-
-		inputQueue.push_front(std::move(outputBlob));
-		int x = 0;
+	auto PollMessage()
+	{
+		return shared->PollEditorMessages();
 	}
 };
 
@@ -254,8 +244,8 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 		: QWidget		{ parent }
 		, layer			{ FlexKit::PhysXComponent::GetComponent().CreateLayer() }
 		, renderer		{ IN_renderer }
-		//, renderWindow	{ IN_renderer.CreateRenderWindow(this) }
 		, sharedWindow	{ this }
+		//, renderWindow	{ IN_renderer.CreateRenderWindow(this) }
 		//, depthBuffer	{ IN_renderer.GetRenderSystem(), renderWindow->WH() }
 		, selection		{ IN_selection }
 		, project		{ IN_project }
@@ -280,8 +270,6 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 	shared->targetWindow = sharedWindow.GetHWND();
 
 	playerContext = std::make_unique<PlayerContext>(
-		shared->inputQueue,
-		shared->outputQueue,
 		shared->blockAllocator,
 		shared,
 		boost::process::child(
@@ -289,9 +277,9 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 			boost::process::args(std::format("--player", IN_renderer.GetSharedAddress())),
 			boost::process::args(std::format("{}", IN_renderer.GetSharedAddress()))));
 
-	while (shared->outputQueue.size() == 0);
-	shared->outputQueue.pop_back();
+	while (!shared->PollEditorMessages());
 }
+
 
 
 /************************************************************************************************/
@@ -328,21 +316,27 @@ void EditorPrefabPreview::ProcessMessages()
 	{	// Restart Player!
 	}
 
-	while(playerContext->outputQueue.size())
+	EditorContext context
 	{
-		auto message	= playerContext->outputQueue.pop_back();
+		.shared		= *playerContext->shared,
+		.renderer	= renderer,
+		.project	= project,
+	};
+
+	while (auto message = playerContext->PollMessage())
+	{
 		auto& temp		= message.value();
-
-		if (!temp.size())
+		
+		if (!temp.buffer.size())
 			continue;
-
-		FlexKit::Blob					blob	{ (const char*)temp.data(), temp.size() };
+		
+		FlexKit::Blob					blob	{ (const char*)temp.buffer.data(), temp.buffer.size() };
 		FlexKit::LoadBlobArchiveContext	loader	{ blob };
-
+		
 		std::shared_ptr<EditorMessageInterface> freshMessage;
 		loader& freshMessage;
 
-		freshMessage->Do(playerContext->shared);
+		freshMessage->Do(context);
 	}
 }
 
@@ -380,39 +374,13 @@ FlexKit::GameObject* EditorPrefabPreview::GetGameObject()
 /************************************************************************************************/
 
 
-void EditorPrefabPreview::SendResource(FlexKit::AssetHandle handle)
-{
-	auto resource = project.FindProjectResource(handle);
-	auto blob = resource->resource->CreateBlob();
-
-	struct ResourceMessage : public FlexKit::Serializable<ResourceMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
-	{
-		void Do(EditorPlayerState& player) override
-		{
-			player.AddResource(std::move(blob));
-		}
-
-		void Serialize(auto& archive)
-		{
-			archive& blob;
-		}
-
-		FlexKit::Blob blob;
-	};
-
-	auto resourceSend = std::make_shared<ResourceMessage>();
-	resourceSend->blob = blob;
-
-	playerContext->push_message(resourceSend);
-}
-
-
-/************************************************************************************************/
-
-
 void EditorPrefabPreview::SetBrush(FlexKit::AssetHandle handle)
 {
-	SendResource(handle);
+	auto res = project.FindProjectResource(handle);
+	if (!res)
+		return;
+
+	SendResource(*res->resource.get(), *playerContext->shared);
 
 	struct SetBrushMessage : public FlexKit::Serializable<SetBrushMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
 	{
@@ -458,6 +426,7 @@ void EditorPrefabPreview::resizeEvent(QResizeEvent* evt)
 		void Do(EditorPlayerState& player) override
 		{
 			player.renderWindow.Resize(newWH);
+			player.depthBuffer.Resize(newWH);
 		}
 
 		void Serialize(auto& archive)
@@ -474,10 +443,6 @@ void EditorPrefabPreview::resizeEvent(QResizeEvent* evt)
 	FlexKit::SetCameraAspectRatio(previewCamera, float(evt->size().width()) / float(evt->size().height()));
 
 	sharedWindow.resize(evt->size());
-	/*
-	renderWindow->resizeEvent(evt);
-	depthBuffer.Resize(newWH);
-	*/
 }
 
 

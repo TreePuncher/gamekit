@@ -11,12 +11,7 @@ Write-Output "PathSolutionFile = $PathSln"
 # append path to env
 $Env:path += ";" + $PathMSBuild
 
-&"msbuild" $PathSln -t:restore -p:RestorePackagesConfig=true
-&"msbuild" $PathSln -target:TextureStreamingTest "/p:Configuration=Release"
-
-if(!$?)
-{
-    &"msbuild" $PathSln -target:TextureStreamingTest "/p:Configuration=Release"
-}
+&"msbuild" $PathSln -t:restore -p:RestorePackagesConfig=true -maxcpucount:32
+&"msbuild" $PathSln -target:TextureStreamingTest -target:MergePathSortTest  "/p:BuildInParallel=true" "/p:Configuration=Release" "/p:CL_MPcount=36"  -maxcpucount:32
 
 if(!$?) { Exit $LASTEXITCODE }

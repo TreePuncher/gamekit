@@ -59,7 +59,6 @@ private:
 	BlockAllocator		sharedAllocator;
 	SharedEngineMemory*	components	= nullptr;
 
-	FlexKit::BrushComponent		brushComponent;
 	FlexKit::MaterialComponent	materialComponent;
 
 	// physX components

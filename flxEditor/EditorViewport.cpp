@@ -1465,6 +1465,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			drawSceneRes.animationResources,
 			temporaries.ReserveConstantBuffer,
 			temporaries.ReserveVertexBuffer,
+			dT,
 			allocator);
 	}
 	else

@@ -411,6 +411,7 @@ namespace FlexKit
 			const ResourceAllocation&		animationResources,
 			ReserveConstantBufferFunction&	reserveCB,
 			ReserveVertexBufferFunction&	reserveVB,
+			double							dt,
 			iAllocator&						tempAllocator);
 
 
@@ -515,6 +516,7 @@ namespace FlexKit
 
 		Vector<char> buffer;
 
+		float timeSinceLastUpdate = 1.0f; // set to one to get an update on frame 0
 		float passTime		= 0;
 		float updateTime	= 0;
 	};

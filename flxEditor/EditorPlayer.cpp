@@ -9,9 +9,43 @@
 #include "Win32Graphics.h"
 #include "Serialization.hpp"
 #include "EditorPlayer.h"
+#include "EditorProject.h"
+#include "DepthBuffer.h"
+#include "WorldRender.h"
 
 using namespace boost::interprocess;
 using namespace FlexKit;
+
+/************************************************************************************************/
+
+void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared)
+{
+	SendResource(resource, shared, shared.idGenerator());
+}
+
+void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared, uint64_t uuid)
+{
+	struct ResourceMessage : public FlexKit::Serializable<ResourceMessage, MessageInterface, GetTypeGUID(ResourceMessage)>
+	{
+		void Do(EditorPlayerState& player) override
+		{
+			player.AddResource(std::move(blob));
+		}
+
+		void Serialize(auto& archive)
+		{
+			archive& blob;
+		}
+
+		FlexKit::Blob blob;
+	};
+
+	auto resourceBlob	= resource.CreateBlob();
+	auto resourceSend	= std::make_shared<ResourceMessage>();
+	resourceSend->blob	= Blob{ resourceBlob.buffer, resourceBlob.bufferSize };
+
+	shared.PushMessageToPlayer(resourceSend, uuid);
+}
 
 
 /************************************************************************************************/
@@ -20,19 +54,26 @@ using namespace FlexKit;
 EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineMemory* IN_shared) :
 	FrameworkState		{ in_framework	},
 	shared				{ IN_shared		},
-	brushes				{ in_framework.core.GetBlockMemory(), in_framework.core.RenderSystem },
 	scene				{ IN_shared->blockAllocator },
 	renderWindow		{ IN_shared->blockAllocator.allocate<Win32RenderWindow>(std::move(FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), shared->targetWindow).first)) },
 	constantBuffer		{ in_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
 	vertexBuffer		{ in_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	textureStreaming	{ in_framework.GetRenderSystem(), in_framework.core.GetBlockMemory() },
-	renderer			{ in_framework.GetRenderSystem(), textureStreaming, in_framework.core.GetBlockMemory() }
+	renderer			{ in_framework.GetRenderSystem(), textureStreaming, in_framework.core.GetBlockMemory() },
+	depthBuffer			{ in_framework.GetRenderSystem(), { 400, 400 } },
+	gbuffer				{ { 400, 400 }, in_framework.GetRenderSystem() },
+	activeCamera		{ CameraComponent::GetComponent().CreateCamera() },
+	materials			{ in_framework.GetRenderSystem(), textureStreaming, in_framework.core.GetBlockMemory() }
 {
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify	= &FlexKit::EventsWrapper;
 	sub._ptr	= &framework;
 
 	renderWindow.Handler->Subscribe(sub);
+
+	SetCameraNode(activeCamera, GetZeroedNode());
+
+	SetLoadFailureHandler({ *this, &EditorPlayerState::LoadAsset });
 }
 
 
@@ -41,15 +82,15 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 
 UpdateTask* EditorPlayerState::Update(EngineCore&, UpdateDispatcher&, double dT)
 {
-	while (shared->inputQueue.size())
+	while (shared->playerQueue.size())
 	{
-		auto message = shared->inputQueue.pop_back();
+		auto message = shared->playerQueue.pop_back();
 
 		auto& temp = message.value();
-		if (!temp.size())
+		if (!temp.buffer.size())
 			continue;
 
-		FlexKit::Blob blob{ (const char*)temp.data(), temp.size() };
+		FlexKit::Blob blob{ (const char*)temp.buffer.data(), temp.buffer.size() };
 		FlexKit::LoadBlobArchiveContext loader{ blob };
 
 		std::shared_ptr<MessageInterface> freshMessage;
@@ -57,6 +98,7 @@ UpdateTask* EditorPlayerState::Update(EngineCore&, UpdateDispatcher&, double dT)
 
 		freshMessage->Do(*this);
 	}
+
 	return nullptr;
 }
 
@@ -66,11 +108,47 @@ UpdateTask* EditorPlayerState::Update(EngineCore&, UpdateDispatcher&, double dT)
 
 UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+	//if (!drawRequested)
+	//	return nullptr;
+
+	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), float4{ 0.0f, 0.0f, 1.0f, 1.0f });
+	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
+
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
-	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), float4{ 1.0f, 0.0f, 1.0f, 1.0f });
+	if (gameObject && !scene.sceneEntities.size())
+	{
+		scene.AddGameObject(*gameObject);
+		FlexKit::SetBoundingSphereFromMesh(*gameObject);
+	}
+	else if(!gameObject)
+		return nullptr;
+
+	CenterObject();
+
+	auto& transformUpdate	= FlexKit::QueueTransformUpdateTask(dispatcher);
+	auto& cameraUpdate		= FlexKit::CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+
+	cameraUpdate.AddInput(transformUpdate);
+
+	DrawSceneDescription drawSceneDesc =
+	{
+		.camera					= activeCamera,
+		.scene					= scene,
+		.dt						= dT,
+		.t						= 0.0,
+		.gbuffer				= gbuffer,
+		.reserveVB				= FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
+		.reserveCB				= FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
+		.transformDependency	= transformUpdate,
+		.cameraDependency		= cameraUpdate
+	};
+
+	renderer.DrawScene(dispatcher, frameGraph, drawSceneDesc, { renderWindow.GetBackBuffer(), depthBuffer }, core.GetBlockMemory(), core.GetTempMemoryMT());
 
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetBlockMemory());
+
+	drawRequested = false;
 
 	return nullptr;
 }
@@ -79,8 +157,11 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 /************************************************************************************************/
 
 
-void EditorPlayerState::PostDrawUpdate(EngineCore&, double dT)
+void EditorPlayerState::PostDrawUpdate(EngineCore& core, double dT)
 {
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+	core.RenderSystem.SyncDirectTicket();
+
 	renderWindow.Present(1, 0);
 }
 
@@ -91,6 +172,37 @@ void EditorPlayerState::PostDrawUpdate(EngineCore&, double dT)
 bool EditorPlayerState::EventHandler(Event evt)
 {
 	return false;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPlayerState::CenterObject()
+{
+	if (!gameObject)
+		return;
+
+	auto meshes			= FlexKit::GetTriMesh(*gameObject);
+
+	if (meshes.empty())
+		return;
+
+	auto aabb				= FlexKit::GetAABBFromMesh(*gameObject);
+	const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(activeCamera);
+
+	const auto target			= aabb.MidPoint();
+	const auto desiredDistance	= 2.5f * aabb.Span().magnitude() / std::tan(c.FOV);
+
+	auto position_VS		= c.View.Transpose() * float4 { target, 1 };
+	auto updatedPosition_WS	= c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
+
+	const auto node		= FlexKit::GetCameraNode(activeCamera);
+	const Quaternion Q	= GetOrientation(node);
+	auto forward		= (Q * float3{ 0.0f, 0.0f, -1.0f}).normal();
+
+	FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
+	FlexKit::MarkCameraDirty(activeCamera);
 }
 
 
@@ -122,7 +234,7 @@ void EditorPlayerState::SendBlob(FlexKit::Blob& blob)
 	outputBlob.resize(blob.buffer.size());
 	memcpy(outputBlob.data(), blob.data(), outputBlob.size());
 
-	shared->outputQueue.push_front(outputBlob);
+	shared->editorQueue.push_front({ .buffer = std::move(outputBlob) });
 }
 
 
@@ -133,7 +245,7 @@ void EditorPlayerState::SendErrorMessage(const std::string& message)
 {
 	struct ErrorMessage : public FlexKit::Serializable<ErrorMessage, EditorMessageInterface, GetTypeGUID(ResizeMessage)>
 	{
-		void Do(SharedEngineMemory*) override
+		void Do(EditorContext&) override
 		{
 			FK_LOG_ERROR(message.c_str());
 		}
@@ -184,6 +296,120 @@ void EditorPlayerState::Shutdown()
 /************************************************************************************************/
 
 
+uint64_t EditorPlayerState::RequestAsset(FlexKit::GUID_t guid)
+{
+	struct RequestMessage : public FlexKit::Serializable<RequestMessage, EditorMessageInterface, GetCRC32("RequestAsset::GUID")>
+	{
+		RequestMessage(FlexKit::GUID_t IN_guid = -1, uint64_t IN_uuid = -1) : guid{ IN_guid }, uuid{ IN_uuid } {}
+
+		FlexKit::GUID_t		guid;
+		uint64_t			uuid;
+
+		void Do(EditorContext& editor) override
+		{
+			auto asset	= editor.project.FindProjectResource(guid);
+			SendResource(*asset->resource, editor.shared, uuid);
+		}
+
+		void Serialize(auto& archive)
+		{
+			archive& guid;
+			archive& uuid;
+		}
+	};
+
+	auto uuid = shared->idGenerator();
+	return shared->PushMessageToEditor(std::make_shared<RequestMessage>(guid, uuid), uuid);
+}
+
+
+/************************************************************************************************/
+
+
+uint64_t EditorPlayerState::RequestAsset(std::string_view ID)
+{
+	struct RequestMessage : public FlexKit::Serializable<RequestMessage, EditorMessageInterface, GetCRC32("RequestAsset::STRING")>
+	{
+		RequestMessage(std::string IN_ID = "", uint64_t IN_uuid = -1) : resourceID{ IN_ID }, uuid{ IN_uuid } {}
+
+		std::string	resourceID;
+		uint64_t	uuid;
+
+		void Do(EditorContext& editor) override
+		{
+			auto asset = editor.project.FindProjectResource(resourceID);
+
+			SendResource(*asset->resource.get(), editor.shared, uuid);
+		}
+
+		void Serialize(auto& archive)
+		{
+			archive& resourceID;
+			archive& uuid;
+		}
+	};
+
+	auto uuid = shared->idGenerator();
+	return shared->PushMessageToEditor(std::make_shared<RequestMessage>(std::string{ ID }, uuid));
+}
+
+
+/************************************************************************************************/
+
+
+bool EditorPlayerState::WaitForMessage(uint64_t UUID, uint32_t ms)
+{
+	for(auto& item : shared->playerQueue)
+	{
+		if (item.UUID == UUID)
+			return true;
+	}
+
+	return false;
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::AssetHandle EditorPlayerState::LoadAsset(FlexKit::AssetIdentifier identifier)
+{
+	const auto request = std::visit(
+		[&](auto identifier)
+		{
+			return RequestAsset(identifier);
+		}, identifier);
+
+	while (!WaitForMessage(request));
+
+	auto message = shared->GetMessageFromEditor(request);
+	if (message)
+	{	// Handle message
+		UnwrapMessage(message.value())->Do(*this);
+	}
+
+	return std::visit([](auto a)
+		{
+			return FlexKit::LoadGameAsset(a);
+		}, identifier);
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::TriMeshHandle EditorPlayerState::LoadMesh(FlexKit::GUID_t guid)
+{
+	auto res = FlexKit::FindMesh(guid);
+	if (!res)
+		return res.value();
+	else
+		return InvalidHandle;
+}
+
+
+/************************************************************************************************/
+
 
 int PlayerMain(int argc, char* argv[])
 {
@@ -227,8 +453,15 @@ int PlayerMain(int argc, char* argv[])
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
 		app->PushState<EditorPlayerState>(shared);
 
-		FlexKit::Vector<std::byte> empty{};
-		shared->outputQueue.push_front(empty);
+
+		struct ReadyMessage : public FlexKit::Serializable<ReadyMessage, EditorMessageInterface, GetCRC32("Ready")>
+		{
+			void Do(EditorContext& editor) override { }
+
+			void Serialize(auto& archive) {}
+		};
+
+		shared->PushMessageToEditor(std::make_shared<ReadyMessage>());
 
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;
