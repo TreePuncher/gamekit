@@ -4,29 +4,41 @@
 #include "TextureStreamingUtilities.h"
 #include "WorldRender.h"
 
+
+/************************************************************************************************/
+
+// Pre-declarations
 namespace FlexKit
 {
 	struct Win32RenderWindow;
+	class iResource;
 }
 
 struct SharedEngineMemory;
+class EditorPlayerState;
+class EditorRenderer;
+class EditorProject;
 
 
 /************************************************************************************************/
 
-class EditorPlayerState;
+
+struct EditorContext
+{
+	SharedEngineMemory& shared;
+	EditorRenderer&		renderer;
+	EditorProject&		project;
+};
 
 struct MessageInterface : public FlexKit::SerializableInterface<GetTypeGUID(MessageInterface)>
 {
 	virtual void Do(EditorPlayerState&) = 0;
 };
 
-
 struct EditorMessageInterface : public FlexKit::SerializableInterface<GetTypeGUID(EditorMessageInterface)>
 {
-	virtual void Do(SharedEngineMemory* shared) = 0;
+	virtual void Do(EditorContext& editor) = 0;
 };
-
 
 struct ResponseInterface
 {
@@ -55,6 +67,8 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) override;
 	bool EventHandler(FlexKit::Event evt) override;
 
+	void CenterObject();
+
 	void Reset();
 
 	void SendEditorMessage(EditorIPCMessage auto& message)
@@ -76,15 +90,30 @@ public:
 
 	void Shutdown();
 
+	uint64_t RequestAsset(FlexKit::GUID_t);
+	uint64_t RequestAsset(std::string_view);
+
+	bool WaitForMessage(uint64_t messageID, uint32_t ms = -1);
+
+	FlexKit::AssetHandle	LoadAsset(FlexKit::AssetIdentifier);
+	FlexKit::TriMeshHandle	LoadMesh(FlexKit::GUID_t);
+
+	bool								drawRequested = false;
+
 	FlexKit::Scene						scene;
 	SharedEngineMemory*					shared		= nullptr;
 	FlexKit::GameObject*				gameObject	= nullptr;
-	FlexKit::BrushComponent				brushes;
 
 	FlexKit::ConstantBufferHandle		constantBuffer;
 	FlexKit::VertexBufferHandle			vertexBuffer;
 	FlexKit::TextureStreamingEngine		textureStreaming;
+
 	FlexKit::WorldRender				renderer;
+	FlexKit::GBuffer					gbuffer;
+	FlexKit::DepthBuffer				depthBuffer;
+
+	FlexKit::MaterialComponent			materials;
+	FlexKit::CameraHandle				activeCamera = FlexKit::InvalidHandle;
 
 	FlexKit::Win32RenderWindow&		renderWindow;
 	std::vector<FlexKit::Blob>		resourceBlobs;
@@ -92,6 +121,23 @@ public:
 
 int PlayerMain(int argc, char* args[]);
 
+void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared);
+void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared, uint64_t uuid);
+
+
+/************************************************************************************************/
+
+
+auto UnwrapMessage(auto message)
+{
+	FlexKit::Blob blob{ (const char*)message.buffer.data(), message.buffer.size() };
+	FlexKit::LoadBlobArchiveContext loader{ blob };
+
+	std::shared_ptr<MessageInterface> freshMessage;
+	loader& freshMessage;
+
+	return freshMessage;
+}
 
 /************************************************************************************************/
 

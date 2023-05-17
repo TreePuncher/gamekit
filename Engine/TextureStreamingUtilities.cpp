@@ -620,8 +620,17 @@ namespace FlexKit
 		const ResourceAllocation&		animationResources,
 		ReserveConstantBufferFunction&	reserveCB,
 		ReserveVertexBufferFunction&	reserveVB,
+		double							dt,
 		iAllocator&						tempAllocator)
 	{
+		if (timeSinceLastUpdate < 1.0f / 10.0f)
+		{
+			timeSinceLastUpdate += (float)dt;
+			return;
+		}
+		else
+			timeSinceLastUpdate = 0;
+
 		if (async)
 		{
 			if (updateInProgress)
@@ -1109,8 +1118,8 @@ namespace FlexKit
 		EXITSCOPE(textureStreamEngine.updateInProgress = false);
 		EXITSCOPE(textureStreamEngine.pendingResults.Reset());
 		EXITSCOPE(
-			FK_LOG_INFO("Tiles Updated!");
-			FK_LOG_INFO("Tiles in use: %u", textureStreamEngine.TilesAllocated());
+			FK_LOG_9("Tiles Updated!");
+			FK_LOG_9("Tiles in use: %u", textureStreamEngine.TilesAllocated());
 		);
 		
 
@@ -1214,7 +1223,7 @@ namespace FlexKit
 			}
 		}
 
-		FK_LOG_INFO("Request Size: %u", requests.size());
+		FK_LOG_9("Requested tiles: %u", requests.size());
 
 		const auto stateUpdateRes	= textureStreamEngine.UpdateTileStates(requests.begin(), requests.end(), &threadLocalAllocator);
 		const auto blockAllocations	= textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end(), threadLocalAllocator);
@@ -1363,8 +1372,12 @@ namespace FlexKit
 		{
 			const auto resource = block.resource;
 			auto asset = GetResourceAsset(resource);
+
 			if (!asset) // Skipped unmapped blocks
+			{
+				FK_LOG_ERROR("Texture Streaming: Asset not found!");
 				continue;
+			}
 
 			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
 
@@ -1391,7 +1404,7 @@ namespace FlexKit
 				const auto level = block.tileID.GetMipLevel();
 				if (asset && !streamContext.Open(level, asset.value()))
 				{
-					FK_LOG_ERROR("FAILED TO OPEN STREAM CONTEXT!");
+					FK_LOG_ERROR("Texture Streaming : Failed to open stream context!");
 					continue;
 				}
 
@@ -1433,7 +1446,9 @@ namespace FlexKit
 			const auto resource			= packedBlock.resource;
 			const auto asset			= GetResourceAsset(resource);
 
-			if (!asset) {
+			if (!asset)
+			{
+				FK_LOG_ERROR("Texture Streaming: Asset not found!");
 				continue;
 			}
 
@@ -1457,7 +1472,10 @@ namespace FlexKit
 			for (auto level = startingLevel; level < endingLevel; level++)
 			{
 				if (!streamContext.Open(level, asset.value()))
+				{
+					FK_LOG_ERROR("Texture Streaming: Failed to open asset!");
 					continue;
+				}
 
 				const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
 
@@ -1597,7 +1615,7 @@ namespace FlexKit
 				const auto level = block.tileID.GetMipLevel();
 				if (asset && !streamContext.Open(level, asset.value()))
 				{
-					FK_LOG_ERROR("FAILED TO OPEN STREAM CONTEXT!");
+					FK_LOG_ERROR("Texture Streaming: Failed to open stream context!");
 					continue;
 				}
 
@@ -1641,6 +1659,7 @@ namespace FlexKit
 			const auto asset			= GetResourceAsset(resource);
 
 			if (!asset) {
+				FK_LOG_ERROR("Texture Streaming: Failed find asset!");
 				continue;
 			}
 

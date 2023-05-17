@@ -46,8 +46,6 @@ namespace FlexKit
 
 	struct BrushComponentEventHandler
 	{
-		BrushComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
-
 		Brush OnCreate(GameObject& gameObject, Brush args)
 		{
 			return args;
@@ -55,8 +53,6 @@ namespace FlexKit
 
 
 		void OnCreateView(GameObject& gameObject, ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
-
-		RenderSystem& renderSystem;
 	};
 
 	using BrushComponent = BasicComponent_t<Brush, BrushHandle, BrushComponentID, BrushComponentEventHandler>;
@@ -80,7 +76,7 @@ namespace FlexKit
 
 		MaterialHandle GetMaterial() noexcept;
 
-		void SetMaterial(MaterialHandle material) noexcept;
+		BrushView& SetMaterial(MaterialHandle material) noexcept;
 
 		operator Brush& () noexcept;
 

@@ -69,7 +69,6 @@ public:
 
 	FlexKit::GameObject* GetGameObject();
 
-	void SendResource(FlexKit::AssetHandle handle);
 	void SetBrush(FlexKit::AssetHandle handle);
 
 	void resizeEvent(QResizeEvent* evt) override;

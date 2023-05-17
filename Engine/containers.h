@@ -2539,6 +2539,16 @@ namespace FlexKit
 		}
 
 
+		template<typename TY_OBJ, typename TY_MEMBERFN>
+		TypeErasedCallable(TY_OBJ& object, TY_MEMBERFN function) noexcept
+		{
+			Assign([&object, function](auto&&... args)
+				{
+					return (object.*function)(args...);
+				});
+		}
+
+
 		TypeErasedCallable(FN_PTR* fn_ptr) noexcept
 		{
 			Assign([fn_ptr](auto&&... args)

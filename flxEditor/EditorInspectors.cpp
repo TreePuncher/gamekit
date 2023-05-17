@@ -791,10 +791,10 @@ struct RemoteComponentUIContext
 			FetchResultTY data;
 			uint64_t messageUUID;
 
-			void Do(SharedEngineMemory* shared) override
+			void Do(EditorContext& editor) override
 			{
 				auto res = std::ranges::find_if(
-					shared->responders,
+					editor.shared.responders,
 					[&](auto& rhs)
 					{
 						return messageUUID == messageUUID;
@@ -803,7 +803,7 @@ struct RemoteComponentUIContext
 				if (res)
 				{
 					(*res)->Respond(*this);
-					shared->responders.remove_unstable(res);
+					editor.shared.responders.remove_unstable(res);
 				}
 			}
 
@@ -848,13 +848,80 @@ struct RemoteComponentUIContext
 
 		return ReturnContext<FetchResultTY, Wrapper, FetchMessage>{ *this };
 	}
+
+	uint64_t Send(auto&& msg) { return shared->PushMessageToPlayer(msg); }
+	//uint64_t SendResourceBlob(FlexKit::ResourceBlob& blob)
+	//{
+	//	struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
+	//	{
+	//		void Do(EditorPlayerState&) {};
+	//	};
+	//
+	//	return Send(std::make_shared<ResourceBlobMessage>{});
+	//}
 };
+
 
 void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
+	std::shared_ptr<RemoteComponentUIContext> remoteContext;
+
 	if (remoteObject)
 	{
-		auto remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
+		remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
+
+		/*
+		panelCtx.AddButton("Add",
+			[inspector = panelCtx.inspector, remoteContext, &project = this->project]()
+			{
+				auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
+
+				resourcePicker->OnSelection(
+					[inspector, remoteContext](ProjectResource_ptr resource_ptr)
+					{
+						if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
+						{
+							struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
+							{
+								ResourceBlobMessage(FlexKit::GUID_t IN_guid = INVALIDHANDLE) : guid{ IN_guid } {}
+
+								FlexKit::GUID_t guid;
+
+								void Do(EditorPlayerState& state) override
+								{
+									//if (auto mesh = state.GetTriMesh(guid); mesh)
+									//	state.gameObject->AddView<FlexKit::BrushView>(mesh.value());
+									//else
+									//	FK_LOG_ERROR("EditorPlayer: Failed to find asset!");
+								}
+
+								void Serialize(auto& archive)
+								{
+									archive& guid;
+								}
+							};
+
+							remoteContext->Send(std::make_shared<ResourceBlobMessage>(resource_ptr->resource->GetResourceGUID()));
+
+							//remoteContext->SendResourceBlob(blob);
+
+							//auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
+
+							//if (brush.GetMaterial() == FlexKit::InvalidHandle)
+							//{
+							//	auto& materials = FlexKit::MaterialComponent::GetComponent();
+							//	auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
+							//
+							//	brush.SetMaterial(newMaterial);
+							//}
+							//
+							//if (viewport.isVisible())
+							//	viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+						}
+					});
+
+				resourcePicker->show();
+			});
 
 		panelCtx.AddButton("Test",
 			[&, inspector = panelCtx.inspector, remoteContext]()
@@ -869,7 +936,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 						struct Data
 						{
 							uint64_t x = 0;
-						} datass{ meshes.size() + 1234 };
+						} datass{ meshes.size() + 1234u };
 
 						return datass;
 					}).
@@ -882,7 +949,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 			});
 
 		panelCtx.AddText(fmt::format("Remote Inspection Not Available!"));
-		return;
+		*/
 	}
 
 	auto& brush = static_cast<FlexKit::BrushView&>(component);
@@ -896,13 +963,16 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 
 	auto list = panelCtx.AddList(
 		[&brush]() { return brush.GetMeshes().size(); },
-		[&brush](size_t idx, QListWidgetItem* item)
+		[&brush, remoteObject](size_t idx, QListWidgetItem* item)
 		{
-			auto meshes		= brush.GetMeshes();
-			auto& mesh		= meshes[idx];
-			auto mesh_ptr	= FlexKit::GetMeshResource(mesh);
+			if(!remoteObject)
+			{
+				auto meshes		= brush.GetMeshes();
+				auto& mesh		= meshes[idx];
+				auto mesh_ptr	= FlexKit::GetMeshResource(mesh);
 
-			item->setText(mesh_ptr->ID);
+				item->setText(mesh_ptr->ID);
+			}
 		},
 		[&](QListWidget* item)
 		{
@@ -911,7 +981,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 	panelCtx.PushVerticalLayout();
 
 	panelCtx.AddButton("Add",
-		[&, inspector = panelCtx.inspector]()
+		[&gameObject, &brush, inspector = panelCtx.inspector, remoteObject, &project = this->project, &viewport = this->viewport, remoteContext]()
 		{
 			auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
 
@@ -920,19 +990,71 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 				{
 					if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
 					{
-						auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
-						brush.PushMesh(trimesh);
-
-						if (brush.GetMaterial() == FlexKit::InvalidHandle)
+						if (remoteObject)
 						{
-							auto& materials = FlexKit::MaterialComponent::GetComponent();
-							auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
+							struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
+							{
+								ResourceBlobMessage(FlexKit::GUID_t IN_guid = INVALIDHANDLE) : guid{ IN_guid } {}
 
-							brush.SetMaterial(newMaterial);
+								FlexKit::GUID_t guid;
+
+								void Do(EditorPlayerState& state) override
+								{
+									if (auto mesh = FlexKit::GetMesh(guid); mesh != INVALIDHANDLE)
+									{
+										static auto defaultMaterial = 
+											[]
+											{
+												auto& materials = FlexKit::MaterialComponent::GetComponent();
+												auto material = materials.CreateMaterial();
+
+												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(GBUFFERPASS) });
+												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
+												materials.AddRef(material);
+
+												return material;
+											}();
+
+										if(!state.gameObject->hasView(FlexKit::BrushComponentID))
+										{
+											state.gameObject->AddView<FlexKit::MaterialView>(defaultMaterial);
+											state.gameObject->AddView<FlexKit::BrushView>(mesh).SetMaterial(defaultMaterial);
+										}
+										else
+										{
+											auto& brushView = *state.gameObject->GetView<FlexKit::BrushView>();
+											auto& meshes	= brushView.GetBrush().meshes;
+											meshes.push_back(mesh);
+										}
+									}
+									else
+										FK_LOG_ERROR("EditorPlayer: Failed to find asset!");
+								}
+
+								void Serialize(auto& archive)
+								{
+									archive& guid;
+								}
+							};
+
+							remoteContext->Send(std::make_shared<ResourceBlobMessage>(resource_ptr->resource->GetResourceGUID()));
 						}
+						else
+						{
+							auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
+							brush.PushMesh(trimesh);
 
-						if (viewport.isVisible())
-							viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+							if (brush.GetMaterial() == FlexKit::InvalidHandle)
+							{
+								auto& materials = FlexKit::MaterialComponent::GetComponent();
+								auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
+
+								brush.SetMaterial(newMaterial);
+							}
+
+							if (viewport.isVisible())
+								viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
+						}
 					}
 				});
 

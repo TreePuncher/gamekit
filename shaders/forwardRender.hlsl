@@ -164,7 +164,7 @@ float4 DepthPass_VS(float3 POS : POSITION) : SV_POSITION
 
 struct Forward_PS_IN
 {
-	centroid    float4  POS         : SV_POSITION;
+	centroid	float4  POS         : SV_POSITION;
 				float   depth       : DEPTH;
 				float3	Normal	    : NORMAL;
 				float3	Tangent	    : TANGENT;
@@ -361,7 +361,7 @@ float4 GreyPolys(Forward_PS_IN IN) : SV_TARGET
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

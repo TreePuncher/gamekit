@@ -1,3 +1,5 @@
+#pragma once
+
 /**********************************************************************
 Copyright (c) 2015 - 2019 Robert May
 
@@ -21,19 +23,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef PCH_H
-#define PCH_H
+
 
 #include "buildsettings.h"
 #include "containers.h"
 
-#include <chrono>
+#include <algorithm>
+#include <filesystem>
+#include <fmt\format.h>
+#include <fstream>
 #include <iostream>
-#include <thread>
+#include <memory>
+#include <string>
+#include <ranges>
+#include <chrono>
 #include <stdint.h>
+#include <thread>
 #include <utility>
 
 #include <directx/d3d12.h>
 #include <directx/d3dx12.h>
 #include <DirectXMath/DirectXMath.h>
-#endif
+
+#include <Windows.h>

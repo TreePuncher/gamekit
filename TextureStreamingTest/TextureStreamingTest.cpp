@@ -1,9 +1,10 @@
 #include "pch.h"
+#include "CameraUtilities.h"
+#include "SceneLoadingContext.h"
 #include "TextureStreamingTest.h"
-#include <SceneLoadingContext.h>
+
 #include <imgui.h>
 #include <fmt\format.h>
-#include <CameraUtilities.h>
 
 
 using namespace FlexKit;
@@ -18,7 +19,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	FrameworkState		{ IN_framework },
 
 	animators				{ framework.core.GetBlockMemory() },
-	brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+	brushes					{ framework.core.GetBlockMemory() },
 	cameras					{ framework.core.GetBlockMemory() },
 	sceneNodes				{},
 	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
@@ -242,7 +243,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetTempMemoryMT());
 
 	if (streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
 
 	return nullptr;
 }

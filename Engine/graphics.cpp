@@ -3439,7 +3439,7 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
-		end = Min(renderSystem->GetResourceSize(UAV), end);
+		end = Min((uint32_t)renderSystem->GetResourceSize(UAV), end);
 		uint2 range{ begin / 16, end / 16};
 
 		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
