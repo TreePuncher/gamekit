@@ -123,6 +123,8 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <AdditionalOptions> /bigobj %(AdditionalOptions)</AdditionalOptions>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
+      <BuildStlModules>false</BuildStlModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -143,6 +145,8 @@
       <AdditionalOptions> /bigobj %(AdditionalOptions)</AdditionalOptions>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
+      <BuildStlModules>false</BuildStlModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

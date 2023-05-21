@@ -1,24 +1,26 @@
 #pragma once
 
 #include "Player.hpp"
-
 #include <Application.h>
 #include <DebugUI.h>
 #include <GameplayComponents.hpp>
 #include <physicsutilities.h>
-#include <Scene.h>
-#include <Signals.h>
 #include <TextureStreamingUtilities.h>
 #include <TriggerComponent.h>
+#include <Scene.h>
 #include <WorldRender.h>
 #include <Win32Graphics.h>
+#include <Signals.h>
 
 
-class PhysicsTest : public FlexKit::FrameworkState
+/************************************************************************************************/
+
+
+class AnimationTest : public FlexKit::FrameworkState
 {
 public:
-	PhysicsTest(FlexKit::GameFramework& IN_framework);
-	~PhysicsTest() final;
+	AnimationTest(FlexKit::GameFramework& IN_framework);
+	~AnimationTest() final;
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) final;
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph) final;

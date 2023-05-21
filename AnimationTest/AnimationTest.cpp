@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "level.hpp"
-#include "PhysicsTest.h"
+#include "AnimationTest.h"
 #include <KeyValueIds.h>
 #include <SceneLoadingContext.h>
 #include <imgui.h>
@@ -15,7 +15,41 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
+class PlayerAnimationController : public FlexKit::IAnimatorController
+{
+public:
+	PlayerAnimationController(GameObject& IN_gameObject, iAllocator& IN_allocator) :
+		gameObject	{ &IN_gameObject	},
+		allocator	{ &IN_allocator		}
+	{
+		auto animator = gameObject->GetView<AnimatorView>();
+
+		movementVectorIdx = animator->AddInput("MovementVector", AnimatorInputType::Float3);
+
+		auto test = animator->GetInputValue(movementVectorIdx).value()->xyz;
+		int x = 0;
+	}
+
+	void Update(double dT)
+	{
+
+	}
+
+	virtual void Release()
+	{
+		allocator->release(this);
+	}
+
+	uint32_t	movementVectorIdx	= 0;
+	GameObject* gameObject			= nullptr;
+	iAllocator* allocator			= nullptr;
+};
+
+
+/************************************************************************************************/
+
+
+AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState{ IN_framework },
 
 	animators				{ framework.core.GetBlockMemory() },
@@ -57,7 +91,8 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 
 	debugRays		{ framework.core.GetTempMemoryMT() }
 {
-	auto& rs = IN_framework.GetRenderSystem();
+	auto& rs		= IN_framework.GetRenderSystem();
+	auto& allocator = framework.core.GetBlockMemory();
 	rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
 	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
 
@@ -114,6 +149,11 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 
 	if (!loadPrefabRes)
 		FK_LOG_WARNING("Failed to load player prefab!");
+	else if(auto animator = character.GetView<AnimatorView>(); animator)
+	{
+		auto& controller = allocator.allocate<PlayerAnimationController>(character, allocator);
+		animator->SetController(controller);
+	}
 
 	auto& material = character.AddView<MaterialView>();
 	auto material1 = material.CreateSubMaterial();
@@ -151,7 +191,7 @@ PhysicsTest::PhysicsTest(FlexKit::GameFramework& IN_framework) :
 /************************************************************************************************/
 
 
-PhysicsTest::~PhysicsTest()
+AnimationTest::~AnimationTest()
 {
 	playerObject.Release();
 	ReleaseAllLevels();
@@ -162,7 +202,7 @@ PhysicsTest::~PhysicsTest()
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	UpdateInput();
 	renderWindow.UpdateCapturedMouseInput(dT);
@@ -245,7 +285,7 @@ FlexKit::UpdateTask* PhysicsTest::Update(FlexKit::EngineCore& core, FlexKit::Upd
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
@@ -351,7 +391,7 @@ FlexKit::UpdateTask* PhysicsTest::Draw(FlexKit::UpdateTask* update, FlexKit::Eng
 /************************************************************************************************/
 
 
-void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
+void AnimationTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow.Present(1, 0);
 
@@ -362,7 +402,7 @@ void PhysicsTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 /************************************************************************************************/
 
 
-bool PhysicsTest::EventHandler(FlexKit::Event evt)
+bool AnimationTest::EventHandler(FlexKit::Event evt)
 {
 	switch (evt.InputSource)
 	{

@@ -777,6 +777,7 @@ namespace FlexKit
 			handles.RemoveHandle(handle);
 		}
 
+		auto& GetFactory() noexcept { return eventHandler; }
 
 		Vector<TY> GetElements_copy(iAllocator* tempMemory) const
 		{

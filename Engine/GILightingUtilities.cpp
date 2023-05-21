@@ -1,6 +1,5 @@
 #include "GILightingUtilities.h"
 #include "SVOGI.h"
-#include <range/v3/all.hpp>
 #include <ranges>
 
 
@@ -43,7 +42,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	
 	struct ShaderTableHandle
 	{
 		DevicePointer   devicePointer;

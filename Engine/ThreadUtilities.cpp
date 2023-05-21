@@ -45,6 +45,51 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FLEXKITAPI void RunTask(iWork& work)
+	{
+		std::unique_ptr<StackAllocator> allocator;
+
+		if (localAllocators.empty())
+		{
+			allocator = std::make_unique<StackAllocator>();
+			allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
+		}
+		else
+		{
+			allocator = std::move(localAllocators.back());
+			localAllocators.pop_back();
+		}
+
+		work.DoWork(*allocator);
+
+		allocator->clear();
+
+		localAllocators.emplace_back(std::move(allocator));
+	}
+
+
+	/************************************************************************************************/
+
+
+	_WorkerThread::_WorkerThread(iAllocator* ThreadMemory) :
+		Running		{ false },
+		Quit		{ false },
+		hasJob		{ false },
+		workQueue	{ ThreadMemory },
+		Allocator	{ ThreadMemory } {}
+
+	_WorkerThread::~_WorkerThread()
+	{
+		workQueue.Release();
+
+		if (Thread.joinable())
+			Thread.join();
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool _WorkerThread::AddItem(iWork* Work) noexcept
 	{
 		std::unique_lock lock{ exclusive };

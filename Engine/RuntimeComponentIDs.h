@@ -4,7 +4,6 @@
 
 namespace FlexKit
 {
-	constexpr uint32_t PassHandleID					= GetTypeGUID(PassHandle);
 	constexpr uint32_t AnimatorComponentID			= GetTypeGUID(Animator);
 	constexpr uint32_t BindPointComponentID			= GetTypeGUID(BindPoint);
 	constexpr uint32_t BrushComponentID				= GetTypeGUID(Brush);
@@ -12,8 +11,9 @@ namespace FlexKit
 	constexpr uint32_t FABRIKComponentID			= GetTypeGUID(FABRIK);
 	constexpr uint32_t FABRIKTargetComponentID		= GetTypeGUID(FABRIKTarget);
 	constexpr uint32_t MaterialComponentID			= GetTypeGUID(Material);
+	constexpr uint32_t PassHandleID					= GetTypeGUID(PassHandle);
 	constexpr uint32_t PointLightShadowMapID		= GetTypeGUID(PointLighShadowCaster);
-	constexpr uint32_t LightComponentID		= GetTypeGUID(PointLight);
+	constexpr uint32_t LightComponentID				= GetTypeGUID(PointLight);
 	constexpr uint32_t SceneVisibilityComponentID	= GetTypeGUID(SceneVisibility);
 	constexpr uint32_t SkeletonComponentID			= GetTypeGUID(Skeleton);
 	constexpr uint32_t StringComponentID			= GetTypeGUID(StringID);

@@ -29,6 +29,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Engine", "Engine\Engine.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EditorShared", "EditorShared\EditorShared.vcxitems", "{483397CB-406C-4F5D-BE9B-71C27E8F9BCC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimationTest", "AnimationTest\AnimationTest.vcxproj", "{78468E5D-9D05-455C-8334-637810910BDD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SharedComponents", "SharedComponents\SharedComponents.vcxitems", "{65BC2CB2-A73F-4787-9895-6DA7C4828364}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -93,7 +97,6 @@ Global
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x86.ActiveCfg = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x86.Build.0 = Debug|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.ActiveCfg = Release|x64
-		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.Build.0 = Release|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x86.ActiveCfg = Release|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x86.Build.0 = Release|Win32
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.ActiveCfg = Debug|x64
@@ -141,13 +144,25 @@ Global
 		{68C04131-F2BF-4194-BD6C-E0EB9B092AB3}.UnityBuild|x64.Build.0 = Debug|x64
 		{68C04131-F2BF-4194-BD6C-E0EB9B092AB3}.UnityBuild|x86.ActiveCfg = Debug|Win32
 		{68C04131-F2BF-4194-BD6C-E0EB9B092AB3}.UnityBuild|x86.Build.0 = Debug|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.Debug|x64.ActiveCfg = Debug|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.Debug|x64.Build.0 = Debug|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.Debug|x86.ActiveCfg = Debug|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.Debug|x86.Build.0 = Debug|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.Release|x64.ActiveCfg = Release|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.Release|x64.Build.0 = Release|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.Release|x86.ActiveCfg = Release|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.Release|x86.Build.0 = Release|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.UnityBuild|x64.ActiveCfg = Debug|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.UnityBuild|x64.Build.0 = Debug|x64
+		{78468E5D-9D05-455C-8334-637810910BDD}.UnityBuild|x86.ActiveCfg = Debug|Win32
+		{78468E5D-9D05-455C-8334-637810910BDD}.UnityBuild|x86.Build.0 = Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		Qt5Version = qt5
 		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
+		Qt5Version = qt5
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Engine\Engine.vcxitems*{233cc021-9348-439b-8d0f-3e714dbe39f8}*SharedItemsImports = 4
@@ -156,11 +171,15 @@ Global
 		Engine\Engine.vcxitems*{31ebef0d-793c-4b4d-84a1-eaf0ae305b60}*SharedItemsImports = 4
 		EditorShared\EditorShared.vcxitems*{483397cb-406c-4f5d-be9b-71c27e8f9bcc}*SharedItemsImports = 9
 		Engine\Engine.vcxitems*{4f20ea09-a847-459e-98b7-1e36d7636727}*SharedItemsImports = 4
+		SharedComponents\SharedComponents.vcxitems*{65bc2cb2-a73f-4787-9895-6da7c4828364}*SharedItemsImports = 9
 		Engine\Engine.vcxitems*{68c04131-f2bf-4194-bd6c-e0eb9b092ab3}*SharedItemsImports = 4
+		Engine\Engine.vcxitems*{78468e5d-9d05-455c-8334-637810910bdd}*SharedItemsImports = 4
+		SharedComponents\SharedComponents.vcxitems*{78468e5d-9d05-455c-8334-637810910bdd}*SharedItemsImports = 4
 		Engine\Engine.vcxitems*{7a4c6073-d26a-4212-b0ff-2fd78d2edb98}*SharedItemsImports = 4
 		Engine\Engine.vcxitems*{8d62357c-3865-4201-a51d-24dd11a361b1}*SharedItemsImports = 4
 		Engine\Engine.vcxitems*{90611e9c-5078-49df-b5cf-b772032bab5d}*SharedItemsImports = 4
 		Engine\Engine.vcxitems*{f278658f-8dbd-4f77-8a8a-52ff5bd74adb}*SharedItemsImports = 9
 		Engine\Engine.vcxitems*{f9692a62-b26d-4f57-ad20-8e8660522ee5}*SharedItemsImports = 4
+		SharedComponents\SharedComponents.vcxitems*{f9692a62-b26d-4f57-ad20-8e8660522ee5}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal

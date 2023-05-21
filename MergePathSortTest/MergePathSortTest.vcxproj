@@ -122,6 +122,8 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
       <TranslateIncludes>true</TranslateIncludes>
+      <BuildStlModules>false</BuildStlModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -140,6 +142,8 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
       <TranslateIncludes>true</TranslateIncludes>
+      <BuildStlModules>false</BuildStlModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

@@ -17,11 +17,11 @@ namespace FlexKit
 
 	struct AnimationTrack
 	{
-		Vector<AnimationKeyFrame>   keyFrames;
+		Vector<AnimationKeyFrame>	keyFrames;
 
-		TrackType                   type;
-		std::string                 trackName;
-		std::string                 target;
+		TrackType					type;
+		std::string					trackName;
+		std::string					target;
 	};
 
 	struct Animation
@@ -52,41 +52,9 @@ namespace FlexKit
 	class SkeletonComponent : public FlexKit::Component<SkeletonComponent, SkeletonComponentID>
 	{
 	public:
-		SkeletonComponent(iAllocator* allocator) :
-			states		{ allocator },
-			skeletons	{ allocator },
-			handles		{ allocator },
-			allocator	{ allocator } {}
+		SkeletonComponent(iAllocator* allocator);
 
-		SkeletonHandle Create(const AssetHandle asset)
-		{
-			const auto skeletonGuid  = asset;
-			const auto available     = isAssetAvailable(skeletonGuid);
-
-			if (!available)
-				return InvalidHandle;
-
-			auto res = std::ranges::find_if(
-				skeletons,
-				[&](const auto& sk)
-				{
-					return sk.asset == asset;
-				});
-
-			if (res == skeletons.end())
-			{
-				const auto resource = LoadGameAsset(skeletonGuid);
-				auto skeleton		= Resource2Skeleton(resource, allocator);
-
-				skeletons.emplace_back(asset, skeleton);
-				res = &skeletons.back();
-			}
-
-			const auto handle = handles.GetNewHandle();
-			handles[handle] = (uint32_t)states.push_back({ res->sk, CreatePoseState(*res->sk, allocator) });
-
-			return handle;
-		}
+		SkeletonHandle Create(const AssetHandle asset);
 
 		void Release(SkeletonHandle handle);
 
@@ -124,16 +92,14 @@ namespace FlexKit
 	public:
 		SkeletonView(GameObject& gameObject, const AssetHandle asset) : handle{ GetComponent().Create(asset) } {}
 
-		void Release()
-		{
-			GetComponent().Release(handle);
-		}
+		void		Release();
 
-		auto& GetPoseState(this auto&& self)
+		JointPose	GetPose(JointHandle jointId) const;
+		auto&		GetPoseState(this auto&& self)
 		{
-			auto& ref	= GetComponent()[self.handle].poseState;
-			using ref_type				= decltype(ref);
-			using const_ref_type		= const ref_type;
+			auto& ref = GetComponent()[self.handle].poseState;
+			using ref_type = decltype(ref);
+			using const_ref_type = const ref_type;
 
 			if constexpr (std::is_const_v<decltype(self)>)
 				return std::forward<const_ref_type >(ref);
@@ -141,28 +107,11 @@ namespace FlexKit
 				return std::forward<ref_type>(GetComponent()[self.handle].poseState);
 		}
 
-		auto GetSkeleton()
-		{
-			return GetComponent()[handle].skeleton;
-		}
+		Skeleton*	GetSkeleton();
 
-		void SetPose(JointHandle jointId, JointPose pose)
-		{
-			GetPoseState().Joints[jointId] = pose;
-		}
+		void		SetPose(JointHandle jointId, JointPose pose);
 
-
-		JointPose GetPose(JointHandle jointId) const
-		{
-			return GetPoseState().Joints[jointId];
-		}
-
-
-		JointHandle FindJoint(const char* jointID)
-		{
-			auto& poseState = GetPoseState();
-			return poseState.Sk->FindJoint(jointID);
-		}
+		JointHandle	FindJoint(const char* jointID);
 
 		SkeletonHandle handle;
 	};
@@ -194,18 +143,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Skeleton*   GetSkeleton     (GameObject& gameObject);
-	PoseState*  GetPoseState    (GameObject& gameObject);
-	size_t      GetJointCount   (GameObject& gameObject);
+	Skeleton*	GetSkeleton		(GameObject& gameObject);
+	PoseState*	GetPoseState	(GameObject& gameObject);
+	size_t		GetJointCount	(GameObject& gameObject);
 
-	JointPose   GetJointPose    (GameObject& gameObject, JointHandle jointID);
-	JointHandle GetJoint        (GameObject& gameObject, const char*);
-	JointHandle GetJointParent  (GameObject& gameObject, JointHandle jointID);
+	JointPose	GetJointPose	(GameObject& gameObject, JointHandle jointID);
+	JointHandle	GetJoint		(GameObject& gameObject, const char*);
+	JointHandle	GetJointParent	(GameObject& gameObject, JointHandle jointID);
 
-	void        SetJointPose    (GameObject& gameObject, JointHandle jointID, JointPose pose);
+	void		SetJointPose	(GameObject& gameObject, JointHandle jointID, JointPose pose);
 
-	void        RotateJoint         (GameObject& gameObject, JointHandle jointID, const Quaternion Q);
-	bool        hasSkeletonLoaded   (GameObject& gameObject);
+	void		RotateJoint			(GameObject& gameObject, JointHandle jointID, const Quaternion Q);
+	bool		hasSkeletonLoaded	(GameObject& gameObject);
 
 
 	/************************************************************************************************/
@@ -236,17 +185,17 @@ namespace FlexKit
 	struct UpdatePosesTaskData
 	{
 		const PosedBrushList*	skinned;
+		UpdateTask*				task;
 
-		UpdateTask*         task;
-		operator UpdateTask* () { return task; }
+		operator UpdateTask* ()	{ return task; }
 	};
 
-	using GatherSkinnedTask = UpdateTaskTyped<GatherSkinnedTaskData>&;
-	using UpdatePoseTask    = UpdateTaskTyped<UpdatePosesTaskData>&;
+	using GatherSkinnedTask	= UpdateTaskTyped<GatherSkinnedTaskData>&;
+	using UpdatePoseTask	= UpdateTaskTyped<UpdatePosesTaskData>&;
 
-	void                GatherSkinned   (Scene* SM, CameraHandle Camera, PosedBrushList& out_skinned);
-	GatherSkinnedTask&  GatherSkinned   (UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator* allocator);
-	UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects);
+	void				GatherSkinned	(Scene* SM, CameraHandle Camera, PosedBrushList& out_skinned);
+	GatherSkinnedTask&	GatherSkinned	(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator* allocator);
+	UpdatePoseTask&		UpdatePoses		(UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects);
 
 
 	void UpdatePose(PoseState& pose, iAllocator& tempMemory);
@@ -275,8 +224,8 @@ namespace FlexKit
 			fieldID = TY::GetAnimationFieldID();
 		}
 
-		static TY*          GetField(AnimationStateField& field)    { return reinterpret_cast<TY*>(field.data); }
-		static uint32_t     GetFieldID()                            { return TY::GetFieldID(); }
+		static TY*			GetField(AnimationStateField& field)	{ return reinterpret_cast<TY*>(field.data); }
+		static uint32_t		GetFieldID()							{ return TY::GetFieldID(); }
 	};
 
 	enum class AnimatorInputType : uint32_t
@@ -292,36 +241,43 @@ namespace FlexKit
 		Unknown
 	};
 
+
+	struct IAnimatorController
+	{
+		virtual void Update(double dT) = 0;
+		virtual void Release() = 0;
+	};
+
+	struct AngelScriptController : public IAnimatorController
+	{
+		AngelScriptController(asIScriptObject&, GameObject&, iAllocator&);
+
+		void Update(double dT)	override;
+		void Release()			override;
+
+		asIScriptObject*	obj			= nullptr;
+		GameObject*			gameObject	= nullptr;
+		iAllocator*			allocator	= nullptr;
+	};
+
 	struct AnimatorScriptState
 	{
-		GameObject*         gameObject  = nullptr;
-		asIScriptObject*    obj         = nullptr;
+		GameObject*				gameObject	= nullptr;
+		IAnimatorController*	obj			= nullptr;
 	};
+
 
 	using AnimatorCallback = TypeErasedCallable<void (GameObject&)>;
 
 	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
 	{
 	public:
-		AnimatorComponent(iAllocator& IN_allocator) :
-			allocator   {  IN_allocator },
-			handles     { &IN_allocator },
-			animators   { &IN_allocator } {}
+		AnimatorComponent(iAllocator& IN_allocator);
 
-		AnimatorHandle Create(GameObject& gameObject)
-		{
-			auto handle     = handles.GetNewHandle();
-			handles[handle] = (index_t)animators.emplace_back(&gameObject, allocator);
-
-			return handle;
-		}
-
+		AnimatorHandle Create(GameObject& gameObject);
 
 		void AddComponentView(GameObject& GO, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
-
-
 		void FreeComponentView(void* _ptr) final { static_cast<AnimatorView*>(_ptr)->Release(); }
-
 
 		void Release(AnimatorHandle handle) { FK_LOG_WARNING("AnimatorComponent::Release(): Unimplemented! Leaking memory"); }
 
@@ -411,15 +367,15 @@ namespace FlexKit
 				AnimationKeyFrame* FindFrame(double T);
 				AnimationKeyFrame* FindNextFrame(AnimationKeyFrame* frame);
 
-				AnimationTrack* track;
-				ITrackTarget*   target;
+				AnimationTrack*	track;
+				ITrackTarget*	target;
 			};
 
 
 			State Update(AnimationStateContext& ctx, double dT);
 
-			Vector<TrackState>  tracks;
-			Animation*          resource;
+			Vector<TrackState>	tracks;
+			Animation*			resource;
 		};
 
 		struct InputID
@@ -440,8 +396,8 @@ namespace FlexKit
 
 			AnimatorInputType type;
 
-			uint32_t    IDHash;
-			char        stringID[32];
+			uint32_t	IDHash;
+			char		stringID[32];
 		};
 
 		struct InputValue
@@ -463,15 +419,15 @@ namespace FlexKit
 
 			union
 			{
-				float           x;
-				FlexKit::float2 xy;
-				FlexKit::float3 xyz;
-				FlexKit::float4 xyzw;
+				float			x;
+				FlexKit::float2	xy;
+				FlexKit::float3	xyz;
+				FlexKit::float4	xyzw;
 
-				uint32_t        a;
-				FlexKit::uint2  ab;
-				FlexKit::uint3  abc;
-				FlexKit::uint4  abcd;
+				uint32_t		a;
+				FlexKit::uint2	ab;
+				FlexKit::uint3	abc;
+				FlexKit::uint4	abcd;
 			};
 		};
 
@@ -482,15 +438,15 @@ namespace FlexKit
 
 			~AnimatorState();
 
-			GameObject*                 gameObject  = nullptr;
-			asIScriptObject*            obj         = nullptr;
+			GameObject*					gameObject	= nullptr;
+			IAnimatorController*		controller	= nullptr;
 
-			Vector<AnimationState>      animations;
-			Vector<InputValue>          inputValues;
-			Vector<InputID>             inputIDs;
-			Vector<AnimatorCallback>    callbacks;
+			Vector<AnimationState>		animations;
+			Vector<InputValue>			inputValues;
+			Vector<InputID>				inputIDs;
+			Vector<AnimatorCallback>	callbacks;
 
-			AnimationStateMachine       ASM;
+			AnimationStateMachine		ASM;
 		};
 
 		class AnimatorView : public FlexKit::ComponentView_t<AnimatorComponent>
@@ -499,38 +455,31 @@ namespace FlexKit
 			AnimatorView(GameObject& IN_gameObject, AnimatorHandle IN_animatorHandle = InvalidHandle) :
 				animator{ IN_animatorHandle != InvalidHandle ? IN_animatorHandle : GetComponent().Create(IN_gameObject) } {}
 
-			void Release()
-			{
-				GetComponent().Release(animator);
-				animator = InvalidHandle;
-			}
+			void Release();
 
-			PlayID_t    Play(Animation& anim, bool loop = false);
-			void        Stop(PlayID_t playID);
-			void        Pause(PlayID_t playID);
-			void        SetProgress(PlayID_t playID, float);
+			PlayID_t	Play(Animation& anim, bool loop = false);
+			void		Stop(PlayID_t playID);
+			void		Pause(PlayID_t playID);
+			void		SetProgress(PlayID_t playID, float);
 
 
-			std::optional<InputValue*>          GetInputValue(uint32_t idx) noexcept;
-			std::optional<AnimatorInputType>    GetInputType(uint32_t idx) noexcept;
-			AnimatorState&                      GetState() noexcept;
-			AnimatorScriptState                 GetScriptState() noexcept;
+			std::optional<InputValue*>			GetInputValue(uint32_t idx) noexcept;
+			std::optional<AnimatorInputType>	GetInputType(uint32_t idx) noexcept;
+			AnimatorState&						GetState() noexcept;
+			AnimatorScriptState					GetScriptState() noexcept;
 
-			uint32_t                            AddInput(const char* name, AnimatorInputType type, void* _ptr = nullptr) noexcept;
-			void                                SetAnimationState(uint32_t animationID, uint32_t state) noexcept;
-			void                                SetObj(void*) noexcept;
+			uint32_t							AddInput(const char* name, AnimatorInputType type, void* _ptr = nullptr) noexcept;
+			void								SetAnimationState(uint32_t animationID, uint32_t state) noexcept;
+			void								SetController(IAnimatorController&) noexcept;
 
 			AnimatorHandle animator;
 		};
 
-		AnimatorState& operator [](AnimatorHandle handle)
-		{
-			return animators[handles[handle]];
-		}
+		AnimatorState& operator [](AnimatorHandle handle);
 
 		Vector<AnimatorState>							animators;
 		HandleUtilities::HandleTable<AnimatorHandle>	handles;
-		iAllocator&                                     allocator;
+		iAllocator&										allocator;
 	};
 
 	using AnimatorView = AnimatorComponent::AnimatorView;
@@ -539,8 +488,8 @@ namespace FlexKit
 
 	UpdateTask& UpdateAnimations(UpdateDispatcher& updateTask, double dT);
 
-	using FABRIKHandle          = Handle_t<32, FABRIKComponentID>;
-	using FABRIKTargetHandle    = Handle_t<32, FABRIKTargetComponentID>;
+	using FABRIKHandle			= Handle_t<32, FABRIKComponentID>;
+	using FABRIKTargetHandle	= Handle_t<32, FABRIKTargetComponentID>;
 
 	struct FABRIKTarget
 	{
@@ -554,8 +503,8 @@ namespace FlexKit
 		Vector<FABRIKHandle>    users;
 	};
 
-	using FABRIKTargetComponent = BasicComponent_t<FABRIKTarget, FABRIKTargetHandle, FABRIKTargetComponentID>;
-	using FABRIKTargetView      = FABRIKTargetComponent::View;
+	using FABRIKTargetComponent	= BasicComponent_t<FABRIKTarget, FABRIKTargetHandle, FABRIKTargetComponentID>;
+	using FABRIKTargetView		= FABRIKTargetComponent::View;
 
 	class FABRIKComponent : public FlexKit::Component<FABRIKComponent, FABRIKComponentID>
 	{

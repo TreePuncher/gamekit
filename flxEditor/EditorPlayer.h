@@ -1,5 +1,6 @@
 #pragma once
 #include "GameFramework.h"
+#include "DepthBuffer.h"
 #include "Serialization.hpp"
 #include "TextureStreamingUtilities.h"
 #include "WorldRender.h"

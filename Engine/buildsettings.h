@@ -115,8 +115,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FLEXKITINTERNAL
 
 #include <assert.h>
-#include <functional>
-#include <chrono>
+#include <cstdint>
 
 #ifdef _DEBUG
 
