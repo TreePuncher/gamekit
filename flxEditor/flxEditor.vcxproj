@@ -84,7 +84,9 @@
       <ShowIncludes>false</ShowIncludes>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PCH.h</PrecompiledHeaderFile>
-      <TranslateIncludes>false</TranslateIncludes>
+      <TranslateIncludes>true</TranslateIncludes>
+      <BuildStlModules>false</BuildStlModules>
+      <EnableModules>false</EnableModules>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>
@@ -109,9 +111,10 @@
       <EnableModules>false</EnableModules>
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
-      <TranslateIncludes>false</TranslateIncludes>
+      <TranslateIncludes>true</TranslateIncludes>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <BuildStlModules>false</BuildStlModules>
     </ClCompile>
     <QtMoc>
       <AdditionalDependencies>

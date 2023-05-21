@@ -252,11 +252,7 @@ namespace FlexKit
 	struct FLEXKITAPI Skeleton
 	{
 		Skeleton() = default;
-
-		Skeleton(iAllocator* allocator, size_t jointCount = 64) 
-		{
-			InitiateSkeleton(allocator, jointCount);
-		}
+        Skeleton(iAllocator* allocator, size_t jointCount = 64);
 
 		Joint&			operator [] (JointHandle hndl);
 

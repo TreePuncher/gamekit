@@ -124,6 +124,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	Skeleton::Skeleton(iAllocator* allocator, size_t jointCount)
+	{
+		InitiateSkeleton(allocator, jointCount);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Skeleton::InitiateSkeleton(iAllocator* Allocator, size_t JC)
 	{
 		auto test = sizeof(Skeleton);

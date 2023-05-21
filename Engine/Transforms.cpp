@@ -204,7 +204,7 @@ namespace FlexKit
 
 	void ReleaseNode(NodeHandle handle)
 	{
-		if (InvalidHandle == handle)
+		if (handle == InvalidHandle)
 			return;
 
 		SceneNodeTable.Flags[_SNHandleToIndex(handle)] = SceneNodes::FREE;
@@ -218,7 +218,7 @@ namespace FlexKit
 
 	NodeHandle GetParentNode(NodeHandle handle)
 	{
-		if (handle == FlexKit::InvalidHandle)
+		if (handle == InvalidHandle)
 			return FlexKit::InvalidHandle;
 
 		const auto idx  = SceneNodeTable.Indexes[handle];

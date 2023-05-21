@@ -7561,10 +7561,10 @@ namespace FlexKit
 
 	void VertexBufferStateTable::ReleaseVertexBuffer(VertexBufferHandle handle, uint64_t current)
 	{
+		std::scoped_lock lock{ criticalSection };
+
 		auto userIdx		= Handles[handle];
 		auto& userEntry     = UserBuffers[userIdx];
-
-		std::scoped_lock(criticalSection);
 
 		for (const auto ResourceIdx : userEntry.Buffers)
 			if(ResourceIdx != INVALIDHANDLE)
@@ -7589,7 +7589,7 @@ namespace FlexKit
 
 	void VertexBufferStateTable::ReleaseFree(uint64_t current)
 	{
-		std::scoped_lock(criticalSection);
+		std::scoped_lock lock{ criticalSection };
 
 		for (auto freeBuffer : FreeBuffers)
 		{

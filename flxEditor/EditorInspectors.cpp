@@ -1008,24 +1008,22 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 												auto& materials = FlexKit::MaterialComponent::GetComponent();
 												auto material = materials.CreateMaterial();
 
-												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(GBUFFERPASS) });
+												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
 												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
 												materials.AddRef(material);
 
 												return material;
 											}();
 
-										if(!state.gameObject->hasView(FlexKit::BrushComponentID))
-										{
+										if (!state.gameObject->hasView(FlexKit::MaterialComponentID))
 											state.gameObject->AddView<FlexKit::MaterialView>(defaultMaterial);
-											state.gameObject->AddView<FlexKit::BrushView>(mesh).SetMaterial(defaultMaterial);
-										}
-										else
-										{
-											auto& brushView = *state.gameObject->GetView<FlexKit::BrushView>();
-											auto& meshes	= brushView.GetBrush().meshes;
-											meshes.push_back(mesh);
-										}
+
+										if (!state.gameObject->hasView(FlexKit::BrushComponentID))
+											state.gameObject->AddView<FlexKit::BrushView>(mesh).SetMaterial(FlexKit::GetMaterialHandle(*state.gameObject));
+
+										auto& brushView = *state.gameObject->GetView<FlexKit::BrushView>();
+										auto& meshes	= brushView.GetBrush().meshes;
+										meshes.push_back(mesh);
 									}
 									else
 										FK_LOG_ERROR("EditorPlayer: Failed to find asset!");

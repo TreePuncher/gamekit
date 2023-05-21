@@ -17,7 +17,7 @@ int main()
 		};
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
-
+		
 		app->PushState<TextureStreamingTest>();
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;

@@ -11,7 +11,7 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
-    
+	
 	size_t          GetNormalIndex	    (const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
 	size_t          GetTexcordIndex	    (const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh);
 	size_t          GetVertexIndex	    (const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
@@ -19,92 +19,92 @@ namespace FlexKit
 	SkinDeformer	CreateSkin			(const fbxsdk::FbxMesh* Mesh);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    inline float3 TranslateToFloat3(const FbxVector4& in)
-    {
-        return float3(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2]);
-    }
+	inline float3 TranslateToFloat3(const FbxVector4& in)
+	{
+		return float3(
+			(float)in.mData[0],
+			(float)in.mData[1],
+			(float)in.mData[2]);
+	}
 
 
-    inline float3 TranslateToFloat3(const FbxDouble3& in)
-    {
-        return float3(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2]);
-    }
+	inline float3 TranslateToFloat3(const FbxDouble3& in)
+	{
+		return float3(
+			(float)in.mData[0],
+			(float)in.mData[1],
+			(float)in.mData[2]);
+	}
 
 
-    inline float4 TranslateToFloat4(const FbxVector4& in)
-    {
-        return float4(
-            (float)in.mData[0],
-            (float)in.mData[1],
-            (float)in.mData[2],
-            (float)in.mData[3]);
-    }
+	inline float4 TranslateToFloat4(const FbxVector4& in)
+	{
+		return float4(
+			(float)in.mData[0],
+			(float)in.mData[1],
+			(float)in.mData[2],
+			(float)in.mData[3]);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    inline XMMATRIX FBXMATRIX_2_XMMATRIX(const FbxAMatrix& AM)
-    {
-        XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
-        for (uint32_t I = 0; I < 4; ++I)
-            for (uint32_t II = 0; II < 4; ++II)
-                M.r[I].m128_f32[II] = (float)AM[I][II];
+	inline XMMATRIX FBXMATRIX_2_XMMATRIX(const FbxAMatrix& AM)
+	{
+		XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
+		for (uint32_t I = 0; I < 4; ++I)
+			for (uint32_t II = 0; II < 4; ++II)
+				M.r[I].m128_f32[II] = (float)AM[I][II];
 
-        return M;
-    }
-
-
-    inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
-    {
-        FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
-        for (uint32_t I = 0; I < 4; ++I)
-            for (uint32_t II = 0; II < 4; ++II)
-                AM[I][II] = M.r[I].m128_f32[II];
-
-        return AM;
-    }
+		return M;
+	}
 
 
-    inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
-    {
-        return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
-    }
+	inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
+	{
+		FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
+		for (uint32_t I = 0; I < 4; ++I)
+			for (uint32_t II = 0; II < 4; ++II)
+				AM[I][II] = M.r[I].m128_f32[II];
+
+		return AM;
+	}
 
 
-    /************************************************************************************************/
+	inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
+	{
+		return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
+	}
 
 
-    FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
-    {
-        const FbxVector4 lT = inNode->GetGeometricTranslation(FbxNode::eSourcePivot);
-        const FbxVector4 lR = inNode->GetGeometricRotation(FbxNode::eSourcePivot);
-        const FbxVector4 lS = inNode->GetGeometricScaling(FbxNode::eSourcePivot);
-
-        return FbxAMatrix(lT, lR, lS);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
+	{
+		const FbxVector4 lT = inNode->GetGeometricTranslation(FbxNode::eSourcePivot);
+		const FbxVector4 lR = inNode->GetGeometricRotation(FbxNode::eSourcePivot);
+		const FbxVector4 lS = inNode->GetGeometricScaling(FbxNode::eSourcePivot);
+
+		return FbxAMatrix(lT, lR, lS);
+	}
 
 
-    Pair<bool, fbxsdk::FbxScene*>   LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
-    ResourceList                    CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	Pair<bool, fbxsdk::FbxScene*>   LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
+	ResourceList                    CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
 
 
-    FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)	
+	/************************************************************************************************/
+
+
+	FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)	
 	{ 
 		FbxVector4 out;
 		auto Normals = Mesh->GetElementNormal(index); 
@@ -159,76 +159,76 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    FbxVector4 ReadTangent(int index, fbxsdk::FbxMesh* Mesh)
-    {
-        FbxVector4 out;
-        auto Tangents = Mesh->GetElementTangent(index);
-        auto Mapping = Tangents->GetMappingMode();
+	FbxVector4 ReadTangent(int index, fbxsdk::FbxMesh* Mesh)
+	{
+		FbxVector4 out;
+		auto Tangents = Mesh->GetElementTangent(index);
+		auto Mapping = Tangents->GetMappingMode();
 
-        out = Tangents->GetDirectArray().GetAt(index);
-        switch (Mapping)
-        {
-        case fbxsdk::FbxLayerElement::eNone:
-            break;
-        case fbxsdk::FbxLayerElement::eByControlPoint:
-        {
-            switch (Tangents->GetReferenceMode())
-            {
-            case fbxsdk::FbxLayerElement::eDirect:
-                out = Tangents->GetDirectArray().GetAt(index);
-                break;
-            case fbxsdk::FbxLayerElement::eIndexToDirect:
-            {
-                int TangentIndex = Tangents->GetIndexArray().GetAt(index);
-                out = Tangents->GetDirectArray().GetAt(TangentIndex);
-            }	break;
-            default:
-                break;
-            }
-        }
-        break;
-        case fbxsdk::FbxLayerElement::eByPolygonVertex:
-        {
-            auto TangentIndex = Tangents->GetIndexArray();
-            auto NIndex = TangentIndex.GetAt(index);
-            {
-                switch (Tangents->GetReferenceMode())
-                {
-                case fbxsdk::FbxLayerElement::eDirect:
-                {
-                    out = Tangents->GetDirectArray().GetAt(index);
-                }	break;
-                case fbxsdk::FbxLayerElement::eIndexToDirect:
-                {
-                    int x = 0;
-                }	break;
-                default:
-                    break;
-                }
-            }
-        }
-        default:
-            break;
-        }
-        return out;
-    }
+		out = Tangents->GetDirectArray().GetAt(index);
+		switch (Mapping)
+		{
+		case fbxsdk::FbxLayerElement::eNone:
+			break;
+		case fbxsdk::FbxLayerElement::eByControlPoint:
+		{
+			switch (Tangents->GetReferenceMode())
+			{
+			case fbxsdk::FbxLayerElement::eDirect:
+				out = Tangents->GetDirectArray().GetAt(index);
+				break;
+			case fbxsdk::FbxLayerElement::eIndexToDirect:
+			{
+				int TangentIndex = Tangents->GetIndexArray().GetAt(index);
+				out = Tangents->GetDirectArray().GetAt(TangentIndex);
+			}	break;
+			default:
+				break;
+			}
+		}
+		break;
+		case fbxsdk::FbxLayerElement::eByPolygonVertex:
+		{
+			auto TangentIndex = Tangents->GetIndexArray();
+			auto NIndex = TangentIndex.GetAt(index);
+			{
+				switch (Tangents->GetReferenceMode())
+				{
+				case fbxsdk::FbxLayerElement::eDirect:
+				{
+					out = Tangents->GetDirectArray().GetAt(index);
+				}	break;
+				case fbxsdk::FbxLayerElement::eIndexToDirect:
+				{
+					int x = 0;
+				}	break;
+				default:
+					break;
+				}
+			}
+		}
+		default:
+			break;
+		}
+		return out;
+	}
 
 
 	/************************************************************************************************/
 
 
-    uint32_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
+	uint32_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
 	{
 		using FlexKit::MeshUtilityFunctions::TokenList;
 
 		int CPIndex     = mesh.GetPolygonVertex(pIndex, vIndex);
 		auto NElement   = mesh.GetElementNormal(0);
 
-        const auto MappingMode    = NElement->GetMappingMode();
-        const auto referenceMode  = NElement->GetReferenceMode();
+		const auto MappingMode    = NElement->GetMappingMode();
+		const auto referenceMode  = NElement->GetReferenceMode();
 
 		switch (MappingMode)
 		{
@@ -322,7 +322,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    uint32_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
+	uint32_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
 	{ 
 		return (uint32_t)mesh.GetPolygonVertex(pIndex, vIndex);
 	}
@@ -342,8 +342,8 @@ namespace FlexKit
 			auto D		= mesh.GetDeformer(I, &S);
 			auto Type	= D->GetDeformerType();
 
-            for (auto property = D->GetFirstProperty(); property.IsValid(); property = D->GetNextProperty(property))
-                std::cout << property.GetName() << "\n";
+			for (auto property = D->GetFirstProperty(); property.IsValid(); property = D->GetNextProperty(property))
+				std::cout << property.GetName() << "\n";
 
 			switch ( Type ) 
 			{
@@ -388,7 +388,7 @@ namespace FlexKit
 
 	MeshDesc TranslateToTokens(fbxsdk::FbxMesh& mesh, SkeletonResource_ptr skeleton, bool SubDiv_Enabled)
 	{
-        using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
+		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddTexCordToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddVertexToken;
@@ -396,9 +396,9 @@ namespace FlexKit
 		using fbxsdk::FbxLayerElement;
 
 		MeshDesc out = {};
-        out.skeleton = skeleton;
+		out.skeleton = skeleton;
 
-        FlexKit::MeshUtilityFunctions::TokenList tokens{ SystemAllocator };
+		FlexKit::MeshUtilityFunctions::TokenList tokens{ SystemAllocator };
 
 		float3 MinV(INFINITY);
 		float3 MaxV(-INFINITY);
@@ -432,41 +432,41 @@ namespace FlexKit
 			size_t	VCount	    = mesh.GetPolygonVertexCount();
 			size_t	NCount	    = Normals->GetDirectArray().GetCount();
 
-            auto	mapping     = Normals->GetMappingMode();
-            auto	reference   = Normals->GetReferenceMode();
+			auto	mapping     = Normals->GetMappingMode();
+			auto	reference   = Normals->GetReferenceMode();
 
-            if (!Tangents && mesh.GetElementUV(0))
-            {
-                auto UVElement = mesh.GetElementUV(0);
+			if (!Tangents && mesh.GetElementUV(0))
+			{
+				auto UVElement = mesh.GetElementUV(0);
 
-                mesh.GenerateTangentsData(UVElement->GetName());
-                Tangents = mesh.GetElementTangent();
-            }
+				mesh.GenerateTangentsData(UVElement->GetName());
+				Tangents = mesh.GetElementTangent();
+			}
 
 			if (NormalCount)
 				out.Normals = true;
 
-            if (Tangents)
-            {
-                for (int itr = 0; itr < NCount; ++itr)
-                    AddNormalToken(
-                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
-                        TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
-                        tokens);
+			if (Tangents)
+			{
+				for (int itr = 0; itr < NCount; ++itr)
+					AddNormalToken(
+						TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+						TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
+						tokens);
 
-                out.Tangents    = true;
-                out.Normals     = true;
-            }
-            else if(Normals)
-            {
-                for (int itr = 0; itr < NCount; ++itr)
-                    AddNormalToken(
-                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
-                        tokens);
+				out.Tangents    = true;
+				out.Normals     = true;
+			}
+			else if(Normals)
+			{
+				for (int itr = 0; itr < NCount; ++itr)
+					AddNormalToken(
+						TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+						tokens);
 
-                out.Tangents    = false;
-                out.Normals     = true;
-            }
+				out.Tangents    = false;
+				out.Normals     = true;
+			}
 		}
 		{	// Get UV's
 			auto UVElement = mesh.GetElementUV(0);
@@ -540,23 +540,23 @@ namespace FlexKit
 				if (size == 3)
 				{
 					const uint32_t VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
-                    const uint32_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
-                    const uint32_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
+					const uint32_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+					const uint32_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
 
 					const uint32_t VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
-                    const uint32_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
-                    const uint32_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
+					const uint32_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+					const uint32_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
 
 					const uint32_t VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
-                    const uint32_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
-                    const uint32_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+					const uint32_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+					const uint32_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
 					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
-                    AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
-                    AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
+					AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
+					AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
 
 					IndexCount += 3;
-                    ++faceCount;
+					++faceCount;
 				}
 				else if (size == 4)
 				{	// Quads
@@ -605,15 +605,15 @@ namespace FlexKit
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
 
 						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
-                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
-                        AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, tokens);
 
-                        AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
-                        AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, tokens);
-                        AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
+						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, tokens);
+						AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, tokens);
 
 						IndexCount += 4;
-                        faceCount += 2;
+						faceCount += 2;
 					}
 
 				}
@@ -621,8 +621,8 @@ namespace FlexKit
 				//if (SubDiv_Enabled)	AddPatchEndToken(out.tokens);
 			}
 
-            out.tokens      = tokens;
-            out.faceCount   = faceCount;
+			out.tokens      = tokens;
+			out.faceCount   = faceCount;
 		}
 
 		out.MinV	= MinV;
@@ -636,833 +636,833 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh& mesh)
-    {
-        auto DeformerCount  = mesh.GetDeformerCount();
-        for (int32_t I = 0; I < DeformerCount; ++I)
-        {
-            fbxsdk::FbxStatus S;
-            const auto D	= mesh.GetDeformer(I, &S);  FK_ASSERT(D != nullptr);
-            const auto Type	= D->GetDeformerType();
-
-            switch (Type)
-            {
-            case fbxsdk::FbxDeformer::EDeformerType::eSkin:
-            {
-                const auto Skin			= (FbxSkin*)D;
-                const auto ClusterCount	= Skin->GetClusterCount();
-
-                const auto Cluster		= Skin->GetCluster(0);
-                const auto CLBone		= Cluster->GetLink();
-                const auto CLBoneAttrib	= CLBone->GetNodeAttribute();
-                const auto CLBoneName	= CLBone->GetName();
-                auto* I				    = CLBone;
-
-                while (true)
-                {
-                    if (I->GetParent()->GetSkeleton())
-                        I = I->GetParent();
-                    else
-                        return I;
-                }
-
-            }	break;
-            default:
-                break;
-            }
-        }
-
-        return nullptr;
-    }
-
-    
-    /************************************************************************************************/
-
-
-    void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
-    {
-        using DirectX::XMMatrixRotationQuaternion;
-
-        FbxAMatrix Identity;
-        Identity.FbxAMatrix::SetIdentity();
-
-        const auto DeformerCount = mesh.GetDeformerCount();
-        for (int I = 0; I < DeformerCount; ++I)
-        {
-            const auto D = mesh.GetDeformer(I);
-            if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
-            {
-                const auto Skin         = (FbxSkin*)D;
-                auto root               = Skin->GetCluster(0);
-                auto rootLinkMatrix     = FbxAMatrix{};
-
-                std::cout << Skin->GetName() << " properties: \n";
-
-                for (auto property = Skin->GetFirstProperty(); property.IsValid(); property = Skin->GetNextProperty(property))
-                    std::cout << "\t" << property.GetName() << "\n";
-
-                FbxAMatrix G = GetGeometryTransformation(root->GetLink());
-                root->GetTransformLinkMatrix(rootLinkMatrix);
-
-                for (int II = 0; Skin->GetClusterCount() > II; ++II)
-                {
-                    const auto Cluster  = Skin->GetCluster(II);
-                    const auto ID       = Cluster->GetLink()->GetName();
-
-                    std::cout << "Skin Cluster properties: " << Cluster->GetName() << "\n";
-
-                    for (auto property = Cluster->GetFirstProperty(); property.IsValid(); property = Cluster->GetNextProperty(property))
-                        std::cout << "\t" << property.GetName() << "\n";
-
-                    JointHandle Handle              = GetJoint(Out, ID);
-                    FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
-                    FbxAMatrix transformMatrix;
-                    FbxAMatrix transformLinkMatrix;
-
-                    std::cout << "Cluster Node properties: \n";
-
-                    for (auto property = Cluster->GetLink()->GetFirstProperty(); property.IsValid(); property = Cluster->GetLink()->GetNextProperty(property))
-                        std::cout << "\t" << property.GetName() << "\n";
-
-                    Cluster->GetTransformLinkMatrix(transformLinkMatrix);
-                    Cluster->GetTransformMatrix(transformMatrix);
-
-                    const FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
-                    const XMMATRIX Inverse  = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
-
-                    Out[Handle].Inverse = Inverse;
-                }
-            }
-        }
-    }
-
-
-    /************************************************************************************************/
-
-
-    SkeletonJointAnimation GetJointAnimation(const FbxNode* node, const AnimationProperties properties = {})
-    {
-        const auto Scene            = node->GetScene();
-        const auto AnimationStack   = Scene->GetCurrentAnimationStack();
-        const auto TakeInfo         = Scene->GetTakeInfo(AnimationStack->GetName());
-        const auto Begin            = TakeInfo->mLocalTimeSpan.GetStart();
-        const auto End              = TakeInfo->mLocalTimeSpan.GetStop();
-        const auto Duration         = (End - Begin).GetFrameCount(FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
-        const auto FrameRate        = properties.frameRate;
-
-        SkeletonJointAnimation A;
-        A.FPS = (uint32_t)properties.frameRate;
-        A.FrameCount = Duration;
-        A.Poses.resize(Duration);
-
-        for (size_t I = 0; I < size_t(Duration); ++I)
-        {
-            FbxTime	CurrentFrame;
-            CurrentFrame.SetFrame(I, FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
-            A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(node)->EvaluateLocalTransform(CurrentFrame)));
-        }
-
-        return A;
-    }
-
-
-    /************************************************************************************************/
-
-
-    void FindAllJoints(JointList& Out, const FbxNode* N, const size_t Parent = 0xFFFF)
-    {
-        if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
-        {
-            fbxsdk::FbxSkeleton* Sk = (fbxsdk::FbxSkeleton*)N->GetNodeAttribute();
-            
-            const int JointIndex = (int)Out.size();
-            const int ChildCount = N->GetChildCount();
-
-            SkeletonJoint NewJoint;
-            NewJoint.mID	    = N->GetName();
-            NewJoint.mParent	= JointHandle(Parent);
-
-
-            const size_t attributeCount = N->GetNodeAttributeCount();
-            for (size_t I = 0; I < attributeCount; ++I)
-            {
-                auto attribute = N->GetNodeAttribute();
-                switch (attribute->GetAttributeType())
-                {
-                case fbxsdk::FbxNodeAttribute::eUnknown:
-                    std::cout << "eUnknown\n"; break;
-                case fbxsdk::FbxNodeAttribute::eNull:
-                    std::cout << "eNull\n"; break;
-                case fbxsdk::FbxNodeAttribute::eMarker:
-                    std::cout << "eMarker\n"; break;
-                case fbxsdk::FbxNodeAttribute::eSkeleton:
-                {
-                    std::cout << "eSkeleton\n";
-
-                    const fbxsdk::FbxSkeleton* skeleton = static_cast<const fbxsdk::FbxSkeleton*>(attribute);
-                    auto typeskeleton = skeleton->GetSkeletonType();
-
-                    for (auto property = skeleton->GetFirstProperty(); property.IsValid(); property = skeleton->GetNextProperty(property))
-                    {
-                        std::cout << "\t" << property.GetName() << "\n";
-
-                        if (property.GetName() == "LimbLength")
-                        {
-                            const auto limbLength   = (float)property.Get<double>();
-                            NewJoint.limbLength     = limbLength;
-                        }
-                    }
-                }break;
-                case fbxsdk::FbxNodeAttribute::eMesh:
-                    std::cout << "eMesh\n"; break;
-                case fbxsdk::FbxNodeAttribute::eNurbs:
-                    std::cout << "eNurbs\n"; break;
-                case fbxsdk::FbxNodeAttribute::ePatch:
-                    std::cout << "ePatch\n"; break;
-                case fbxsdk::FbxNodeAttribute::eCamera:
-                    std::cout << "eCamera\n"; break;
-                case fbxsdk::FbxNodeAttribute::eCameraStereo:
-                    std::cout << "eCameraStereo\n"; break;
-                case fbxsdk::FbxNodeAttribute::eCameraSwitcher:
-                    std::cout << "eCameraSwitcher\n"; break;
-                case fbxsdk::FbxNodeAttribute::eLight:
-                    std::cout << "eLight\n"; break;
-                case fbxsdk::FbxNodeAttribute::eOpticalReference:
-                    std::cout << "eOpticalReference\n"; break;
-                case fbxsdk::FbxNodeAttribute::eOpticalMarker:
-                    std::cout << "eOpticalMarker\n"; break;
-                case fbxsdk::FbxNodeAttribute::eNurbsCurve:
-                    std::cout << "eNurbsCurve\n"; break;
-                case fbxsdk::FbxNodeAttribute::eTrimNurbsSurface:
-                    std::cout << "eTrimNurbsSurface\n"; break;
-                case fbxsdk::FbxNodeAttribute::eBoundary:
-                    std::cout << "eBoundary\n"; break;
-                case fbxsdk::FbxNodeAttribute::eNurbsSurface:
-                    std::cout << "eNurbsSurface\n"; break;
-                case fbxsdk::FbxNodeAttribute::eShape:
-                    std::cout << "eShape\n"; break;
-                case fbxsdk::FbxNodeAttribute::eLODGroup:
-                    std::cout << "eLODGroup\n"; break;
-                case fbxsdk::FbxNodeAttribute::eSubDiv:
-                    std::cout << "eSubDiv\n"; break;
-                case fbxsdk::FbxNodeAttribute::eCachedEffect:
-                    std::cout << "eCachedEffect\n"; break;
-                case fbxsdk::FbxNodeAttribute::eLine:
-                    std::cout << "eLine\n"; break;
-                }
-            }
-
-            Out.emplace_back(SkeletonJointInfo{ { NewJoint }, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
-
-            for ( int I = 0; I < ChildCount; ++I )
-                FindAllJoints(Out, N->GetChild( I ), JointIndex);
-        }
-    }
-
-
-    /************************************************************************************************/
-
-
-    SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& parentID, const MetaDataList& MD)
-    {
-        using FlexKit::AnimationClip;
-        using FlexKit::Skeleton;
-
-        if (mesh.GetDeformerCount() == 0)
-            return nullptr;
-
-        auto skeleton = std::make_unique<SkeletonResource>();
-
-        // Gather MetaData
-        auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, parentID);
-        auto SkeletonInfo	= GetSkeletonMetaData(MD);
-        skeleton->metaData  = Related;
-
-        auto root	    = FindSkeletonRoot(mesh);
-
-        std::cout << "NodeRoot -> {" << root->GetName() << "}\n";
-
-        std::vector<SkeletonJointInfo> joints;
-        FindAllJoints		(joints, root);
-        GetJointTransforms	(joints, mesh);
-
-        for (auto j : joints)
-            skeleton->AddJoint(j.Joint, j.Inverse);
-
-        auto deformer = mesh.GetDeformer(0);
-
-        for (auto property = deformer->GetFirstProperty(); property.IsValid(); property = deformer->GetNextProperty(property))
-            std::cout << "\t" << property.GetName() << "\n";
-
-        for (auto property = root->GetFirstProperty(); property.IsValid(); property = root->GetNextProperty(property))
-            std::cout << "\t" << property.GetName() << "\n";
-
-        const std::string ID    = deformer->GetName();
-        skeleton->guid          = deformer->GetUniqueID();
-        skeleton->ID            = ID;
-
-        for (size_t joint = 0; joint < joints.size(); ++joint)
-            skeleton->joints[joint].mID = skeleton->joints[joint].mID;
-
-        const CutList cuts = GetAnimationCuts(MD, ID);
-        for(const auto& cut : cuts)
-        {
-            const auto begin	= (size_t)(cut.T_Start);
-            const auto end		= (size_t)(cut.T_End);
-
-            const size_t clipFrameCount = end - begin;
-
-            for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
-            {
-                AnimationTrack translationTrack;
-                AnimationTrack rotationTrack;
-                AnimationTrack scaleTrack;
-
-                for (size_t frame = 0; frame < clipFrameCount; ++frame)
-                {
-                    const auto& joint   = joints[jointIdx];
-                    const auto  pose	= GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose);
-                    //const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
-                    //const auto  localPose   = GetPose(pose * inverse);
-                }
-            }
-            //clip.Compress();
-        }
-
-        return skeleton;
-    }
-
-
-    /************************************************************************************************/
-
-
-    inline uint32_t		FetchIndex(uint32_t itr, fbxsdk::FbxMesh* Mesh) { return Mesh->GetPolygonVertex(itr / 3, itr % 3); }
-
-
-    /************************************************************************************************/
-
-
-    MeshResource_ptr FindGeoByID(GeometryList& geometry, size_t ID)
-    {
-        auto res = std::find_if(begin(geometry), end(geometry), [&](auto& v) { return v->TriMeshID == ID; });
-
-        return (res != geometry.end()) ? *res : MeshResource_ptr{ nullptr };
-    }
-
-
-    /************************************************************************************************/
-
-
-    void GatherAllGeometry(
-        GeometryList&			geometry,
-        fbxsdk::FbxNode*		node, 
-        IDTranslationTable&	    Table, 
-        const MetaDataList&		MD			= MetaDataList{}, 
-        bool					subDiv		= false)
-    {
-        using FlexKit::AnimationClip;
-        using FlexKit::Skeleton;
-
-        auto AttributeCount = node->GetNodeAttributeCount();
-        std::cout << node->GetName() << "\n";
-
-        auto property = node->GetFirstProperty();
-        while (property.IsValid())
-        {
-            property = node->GetNextProperty(property);
-            std::cout << property.GetName() << "\n";
-        }
-
-        for (int itr = 0; itr < AttributeCount; ++itr)
-        {
-            auto Attr		= node->GetNodeAttributeByIndex(itr);
-            auto nodeName	= node->GetName();
-
-            std::cout << Attr->GetName() << "\n";
-
-            switch (Attr->GetAttributeType())
-            {
-            case fbxsdk::FbxNodeAttribute::EType::eMesh:
-            {
-                const char* nodeName    = node->GetName();
-                auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
-                bool found		        = false;
-                bool LoadMesh	        = false;
-                size_t uniqueID	        = (size_t)Mesh->GetUniqueID();
-                auto Geo		        = FindGeoByID(geometry, uniqueID);
-
-                auto property = Mesh->GetFirstProperty();
-                while (property.IsValid())
-                {
-                    property = Mesh->GetNextProperty(property);
-                    std::cout << property.GetName() << "\n";
-                }
-
-                MetaDataList RelatedMetaData;
-
-                const auto MeshInfo     = GetMeshMetaData(RelatedMetaData);
-                const auto meshName     = MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
-
-                RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, meshName);
-
-                if(!RelatedMetaData.size())
-                    LoadMesh = true;
+	fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh& mesh)
+	{
+		auto DeformerCount  = mesh.GetDeformerCount();
+		for (int32_t I = 0; I < DeformerCount; ++I)
+		{
+			fbxsdk::FbxStatus S;
+			const auto D	= mesh.GetDeformer(I, &S);  FK_ASSERT(D != nullptr);
+			const auto Type	= D->GetDeformerType();
+
+			switch (Type)
+			{
+			case fbxsdk::FbxDeformer::EDeformerType::eSkin:
+			{
+				const auto Skin			= (FbxSkin*)D;
+				const auto ClusterCount	= Skin->GetClusterCount();
+
+				const auto Cluster		= Skin->GetCluster(0);
+				const auto CLBone		= Cluster->GetLink();
+				const auto CLBoneAttrib	= CLBone->GetNodeAttribute();
+				const auto CLBoneName	= CLBone->GetName();
+				auto* I				    = CLBone;
+
+				while (true)
+				{
+					if (I->GetParent()->GetSkeleton())
+						I = I->GetParent();
+					else
+						return I;
+				}
+
+			}	break;
+			default:
+				break;
+			}
+		}
+
+		return nullptr;
+	}
+
+	
+	/************************************************************************************************/
+
+
+	void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
+	{
+		using DirectX::XMMatrixRotationQuaternion;
+
+		FbxAMatrix Identity;
+		Identity.FbxAMatrix::SetIdentity();
+
+		const auto DeformerCount = mesh.GetDeformerCount();
+		for (int I = 0; I < DeformerCount; ++I)
+		{
+			const auto D = mesh.GetDeformer(I);
+			if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
+			{
+				const auto Skin         = (FbxSkin*)D;
+				auto root               = Skin->GetCluster(0);
+				auto rootLinkMatrix     = FbxAMatrix{};
+
+				std::cout << Skin->GetName() << " properties: \n";
+
+				for (auto property = Skin->GetFirstProperty(); property.IsValid(); property = Skin->GetNextProperty(property))
+					std::cout << "\t" << property.GetName() << "\n";
+
+				FbxAMatrix G = GetGeometryTransformation(root->GetLink());
+				root->GetTransformLinkMatrix(rootLinkMatrix);
+
+				for (int II = 0; Skin->GetClusterCount() > II; ++II)
+				{
+					const auto Cluster  = Skin->GetCluster(II);
+					const auto ID       = Cluster->GetLink()->GetName();
+
+					std::cout << "Skin Cluster properties: " << Cluster->GetName() << "\n";
+
+					for (auto property = Cluster->GetFirstProperty(); property.IsValid(); property = Cluster->GetNextProperty(property))
+						std::cout << "\t" << property.GetName() << "\n";
+
+					JointHandle Handle              = GetJoint(Out, ID);
+					FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
+					FbxAMatrix transformMatrix;
+					FbxAMatrix transformLinkMatrix;
+
+					std::cout << "Cluster Node properties: \n";
+
+					for (auto property = Cluster->GetLink()->GetFirstProperty(); property.IsValid(); property = Cluster->GetLink()->GetNextProperty(property))
+						std::cout << "\t" << property.GetName() << "\n";
+
+					Cluster->GetTransformLinkMatrix(transformLinkMatrix);
+					Cluster->GetTransformMatrix(transformMatrix);
+
+					const FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
+					const XMMATRIX Inverse  = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
+
+					Out[Handle].Inverse = Inverse;
+				}
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	SkeletonJointAnimation GetJointAnimation(const FbxNode* node, const AnimationProperties properties = {})
+	{
+		const auto Scene            = node->GetScene();
+		const auto AnimationStack   = Scene->GetCurrentAnimationStack();
+		const auto TakeInfo         = Scene->GetTakeInfo(AnimationStack->GetName());
+		const auto Begin            = TakeInfo->mLocalTimeSpan.GetStart();
+		const auto End              = TakeInfo->mLocalTimeSpan.GetStop();
+		const auto Duration         = (End - Begin).GetFrameCount(FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+		const auto FrameRate        = properties.frameRate;
+
+		SkeletonJointAnimation A;
+		A.FPS = (uint32_t)properties.frameRate;
+		A.FrameCount = Duration;
+		A.Poses.resize(Duration);
+
+		for (size_t I = 0; I < size_t(Duration); ++I)
+		{
+			FbxTime	CurrentFrame;
+			CurrentFrame.SetFrame(I, FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+			A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(node)->EvaluateLocalTransform(CurrentFrame)));
+		}
+
+		return A;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FindAllJoints(JointList& Out, const FbxNode* N, const size_t Parent = 0xFFFF)
+	{
+		if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
+		{
+			fbxsdk::FbxSkeleton* Sk = (fbxsdk::FbxSkeleton*)N->GetNodeAttribute();
+			
+			const int JointIndex = (int)Out.size();
+			const int ChildCount = N->GetChildCount();
+
+			SkeletonJoint NewJoint;
+			NewJoint.mID	    = N->GetName();
+			NewJoint.mParent	= JointHandle(Parent);
+
+
+			const size_t attributeCount = N->GetNodeAttributeCount();
+			for (size_t I = 0; I < attributeCount; ++I)
+			{
+				auto attribute = N->GetNodeAttribute();
+				switch (attribute->GetAttributeType())
+				{
+				case fbxsdk::FbxNodeAttribute::eUnknown:
+					std::cout << "eUnknown\n"; break;
+				case fbxsdk::FbxNodeAttribute::eNull:
+					std::cout << "eNull\n"; break;
+				case fbxsdk::FbxNodeAttribute::eMarker:
+					std::cout << "eMarker\n"; break;
+				case fbxsdk::FbxNodeAttribute::eSkeleton:
+				{
+					std::cout << "eSkeleton\n";
+
+					const fbxsdk::FbxSkeleton* skeleton = static_cast<const fbxsdk::FbxSkeleton*>(attribute);
+					auto typeskeleton = skeleton->GetSkeletonType();
+
+					for (auto property = skeleton->GetFirstProperty(); property.IsValid(); property = skeleton->GetNextProperty(property))
+					{
+						std::cout << "\t" << property.GetName() << "\n";
+
+						if (property.GetName() == "LimbLength")
+						{
+							const auto limbLength   = (float)property.Get<double>();
+							NewJoint.limbLength     = limbLength;
+						}
+					}
+				}break;
+				case fbxsdk::FbxNodeAttribute::eMesh:
+					std::cout << "eMesh\n"; break;
+				case fbxsdk::FbxNodeAttribute::eNurbs:
+					std::cout << "eNurbs\n"; break;
+				case fbxsdk::FbxNodeAttribute::ePatch:
+					std::cout << "ePatch\n"; break;
+				case fbxsdk::FbxNodeAttribute::eCamera:
+					std::cout << "eCamera\n"; break;
+				case fbxsdk::FbxNodeAttribute::eCameraStereo:
+					std::cout << "eCameraStereo\n"; break;
+				case fbxsdk::FbxNodeAttribute::eCameraSwitcher:
+					std::cout << "eCameraSwitcher\n"; break;
+				case fbxsdk::FbxNodeAttribute::eLight:
+					std::cout << "eLight\n"; break;
+				case fbxsdk::FbxNodeAttribute::eOpticalReference:
+					std::cout << "eOpticalReference\n"; break;
+				case fbxsdk::FbxNodeAttribute::eOpticalMarker:
+					std::cout << "eOpticalMarker\n"; break;
+				case fbxsdk::FbxNodeAttribute::eNurbsCurve:
+					std::cout << "eNurbsCurve\n"; break;
+				case fbxsdk::FbxNodeAttribute::eTrimNurbsSurface:
+					std::cout << "eTrimNurbsSurface\n"; break;
+				case fbxsdk::FbxNodeAttribute::eBoundary:
+					std::cout << "eBoundary\n"; break;
+				case fbxsdk::FbxNodeAttribute::eNurbsSurface:
+					std::cout << "eNurbsSurface\n"; break;
+				case fbxsdk::FbxNodeAttribute::eShape:
+					std::cout << "eShape\n"; break;
+				case fbxsdk::FbxNodeAttribute::eLODGroup:
+					std::cout << "eLODGroup\n"; break;
+				case fbxsdk::FbxNodeAttribute::eSubDiv:
+					std::cout << "eSubDiv\n"; break;
+				case fbxsdk::FbxNodeAttribute::eCachedEffect:
+					std::cout << "eCachedEffect\n"; break;
+				case fbxsdk::FbxNodeAttribute::eLine:
+					std::cout << "eLine\n"; break;
+				}
+			}
+
+			Out.emplace_back(SkeletonJointInfo{ { NewJoint }, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
+
+			for ( int I = 0; I < ChildCount; ++I )
+				FindAllJoints(Out, N->GetChild( I ), JointIndex);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& parentID, const MetaDataList& MD)
+	{
+		using FlexKit::AnimationClip;
+		using FlexKit::Skeleton;
+
+		if (mesh.GetDeformerCount() == 0)
+			return nullptr;
+
+		auto skeleton = std::make_unique<SkeletonResource>();
+
+		// Gather MetaData
+		auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, parentID);
+		auto SkeletonInfo	= GetSkeletonMetaData(MD);
+		skeleton->metaData  = Related;
+
+		auto root	    = FindSkeletonRoot(mesh);
+
+		std::cout << "NodeRoot -> {" << root->GetName() << "}\n";
+
+		std::vector<SkeletonJointInfo> joints;
+		FindAllJoints		(joints, root);
+		GetJointTransforms	(joints, mesh);
+
+		for (auto j : joints)
+			skeleton->AddJoint(j.Joint, j.Inverse);
+
+		auto deformer = mesh.GetDeformer(0);
+
+		for (auto property = deformer->GetFirstProperty(); property.IsValid(); property = deformer->GetNextProperty(property))
+			std::cout << "\t" << property.GetName() << "\n";
+
+		for (auto property = root->GetFirstProperty(); property.IsValid(); property = root->GetNextProperty(property))
+			std::cout << "\t" << property.GetName() << "\n";
+
+		const std::string ID    = deformer->GetName();
+		skeleton->guid          = deformer->GetUniqueID();
+		skeleton->ID            = ID;
+
+		for (size_t joint = 0; joint < joints.size(); ++joint)
+			skeleton->joints[joint].mID = skeleton->joints[joint].mID;
+
+		const CutList cuts = GetAnimationCuts(MD, ID);
+		for(const auto& cut : cuts)
+		{
+			const auto begin	= (size_t)(cut.T_Start);
+			const auto end		= (size_t)(cut.T_End);
+
+			const size_t clipFrameCount = end - begin;
+
+			for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
+			{
+				AnimationTrack translationTrack;
+				AnimationTrack rotationTrack;
+				AnimationTrack scaleTrack;
+
+				for (size_t frame = 0; frame < clipFrameCount; ++frame)
+				{
+					const auto& joint   = joints[jointIdx];
+					const auto  pose	= GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose);
+					//const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
+					//const auto  localPose   = GetPose(pose * inverse);
+				}
+			}
+			//clip.Compress();
+		}
+
+		return skeleton;
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline uint32_t		FetchIndex(uint32_t itr, fbxsdk::FbxMesh* Mesh) { return Mesh->GetPolygonVertex(itr / 3, itr % 3); }
+
+
+	/************************************************************************************************/
+
+
+	MeshResource_ptr FindGeoByID(GeometryList& geometry, size_t ID)
+	{
+		auto res = std::find_if(begin(geometry), end(geometry), [&](auto& v) { return v->TriMeshID == ID; });
+
+		return (res != geometry.end()) ? *res : MeshResource_ptr{ nullptr };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GatherAllGeometry(
+		GeometryList&			geometry,
+		fbxsdk::FbxNode*		node, 
+		IDTranslationTable&	    Table, 
+		const MetaDataList&		MD			= MetaDataList{}, 
+		bool					subDiv		= false)
+	{
+		using FlexKit::AnimationClip;
+		using FlexKit::Skeleton;
+
+		auto AttributeCount = node->GetNodeAttributeCount();
+		std::cout << node->GetName() << "\n";
+
+		auto property = node->GetFirstProperty();
+		while (property.IsValid())
+		{
+			property = node->GetNextProperty(property);
+			std::cout << property.GetName() << "\n";
+		}
+
+		for (int itr = 0; itr < AttributeCount; ++itr)
+		{
+			auto Attr		= node->GetNodeAttributeByIndex(itr);
+			auto nodeName	= node->GetName();
+
+			std::cout << Attr->GetName() << "\n";
+
+			switch (Attr->GetAttributeType())
+			{
+			case fbxsdk::FbxNodeAttribute::EType::eMesh:
+			{
+				const char* nodeName    = node->GetName();
+				auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
+				bool found		        = false;
+				bool LoadMesh	        = false;
+				size_t uniqueID	        = (size_t)Mesh->GetUniqueID();
+				auto Geo		        = FindGeoByID(geometry, uniqueID);
+
+				auto property = Mesh->GetFirstProperty();
+				while (property.IsValid())
+				{
+					property = Mesh->GetNextProperty(property);
+					std::cout << property.GetName() << "\n";
+				}
+
+				MetaDataList RelatedMetaData;
+
+				const auto MeshInfo     = GetMeshMetaData(RelatedMetaData);
+				const auto meshName     = MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
+
+				RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, meshName);
+
+				if(!RelatedMetaData.size())
+					LoadMesh = true;
 
 #if USING(RESCOMPILERVERBOSE)
-                std::cout << "Found Mesh: " << meshName << "\n";
+				std::cout << "Found Mesh: " << meshName << "\n";
 #endif
 
-                if (!IDPresentInTable(Mesh->GetUniqueID(), Table))
-                {
-                    std::cout << "Building Mesh: " << meshName << "\n";
+				if (!IDPresentInTable(Mesh->GetUniqueID(), Table))
+				{
+					std::cout << "Building Mesh: " << meshName << "\n";
 
-                    auto skeleton       = CreateSkeletonResource(*Mesh, meshName, MD);
-                    MeshDesc meshDesc   = TranslateToTokens(*Mesh, nullptr, false);
+					auto skeleton       = CreateSkeletonResource(*Mesh, meshName, MD);
+					MeshDesc meshDesc   = TranslateToTokens(*Mesh, nullptr, false);
 
-                    std::vector<LODLevel> lods = {
-                        LODLevel{
-                            .subMeshs = { std::move(meshDesc) }
-                        }
-                    };
+					std::vector<LODLevel> lods = {
+						LODLevel{
+							.subMeshs = { std::move(meshDesc) }
+						}
+					};
 
-                    const FbxAMatrix transform  = node->EvaluateGlobalTransform();
-                    MeshResource_ptr resource   = CreateMeshResource(lods, meshName, MD, false);
+					const FbxAMatrix transform  = node->EvaluateGlobalTransform();
+					MeshResource_ptr resource   = CreateMeshResource(lods, meshName, MD, false);
 
-                    resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
-                    
-                    if(MeshInfo)
-                    {
-                        resource->TriMeshID		= MeshInfo->guid;
-                        resource->ID			= MeshInfo->MeshID;
-                    }
-                    else
-                    {
-                        resource->TriMeshID		= CreateRandomID();
-                        resource->ID			= Mesh->GetName();
-                    }
+					resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
+					
+					if(MeshInfo)
+					{
+						resource->TriMeshID		= MeshInfo->guid;
+						resource->ID			= MeshInfo->MeshID;
+					}
+					else
+					{
+						resource->TriMeshID		= CreateRandomID();
+						resource->ID			= Mesh->GetName();
+					}
 
-                    Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
+					Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
 
-                    if constexpr (USING(RESCOMPILERVERBOSE))
-                        std::cout << "Compiled Resource: " << meshName << "\n";
+					if constexpr (USING(RESCOMPILERVERBOSE))
+						std::cout << "Compiled Resource: " << meshName << "\n";
 
-                    geometry.push_back(resource);
-                }
-            }	break;
-            }
-        }
+					geometry.push_back(resource);
+				}
+			}	break;
+			}
+		}
 
-        const size_t NodeCount = node->GetChildCount();
-        for(int itr = 0; itr < NodeCount; ++itr)
-            GatherAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
-    }
-
-
-    /************************************************************************************************/
+		const size_t NodeCount = node->GetChildCount();
+		for(int itr = 0; itr < NodeCount; ++itr)
+			GatherAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
+	}
 
 
-    ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, IDTranslationTable& Table, const bool LoadSkeletalData = false, const MetaDataList& MD = MetaDataList{}, const bool subDivEnabled = false)
-    {
-        GeometryList geometryFound;
-        ResourceList resources;
+	/************************************************************************************************/
 
-        GatherAllGeometry(geometryFound, S->GetRootNode(), Table, MD, subDivEnabled);
+
+	ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, IDTranslationTable& Table, const bool LoadSkeletalData = false, const MetaDataList& MD = MetaDataList{}, const bool subDivEnabled = false)
+	{
+		GeometryList geometryFound;
+		ResourceList resources;
+
+		GatherAllGeometry(geometryFound, S->GetRootNode(), Table, MD, subDivEnabled);
 
 #if USING(RESCOMPILERVERBOSE)
-        std::cout << "CompileAllGeometry Compiled " << geometryFound.size() << " Resources\n";
+		std::cout << "CompileAllGeometry Compiled " << geometryFound.size() << " Resources\n";
 #endif
-        for (auto geometry : geometryFound)
-        {
-            resources.push_back(geometry);
+		for (auto geometry : geometryFound)
+		{
+			resources.push_back(geometry);
 
-            if (geometry->Skeleton)
-            {
-                resources.push_back(geometry->Skeleton);
+			if (geometry->Skeleton)
+			{
+				resources.push_back(geometry->Skeleton);
 
-                // TODO: scan metadata for animation clips, then add those to the resource list, everything in the resource list gets output in the resource file
-                auto pred = [&](MetaData_ptr metaInfo) -> bool
-                {
-                    return
-                        metaInfo->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON &&
-                        metaInfo->ID == geometry->ID;
-                };
+				// TODO: scan metadata for animation clips, then add those to the resource list, everything in the resource list gets output in the resource file
+				auto pred = [&](MetaData_ptr metaInfo) -> bool
+				{
+					return
+						metaInfo->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON &&
+						metaInfo->ID == geometry->ID;
+				};
 
-                auto results = filter(MD, pred);
+				auto results = filter(MD, pred);
 
-                for (const auto r : results)
-                {
-                    switch (r->type)
-                    {
-                    case MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP:    break;
-                    case MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT:   break;
-                    case MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION:
-                    {
-                        auto skeletonMetaData = static_pointer_cast<Skeleton_MetaData>(r);
-                    }   break;
-                    default:
-                        break;
-                    }
-                }
-            }
-            /*
-            auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, geometry.ID);
+				for (const auto r : results)
+				{
+					switch (r->type)
+					{
+					case MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP:    break;
+					case MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT:   break;
+					case MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION:
+					{
+						auto skeletonMetaData = static_pointer_cast<Skeleton_MetaData>(r);
+					}   break;
+					default:
+						break;
+					}
+				}
+			}
+			/*
+			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, geometry.ID);
 
-            for(size_t J = 0; J < RelatedMD.size(); ++J)
-            {
-                switch (RelatedMD[J]->type)
-                {
-                case MetaData::EMETAINFOTYPE::EMI_COLLIDER:
-                {
-                    if (!Cooker)
-                        continue;
+			for(size_t J = 0; J < RelatedMD.size(); ++J)
+			{
+				switch (RelatedMD[J]->type)
+				{
+				case MetaData::EMETAINFOTYPE::EMI_COLLIDER:
+				{
+					if (!Cooker)
+						continue;
 
-                    Collider_MetaData*	ColliderInfo	= (Collider_MetaData*)RelatedMD[J];
-                    ColliderStream		Stream			= ColliderStream(SystemAllocator, 2048);
+					Collider_MetaData*	ColliderInfo	= (Collider_MetaData*)RelatedMD[J];
+					ColliderStream		Stream			= ColliderStream(SystemAllocator, 2048);
 
-                    using physx::PxTriangleMeshDesc;
-                    PxTriangleMeshDesc meshDesc;
-                    meshDesc.points.count     = geometry.Buffers[0]->GetBufferSizeUsed();
-                    meshDesc.points.stride    = geometry.Buffers[0]->GetElementSize();
-                    meshDesc.points.data      = geometry.Buffers[0]->GetBuffer();
+					using physx::PxTriangleMeshDesc;
+					PxTriangleMeshDesc meshDesc;
+					meshDesc.points.count     = geometry.Buffers[0]->GetBufferSizeUsed();
+					meshDesc.points.stride    = geometry.Buffers[0]->GetElementSize();
+					meshDesc.points.data      = geometry.Buffers[0]->GetBuffer();
 
-                    uint32_t* Indexes = (uint32_t*)SystemAllocator._aligned_malloc(geometry.Buffers[15]->GetBufferSizeRaw());
+					uint32_t* Indexes = (uint32_t*)SystemAllocator._aligned_malloc(geometry.Buffers[15]->GetBufferSizeRaw());
 
-                    {
-                        struct Tri {
-                            uint32_t Indexes[3];
-                        };
+					{
+						struct Tri {
+							uint32_t Indexes[3];
+						};
 
-                        auto Proxy		= geometry.Buffers[15]->CreateTypedProxy<Tri>();
-                        size_t Position = 0;
-                        auto itr		= Proxy.begin();
-                        auto end		= Proxy.end();
+						auto Proxy		= geometry.Buffers[15]->CreateTypedProxy<Tri>();
+						size_t Position = 0;
+						auto itr		= Proxy.begin();
+						auto end		= Proxy.end();
 
-                        while(itr < end) {
-                            Indexes[Position + 0] = (*itr).Indexes[1];
-                            Indexes[Position + 2] = (*itr).Indexes[2];
-                            Indexes[Position + 1] = (*itr).Indexes[0];
-                            Position += 3;
-                            itr++;
-                        }
-                    }
+						while(itr < end) {
+							Indexes[Position + 0] = (*itr).Indexes[1];
+							Indexes[Position + 2] = (*itr).Indexes[2];
+							Indexes[Position + 1] = (*itr).Indexes[0];
+							Position += 3;
+							itr++;
+						}
+					}
 
-                    auto IndexBuffer		  = geometry.IndexBuffer_Idx;
-                    meshDesc.triangles.count  = geometry.IndexCount / 3;
-                    meshDesc.triangles.stride = geometry.Buffers[15]->GetElementSize() * 3;
-                    meshDesc.triangles.data   = Indexes;
+					auto IndexBuffer		  = geometry.IndexBuffer_Idx;
+					meshDesc.triangles.count  = geometry.IndexCount / 3;
+					meshDesc.triangles.stride = geometry.Buffers[15]->GetElementSize() * 3;
+					meshDesc.triangles.data   = Indexes;
 
-    #if USING(RESCOMPILERVERBOSE)
-                    printf("BEGINNING MODEL BAKING!\n");
-                    std::cout << "Baking: " << geometry.ID << "\n";
-    #endif
-                    bool success = false;
-                    if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
+	#if USING(RESCOMPILERVERBOSE)
+					printf("BEGINNING MODEL BAKING!\n");
+					std::cout << "Baking: " << geometry.ID << "\n";
+	#endif
+					bool success = false;
+					if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
 
-    #if USING(RESCOMPILERVERBOSE)
-                    if(success)
-                        printf("MODEL FINISHED BAKING!\n");
-                    else
-                        printf("MODEL FAILED BAKING!\n");
+	#if USING(RESCOMPILERVERBOSE)
+					if(success)
+						printf("MODEL FINISHED BAKING!\n");
+					else
+						printf("MODEL FAILED BAKING!\n");
 
-    #else
-                    FK_ASSERT(success, "FAILED TO COOK MESH!");
-    #endif
+	#else
+					FK_ASSERT(success, "FAILED TO COOK MESH!");
+	#endif
 
-                    if(success)
-                    {
-                        auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, ColliderInfo->Guid, ColliderInfo->ColliderID, SystemAllocator);
-                        ResourcesFound.push_back(Blob);
-                    }
-                }	break;
-                default:
-                    break;
-                }
-            }
-            */
-        }
+					if(success)
+					{
+						auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, ColliderInfo->Guid, ColliderInfo->ColliderID, SystemAllocator);
+						ResourcesFound.push_back(Blob);
+					}
+				}	break;
+				default:
+					break;
+				}
+			}
+			*/
+		}
 
 #if USING(RESCOMPILERVERBOSE)
-        std::cout << "Created " << resources.size() << " Resource Blobs\n";
+		std::cout << "Created " << resources.size() << " Resource Blobs\n";
 #endif
 
-        return resources;
-    }
+		return resources;
+	}
 
 
 
 
-    void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaDataList& MD = MetaDataList{}, size_t Parent = -1)
-    {
-        bool SkipChildren = false;
-        auto AttributeCount = Node->GetNodeAttributeCount();
+	void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaDataList& MD = MetaDataList{}, size_t Parent = -1)
+	{
+		bool SkipChildren = false;
+		auto AttributeCount = Node->GetNodeAttributeCount();
 
-        const auto Position = Node->LclTranslation.Get();
-        const auto LclScale = Node->LclScaling.Get();
-        const auto rotation = Node->LclRotation.Get();
-        const auto NodeName = Node->GetName();
+		const auto Position = Node->LclTranslation.Get();
+		const auto LclScale = Node->LclScaling.Get();
+		const auto rotation = Node->LclRotation.Get();
+		const auto NodeName = Node->GetName();
 
-        SceneNode NewNode;
-        NewNode.parent = Parent;
-        NewNode.position = TranslateToFloat3(Position);
-        NewNode.scale = TranslateToFloat3(LclScale);
-        NewNode.Q = Quaternion((float)rotation.mData[0], (float)rotation.mData[1], (float)rotation.mData[2]);
+		SceneNode NewNode;
+		NewNode.parent = Parent;
+		NewNode.position = TranslateToFloat3(Position);
+		NewNode.scale = TranslateToFloat3(LclScale);
+		NewNode.Q = Quaternion((float)rotation.mData[0], (float)rotation.mData[1], (float)rotation.mData[2]);
 
-        const uint32_t Nodehndl = scene->AddSceneNode(NewNode);
+		const uint32_t Nodehndl = scene->AddSceneNode(NewNode);
 
-        for (int i = 0; i < AttributeCount; ++i)
-        {
-            auto Attr = Node->GetNodeAttributeByIndex(i);
-            auto AttrType = Attr->GetAttributeType();
+		for (int i = 0; i < AttributeCount; ++i)
+		{
+			auto Attr = Node->GetNodeAttributeByIndex(i);
+			auto AttrType = Attr->GetAttributeType();
 
-            switch (AttrType)
-            {
-            case FbxNodeAttribute::eMesh:
-            {
+			switch (AttrType)
+			{
+			case FbxNodeAttribute::eMesh:
+			{
 #if USING(RESCOMPILERVERBOSE)
-                std::cout << "Entity Found: " << Node->GetName() << "\n";
+				std::cout << "Entity Found: " << Node->GetName() << "\n";
 #endif
-                auto FBXMesh    = static_cast<fbxsdk::FbxMesh*>(Attr);
-                auto UniqueID   = FBXMesh->GetUniqueID();
-                auto name       = Node->GetName();
+				auto FBXMesh    = static_cast<fbxsdk::FbxMesh*>(Attr);
+				auto UniqueID   = FBXMesh->GetUniqueID();
+				auto name       = Node->GetName();
 
-                const auto materialCount = Node->GetMaterialCount();
-                const auto shadingMode = Node->GetShadingMode();
+				const auto materialCount = Node->GetMaterialCount();
+				const auto shadingMode = Node->GetShadingMode();
 
-                for (int I = 0; I < materialCount; I++)
-                {
-                    auto classID = Node->GetMaterial(I)->GetClassId();
-                    auto material = Node->GetSrcObject<FbxSurfacePhong>(I);
-                    auto materialName = material->GetName();
-                    auto diffuse = material->sDiffuse;
-                    auto normal = material->sNormalMap;
-                    bool multilayer = material->MultiLayer;
-                }
+				for (int I = 0; I < materialCount; I++)
+				{
+					auto classID = Node->GetMaterial(I)->GetClassId();
+					auto material = Node->GetSrcObject<FbxSurfacePhong>(I);
+					auto materialName = material->GetName();
+					auto diffuse = material->sDiffuse;
+					auto normal = material->sNormalMap;
+					bool multilayer = material->MultiLayer;
+				}
 
-                SceneEntity entity;
-                entity.components.push_back(std::make_shared<BrushComponent>(UniqueID));
-                entity.Node = Nodehndl;
-                entity.id = name;
-                entity.id = std::string(name);
+				SceneEntity entity;
+				entity.components.push_back(std::make_shared<BrushComponent>(UniqueID));
+				entity.Node = Nodehndl;
+				entity.id = name;
+				entity.id = std::string(name);
 
-                scene->AddSceneEntity(entity);
-            }	break;
-            case FbxNodeAttribute::eLight:
-            {
+				scene->AddSceneEntity(entity);
+			}	break;
+			case FbxNodeAttribute::eLight:
+			{
 #if USING(RESCOMPILERVERBOSE)
-                std::cout << "Light Found: " << Node->GetName() << "\n";
+				std::cout << "Light Found: " << Node->GetName() << "\n";
 #endif
-                const auto FBXLight = static_cast<fbxsdk::FbxLight*>(Attr);
-                const auto Type = FBXLight->LightType.Get();
-                const auto Cast = FBXLight->CastLight.Get();
-                const auto I = (float)FBXLight->Intensity.Get() / 10;
-                const auto K = FBXLight->Color.Get();
-                const auto R = FBXLight->OuterAngle.Get();
-                const auto radius = FBXLight->FarAttenuationStart.Get();
-                const auto decay = FBXLight->DecayStart.Get();
+				const auto FBXLight = static_cast<fbxsdk::FbxLight*>(Attr);
+				const auto Type = FBXLight->LightType.Get();
+				const auto Cast = FBXLight->CastLight.Get();
+				const auto I = (float)FBXLight->Intensity.Get() / 10;
+				const auto K = FBXLight->Color.Get();
+				const auto R = FBXLight->OuterAngle.Get();
+				const auto radius = FBXLight->FarAttenuationStart.Get();
+				const auto decay = FBXLight->DecayStart.Get();
 
-                SceneEntity entity;
-                entity.Node = Nodehndl;
-                entity.id = std::string(Node->GetName());
+				SceneEntity entity;
+				entity.Node = Nodehndl;
+				entity.id = std::string(Node->GetName());
 
-                entity.components.push_back(std::make_shared<LightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
+				entity.components.push_back(std::make_shared<LightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
 
-                scene->AddSceneEntity(entity);
-            }	break;
-            case FbxNodeAttribute::eMarker:
-            case FbxNodeAttribute::eUnknown:
-            default:
-                break;
-            }
-        }
+				scene->AddSceneEntity(entity);
+			}	break;
+			case FbxNodeAttribute::eMarker:
+			case FbxNodeAttribute::eUnknown:
+			default:
+				break;
+			}
+		}
 
-        if (!SkipChildren)
-        {
-            const auto ChildCount = Node->GetChildCount();
-            for (int I = 0; I < ChildCount; ++I)
-                ProcessNodes(Node->GetChild(I), scene, MD, Nodehndl);
-        }
-    }
-
-
-    /************************************************************************************************/
+		if (!SkipChildren)
+		{
+			const auto ChildCount = Node->GetChildCount();
+			for (int I = 0; I < ChildCount; ++I)
+				ProcessNodes(Node->GetChild(I), scene, MD, Nodehndl);
+		}
+	}
 
 
-    void ScanChildrenNodesForScene(
-        fbxsdk::FbxNode*    Node,
-        const MetaDataList& MetaData,
-        IDTranslationTable& translationTable,
-        ResourceList&       Out)
-    {
-        const auto nodeName         = Node->GetName();
-        const auto RelatedMetaData  = FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
-        const auto NodeCount        = Node->GetChildCount();
-
-        auto property = Node->GetFirstProperty();
-        while (property.IsValid())
-        {
-            property = Node->GetNextProperty(property);
-            std::cout << property.GetName() << "\n";
-        }
-
-        if (RelatedMetaData.size())
-        {
-            for (auto& i : RelatedMetaData)
-            {
-                if (i->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
-                {
-                    const auto			MD = std::static_pointer_cast<Scene_MetaData>(i);
-                    SceneResource_ptr	scene = std::make_shared<SceneResource>();
-
-                    scene->GUID = MD->Guid;
-                    scene->ID = MD->SceneID;
-                    scene->translationTable = translationTable;
-
-                    ProcessNodes(Node, scene, MD->sceneMetaData);
-                    Out.push_back(scene);
-                }
-            }
-        }
-        else
-        {
-            for (int itr = 0; itr < NodeCount; ++itr) {
-                auto Child = Node->GetChild(itr);
-                ScanChildrenNodesForScene(Child, MetaData, translationTable, Out);
-            }
-        }
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void ScanChildrenNodesForScene(
+		fbxsdk::FbxNode*    Node,
+		const MetaDataList& MetaData,
+		IDTranslationTable& translationTable,
+		ResourceList&       Out)
+	{
+		const auto nodeName         = Node->GetName();
+		const auto RelatedMetaData  = FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
+		const auto NodeCount        = Node->GetChildCount();
+
+		auto property = Node->GetFirstProperty();
+		while (property.IsValid())
+		{
+			property = Node->GetNextProperty(property);
+			std::cout << property.GetName() << "\n";
+		}
+
+		if (RelatedMetaData.size())
+		{
+			for (auto& i : RelatedMetaData)
+			{
+				if (i->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
+				{
+					const auto			MD = std::static_pointer_cast<Scene_MetaData>(i);
+					SceneResource_ptr	scene = std::make_shared<SceneResource>();
+
+					scene->GUID = MD->Guid;
+					scene->ID = MD->SceneID;
+					scene->translationTable = translationTable;
+
+					ProcessNodes(Node, scene, MD->sceneMetaData);
+					Out.push_back(scene);
+				}
+			}
+		}
+		else
+		{
+			for (int itr = 0; itr < NodeCount; ++itr) {
+				auto Child = Node->GetChild(itr);
+				ScanChildrenNodesForScene(Child, MetaData, translationTable, Out);
+			}
+		}
+	}
 
 
-    void GetScenes(fbxsdk::FbxScene* S, const MetaDataList& MetaData, IDTranslationTable& translationTable, ResourceList& Out)
-    {
-        auto Root = S->GetRootNode();
-        ScanChildrenNodesForScene(Root, MetaData, translationTable, Out);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void GetScenes(fbxsdk::FbxScene* S, const MetaDataList& MetaData, IDTranslationTable& translationTable, ResourceList& Out)
+	{
+		auto Root = S->GetRootNode();
+		ScanChildrenNodesForScene(Root, MetaData, translationTable, Out);
+	}
 
 
-    void MakeScene(fbxsdk::FbxScene* S, IDTranslationTable& translationTable, ResourceList& Out)
-    {
-        auto Root = S->GetRootNode();
-
-        SceneResource_ptr	scene = std::make_shared<SceneResource>();
-
-        scene->ID = Root->GetName();
-        scene->translationTable = translationTable;
-
-        ProcessNodes(Root, scene, {});
-        Out.push_back(scene);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void MakeScene(fbxsdk::FbxScene* S, IDTranslationTable& translationTable, ResourceList& Out)
+	{
+		auto Root = S->GetRootNode();
+
+		SceneResource_ptr	scene = std::make_shared<SceneResource>();
+
+		scene->ID = Root->GetName();
+		scene->translationTable = translationTable;
+
+		ProcessNodes(Root, scene, {});
+		Out.push_back(scene);
+	}
 
 
-    ResourceList CreateSceneFromFBXFile(std::string file, const MetaDataList& metaData)
-    {
-	    fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
-	    fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
-
-        auto [res, scene] = LoadFBXScene(file, Manager, Settings);
+	/************************************************************************************************/
 
 
-        auto property = scene->GetFirstProperty();
-        while (property.IsValid())
-        {
-            property = scene->GetNextProperty(property);
-            auto type = property.GetPropertyDataType();
-            std::cout << property.GetName() << "\n";
-        }
+	ResourceList CreateSceneFromFBXFile(std::string file, const MetaDataList& metaData)
+	{
+		fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
+		fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
 
-	    Manager->SetIOSettings(Settings);
-
-        if (res)
-        {
-            IDTranslationTable  translationTable;
-            ResourceList	    resources = GatherSceneResources(scene, nullptr, translationTable, true, metaData);
-
-            GetScenes(scene, metaData, translationTable, resources);
-
-            return resources;
-        }
-        else
-        {
-            std::cout << "Failed to Open FBX File: " << file << "\n";
-            MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
-
-            return {};
-        }
-    }
+		auto [res, scene] = LoadFBXScene(file, Manager, Settings);
 
 
-    /************************************************************************************************/
+		auto property = scene->GetFirstProperty();
+		while (property.IsValid())
+		{
+			property = scene->GetNextProperty(property);
+			auto type = property.GetPropertyDataType();
+			std::cout << property.GetName() << "\n";
+		}
+
+		Manager->SetIOSettings(Settings);
+
+		if (res)
+		{
+			IDTranslationTable  translationTable;
+			ResourceList	    resources = GatherSceneResources(scene, nullptr, translationTable, true, metaData);
+
+			GetScenes(scene, metaData, translationTable, resources);
+
+			return resources;
+		}
+		else
+		{
+			std::cout << "Failed to Open FBX File: " << file << "\n";
+			MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
+
+			return {};
+		}
+	}
 
 
-    std::pair<ResourceList, std::shared_ptr<SceneResource>>  CreateSceneFromFBXFile2(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc)
-    {
-        IDTranslationTable	    translationTable;
-        ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, {});
-        ResourceList            sceneRes;
-
-        MakeScene(scene, translationTable, sceneRes);
-        // Translate ID's right now
-        auto localScene = std::dynamic_pointer_cast<SceneResource>(sceneRes.back());
-        for (auto& entity : localScene->entities)
-        {
-            for (auto& component : entity.components)
-            {
-                if (component->id == GetTypeGUID(BrushComponent))
-                {
-                    auto brush = std::dynamic_pointer_cast<BrushComponent>(component);
-                    brush->MeshGuid = TranslateID(brush->MeshGuid, translationTable);
-                }
-            }
-        }
-        return { resources, localScene };
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	std::pair<ResourceList, std::shared_ptr<SceneResource>>  CreateSceneFromFBXFile2(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc)
+	{
+		IDTranslationTable	    translationTable;
+		ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, {});
+		ResourceList            sceneRes;
+
+		MakeScene(scene, translationTable, sceneRes);
+		// Translate ID's right now
+		auto localScene = std::dynamic_pointer_cast<SceneResource>(sceneRes.back());
+		for (auto& entity : localScene->entities)
+		{
+			for (auto& component : entity.components)
+			{
+				if (component->id == GetTypeGUID(BrushComponent))
+				{
+					auto brush = std::dynamic_pointer_cast<BrushComponent>(component);
+					brush->MeshGuid = TranslateID(brush->MeshGuid, translationTable);
+				}
+			}
+		}
+		return { resources, localScene };
+	}
 
 
-    Pair<bool, fbxsdk::FbxScene*>
-    LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
-    {
-        fbxsdk::FbxNode* node = nullptr;
-        fbxsdk::FbxImporter* importer = fbxsdk::FbxImporter::Create(lSdkManager, "");
+	/************************************************************************************************/
 
-        if (!importer->Initialize(file.c_str(), -1, lSdkManager->GetIOSettings()))
-        {
-            printf("Failed to Load: %s\n", file.c_str());
-            printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
-            return{ false, nullptr };
-        }
 
-        auto sceneInfo = importer->GetSceneInfo();
+	Pair<bool, fbxsdk::FbxScene*>
+	LoadFBXScene(std::string file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
+	{
+		fbxsdk::FbxNode* node = nullptr;
+		fbxsdk::FbxImporter* importer = fbxsdk::FbxImporter::Create(lSdkManager, "");
 
-        fbxsdk::FbxScene* scene = FbxScene::Create(lSdkManager, "Scene");
-        if (!importer->Import(scene))
-        {
-            printf("Failed to Load: %s\n", file.c_str());
-            printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
-            return{ false, nullptr };
-        }
+		if (!importer->Initialize(file.c_str(), -1, lSdkManager->GetIOSettings()))
+		{
+			printf("Failed to Load: %s\n", file.c_str());
+			printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
+			return{ false, nullptr };
+		}
 
-        if (const auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
-            axisSystem != FbxAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded))
-        {
-            std::cout << "Converting scene axis system\n";
+		auto sceneInfo = importer->GetSceneInfo();
 
-            FbxAxisSystem newAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded);
-            newAxisSystem.DeepConvertScene(scene);
-        }
+		fbxsdk::FbxScene* scene = FbxScene::Create(lSdkManager, "Scene");
+		if (!importer->Import(scene))
+		{
+			printf("Failed to Load: %s\n", file.c_str());
+			printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
+			return{ false, nullptr };
+		}
 
-        return{ true, scene };
-    }
+		if (const auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
+			axisSystem != FbxAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded))
+		{
+			std::cout << "Converting scene axis system\n";
+
+			FbxAxisSystem newAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded);
+			newAxisSystem.DeepConvertScene(scene);
+		}
+
+		return{ true, scene };
+	}
 
 }   /************************************************************************************************/
 

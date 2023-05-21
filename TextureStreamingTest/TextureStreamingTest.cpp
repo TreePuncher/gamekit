@@ -70,7 +70,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	};
 
 	AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	auto loadSuccess = LoadScene(framework.core, loadCtx, 1234);
+	LoadScene(framework.core, loadCtx, 1234);
 
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();

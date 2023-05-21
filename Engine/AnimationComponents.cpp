@@ -4,6 +4,95 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
+	SkeletonComponent::SkeletonComponent(iAllocator* allocator) :
+		states		{ allocator },
+		skeletons	{ allocator },
+		handles		{ allocator },
+		allocator	{ allocator } {}
+
+
+	/************************************************************************************************/
+
+
+	SkeletonHandle SkeletonComponent::Create(const AssetHandle asset)
+	{
+		const auto skeletonGuid  = asset;
+		const auto available     = isAssetAvailable(skeletonGuid);
+
+		if (!available)
+			return InvalidHandle;
+
+		auto res = std::ranges::find_if(
+			skeletons,
+			[&](const auto& sk)
+			{
+				return sk.asset == asset;
+			});
+
+		if (res == skeletons.end())
+		{
+			const auto resource = LoadGameAsset(skeletonGuid);
+			auto skeleton		= Resource2Skeleton(resource, allocator);
+
+			skeletons.emplace_back(asset, skeleton);
+			res = &skeletons.back();
+		}
+
+		const auto handle = handles.GetNewHandle();
+		handles[handle] = (uint32_t)states.push_back({ res->sk, CreatePoseState(*res->sk, allocator) });
+
+		return handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SkeletonView::Release()
+	{
+		GetComponent().Release(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Skeleton* SkeletonView::GetSkeleton()
+	{
+		return GetComponent()[handle].skeleton;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SkeletonView::SetPose(JointHandle jointId, JointPose pose)
+	{
+		GetPoseState().Joints[jointId] = pose;
+	}
+
+
+	/************************************************************************************************/
+
+
+	JointPose SkeletonView::GetPose(JointHandle jointId) const
+	{
+		return GetPoseState().Joints[jointId];
+	}
+
+
+	/************************************************************************************************/
+
+
+	JointHandle SkeletonView::FindJoint(const char* jointID)
+	{
+		auto& poseState = GetPoseState();
+		return poseState.Sk->FindJoint(jointID);
+	}
+
+
+	/************************************************************************************************/
+
 
 	bool hasSkeletonLoaded(GameObject& gameObject)
 	{
@@ -219,6 +308,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void AnimatorComponent::AnimatorView::Release()
+	{
+		GetComponent().Release(animator);
+		animator = InvalidHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
 	PlayID_t AnimatorComponent::AnimatorView::Play(Animation& anim, bool loop)
 	{
 		auto&           componentData   = GetComponent()[animator];
@@ -351,8 +450,8 @@ namespace FlexKit
 
 	AnimatorComponent::AnimatorState::~AnimatorState()
 	{
-		if (obj)
-			obj->Release();
+		if (controller)
+			controller->Release();
 	}
 
 
@@ -391,7 +490,7 @@ namespace FlexKit
 	{
 		auto& state = GetComponent()[animator];
 
-		return { state.gameObject, state.obj };
+		return { state.gameObject, state.controller };
 	}
 
 
@@ -435,16 +534,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AnimatorComponent::AnimatorView::SetObj(void* _ptr) noexcept
+	void AnimatorComponent::AnimatorView::SetController(IAnimatorController& _ptr) noexcept
 	{
-		auto& state = GetState();
-		if (state.obj)
-			state.obj->Release();
+		AnimatorState& state = GetState();
 
-		state.obj = (asIScriptObject*)_ptr;
+		if (state.controller)
+			state.controller->Release();
 
-		if(state.obj)
-			state.obj->AddRef();
+		state.controller = &_ptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	AnimatorComponent::AnimatorState& AnimatorComponent::operator [](AnimatorHandle handle)
+	{
+		return animators[handles[handle]];
 	}
 
 
@@ -595,7 +701,6 @@ namespace FlexKit
 				if (!animatorComponent.animators.size())
 					return;
 
-				auto ctx = GetContext();
 
 				for (AnimatorComponent::AnimatorState& animator : animatorComponent.animators)
 				{
@@ -620,32 +725,9 @@ namespace FlexKit
 							context.AddField(pose);
 						});
 
-					auto scriptObj = animator.obj;
-
-					if(scriptObj)
-					{
-						auto api_obj    = static_cast<asIScriptObject*>(scriptObj);
-						auto preUpdate  = api_obj->GetObjectType()->GetMethodByName("PreUpdate");
-						auto postUpdate = api_obj->GetObjectType()->GetMethodByName("PostUpdate");
-
-						ctx->Prepare(preUpdate);
-						ctx->SetObject(animator.obj);
-						ctx->SetArgAddress(0, animator.gameObject);
-						ctx->SetArgDouble(1, dT);
-						ctx->Execute();
-
-						for (auto& animation : animator.animations)
-							animation.Update(context, dT);
-
-						ctx->Prepare(postUpdate);
-						ctx->SetObject(animator.obj);
-						ctx->SetArgAddress(0, animator.gameObject);
-						ctx->SetArgDouble(1, dT);
-						ctx->Execute();
-					}
+					if (auto controller = animator.controller; controller)
+						controller->Update(dT);
 				}
-
-				ReleaseContext(ctx);
 			});
 	}
 
@@ -1059,6 +1141,70 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	AngelScriptController::AngelScriptController(asIScriptObject& IN_obj, GameObject& IN_gameObject, iAllocator& IN_allocator) :
+		obj			{ &IN_obj			},
+		gameObject	{ &IN_gameObject	},
+		allocator	{ &IN_allocator		} {}
+
+
+	void AngelScriptController::Update(double dT)
+	{
+		auto ctx = GetContext();
+
+		//auto api_obj    = static_cast<asIScriptObject*>(obj);
+		//auto preUpdate  = api_obj->GetObjectType()->GetMethodByName("PreUpdate");
+		//auto postUpdate = api_obj->GetObjectType()->GetMethodByName("PostUpdate");
+		//
+		//ctx->Prepare(preUpdate);
+		//ctx->SetObject(obj);
+		//ctx->SetArgAddress(0, gameObject);
+		//ctx->SetArgDouble(1, dT);
+		//ctx->Execute();
+		//
+		//for (auto& animation : animator.animations)
+		//	animation.Update(context, dT);
+		//
+		//ctx->Prepare(postUpdate);
+		//ctx->SetObject(animator.obj);
+		//ctx->SetArgAddress(0, animator.gameObject);
+		//ctx->SetArgDouble(1, dT);
+		//ctx->Execute();
+
+		ReleaseContext(ctx);
+	}
+
+
+	void AngelScriptController::Release()
+	{
+		obj->Release();
+		allocator->release(*this);
+	}
+
+
+	/************************************************************************************************/
+
+
+	AnimatorComponent::AnimatorComponent(iAllocator& IN_allocator) :
+			allocator	{  IN_allocator },
+			handles		{ &IN_allocator },
+			animators	{ &IN_allocator } {}
+
+
+	/************************************************************************************************/
+
+
+	AnimatorHandle AnimatorComponent::Create(GameObject& gameObject)
+	{
+		auto handle		= handles.GetNewHandle();
+		handles[handle]	= (index_t)animators.emplace_back(&gameObject, allocator);
+
+		return handle;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void AnimatorComponent::AddComponentView(GameObject& gameObject, ValueMap userValues, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 	{
 		AnimatorBlobHeader header;
@@ -1082,16 +1228,16 @@ namespace FlexKit
 			AnimatorBlobAnimatorState state;
 			memcpy(&state, states + I, sizeof(state));
 
-			auto animation  = LoadAnimation(state.animationResourceID, SystemAllocator);
-			auto playId     = animator.Play(*animation);
+			auto animation	= LoadAnimation(state.animationResourceID, SystemAllocator);
+			auto playId		= animator.Play(*animation);
 
 			animator.SetAnimationState(playId, state.initialState);
 		}
 
 		if (header.scriptResource != -1)
 		{
-			auto scriptModule   = LoadByteCodeAsset(header.scriptResource);
-			auto func           = scriptModule->GetFunctionByName("InitiateAnimator");
+			auto scriptModule	= LoadByteCodeAsset(header.scriptResource);
+			auto func			= scriptModule->GetFunctionByName("InitiateAnimator");
 
 			if (func)
 			{
@@ -1100,12 +1246,14 @@ namespace FlexKit
 				ctx->SetArgAddress(0, &gameObject);
 				ctx->Execute();
 
-				auto animatorObj = ctx->GetReturnAddress();
+				auto animatorObj = static_cast<asIScriptObject*>(ctx->GetReturnAddress());
 
 				ReleaseContext(ctx);
 
+				auto& controller = allocator->allocate<AngelScriptController>(*animatorObj, gameObject, *allocator);
+
 				if (animatorObj)
-					animator.SetObj(animatorObj);
+					animator.SetController(controller);
 			}
 		}
 	}
@@ -1116,7 +1264,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

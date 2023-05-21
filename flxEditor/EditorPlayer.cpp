@@ -111,6 +111,8 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 	//if (!drawRequested)
 	//	return nullptr;
 
+	FlexKit::Pitch(FlexKit::GetCameraNode(activeCamera), dT * 3.14159f);
+
 	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), float4{ 0.0f, 0.0f, 1.0f, 1.0f });
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -159,9 +161,7 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 
 void EditorPlayerState::PostDrawUpdate(EngineCore& core, double dT)
 {
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-	core.RenderSystem.SyncDirectTicket();
-
+	depthBuffer.Increment();
 	renderWindow.Present(1, 0);
 }
 

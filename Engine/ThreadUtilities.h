@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CTHREAD_H
 
 	// includes
-#include "buildsettings.h"
 #include "containers.h"
 #include "memoryutilities.h"
 #include "ProfilingUtilities.h"
@@ -321,7 +320,7 @@ namespace FlexKit
 				newArray[newIdx]  = *queue[oldIdx];
 			}
 
-			auto tmp_ptr    = queue;
+			auto tmp_ptr	= queue;
 			queue			= newArray;
 			queueArraySize	= arraySize;
 
@@ -335,17 +334,16 @@ namespace FlexKit
 			const auto newArray	= new TY_E[newSize];
 		}
 
-		size_t			                    queueArraySize  = 0;
-		ElementType*                        queue           = nullptr;
-		iAllocator*                         allocator       = nullptr;
+		size_t								queueArraySize	= 0;
+		ElementType*						queue			= nullptr;
+		iAllocator*							allocator		= nullptr;
 
-		alignas(64) std::atomic_int64_t     backCounter    = 0;
-		alignas(64) std::atomic_int64_t     frontCounter   = 0;
+		alignas(64) std::atomic_int64_t		backCounter		= 0;
+		alignas(64) std::atomic_int64_t		frontCounter	= 0;
 	};
 
 
 	class _WorkerThread;
-
 
 
 	class _BackgrounWorkQueue
@@ -354,43 +352,30 @@ namespace FlexKit
 		_BackgrounWorkQueue(iAllocator* allocator);
 
 		void Shutdown();
-
 		void PushWork(iWork& work);
 
-		void                            Run();
-		CircularStealingQueue<iWork*>&  GetQueue();
-		bool                            Running();
+		void							Run();
+		CircularStealingQueue<iWork*>&	GetQueue();
+		bool							Running();
 
 	private:
 
-		Vector<iWork*>                  workList;
+		Vector<iWork*>					workList;
 
-		std::mutex                      lock;
-		std::atomic_bool                running = false;
-		std::condition_variable         cv;
-		std::thread                     backgroundThread;
+		std::mutex						lock;
+		std::atomic_bool				running = false;
+		std::condition_variable			cv;
+		std::thread						backgroundThread;
 
-		CircularStealingQueue<iWork*>   queue;
+		CircularStealingQueue<iWork*>	queue;
 	};
 
 
 	class _WorkerThread
 	{
 	public:
-		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
-			Running		{ false				},
-			Quit		{ false				},
-			hasJob		{ false				},
-			workQueue   { ThreadMemory      },
-			Allocator	{ ThreadMemory		} {}
-
-		~_WorkerThread()
-		{
-			workQueue.Release();
-
-			if (Thread.joinable())
-				Thread.join();
-		}
+		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator);
+		~_WorkerThread();
 
 		void Shutdown()	noexcept;
 		void Wake()		noexcept;
@@ -430,34 +415,14 @@ namespace FlexKit
 
 	FLEXKITAPI extern void PushToLocalQueue(iWork& work);
 
-	FLEXKITAPI CircularStealingQueue<iWork*>&    _GetThreadLocalQueue();
-	FLEXKITAPI void                              _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
+	FLEXKITAPI CircularStealingQueue<iWork*>&	_GetThreadLocalQueue();
+	FLEXKITAPI void								_SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
 
-	FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
+	FLEXKITAPI _WorkerThread&					GetLocalThread();
 
 	inline thread_local static_vector<std::unique_ptr<StackAllocator>> localAllocators;
 
-	FLEXKITAPI inline void RunTask(iWork& work)
-	{
-		std::unique_ptr<StackAllocator> allocator;
-
-		if (localAllocators.empty())
-		{
-			allocator = std::make_unique<StackAllocator>();
-			allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
-		}
-		else
-		{
-			allocator = std::move(localAllocators.back());
-			localAllocators.pop_back();
-		}
-
-		work.DoWork(*allocator);
-
-		allocator->clear();
-
-		localAllocators.emplace_back(std::move(allocator));
-	}
+	FLEXKITAPI void RunTask(iWork& work);
 
 	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;
 	using WorkerThread	= WorkerList::TY_Element;

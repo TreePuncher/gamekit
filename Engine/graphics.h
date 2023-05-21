@@ -6,7 +6,6 @@
 
 #include "PipelineState.h"
 
-#include "..\PCH.h"
 #include "buildsettings.h"
 #include "containers.h"
 #include "Handle.h"
@@ -32,6 +31,10 @@
 #include <variant>
 #include <optional>
 #include <directx-dxc/dxcapi.h>
+
+#include <directx/d3d12.h>
+#include <directx/d3dx12.h>
+#include <DirectXMath/DirectXMath.h>
 
 #if USING(AFTERMATH)
 
