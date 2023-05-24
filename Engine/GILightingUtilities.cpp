@@ -343,14 +343,14 @@ namespace FlexKit
 			D3D12_RAYTRACING_SHADER_CONFIG shader_Config[1] =
 			{
 				{
-					.MaxPayloadSizeInBytes		= 16,
-					.MaxAttributeSizeInBytes	= 16,
+					.MaxPayloadSizeInBytes		= 20,
+					.MaxAttributeSizeInBytes	= 20,
 				}
 			};
 
 			D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig[] = {
 				{
-					.MaxTraceRecursionDepth = 4,
+					.MaxTraceRecursionDepth = 16,
 				}
 			};
 
@@ -429,20 +429,16 @@ namespace FlexKit
 					struct ShaderTableLayout
 					{
 						uint8_t		rayGen[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-						uint32_t	beef = 0xbeefbeef;
 					} rayGen;
 
 					struct hitTableLayout
 					{
 						uint8_t		anyhit_main[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-						uint32_t	beef = 0xbeefbeef;
-
 					} hitTable;
 
 					struct missTableLayout
 					{
 						uint8_t		miss[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-						uint32_t	beef = 0xbeefbeef;
 					} missTable;
 
 					memcpy(&rayGen.rayGen,			rayGenIdentifier,	D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -453,13 +449,13 @@ namespace FlexKit
 					auto hitTableUpload		= ctx.ReserveDirectUploadSpace(sizeof(hitTable));
 					auto missTableUpload	= ctx.ReserveDirectUploadSpace(sizeof(missTable));
 
-					memcpy(rayGenUpload.buffer, &rayGen, sizeof(rayGen));
-					memcpy(hitTableUpload.buffer, &hitTable, sizeof(hitTable));
-					memcpy(missTableUpload.buffer, &missTable, sizeof(missTable));
+					memcpy(rayGenUpload.buffer,		&rayGen,	sizeof(rayGen));
+					memcpy(hitTableUpload.buffer,	&hitTable,	sizeof(hitTable));
+					memcpy(missTableUpload.buffer,	&missTable,	sizeof(missTable));
 
-					ctx.CopyBuffer(rayGenUpload, rayGenTable);
-					ctx.CopyBuffer(hitTableUpload, hitShaderTable);
-					ctx.CopyBuffer(missTableUpload, missShaderTable);
+					ctx.CopyBuffer(rayGenUpload,	rayGenTable);
+					ctx.CopyBuffer(hitTableUpload,	hitShaderTable);
+					ctx.CopyBuffer(missTableUpload,	missShaderTable);
 				});
 		}
 
@@ -569,7 +565,7 @@ namespace FlexKit
 					builder.NonPixelShaderResource(missShaderTable);
 					builder.NonPixelShaderResource(rayGenTable);
 
-					data.tlAS		= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(1 * MEGABYTE), DASACCELERATIONSTRUCTURE_WRITE, &ASpool);
+					data.tlAS		= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(2 * MEGABYTE), DASACCELERATIONSTRUCTURE_WRITE, &ASpool);
 					data.scratchPad	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV);
 					data.temporary	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASCopyDest);
 					data.target2D	= builder.WriteTransition(renderTarget, DASUAV, { FlexKit::Sync_All, FlexKit::Sync_Raytracing });
@@ -591,33 +587,40 @@ namespace FlexKit
 					{
 						Vector<D3D12_RAYTRACING_INSTANCE_DESC> sceneElements{ &allocator };
 
+						[&]{
 						for (auto& pvs : passes.GetData().GetPass(PassHandle{ GBufferPassID }))
 						{
 							for(auto mesh : pvs.brush->meshes)
 							{
 								auto& lod = GetMeshResource(mesh)->GetLowestLoadedLod();
 
-								if (lod.blAS == -1)
+								if (lod.blAS == -1 || lod.GetIndexCount() < 1000)
 									continue;
 
 								D3D12_RAYTRACING_INSTANCE_DESC instance;
-								instance.AccelerationStructure					= lod.blAS;
-								instance.Flags									= D3D12_RAYTRACING_INSTANCE_FLAGS::D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
+								instance.AccelerationStructure					= resources.GetDevicePointer(lod.blAS);
+								instance.Flags									= D3D12_RAYTRACING_INSTANCE_FLAGS::D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
 								instance.InstanceContributionToHitGroupIndex	= 0;
-								instance.InstanceID								= pvs.submissionID;
-								instance.InstanceMask							= 0x01;
-
+								instance.InstanceID								= 0x000000;
+								instance.InstanceMask							= 0xFF;
+								
 								const auto WT = GetWT(pvs.brush->Node);
 
 								for (size_t row = 0; row < 3; row++)
 									for (size_t col = 0; col < 4; col++)
-										instance.Transform[row][col] = WT[row][col];
+										instance.Transform[row][col] = 0;// WT[row][col];
+
+								instance.Transform[0][0] = 1;
+								instance.Transform[1][1] = 1;
+								instance.Transform[2][2] = 1;
 
 								sceneElements.emplace_back(instance);
+								return;
 							}
 						}
+						}();
 
-						const uint32_t arraySize = (uint32_t)(FlexKit::AlignedSize(sceneElements.size() * sizeof(D3D12_RAYTRACING_INSTANCE_DESC)));
+						const uint32_t arraySize = (uint32_t)(FlexKit::AlignedSize(sceneElements.ByteSize()));
 
 						UploadReservation upload = ctx.ReserveDirectUploadSpace(arraySize);
 						memcpy(upload.buffer, sceneElements.data(), sceneElements.ByteSize());
@@ -635,13 +638,13 @@ namespace FlexKit
 								.DescsLayout	= D3D12_ELEMENTS_LAYOUT_ARRAY,
 								.InstanceDescs	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.temporary, ctx))
 							},
-							.ScratchAccelerationStructureData = resources.GetDevicePointer(resources.UAV(data.scratchPad, ctx)),
+							.ScratchAccelerationStructureData = Align(resources.GetDevicePointer(resources.UAV(data.scratchPad, ctx)), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT),
 						};
 
 						ctx.FlushBarriers();
 						ctx.DeviceContext->BuildRaytracingAccelerationStructure(&buildAS, 0, nullptr);
 
-						ctx.AddBufferBarrier(resources.GetResource(data.tlAS), DASACCELERATIONSTRUCTURE_WRITE, DASACCELERATIONSTRUCTURE_READ, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing);
+						//ctx.AddBufferBarrier(resources.GetResource(data.tlAS), DASACCELERATIONSTRUCTURE_WRITE, DASACCELERATIONSTRUCTURE_READ, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing);
 					};
 
 					UpdateAS();
@@ -649,6 +652,25 @@ namespace FlexKit
 					ctx.EndEvent_DEBUG();
 					ctx.BeginEvent_DEBUG("Cast Rays");
 
+
+
+
+					const uint32_t bufferSize = (uint32_t)FlexKit::AlignedSize<Camera::ConstantBuffer>();
+					auto constantBuffer = data.reserveCB(bufferSize);
+					ConstantBufferDataSet cameraConstants{ GetCameraConstants(data.camera), constantBuffer };
+
+					DescriptorHeap heap{};
+					heap.Init(ctx, globalRootSig.GetDescHeap(0), &allocator);
+					heap.SetUAVTexture(ctx, 0, resources.UAV(data.target2D, ctx));
+					heap.SetSRV(ctx, 1, resources.NonPixelShaderResource(data.depthBuffer, ctx), DeviceFormat::R32_FLOAT);
+					heap.SetSRV(ctx, 2, resources.NonPixelShaderResource(data.albedo, ctx));
+
+					ctx.SetComputeRootSignature(globalRootSig);
+					ctx.SetComputeShaderResourceView(0, resources.AccelerationStructure(data.tlAS, ctx, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing), 0);
+					ctx.SetComputeConstantBufferView(1, cameraConstants);
+					ctx.SetComputeDescriptorTable(2, heap);
+
+					//ctx.Dispatch(resources.GetPipelineState(InlineTest), { 1920 / 32 + 1, 1080 / 32 + 1, 1 });
 
 					const DispatchDesc desc = {
 						.hitGroupTable =
@@ -677,24 +699,8 @@ namespace FlexKit
 					};
 
 
-					const uint32_t bufferSize = (uint32_t)FlexKit::AlignedSize<Camera::ConstantBuffer>();
-					auto constantBuffer = data.reserveCB(bufferSize);
-					ConstantBufferDataSet cameraConstants{ GetCameraConstants(data.camera), constantBuffer };
-
-					DescriptorHeap heap{};
-					heap.Init(ctx, globalRootSig.GetDescHeap(0), &allocator);
-					heap.SetUAVTexture(ctx, 0, resources.UAV(data.target2D, ctx));
-					heap.SetSRV(ctx, 1, resources.NonPixelShaderResource(data.depthBuffer, ctx), DeviceFormat::R32_FLOAT);
-					heap.SetSRV(ctx, 2, resources.NonPixelShaderResource(data.albedo, ctx));
-
-					ctx.SetComputeRootSignature(globalRootSig);
-					ctx.SetComputeShaderResourceView(0, resources.GetResource(data.tlAS), 0);
-					ctx.SetComputeConstantBufferView(1, cameraConstants);
-					ctx.SetComputeDescriptorTable(2, heap);
-
-					//ctx.Dispatch(resources.GetPipelineState(InlineTest), { 1920 / 32 + 1, 1080 / 32 + 1, 1 });
 					ctx.DeviceContext->SetPipelineState1(stateObject);
-					ctx.DispatchRays({ 1920, 1080, 1 }, desc);
+					ctx.DispatchRays({ resources.GetTextureWH(data.depthBuffer), 1 }, desc);
 
 					ctx.EndEvent_DEBUG();
 					ctx.EndEvent_DEBUG();

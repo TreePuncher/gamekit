@@ -22,23 +22,23 @@ namespace FlexKit
 		virtual void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB) = 0;
 
 		virtual BuildSceneRes BuildScene(
-			FrameGraph&                     frameGraph,
-			Scene&                          scene,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction   reserveCB,
+			FrameGraph&						frameGraph,
+			Scene&							scene,
+			GatherPassesTask&				passes,
+			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator) = 0;
 
 		virtual void RayTrace(
-			UpdateDispatcher&               dispatcher,
-			FrameGraph&                     frameGraph,
-			const CameraHandle              camera,
-			GatherPassesTask&               passes,
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			const CameraHandle				camera,
+			GatherPassesTask&				passes,
 			BuildSceneRes					bvh,
-			ResourceHandle                  depthTarget,
-			FrameResourceHandle             renderTarget,
-			GBuffer&                        gbuffer,
-			ReserveConstantBufferFunction   reserveCB,
-			iAllocator*                     allocator) = 0;
+			ResourceHandle					depthTarget,
+			FrameResourceHandle				renderTarget,
+			GBuffer&						gbuffer,
+			ReserveConstantBufferFunction	reserveCB,
+			iAllocator*						allocator) = 0;
 	};
 
 

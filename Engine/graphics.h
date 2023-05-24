@@ -172,6 +172,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	enum DeviceSyncPoint
 	{
 		Sync_None,
+		Sync_Auto,
 		Sync_All,
 		Sync_Draw,
 		Sync_Compute,
@@ -4076,7 +4077,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void DiscardResource(ResourceHandle resource);
 
 		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown);
+		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All);
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceAccessState Before, DeviceAccessState State = DeviceAccessState::DASRenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State);
@@ -4694,7 +4695,7 @@ private:
 
 			static_vector<VertexBufferView*>	buffers;
 			FlexKit::VertexBuffer				vertexBuffer;
-			DevicePointer						blAS = { (D3D12_GPU_VIRTUAL_ADDRESS)-1}; // TODO(Wrap this type)
+			ResourceHandle						blAS = InvalidHandle; // TODO(Wrap this type)
 
 			std::atomic<LOD_State>		state   = LOD_State::Unloaded;
 			static_vector<SubMesh, 32>	subMeshes;
@@ -4940,6 +4941,18 @@ private:
 	constexpr size_t AlignedSize()
 	{
 		return AlignedSize(sizeof(TY));
+	}
+
+
+	/************************************************************************************************/
+
+
+	constexpr auto Align(size_t x, const size_t alignment)
+	{
+		size_t adjustment = alignment - x % alignment;
+		adjustment = adjustment == alignment ? 0 : adjustment;
+
+		return x += adjustment;
 	}
 
 

@@ -18,6 +18,11 @@ class QMenuBar;
 class QTimer;
 class SelectionContext;
 
+namespace FlexKit
+{
+	struct Animation;
+}
+
 
 /************************************************************************************************/
 
@@ -33,8 +38,8 @@ public:
 	FlexKit::LayerHandle GetPhysicsLayer() const;
 
 private:
-	//FlexKit::Animation*		LoadAnimation		(std::string&, bool);
-	//void					ReleaseAnimation	(FlexKit::Animation*);
+	FlexKit::Animation*		LoadAnimation		(std::string&, bool);
+	void					ReleaseAnimation	(FlexKit::Animation*);
 
 	Ui::EditorAnimationEditor	ui;
 	SelectionContext&			globalSelection;

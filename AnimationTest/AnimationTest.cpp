@@ -30,12 +30,12 @@ public:
 		int x = 0;
 	}
 
-	void Update(double dT)
+	void Update(AnimationStateContext& ctx, double dT) override
 	{
 
 	}
 
-	virtual void Release()
+	void Release() override
 	{
 		allocator->release(this);
 	}

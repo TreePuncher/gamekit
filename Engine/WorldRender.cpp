@@ -613,7 +613,7 @@ namespace FlexKit
 
 			streamingEngine				{ IN_streamingEngine },
 
-			lightingEngine				{ renderSystem, *persistent, EGITECHNIQUE::DISABLE },
+			lightingEngine				{ renderSystem, *persistent, EGITECHNIQUE::AUTOMATIC },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
 			transparency				{ renderSystem },
@@ -688,10 +688,10 @@ namespace FlexKit
 					for (size_t I = 0; I < 4; I++)
 						durations[I] = float(timePoints[2 * I + 1] - timePoints[2 * I + 0]) / timeStampFreq * 1000;
 
-					timingValues.gBufferPass        = durations[0];
-					timingValues.ClusterCreation    = durations[1];
-					timingValues.shadingPass        = durations[2];
-					timingValues.BVHConstruction    = durations[3];
+					timingValues.gBufferPass		= durations[0];
+					timingValues.ClusterCreation	= durations[1];
+					timingValues.shadingPass		= durations[2];
+					timingValues.BVHConstruction	= durations[3];
 				}
 			});
 

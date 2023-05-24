@@ -82,6 +82,7 @@ namespace FlexKit
 
 			WH = newWH;
 
+			renderSystem->SyncDirectTo(renderSystem->SyncDirectTicket());
 			renderSystem->WaitForGPU();
 			renderSystem->_ForceReleaseTexture(backBuffer);
 

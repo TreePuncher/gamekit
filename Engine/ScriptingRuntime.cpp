@@ -859,8 +859,8 @@ namespace FlexKit
 	{
 	public:
 		BytecodeStream(const char* IN_byteCode, size_t IN_size)
-			: byteCode      { IN_byteCode   }
-			, streamSize    { IN_size       }{}
+			: byteCode		{ IN_byteCode	}
+			, streamSize	{ IN_size		}{}
 
 		int Write(const void* ptr, asUINT size) { return size; }
 

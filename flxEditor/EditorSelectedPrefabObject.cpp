@@ -91,8 +91,7 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
 
 void EditorSelectedPrefabObject::Reset()
 {
-	if(gameObject)
-		gameObject->Release();
+	gameObject.Release();
 
 	resource    = nullptr;
 	prefab      = nullptr;
@@ -105,41 +104,54 @@ void EditorSelectedPrefabObject::Reset()
 /************************************************************************************************/
 
 
+void RunAngelScriptExceptionHandles(ScriptContext ctx, asIScriptFunction* func, FlexKit::GameObject& gameObject, FlexKit::AnimatorView* animatorView, FlexKit::IAnimatorController* controller)
+{
+	__try
+	{
+		ctx->Prepare(func);
+		SetArgAddress(ctx, 0, &gameObject);
+		
+		auto res = ctx->Execute();
+
+		if (asEXECUTION_FINISHED == res)
+		{
+			auto& controller = FlexKit::SystemAllocator.allocate<FlexKit::AngelScriptController>(*static_cast<asIScriptObject*>(GetReturnObject(ctx)), gameObject, FlexKit::SystemAllocator);
+			animatorView->SetController(controller);
+		}
+		else
+			FK_LOG_ERROR("Editor: Failed to run angel script animator object constructor!");
+	}
+	__except (STATUS_ACCESS_VIOLATION == GetExceptionCode())
+	{
+		int line = ctx->GetLineNumber();
+		ctx->SetException("Critical Failure: Segmentation Fault");
+		FK_LOG_ERROR("Editor: Critical Exception Detected!");
+	}
+}
+
+
+/************************************************************************************************/
+
+
 void EditorSelectedPrefabObject::Reload(EditorScriptEngine& engine)
 {
-	auto* animatorView  = static_cast<FlexKit::AnimatorView*>(gameObject->GetView(FlexKit::AnimatorComponentID));
-	auto scriptState    = animatorView->GetScriptState();
-
-	auto ctx = FlexKit::GetContext();
-
-	if(scriptState.obj)
-	{   // Release Old Module
-		auto scriptModule = scriptState.obj->GetObjectType()->GetModule();
-
-		SetArg(ctx, 0, scriptState.obj);
-		RunScriptFunction(ctx, scriptModule, "ReleaseModule");
-		//scriptState.obj->Release();
-		engine.ReleaseModule(scriptModule);
-	}
-
+	auto* animatorView	= static_cast<FlexKit::AnimatorView*>(gameObject.GetView(FlexKit::AnimatorComponentID));
+	auto [obj, ctr]		= animatorView->GetScriptState();
+	
 	auto scriptModule = engine.BuildModule(resource->source);
-
 	if (!scriptModule)
 	{
-		animatorView->SetObj(nullptr);
+		animatorView->ClearController();
 		return;
 	}
-
+	
+	auto ctx = FlexKit::GetContext();
+	EXITSCOPE(
+		ctx->Unprepare();
+		FlexKit::ReleaseContext(ctx););
+	
 	auto func = scriptModule->GetFunctionByName("InitiateAnimator");
-
-	ctx->Prepare(func);
-	SetArgAddress(ctx, 0, &gameObject);
-
-	auto res = ctx->Execute();
-
-	animatorView->SetObj(GetReturnObject(ctx));
-
-   FlexKit::ReleaseContext(ctx);
+	RunAngelScriptExceptionHandles(ctx, func, gameObject, animatorView, ctr);
 }
 
 
@@ -149,7 +161,7 @@ void EditorSelectedPrefabObject::Reload(EditorScriptEngine& engine)
 uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint32_t valueType)
 {
 	return FlexKit::Apply(
-		*gameObject,
+		gameObject,
 		[&](FlexKit::AnimatorView& animatorView) -> uint32_t
 		{
 			FlexKit::AnimatorComponent::InputID ID;
@@ -193,7 +205,7 @@ uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint
 
 			return animator->inputs.size() - 1;
 		},
-		[]() -> uint32_t {return -1; });
+		[]() -> uint32_t { return -1; });
 
 }
 
@@ -204,7 +216,7 @@ uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint
 std::string EditorSelectedPrefabObject::ValueString(uint32_t idx, uint32_t valueType)
 {
 	return FlexKit::Apply(
-		*gameObject,
+		gameObject,
 		[&](FlexKit::AnimatorView& animator) -> std::string
 		{
 			auto value      = animator.GetInputValue(idx).value_or(nullptr);
@@ -351,11 +363,8 @@ void EditorSelectedPrefabObject::UpdateDefaultValue(uint32_t idx, const std::str
 
 void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& valueString)
 {
-	if (!gameObject)
-		return;
-
 	FlexKit::Apply(
-		*gameObject,
+		gameObject,
 		[&](FlexKit::AnimatorView& animator)
 		{
 			auto value		= animator.GetInputValue(idx).value_or(nullptr);
@@ -370,8 +379,7 @@ void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& va
 
 void EditorSelectedPrefabObject::Release()
 {
-	if(gameObject)
-		gameObject->Release();
+	gameObject.Release();
 }
 
 

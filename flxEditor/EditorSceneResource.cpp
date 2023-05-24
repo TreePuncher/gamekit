@@ -39,16 +39,16 @@ namespace FlexKit
 		return lhs.dot(rhs) * rhs - lhs;
 	}
 
-	void GenerateTangents(auto indices, auto points, auto normals, auto uvCoords, auto& tangentsOut)
+	void GenerateTangents(auto indices, auto points, auto normals, auto uvCoords, auto& tangentsOut, iAllocator& allocator = FlexKit::SystemAllocator)
 	{
 		tangentsOut.clear();
 
-		std::vector<float3> tangentBuffer;
-		std::vector<float3> bitangentBuffer;
+		Vector<float3> tangentBuffer{ allocator };
+		Vector<float3> bitangentBuffer{ allocator };
 		tangentBuffer.resize(normals.size());
 		bitangentBuffer.resize(normals.size());
-		memset(tangentBuffer.data(), 0, tangentBuffer.size() * sizeof(float3));
-		memset(bitangentBuffer.data(), 0, bitangentBuffer.size() * sizeof(float3));
+		memset(tangentBuffer.data(),	0, tangentBuffer.size()		* sizeof(float3));
+		memset(bitangentBuffer.data(),	0, bitangentBuffer.size()	* sizeof(float3));
 
 		for (auto itr = indices.begin(); itr < indices.end(); itr+= 3)
 		{
@@ -487,7 +487,7 @@ namespace FlexKit
 					newMesh.Normals		= normals.size() != 0;
 					newMesh.Tangents	= tangents.size() != 0;
 
-					for (size_t I = 0; I < indexCount; I+=3)
+					for (size_t I = 0; I < indexCount; I += 3)
 					{
 						VertexToken tokens[3];
 
