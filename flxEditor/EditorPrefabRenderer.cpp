@@ -240,13 +240,16 @@ struct PlayerContext
 /************************************************************************************************/
 
 
+
 EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSelectedPrefabObject* IN_selection, EditorProject& IN_project, QWidget* parent)
 		: QWidget		{ parent }
 		, layer			{ FlexKit::PhysXComponent::GetComponent().CreateLayer() }
 		, renderer		{ IN_renderer }
-		, sharedWindow	{ this }
-		//, renderWindow	{ IN_renderer.CreateRenderWindow(this) }
-		//, depthBuffer	{ IN_renderer.GetRenderSystem(), renderWindow->WH() }
+		//, sharedWindow	{ this }
+#if LOCALPLAYER
+		, renderWindow	{ IN_renderer.CreateRenderWindow(this) }
+		, depthBuffer	{ IN_renderer.GetRenderSystem(), renderWindow->WH() }
+#endif
 		, selection		{ IN_selection }
 		, project		{ IN_project }
 		, previewCamera	{ FlexKit::CameraComponent::GetComponent().CreateCamera() }
@@ -257,15 +260,15 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 	renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatSkinnedPassPSO });
 	renderSystem.RegisterPSOLoader(FLAT_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatPassPSO });
 
-	/*
+
+#if LOCALPLAYER
 	renderWindow->SetOnDraw(
 		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 		{
 			if (isVisible())
 				RenderAnimated(dispatcher, frameGraph, dT, temporaries, renderTarget, allocator);
 		});
-	*/
-
+#else
 	auto shared = renderer.GetSharedMemory();
 	shared->targetWindow = sharedWindow.GetHWND();
 
@@ -278,6 +281,7 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 			boost::process::args(std::format("{}", IN_renderer.GetSharedAddress()))));
 
 	while (!shared->PollEditorMessages());
+#endif
 }
 
 
@@ -287,6 +291,7 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 
 EditorPrefabPreview::~EditorPrefabPreview()
 {
+#if LOCALPLAYER == 0
 	if (playerContext->child.running())
 	{	// Kill Player!
 		struct QuitMessage : public FlexKit::Serializable<QuitMessage, MessageInterface, GetTypeGUID(QuitMessage)>
@@ -304,6 +309,7 @@ EditorPrefabPreview::~EditorPrefabPreview()
 
 		while (playerContext->child.running());
 	}
+#endif
 }
 
 
@@ -312,6 +318,7 @@ EditorPrefabPreview::~EditorPrefabPreview()
 
 void EditorPrefabPreview::ProcessMessages()
 {
+	return;
 	if (!playerContext->child.running())
 	{	// Restart Player!
 	}
@@ -346,6 +353,7 @@ void EditorPrefabPreview::ProcessMessages()
 
 void EditorPrefabPreview::Reset()
 {
+	return;
 	struct ResetMessage : public FlexKit::Serializable<ResetMessage, MessageInterface, GetTypeGUID(ResetMessage)>
 	{
 		void Do(EditorPlayerState& player) override
@@ -367,7 +375,7 @@ void EditorPrefabPreview::Reset()
 
 FlexKit::GameObject* EditorPrefabPreview::GetGameObject()
 {
-	return renderer.GetSharedMemory()->currentGameObject;
+	return &selection->gameObject;
 }
 
 
@@ -416,33 +424,43 @@ void EditorPrefabPreview::resizeEvent(QResizeEvent* evt)
 {
 	QWidget::resizeEvent(evt);
 
+	//auto size = evt->size();
+	//FlexKit::uint2 newWH = { FlexKit::Max(1, evt->size().width() * 1.5), FlexKit::Max(1, evt->size().height() * 1.5) };
+	//
+	//struct ResizeMessage : public FlexKit::Serializable<ResizeMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+	//{
+	//	FlexKit::uint2 newWH;
+	//
+	//	void Do(EditorPlayerState& player) override
+	//	{
+	//		player.renderWindow.Resize(newWH);
+	//		player.depthBuffer.Resize(newWH);
+	//		FlexKit::SetCameraAspectRatio(player.activeCamera, (float)newWH[0] / (float)newWH[1]);
+	//	}
+	//
+	//	void Serialize(auto& archive)
+	//	{
+	//		archive& newWH;
+	//	}
+	//};
+	//
+	//auto resize = std::make_shared<ResizeMessage>();
+	//
+	//resize->newWH = newWH;
+	//
+	//playerContext->push_message(resize);
+	//sharedWindow.resize(evt->size());
+
 	auto size = evt->size();
-	FlexKit::uint2 newWH = { FlexKit::Max(1, evt->size().width() * 1.5), FlexKit::Max(1, evt->size().height() * 1.5) };
+	FlexKit::uint2 newWH = {
+		FlexKit::Max(evt->size().width() * 1.5, 1),
+		FlexKit::Max(evt->size().height() * 1.5, 1)	};
 
-	struct ResizeMessage : public FlexKit::Serializable<ResizeMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
-	{
-		FlexKit::uint2 newWH;
 
-		void Do(EditorPlayerState& player) override
-		{
-			player.renderWindow.Resize(newWH);
-			player.depthBuffer.Resize(newWH);
-		}
+	renderWindow->resizeEvent(evt);
+	depthBuffer.Resize(newWH);
 
-		void Serialize(auto& archive)
-		{
-			archive& newWH;
-		}
-	};
-
-	auto resize = std::make_shared<ResizeMessage>();
-
-	resize->newWH = newWH;
-
-	playerContext->push_message(resize);
 	FlexKit::SetCameraAspectRatio(previewCamera, float(evt->size().width()) / float(evt->size().height()));
-
-	sharedWindow.resize(evt->size());
 }
 
 
@@ -487,7 +505,7 @@ void EditorPrefabPreview::RenderStatic(
 		[&](FlexKit::FrameGraphNodeBuilder& builder, Pass& data)
 		{
 			data.renderTarget	= builder.RenderTarget(renderTarget);
-			//data.depthTarget	= builder.DepthTarget(depthBuffer.Get());
+			data.depthTarget	= builder.DepthTarget(depthBuffer.Get());
 			data.poseBuffer		= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::StructuredResource(64 * 1024), FlexKit::DASCopyDest);
 
 			builder.AddDataDependency(cameras);
@@ -660,24 +678,23 @@ void EditorPrefabPreview::RenderAnimated(
 		return;
 
 	FlexKit::ClearBackBuffer(frameGraph, renderTarget, FlexKit::float4{ 0, 0, 0, 0 });
-	//FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
+	FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 	if (selection && selection->ID != -1)
 	{
 		auto& object = *selection;
 
 		if (turnTable)
-			FlexKit::Yaw(*object.gameObject, 1.0f / 60.0f);
+			FlexKit::Yaw(object.gameObject, 1.0f / 60.0f);
 
-		RenderStatic(dispatcher, frameGraph, *object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
+		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
 			
-		if (const auto pose = FlexKit::GetPoseState(*object.gameObject); skeletonOverlay && pose)
+		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
 		{
-			const auto node = FlexKit::GetSceneNode(*object.gameObject);
+			const auto node = FlexKit::GetSceneNode(object.gameObject);
 			const auto PV   = GetCameraConstants(previewCamera).PV;
 
-			FlexKit::LineSegments lines(FlexKit::SystemAllocator);
-			lines = FlexKit::DEBUG_DrawPoseState(*pose, node, FlexKit::SystemAllocator);
+			FlexKit::LineSegments lines = FlexKit::DEBUG_DrawPoseState(*pose, node, allocator);
 
 			for (auto& line : lines)
 			{
@@ -733,12 +750,12 @@ void EditorPrefabPreview::RenderOverlays(
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
 	auto& object			= selection->gameObject;
-	const auto node			= FlexKit::GetSceneNode(*object);
+	const auto node			= FlexKit::GetSceneNode(object);
 	const auto constants	= GetCameraConstants(previewCamera);
 	const auto PV			= constants.PV;
-	const auto Q			= FlexKit::GetOrientation(*object);
-	const auto WT			= FlexKit::GetWT(*object).Transpose();
-	const auto brush		= FlexKit::GetBrush(*object);
+	const auto Q			= FlexKit::GetOrientation(object);
+	const auto WT			= FlexKit::GetWT(object).Transpose();
+	const auto brush		= FlexKit::GetBrush(object);
 
 	if (!brush)
 		return;
@@ -843,7 +860,7 @@ void EditorPrefabPreview::RenderOverlays(
 		auto meshResource	= static_cast<FlexKit::MeshResource*>(projectRes->resource.get());
 
 		if (boundingVolume)
-			AABBtoLines(FlexKit::GetAABBFromMesh(*object), float3{237.0f / 256.0f, 231.0f / 256.0f, 107.0f / 256.0f});
+			AABBtoLines(FlexKit::GetAABBFromMesh(object), float3{237.0f / 256.0f, 231.0f / 256.0f, 107.0f / 256.0f});
 
 		if (SMboundingVolumes)
 		{
@@ -905,12 +922,12 @@ void EditorPrefabPreview::RenderOverlays(
 void EditorPrefabPreview::CenterCamera()
 {
 	auto& gameObject	= selection->gameObject;
-	auto meshes			= FlexKit::GetTriMesh(*gameObject);
+	auto meshes			= FlexKit::GetTriMesh(gameObject);
 
 	if (meshes.empty())
 		return;
 
-	auto aabb				= FlexKit::GetAABBFromMesh(*gameObject);
+	auto aabb				= FlexKit::GetAABBFromMesh(gameObject);
 	const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(previewCamera);
 
 	const auto target			= aabb.MidPoint();

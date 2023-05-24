@@ -720,7 +720,7 @@ namespace FlexKit
 				} texture;
 				memcpy(&texture, cursor, sizeof(texture));
 
-				cursor += 8;
+				cursor += sizeof(texture);
 
 				PushTexture(handle, texture.asset, texture.tag, rdCtx, true);
 			}

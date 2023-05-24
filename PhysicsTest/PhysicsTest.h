@@ -34,7 +34,7 @@ public:
 	FlexKit::SceneVisibilityComponent		visibilityComponent;
 	FlexKit::BrushComponent					brushes;
 	FlexKit::LightComponent					pointLights;
-	FlexKit::ShadowMapComponent						shadowMaps;
+	FlexKit::ShadowMapComponent				shadowMaps;
 	FlexKit::FABRIKComponent				ikComponent;
 	FlexKit::SkeletonComponent				skeletons;
 	FlexKit::StringIDComponent				stringIDs;

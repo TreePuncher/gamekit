@@ -10,6 +10,8 @@
 /************************************************************************************************/
 
 
+#define LOCALPLAYER 1
+
 // forward declarations
 class EditorProject;
 class EditorRenderer;
@@ -117,9 +119,9 @@ private:
 	EditorRenderer&					renderer;
 	EditorProject&					project;
 	DXRenderWindow*					renderWindow;
-	SharedWindow					sharedWindow;
+	//SharedWindow					sharedWindow;
 	EditorSelectedPrefabObject*		selection;
-	//FlexKit::DepthBuffer			depthBuffer;
+	FlexKit::DepthBuffer			depthBuffer;
 
 	std::unique_ptr<PlayerContext>	playerContext;
 };

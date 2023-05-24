@@ -31,23 +31,23 @@ FlexKit::LayerHandle EditorPrefabEditor::GetPhysicsLayer() const
 /************************************************************************************************/
 
 
-//FlexKit::Animation* EditorPrefabEditor::LoadAnimation(std::string& id, bool)
-//{
-//	auto resource	= project.FindProjectResource(id)->resource;
-//	auto blob		= resource->CreateBlob();
-//
-//	FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
-//	return FlexKit::LoadAnimation(resource->GetResourceGUID(), FlexKit::SystemAllocator);
-//}
-//
-//
-///************************************************************************************************/
-//
-//
-//void EditorPrefabEditor::ReleaseAnimation(FlexKit::Animation* anim)
-//{
-//	FlexKit::SystemAllocator.release(anim);
-//}
+FlexKit::Animation* EditorPrefabEditor::LoadAnimation(std::string& id, bool)
+{
+	auto resource	= project.FindProjectResource(id)->resource;
+	auto blob		= resource->CreateBlob();
+
+	FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
+	return FlexKit::LoadAnimation(resource->GetResourceGUID(), FlexKit::SystemAllocator);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabEditor::ReleaseAnimation(FlexKit::Animation* anim)
+{
+	FlexKit::SystemAllocator.release(anim);
+}
 
 
 /************************************************************************************************/
@@ -67,9 +67,9 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 {
 	auto engine		= FlexKit::GetScriptEngine();
 
-	//int res;
-	//res = engine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)",	asMETHOD(EditorPrefabEditor, LoadAnimation), asCALL_THISCALL_ASGLOBAL, this);
-	//res = engine->RegisterGlobalFunction("void ReleaseAnimation(Animation@)",		asMETHOD(EditorPrefabEditor, ReleaseAnimation), asCALL_THISCALL_ASGLOBAL, this);
+	int res;
+	res = engine->RegisterGlobalFunction("Animation@ LoadAnimation(string& in)",	asMETHOD(EditorPrefabEditor, LoadAnimation), asCALL_THISCALL_ASGLOBAL, this);
+	res = engine->RegisterGlobalFunction("void ReleaseAnimation(Animation@)",		asMETHOD(EditorPrefabEditor, ReleaseAnimation), asCALL_THISCALL_ASGLOBAL, this);
 
 	codeEditor->GetTabs()->addTab(inputVariables, "Input Variables");
 
@@ -107,8 +107,6 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 		createAnimatedObject, &QAction::triggered,
 		[&]
 		{
-			return;
-
 			auto meshPicker = new EditorResourcePickerDialog(MeshResourceTypeID, IN_project, this);
 
 			meshPicker->OnSelection(
@@ -120,7 +118,6 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 					skeletonPicker->OnSelection(
 						[&, resource](ProjectResource_ptr skeleton)
 						{
-							/*
 							localSelection->gameObject.Release();
 
 							// Load Tri Mesh
@@ -166,10 +163,10 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 							codeEditor->SetResource(scriptResource);
 
 							// Build Editor object
-							gameObject.AddView<FlexKit::SceneNodeView>();
-							gameObject.AddView<FlexKit::BrushView>(mesh);
-							gameObject.AddView<FlexKit::SkeletonView>(skeleton->resource->GetResourceGUID());
-							gameObject.AddView<FlexKit::AnimatorView>();
+							auto& sceneNodeView = gameObject.AddView<FlexKit::SceneNodeView>();
+							auto& brushView		= gameObject.AddView<FlexKit::BrushView>(mesh);
+							auto& skeletonView	= gameObject.AddView<FlexKit::SkeletonView>(skeleton->resource->GetResourceGUID());
+							auto& animatorView	= gameObject.AddView<FlexKit::AnimatorView>();
 
 							// serialize object
 							PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
@@ -183,9 +180,14 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 							skeletonComponent->skeletonResourceID	= skeleton->resource->GetResourceGUID();
 							animatorComponent->scriptResource		= scriptResource->GetResourceGUID();
 
+							auto scriptAsset = scriptResource->CreateBlob();
+							FlexKit::AddAssetBuffer((FlexKit::Resource*)scriptAsset.buffer);
+
 							objectResource->entity.components.push_back(brushComponent);
 							objectResource->entity.components.push_back(skeletonComponent);
 							objectResource->entity.components.push_back(animatorComponent);
+
+							FlexKit::AnimatorLoadByteCode(gameObject, animatorView, scriptResource->GetResourceGUID(), FlexKit::SystemAllocator);
 
 							localSelection->resource	= scriptResource;
 							localSelection->resourceID	= objectResource->GetResourceGUID();
@@ -197,7 +199,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 							globalSelection.selection	= std::any{ localSelection };
 
 							previewWindow->CenterCamera();
-							*/
 						});
 
 					skeletonPicker->show();
@@ -211,16 +212,12 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		createPrefabObject, &QAction::triggered,
 		[&]()
 		{
-			previewWindow->Reset();
-			while (previewWindow->GetGameObject() == nullptr);
-
 			globalSelection.Clear();
 			localSelection->Release();
 
 			PrefabGameObjectResource_ptr objectResource = std::make_shared<PrefabGameObjectResource>();
 			auto projectRes = project.AddResource(objectResource);
 
-			localSelection->gameObject	= previewWindow->GetGameObject();
 			localSelection->layer		= GetPhysicsLayer();
 			localSelection->resourceID	= objectResource->GetResourceGUID();
 			localSelection->prefab		= objectResource;
@@ -240,7 +237,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		saveObject, &QAction::triggered,
 		[&]
 		{
-			/*
 			if (localSelection && localSelection->prefab)
 			{
 				auto prefab = (PrefabGameObjectResource*)(project.FindProjectResource(localSelection->ID)->resource.get());
@@ -278,7 +274,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 
 				prefab->entity.components.erase(range.begin(), range.end());
 			}
-			*/
 		});
 
 	auto loadObject = fileMenu->addAction("Load");
@@ -286,7 +281,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		loadObject, &QAction::triggered,
 		[&]
 		{
-			/*
 			auto resourcePicker = new EditorResourcePickerDialog(FlexKit::EResource_Prefab, IN_project, this);
 			resourcePicker->OnSelection(
 				[&](ProjectResource_ptr projectObj)
@@ -376,7 +370,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 				});
 
 			resourcePicker->show();
-			*/
 		});
 
 	auto createAnimator = fileMenu->addAction("Animator");
@@ -386,7 +379,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		createAnimator, &QAction::triggered,
 		[&]()
 		{
-			localSelection->gameObject->AddView<FlexKit::AnimatorView>();
+			localSelection->gameObject.AddView<FlexKit::AnimatorView>();
 		});
 
 	auto viewMenu				= menubar->addMenu("View");
@@ -402,7 +395,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		centerView, &QAction::triggered,
 		[&]()
 		{
-			//previewWindow->CenterCamera();
+			previewWindow->CenterCamera();
 		});
 
 	toggleSkeletonOverlay->setCheckable(true);
@@ -412,8 +405,8 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		toggleSkeletonOverlay, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->skeletonOverlay = toggleSkeletonOverlay->isChecked();
-			//toggleSkeletonOverlay->setChecked(previewWindow->skeletonOverlay);
+			previewWindow->skeletonOverlay = toggleSkeletonOverlay->isChecked();
+			toggleSkeletonOverlay->setChecked(previewWindow->skeletonOverlay);
 		});
 
 	toggleTurnTable->setCheckable(true);
@@ -423,8 +416,8 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		toggleTurnTable, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->turnTable = toggleTurnTable->isChecked();
-			//toggleTurnTable->setChecked(previewWindow->turnTable);
+			previewWindow->turnTable = toggleTurnTable->isChecked();
+			toggleTurnTable->setChecked(previewWindow->turnTable);
 		});
 
 	toggleAnimation->setCheckable(true);
@@ -434,8 +427,8 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		toggleAnimation, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->animate = toggleAnimation->isChecked();
-			//toggleAnimation->setChecked(previewWindow->animate);
+			previewWindow->animate = toggleAnimation->isChecked();
+			toggleAnimation->setChecked(previewWindow->animate);
 		});
 
 	toggleQDTree->setCheckable(true);
@@ -444,7 +437,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 	connect(toggleQDTree, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->QDTreeOverlay = toggleQDTree->isChecked();
+			previewWindow->QDTreeOverlay = toggleQDTree->isChecked();
 		});
 
 	boundingVolumeVis->setCheckable(true);
@@ -453,7 +446,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 	connect(boundingVolumeVis, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->boundingVolume = boundingVolumeVis->isChecked();
+			previewWindow->boundingVolume = boundingVolumeVis->isChecked();
 		});
 
 	subMeshVolumesVis->setCheckable(true);
@@ -462,27 +455,25 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 	connect(subMeshVolumesVis, &QAction::triggered,
 		[=]
 		{
-			//previewWindow->SMboundingVolumes = subMeshVolumesVis->isChecked();
+			previewWindow->SMboundingVolumes = subMeshVolumesVis->isChecked();
 		});
 
 	inputVariables->SetOnCreateEvent(
 		[&](size_t typeID, const std::string& ID)
 		{
-			//auto& gameObject = localSelection->gameObject;
-			//localSelection->AddInputValue(ID, typeID);
+			auto& gameObject = localSelection->gameObject;
+			localSelection->AddInputValue(ID, typeID);
 		});
 
 	inputVariables->SetOnChangeEvent(
 		[&](size_t idx, const std::string& ID, const std::string& value, const std::string& defaultValue)
 		{
-			/*
 			auto& inputs		= localSelection->animator->inputs;
 			auto& valueEntry	= inputs[idx];
 			valueEntry.stringID	= ID;
 
 			localSelection->UpdateValue(idx, value);
 			localSelection->UpdateDefaultValue(idx, defaultValue);
-			*/
 		});
 
 	timer = new QTimer{ this };
@@ -491,7 +482,6 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 		{
 			previewWindow->ProcessMessages();
 
-			/*
 			if (isVisible())
 			{
 				if (localSelection && localSelection->ID != -1 && localSelection->animator)
@@ -510,7 +500,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 					}
 				}
 			}
-			*/
+
 			timer->start(100ms);
 		});
 

@@ -43,7 +43,12 @@ public:
 	~EditorApplication();
 
 	QApplication&					qtApp;
+
+#if DEBUG
+	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory(), { .GPUdebugMode = true } };
+#else
 	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory() };
+#endif
 
 	EditorProjectScriptConnector_ptr	projectConnector;
 	EditorScriptEngine_ptr				scripts;

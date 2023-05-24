@@ -242,9 +242,38 @@ namespace FlexKit
 	};
 
 
+	struct AnimationStateContext
+	{
+		AnimationStateContext(iAllocator& allocator) :
+			fields{ &allocator } {}
+
+		template<Animatable Field_TY>
+		void AddField(Field_TY& field)
+		{
+			fields.emplace_back(StateField_t{ field });
+		}
+
+		template<Animatable Field_TY>
+		Field_TY* FindField()
+		{
+			auto res = std::find_if(fields.begin(), fields.end(),
+				[&](auto& e) -> bool
+				{
+					return e.fieldID == Field_TY::GetAnimationFieldID();
+				});
+
+			if (res != fields.end())
+				return StateField_t<Field_TY>::GetField(*res);
+			else
+				return nullptr;
+		}
+
+		Vector<AnimationStateField> fields;
+	};
+
 	struct IAnimatorController
 	{
-		virtual void Update(double dT) = 0;
+		virtual void Update(AnimationStateContext&, double dT) = 0;
 		virtual void Release() = 0;
 	};
 
@@ -252,7 +281,7 @@ namespace FlexKit
 	{
 		AngelScriptController(asIScriptObject&, GameObject&, iAllocator&);
 
-		void Update(double dT)	override;
+		void Update(AnimationStateContext&, double dT)	override;
 		void Release()			override;
 
 		asIScriptObject*	obj			= nullptr;
@@ -265,7 +294,6 @@ namespace FlexKit
 		GameObject*				gameObject	= nullptr;
 		IAnimatorController*	obj			= nullptr;
 	};
-
 
 	using AnimatorCallback = TypeErasedCallable<void (GameObject&)>;
 
@@ -280,36 +308,6 @@ namespace FlexKit
 		void FreeComponentView(void* _ptr) final { static_cast<AnimatorView*>(_ptr)->Release(); }
 
 		void Release(AnimatorHandle handle) { FK_LOG_WARNING("AnimatorComponent::Release(): Unimplemented! Leaking memory"); }
-
-
-		struct AnimationStateContext
-		{
-			AnimationStateContext(iAllocator& allocator) :
-				fields{ &allocator } {}
-
-			template<Animatable Field_TY>
-			void AddField(Field_TY& field)
-			{
-				fields.emplace_back(StateField_t{ field });
-			}
-
-			template<Animatable Field_TY>
-			Field_TY* FindField()
-			{
-				auto res = std::find_if(fields.begin(), fields.end(),
-					[&](auto& e) -> bool
-					{
-						return e.fieldID == Field_TY::GetAnimationFieldID();
-					});
-
-				if (res != fields.end())
-					return StateField_t<Field_TY>::GetField(*res);
-				else
-					return nullptr;
-			}
-
-			Vector<AnimationStateField> fields;
-		};
 
 		struct AnimationState
 		{
@@ -471,6 +469,7 @@ namespace FlexKit
 			uint32_t							AddInput(const char* name, AnimatorInputType type, void* _ptr = nullptr) noexcept;
 			void								SetAnimationState(uint32_t animationID, uint32_t state) noexcept;
 			void								SetController(IAnimatorController&) noexcept;
+			void								ClearController() noexcept;
 
 			AnimatorHandle animator;
 		};
@@ -482,7 +481,10 @@ namespace FlexKit
 		iAllocator&										allocator;
 	};
 
+
 	using AnimatorView = AnimatorComponent::AnimatorView;
+
+	void AnimatorLoadByteCode(GameObject& gameObject, AnimatorView& animator, uint64_t scriptAssetID, iAllocator& allocator);
 
 	AnimatorView* GetAnimator(GameObject&);
 

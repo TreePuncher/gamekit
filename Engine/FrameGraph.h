@@ -810,6 +810,11 @@ namespace FlexKit
 			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_UnorderedAccess, ctx, before, after);
 		}
 
+		ResourceHandle AccelerationStructure(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		{
+			return Transition(resource, DASACCELERATIONSTRUCTURE_READ, DeviceLayout::DeviceLayout_Common, ctx, before, after);
+		}
+
 		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx, before, after);
@@ -2087,7 +2092,7 @@ namespace FlexKit
 					frameObject->pool				= pool;
 					frameObject->virtualState		= VirtualResourceState::Virtual_Persistent;
 
-					return {resourceHandle, overlap};
+					return { resourceHandle, overlap };
 				}
 
 				void BuildBLAS(FrameResourceHandle resource, TriMesh::LOD_Runtime& src_lod)
@@ -2100,7 +2105,7 @@ namespace FlexKit
 					nodeData->scratchPadSize = Max(nodeData->scratchPadSize, prebuildInfo.BLAS_byteSize);
 					nodeData->BVHBuilds.emplace_back(handle, &src_lod);
 
-					src_lod.blAS = GetDevicePointer(resource);
+					src_lod.blAS = GetResource(resource);
 				}
 
 				ResourceHandle	GetResource(FrameResourceHandle resource) const
@@ -2223,14 +2228,15 @@ namespace FlexKit
 								{
 									ctx.BuildBLAS(lod->vertexBuffer, resource, scratchPad);
 									ctx.AddUAVBarrier(scratchPad);
+									ctx.AddBufferBarrier(resource, DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, Sync_BuildRaytracingAccellerationStructure, Sync_All_Shading);
 								}
 							}
 
 							for (auto&& [_ptr, size, resource] : nodeData->pendingCopies)
 								ctx.AddBufferBarrier(resources.GetResource(resource), DeviceAccessState::DASCopyDest, nodeData->access, DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_All);
 
-							for (auto&& [resource, _] : nodeData->BVHBuilds)
-								ctx.AddBufferBarrier(resource, DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, DeviceSyncPoint::Sync_BuildRaytracingAccellerationStructure, DeviceSyncPoint::Sync_All);
+							//for (auto&& [resource, _] : nodeData->BVHBuilds)
+							//	ctx.AddBufferBarrier(resource, DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, DeviceSyncPoint::Sync_BuildRaytracingAccellerationStructure, DeviceSyncPoint::Sync_All);
 						};
 
 					tasks_out.emplace_back(std::move(newWorkItem));

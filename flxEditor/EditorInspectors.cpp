@@ -864,12 +864,12 @@ struct RemoteComponentUIContext
 
 void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
-	std::shared_ptr<RemoteComponentUIContext> remoteContext;
-
-	if (remoteObject)
-	{
-		remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
-
+	//std::shared_ptr<RemoteComponentUIContext> remoteContext;
+	//
+	//if (remoteObject)
+	//{
+	//	remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
+	//
 		/*
 		panelCtx.AddButton("Add",
 			[inspector = panelCtx.inspector, remoteContext, &project = this->project]()
@@ -950,7 +950,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 
 		panelCtx.AddText(fmt::format("Remote Inspection Not Available!"));
 		*/
-	}
+	//}
 
 	auto& brush = static_cast<FlexKit::BrushView&>(component);
 
@@ -981,7 +981,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 	panelCtx.PushVerticalLayout();
 
 	panelCtx.AddButton("Add",
-		[&gameObject, &brush, inspector = panelCtx.inspector, remoteObject, &project = this->project, &viewport = this->viewport, remoteContext]()
+		[&gameObject, &brush, inspector = panelCtx.inspector, remoteObject, &project = this->project, &viewport = this->viewport]()
 		{
 			auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
 
@@ -990,6 +990,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 				{
 					if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
 					{
+						/*
 						if (remoteObject)
 						{
 							struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
@@ -1038,6 +1039,7 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 							remoteContext->Send(std::make_shared<ResourceBlobMessage>(resource_ptr->resource->GetResourceGUID()));
 						}
 						else
+						*/
 						{
 							auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
 							brush.PushMesh(trimesh);

@@ -534,14 +534,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AnimatorComponent::AnimatorView::SetController(IAnimatorController& _ptr) noexcept
+	void AnimatorComponent::AnimatorView::SetController(IAnimatorController& controller) noexcept
 	{
 		AnimatorState& state = GetState();
 
 		if (state.controller)
 			state.controller->Release();
 
-		state.controller = &_ptr;
+		state.controller = &controller;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void AnimatorComponent::AnimatorView::ClearController() noexcept
+	{
+		if (AnimatorState& state = GetState(); state.controller)
+		{
+			state.controller->Release();
+			state.controller = nullptr;
+		}
 	}
 
 
@@ -678,6 +691,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void AnimatorLoadByteCode(GameObject& gameObject, AnimatorView& animator, uint64_t scriptAssetID, iAllocator& allocator)
+	{
+		auto scriptModule	= LoadByteCodeAsset(scriptAssetID);
+		auto func			= scriptModule->GetFunctionByName("InitiateAnimator");
+
+		if (func)
+		{
+			auto ctx = GetContext();
+			ctx->Prepare(func);
+			ctx->SetArgAddress(0, &gameObject);
+			ctx->Execute();
+
+			auto animatorObj = static_cast<asIScriptObject*>(ctx->GetReturnAddress());
+
+			if (animatorObj)
+				animator.SetController(allocator.allocate<AngelScriptController>(*animatorObj, gameObject, *allocator));
+
+			ctx->Unprepare();
+			ReleaseContext(ctx);
+
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	AnimatorView* GetAnimator(GameObject& gameObject)
 	{
 		return Apply(gameObject, [](AnimatorView& view) { return &view; }, []() -> AnimatorView* { return nullptr; });
@@ -704,7 +744,7 @@ namespace FlexKit
 
 				for (AnimatorComponent::AnimatorState& animator : animatorComponent.animators)
 				{
-					AnimatorComponent::AnimationStateContext context{ temporaryAllocator };
+					AnimationStateContext context{ temporaryAllocator };
 
 					Apply(*animator.gameObject,
 						[&](SkeletonView& poseView)
@@ -726,7 +766,7 @@ namespace FlexKit
 						});
 
 					if (auto controller = animator.controller; controller)
-						controller->Update(dT);
+						controller->Update(context, dT);
 				}
 			});
 	}
@@ -1144,40 +1184,81 @@ namespace FlexKit
 	AngelScriptController::AngelScriptController(asIScriptObject& IN_obj, GameObject& IN_gameObject, iAllocator& IN_allocator) :
 		obj			{ &IN_obj			},
 		gameObject	{ &IN_gameObject	},
-		allocator	{ &IN_allocator		} {}
+		allocator	{ &IN_allocator		}
+	{
+		obj->AddRef();
+	}
 
 
-	void AngelScriptController::Update(double dT)
+	void AngelScriptController::Update(AnimationStateContext& animationCtx, double dT)
 	{
 		auto ctx = GetContext();
 
-		//auto api_obj    = static_cast<asIScriptObject*>(obj);
-		//auto preUpdate  = api_obj->GetObjectType()->GetMethodByName("PreUpdate");
-		//auto postUpdate = api_obj->GetObjectType()->GetMethodByName("PostUpdate");
-		//
-		//ctx->Prepare(preUpdate);
-		//ctx->SetObject(obj);
-		//ctx->SetArgAddress(0, gameObject);
-		//ctx->SetArgDouble(1, dT);
-		//ctx->Execute();
-		//
-		//for (auto& animation : animator.animations)
-		//	animation.Update(context, dT);
-		//
-		//ctx->Prepare(postUpdate);
-		//ctx->SetObject(animator.obj);
-		//ctx->SetArgAddress(0, animator.gameObject);
-		//ctx->SetArgDouble(1, dT);
-		//ctx->Execute();
+		__try
+		{
+			auto api_obj	= static_cast<asIScriptObject*>(obj);
+			auto preUpdate	= api_obj->GetObjectType()->GetMethodByName("PreUpdate");
+			auto postUpdate	= api_obj->GetObjectType()->GetMethodByName("PostUpdate");
 
+			FK_LOG_INFO("Animator: updating object 0x%llx", obj);
+
+			ctx->Prepare(preUpdate);
+			ctx->SetObject(obj);
+			ctx->SetArgAddress(0, gameObject);
+			ctx->SetArgDouble(1, dT);
+
+			if (ctx->Execute() == asEXECUTION_ERROR)
+			{
+				auto line		= ctx->GetLineNumber();
+				auto function	= ctx->GetFunction();
+				auto name		= function->GetName();
+
+				FK_LOG_ERROR("AngelScriptObject: %s : line %u", name, line);
+				DebugBreak();
+			}
+
+			auto* animator = gameObject->GetView<AnimatorView>();
+			for (auto& animation : animator->GetState().animations)
+				animation.Update(animationCtx, dT);
+			
+			ctx->Prepare(postUpdate);
+			ctx->SetObject(obj);
+			ctx->SetArgAddress(0, gameObject);
+			ctx->SetArgDouble(1, dT);
+
+			if (ctx->Execute() == asEXECUTION_ERROR)
+			{
+				auto line		= ctx->GetLineNumber();
+				auto function	= ctx->GetFunction();
+				auto name		= function->GetName();
+
+				FK_LOG_ERROR("AngelScriptObject: %u : line", name, line);
+			}
+		}
+		__except (STATUS_ACCESS_VIOLATION == GetExceptionCode())
+		{
+			FK_LOG_ERROR("AngelScriptObject: Hardware Fault");
+			FK_LOG_ERROR("AngelScriptObject: Releasing Object");
+			
+			ctx->SetException("Critical Failure : Hardware Fault");
+			auto* animator = gameObject->GetView<AnimatorView>();
+			animator->ClearController();
+		}
+
+		ctx->Unprepare();
 		ReleaseContext(ctx);
 	}
 
 
 	void AngelScriptController::Release()
 	{
+		FK_LOG_INFO("Animator: Releasing object 0x%llx", obj);
+
 		obj->Release();
 		allocator->release(*this);
+
+		obj			= nullptr;
+		allocator	= nullptr;
 	}
 
 
@@ -1235,31 +1316,11 @@ namespace FlexKit
 		}
 
 		if (header.scriptResource != -1)
-		{
-			auto scriptModule	= LoadByteCodeAsset(header.scriptResource);
-			auto func			= scriptModule->GetFunctionByName("InitiateAnimator");
-
-			if (func)
-			{
-				auto ctx = GetContext();
-				ctx->Prepare(func);
-				ctx->SetArgAddress(0, &gameObject);
-				ctx->Execute();
-
-				auto animatorObj = static_cast<asIScriptObject*>(ctx->GetReturnAddress());
-
-				ReleaseContext(ctx);
-
-				auto& controller = allocator->allocate<AngelScriptController>(*animatorObj, gameObject, *allocator);
-
-				if (animatorObj)
-					animator.SetController(controller);
-			}
-		}
+			AnimatorLoadByteCode(gameObject, animator, header.scriptResource, *allocator);
 	}
 
 
-}   /************************************************************************************************/
+}	/************************************************************************************************/
 
 
 /**********************************************************************

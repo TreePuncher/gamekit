@@ -431,7 +431,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 					} ctx{ selection };
 
 					if(selection)
-						component->Construct(*selection->gameObject, ctx, true);
+						component->Construct(selection->gameObject, ctx);
 				}	break;
 				default:
 					break;
@@ -528,19 +528,19 @@ void EditorInspectorView::UpdatePropertiesViewportObjectInspector()
 
 void EditorInspectorView::UpdateAnimatorObjectInspector()
 {
-	auto selection      = selectionContext.GetSelection<EditorSelectedPrefabObject*>();
-	uint64_t objectID   = selection->ID;
-	auto& gameObject    = selection->gameObject;
+	auto selection		= selectionContext.GetSelection<EditorSelectedPrefabObject*>();
+	uint64_t objectID	= selection->ID;
+	auto& gameObject	= selection->gameObject;
 
-	auto gameObjectPropertyCount = std::distance((*gameObject).begin(), (*gameObject).end());
+	auto gameObjectPropertyCount = std::distance(gameObject.begin(), gameObject.end());
 
-	if (objectID        != selectedObject ||
-		propertyCount   != gameObjectPropertyCount)
+	if (objectID		!= selectedObject ||
+		propertyCount	!= gameObjectPropertyCount)
 	{
-		selectedObject  = objectID;
-		propertyCount   = gameObjectPropertyCount;
+		selectedObject	= objectID;
+		propertyCount	= gameObjectPropertyCount;
 
-		UpdateUI(*gameObject, true);
+		UpdateUI(gameObject, true);
 	}
 }
 
@@ -597,8 +597,8 @@ void EditorInspectorView::ClearPanel()
 
 	propertyItems.push_back(label);
 
-	selectedObject  = -1;
-	propertyCount   = 0;
+	selectedObject	= -1;
+	propertyCount	= 0;
 }
 
 
@@ -714,7 +714,7 @@ void EditorInspectorView::OnUpdate()
 	}   break;
 	};
 
-	timer->start(100);
+	timer->start(33);
 }
 
 

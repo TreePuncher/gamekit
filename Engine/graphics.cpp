@@ -1828,7 +1828,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource, DeviceLayout layout)
+	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource, DeviceLayout layout, DeviceSyncPoint src, DeviceSyncPoint dst)
 	{
 		if(resource != FlexKit::InvalidHandle)
 		{
@@ -1837,8 +1837,8 @@ namespace FlexKit
 			barrier.resource		= resource;
 			barrier.accessBefore	= DASUAV;
 			barrier.accessAfter		= DASUAV;
-			barrier.src				= DeviceSyncPoint::Sync_Compute;
-			barrier.dst				= DeviceSyncPoint::Sync_Compute;
+			barrier.src				= src;
+			barrier.dst				= dst;
 
 			switch (dimension)
 			{
@@ -1865,8 +1865,8 @@ namespace FlexKit
 			Barrier barrier;
 			barrier.accessBefore	= DASUAV;
 			barrier.accessAfter		= DASUAV;
-			barrier.src				= DeviceSyncPoint::Sync_Compute;
-			barrier.dst				= DeviceSyncPoint::Sync_Compute;
+			barrier.src				= src;
+			barrier.dst				= dst;
 			barrier.type			= BarrierType::Global;
 
 			pendingBarriers.push_back(barrier);
@@ -3570,10 +3570,10 @@ namespace FlexKit
 		dispatchDesc.Height = WHD[1];
 		dispatchDesc.Depth  = WHD[2];
 
-		dispatchDesc.CallableShaderTable        = desc.callableShaderTable;
-		dispatchDesc.HitGroupTable              = desc.hitGroupTable;
-		dispatchDesc.MissShaderTable            = desc.missTable;
-		dispatchDesc.RayGenerationShaderRecord  = desc.rayGenerationRecord;
+		dispatchDesc.CallableShaderTable		= desc.callableShaderTable;
+		dispatchDesc.HitGroupTable				= desc.hitGroupTable;
+		dispatchDesc.MissShaderTable			= desc.missTable;
+		dispatchDesc.RayGenerationShaderRecord	= desc.rayGenerationRecord;
 
 		DeviceContext->DispatchRays(&dispatchDesc);
 	}
