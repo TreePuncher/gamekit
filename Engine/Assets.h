@@ -184,6 +184,7 @@ namespace FlexKit
 	{
 		uint32_t    BaseIndex;
 		uint32_t    IndexCount;
+		uint8_t		materialIndex;
 		AABB        aabb;
 	};
 

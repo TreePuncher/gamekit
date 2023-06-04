@@ -21,7 +21,34 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QTableWidget" name="tableWidget"/>
+    <widget class="QTableWidget" name="tableWidget">
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectItems</enum>
+     </property>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <column>
+      <property name="text">
+       <string>Identifier</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>GUID</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Reference Count</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Resource Type</string>
+      </property>
+     </column>
+    </widget>
    </item>
   </layout>
  </widget>

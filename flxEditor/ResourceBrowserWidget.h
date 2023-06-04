@@ -29,7 +29,7 @@ struct IResourceViewer
 	virtual void operator () (FlexKit::Resource_ptr) = 0;
 };
 
-using ResourceViewer_ptr    = std::shared_ptr<IResourceViewer>;
+using ResourceViewer_ptr    = std::unique_ptr<IResourceViewer>;
 using ResourceViewMap       = std::map<ResourceViewID, std::shared_ptr<IResourceViewer>>;
 
 class ResourceBrowserWidget : public QWidget
@@ -46,7 +46,7 @@ public:
 
 	void RemoveSelectedItems();
 
-	static void AddResourceViewer(ResourceViewer_ptr);
+	static void AddResourceViewer(ResourceViewer_ptr&&);
 
 public slots:
 

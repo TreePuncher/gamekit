@@ -34,7 +34,7 @@ struct AnimationInput
 
 
 class AnimatorComponent :
-	public FlexKit::Serializable<AnimatorComponent, FlexKit::EntityComponent, FlexKit::AnimatorComponentID>
+	public FlexKit::Serializable<::AnimatorComponent, FlexKit::EntityComponent, FlexKit::AnimatorComponentID>
 {
 public:
 	AnimatorComponent() :
@@ -54,7 +54,7 @@ public:
 	std::vector<AnimationInput> inputs;
 
 
-	inline static RegisterConstructorHelper<AnimatorComponent, FlexKit::AnimatorComponentID> registered{};
+	inline static RegisterConstructorHelper<::AnimatorComponent, FlexKit::AnimatorComponentID> registered{};
 };
 
 

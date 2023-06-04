@@ -104,7 +104,7 @@ void EditorSelectedPrefabObject::Reset()
 /************************************************************************************************/
 
 
-void RunAngelScriptExceptionHandles(ScriptContext ctx, asIScriptFunction* func, FlexKit::GameObject& gameObject, FlexKit::AnimatorView* animatorView, FlexKit::IAnimatorController* controller)
+void RunAngelScriptExceptionHandles(asIScriptContext* ctx, asIScriptFunction* func, FlexKit::GameObject& gameObject, FlexKit::AnimatorView* animatorView, FlexKit::IAnimatorController* controller)
 {
 	__try
 	{
@@ -133,7 +133,7 @@ void RunAngelScriptExceptionHandles(ScriptContext ctx, asIScriptFunction* func, 
 /************************************************************************************************/
 
 
-void EditorSelectedPrefabObject::Reload(EditorScriptEngine& engine)
+void EditorSelectedPrefabObject::ReloadScript(EditorScriptEngine& engine)
 {
 	auto* animatorView	= static_cast<FlexKit::AnimatorView*>(gameObject.GetView(FlexKit::AnimatorComponentID));
 	auto [obj, ctr]		= animatorView->GetScriptState();

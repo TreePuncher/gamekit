@@ -35,7 +35,7 @@ SharedEngineMemory* InitiateSharedMemory(shared_memory_object& obj)
 	sharedMemory->components	= &sharedMemory->blockAllocator.allocate<SharedComponents>(sharedMemory->blockAllocator);
 	sharedMemory->playerQueue	= InterProcessQueue<InterProcessMessage>{ sharedMemory->blockAllocator };
 	sharedMemory->editorQueue	= InterProcessQueue<InterProcessMessage>{ sharedMemory->blockAllocator };
-	sharedMemory->responders	= FlexKit::Vector<std::unique_ptr<ResponseInterface>>{ sharedMemory->blockAllocator };
+	//sharedMemory->responders	= FlexKit::Vector<std::unique_ptr<ResponseInterface>>{ sharedMemory->blockAllocator };
 
 	return sharedMemory;
 }

@@ -1911,7 +1911,7 @@ namespace FlexKit
 				if (movementVector.magnitudeSq() > 0.05f)
 				{
 					movementVector.normalize();
-					movementVector *= float2(keyStates.x, keyStates.y).Magnitude();
+					movementVector *= float2(keyStates.x, keyStates.y).magnitude();
 
 					velocity += movementVector * acceleration * (float)deltaTime;
 				}

@@ -25,7 +25,7 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 	QWidget		{ parent },
 	renderer	{ IN_renderer },
 	menuBar		{ new QMenuBar{ this } },
-	timer		{ new QTimer(this) },
+	timer		{ new QTimer{ this }},
 	project		{ IN_project }
 {
 	ui.setupUi(this);
@@ -35,11 +35,13 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 	table->setContextMenuPolicy(Qt::CustomContextMenu);
 	table->setUpdatesEnabled(true);
 	table->setColumnCount(4);
+	table->setSelectionBehavior(QAbstractItemView::SelectRows);
 	table->setSelectionMode(QAbstractItemView::SelectionMode::ContiguousSelection);
 
-	connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
 
+	connect(table, &QTableWidget::cellChanged, this, &ResourceBrowserWidget::OnCellChange);
 	connect(timer, &QTimer::timeout, this, &ResourceBrowserWidget::Update);
+
 	timer->setInterval(1000);
 	timer->start();
 
@@ -66,7 +68,7 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 	auto* deleteHotKey = new QShortcut{ QKeySequence::Delete, this };
 
 	connect(deleteHotKey, &QShortcut::activated,
-		[this]()
+		[this]
 		{
 			RemoveSelectedItems();
 		});
@@ -75,7 +77,7 @@ ResourceBrowserWidget::ResourceBrowserWidget(EditorProject& IN_project, EditorRe
 	auto buildAll		= resourceMenu->addAction("Build All");
 
 	connect(buildAll, &QAction::triggered,
-		[&]()
+		[&]
 		{
 			for (auto& projRes : project.resources)
 				projRes->resource->CreateBlob();
@@ -236,9 +238,9 @@ void ResourceBrowserWidget::resizeEvent(QResizeEvent* evt)
 /************************************************************************************************/
 
 
-void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr viewer_ptr)
+void ResourceBrowserWidget::AddResourceViewer(ResourceViewer_ptr&& viewer_ptr)
 {
-	resourceViewers[viewer_ptr->resourceID] = viewer_ptr;
+	resourceViewers[viewer_ptr->resourceID] = std::move(viewer_ptr);
 }
 
 

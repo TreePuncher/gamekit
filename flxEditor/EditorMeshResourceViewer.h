@@ -1,40 +1,50 @@
 #pragma once
-#include "Components.h"
-#include "EditorPrefabObject.h"
-#include "EditorScriptEngine.h"
+#include <ui_EditorMeshResourceForm.h>
+#include <qdialog.h>
+#include <ResourceBrowserWidget.h>
+#include <qmainwindow.h>
 
-class AnimatorComponent;
-class EditorScriptEngine;
+/************************************************************************************************/
 
-struct EditorSelectedPrefabObject
+class EditorMeshResourceViewer : public QWidget
 {
-	FlexKit::GameObject			gameObject;
-	uint64_t					ID			= (uint64_t)-1;
-	uint64_t					resourceID;
+	Q_OBJECT
 
-	::AnimatorComponent*			animator;
-	ScriptResource_ptr				resource;
-	PrefabGameObjectResource_ptr	prefab;
-	FlexKit::LayerHandle			layer;
+public:
+	EditorMeshResourceViewer(FlexKit::Resource_ptr resource, QWidget* parent = nullptr);
 
-	void		Reset();
-	void		ReloadScript(EditorScriptEngine& engine);
+	void Apply();
+	void Cancel();
 
-	uint32_t	AddInputValue(const std::string& name, uint32_t valueType);
+	void UpdateUI();
+	void UpdateSubMeshUI();
+	void UpdateAttributes();
 
-	void		UpdateDefaultValue(uint32_t idx, const std::string& str);
-	std::string	DefaultValueString(uint32_t idx);
+	void ItemChanged(QTableWidgetItem* item);
 
-	std::string	ValueString(uint32_t idx, uint32_t valueType);
-	void		UpdateValue(uint32_t idx, const std::string& value);
-
-	void		Release();
+	FlexKit::Resource_ptr	resource;
+	QDockWidget*			docklet = nullptr;
+	Ui_DockWidget			ui;
 };
+
+
+/************************************************************************************************/
+
+
+struct MeshResourceViewer : public IResourceViewer
+{
+	MeshResourceViewer(QMainWindow* parentWindow);
+
+	void operator () (FlexKit::Resource_ptr resource) override;
+
+	QMainWindow* mainWindow;
+};
+
 
 
 /**********************************************************************
 
-Copyright (c) 2021 - 2022 Robert May
+Copyright (c) 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

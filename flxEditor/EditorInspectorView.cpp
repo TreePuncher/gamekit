@@ -540,7 +540,7 @@ void EditorInspectorView::UpdateAnimatorObjectInspector()
 		selectedObject	= objectID;
 		propertyCount	= gameObjectPropertyCount;
 
-		UpdateUI(gameObject, true);
+		UpdateUI(gameObject);
 	}
 }
 

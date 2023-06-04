@@ -319,7 +319,7 @@ void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThread
 		#endif
 	}
 
-#if 1
+#if 0
 	float4 Colors[] = {
 		float4(0, 0, 0, 0), 
 		float4(1, 0, 0, 0), 

@@ -323,7 +323,7 @@ struct SharedEngineMemory
 
 	InterProcessQueue<InterProcessMessage>					playerQueue;
 	InterProcessQueue<InterProcessMessage>					editorQueue;
-	FlexKit::Vector<std::unique_ptr<ResponseInterface>>		responders;
+	//FlexKit::Vector<std::unique_ptr<ResponseInterface>>		responders;
 
 
 

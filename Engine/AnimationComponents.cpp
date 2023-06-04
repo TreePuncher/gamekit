@@ -1200,8 +1200,6 @@ namespace FlexKit
 			auto preUpdate	= api_obj->GetObjectType()->GetMethodByName("PreUpdate");
 			auto postUpdate	= api_obj->GetObjectType()->GetMethodByName("PostUpdate");
 
-			FK_LOG_INFO("Animator: updating object 0x%llx", obj);
-
 			ctx->Prepare(preUpdate);
 			ctx->SetObject(obj);
 			ctx->SetArgAddress(0, gameObject);
@@ -1252,8 +1250,6 @@ namespace FlexKit
 
 	void AngelScriptController::Release()
 	{
-		FK_LOG_INFO("Animator: Releasing object 0x%llx", obj);
-
 		obj->Release();
 		allocator->release(*this);
 

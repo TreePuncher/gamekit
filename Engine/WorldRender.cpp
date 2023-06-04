@@ -597,7 +597,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const PoolSizes& poolSizes) :
+	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
 			renderSystem				{ IN_renderSystem },
 			enableOcclusionCulling		{ false	},
 
@@ -613,7 +613,7 @@ namespace FlexKit
 
 			streamingEngine				{ IN_streamingEngine },
 
-			lightingEngine				{ renderSystem, *persistent, EGITECHNIQUE::AUTOMATIC },
+			lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
 			transparency				{ renderSystem },

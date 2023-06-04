@@ -699,259 +699,8 @@ SceneBrushEditorComponent::SceneBrushEditorComponent(EditorProject& IN_project, 
 	, viewport	{ IN_viewport } {}
 
 
-struct RemoteComponentUIContext
-{
-	FlexKit::GameObject&		gameObject;
-	SharedEngineMemory*			shared;
-
-	std::shared_ptr<MessageInterface>	lastMessage;
-	uint64_t							lastMessageUUID;
-
-	template<typename ... TY_args>
-	struct ReturnContext
-	{
-		RemoteComponentUIContext& context;
-
-		template<typename FN_TY>
-		RemoteComponentUIContext& Respond(FN_TY responseFn)
-		{
-			struct Response : public ResponseInterface
-			{
-				Response(
-					FlexKit::GameObject&	IN_gameObject,
-					FN_TY					IN_response,
-					uint64_t				IN_messageUUID) :
-						gameObject	{ IN_gameObject		},
-						response	{ IN_response		},
-						messageUUID	{ IN_messageUUID	} {}
-
-				FlexKit::GameObject&	gameObject;
-				FN_TY					response;
-				uint64_t				messageUUID = -1;
-
-				void Respond(EditorMessageInterface& fetchMessage) override
-				{
-					auto fetchTyped = static_cast<FlexKit::GetLastArg<TY_args...>&>(fetchMessage);
-
-					response(gameObject, fetchTyped.data);
-				}
-			};
-
-			auto response =
-				std::make_unique<Response>(
-						context.gameObject,
-						responseFn,
-						context.lastMessageUUID);
-
-			context.shared->responders.emplace_back(std::move(response));
-
-			return context;
-		}
-	};
-
-	template<size_t MessageID>
-	RemoteComponentUIContext& Apply(auto fn)
-	{
-		struct Wrapper : public FlexKit::Serializable<Wrapper, MessageInterface, MessageID>
-		{
-			Wrapper(FlexKit::GameObject* gameObject = nullptr) :
-				gameObjectAddr{ (uint64_t)gameObject } {}
-
-			uint64_t gameObjectAddr;
-			uint64_t messageUUID = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-
-			void Do(EditorPlayerState& playerState) override
-			{
-				decltype(fn) fn2;
-				fn2(*reinterpret_cast<FlexKit::GameObject*>(gameObjectAddr));
-			}
-
-			void Serialize(auto& archive)
-			{
-				archive& gameObjectAddr;
-			}
-		};
-
-		auto temp = std::make_shared<Wrapper>(&gameObject);
-		shared->PushMessageToPlayer(temp);
-
-		lastMessage		= temp;
-		lastMessageUUID	= temp->messageUUID;
-
-		return *this;
-	}
-
-	template<size_t MessageID>
-	auto Retrieve(auto fn)
-	{
-		using FetchResultTY = decltype(fn(std::declval<FlexKit::GameObject&>()));
-
-		struct FetchMessage : public FlexKit::Serializable<FetchMessage, EditorMessageInterface, MessageID>
-		{
-			FetchResultTY data;
-			uint64_t messageUUID;
-
-			void Do(EditorContext& editor) override
-			{
-				auto res = std::ranges::find_if(
-					editor.shared.responders,
-					[&](auto& rhs)
-					{
-						return messageUUID == messageUUID;
-					});
-
-				if (res)
-				{
-					(*res)->Respond(*this);
-					editor.shared.responders.remove_unstable(res);
-				}
-			}
-
-			void Serialize(auto& archive)
-			{
-				archive& data;
-			}
-		};
-
-		struct Wrapper : public FlexKit::Serializable<Wrapper, MessageInterface, MessageID + 1>
-		{
-			Wrapper(FlexKit::GameObject* gameObject = nullptr) :
-				gameObjectAddr{ (uint64_t)gameObject } {}
-
-			uint64_t gameObjectAddr;
-			uint64_t messageUUID		= std::chrono::high_resolution_clock::now().time_since_epoch().count();
-
-			void Do(EditorPlayerState& playerState) override
-			{
-				decltype(fn) fn2;
-				auto res	= fn2(*reinterpret_cast<FlexKit::GameObject*>(gameObjectAddr));
-
-				auto temp			= std::make_shared<FetchMessage>();
-				temp->data			= res;
-				temp->messageUUID	= messageUUID;
-
-				playerState.shared->PushMessageToEditor(temp);
-			}
-
-			void Serialize(auto& archive)
-			{
-				archive& gameObjectAddr;
-				archive& messageUUID;
-			}
-		};
-
-		auto temp = std::make_shared<Wrapper>(&gameObject);
-		shared->PushMessageToPlayer(temp);
-
-		lastMessage		= temp;
-		lastMessageUUID = temp->messageUUID;
-
-		return ReturnContext<FetchResultTY, Wrapper, FetchMessage>{ *this };
-	}
-
-	uint64_t Send(auto&& msg) { return shared->PushMessageToPlayer(msg); }
-	//uint64_t SendResourceBlob(FlexKit::ResourceBlob& blob)
-	//{
-	//	struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
-	//	{
-	//		void Do(EditorPlayerState&) {};
-	//	};
-	//
-	//	return Send(std::make_shared<ResourceBlobMessage>{});
-	//}
-};
-
-
 void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
-	//std::shared_ptr<RemoteComponentUIContext> remoteContext;
-	//
-	//if (remoteObject)
-	//{
-	//	remoteContext = std::make_shared<RemoteComponentUIContext>(gameObject, viewport.GetRenderer().GetSharedMemory());
-	//
-		/*
-		panelCtx.AddButton("Add",
-			[inspector = panelCtx.inspector, remoteContext, &project = this->project]()
-			{
-				auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
-
-				resourcePicker->OnSelection(
-					[inspector, remoteContext](ProjectResource_ptr resource_ptr)
-					{
-						if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
-						{
-							struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
-							{
-								ResourceBlobMessage(FlexKit::GUID_t IN_guid = INVALIDHANDLE) : guid{ IN_guid } {}
-
-								FlexKit::GUID_t guid;
-
-								void Do(EditorPlayerState& state) override
-								{
-									//if (auto mesh = state.GetTriMesh(guid); mesh)
-									//	state.gameObject->AddView<FlexKit::BrushView>(mesh.value());
-									//else
-									//	FK_LOG_ERROR("EditorPlayer: Failed to find asset!");
-								}
-
-								void Serialize(auto& archive)
-								{
-									archive& guid;
-								}
-							};
-
-							remoteContext->Send(std::make_shared<ResourceBlobMessage>(resource_ptr->resource->GetResourceGUID()));
-
-							//remoteContext->SendResourceBlob(blob);
-
-							//auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
-
-							//if (brush.GetMaterial() == FlexKit::InvalidHandle)
-							//{
-							//	auto& materials = FlexKit::MaterialComponent::GetComponent();
-							//	auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
-							//
-							//	brush.SetMaterial(newMaterial);
-							//}
-							//
-							//if (viewport.isVisible())
-							//	viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
-						}
-					});
-
-				resourcePicker->show();
-			});
-
-		panelCtx.AddButton("Test",
-			[&, inspector = panelCtx.inspector, remoteContext]()
-			{
-				auto& brush = static_cast<FlexKit::BrushView&>(component);
-
-				remoteContext->Retrieve<GetCRC32("Test1")>(
-					[](FlexKit::GameObject& gameObject)
-					{
-						auto meshes = FlexKit::GetBrush(gameObject)->meshes;
-
-						struct Data
-						{
-							uint64_t x = 0;
-						} datass{ meshes.size() + 1234u };
-
-						return datass;
-					}).
-					Respond(
-					[&](FlexKit::GameObject&, auto datass)
-					{
-						std::cout << "Test Value " << datass.x << "\n";
-						FK_LOG_INFO("test Value = %u", datass.x);
-					});
-			});
-
-		panelCtx.AddText(fmt::format("Remote Inspection Not Available!"));
-		*/
-	//}
-
 	auto& brush = static_cast<FlexKit::BrushView&>(component);
 
 	panelCtx.PushVerticalLayout("Brush", true);
@@ -962,99 +711,44 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 	panelCtx.PushVerticalLayout();
 
 	auto list = panelCtx.AddList(
-		[&brush]() { return brush.GetMeshes().size(); },
+		[&brush] { return brush.GetMeshes().size(); },
 		[&brush, remoteObject](size_t idx, QListWidgetItem* item)
 		{
-			if(!remoteObject)
-			{
-				auto meshes		= brush.GetMeshes();
-				auto& mesh		= meshes[idx];
-				auto mesh_ptr	= FlexKit::GetMeshResource(mesh);
+			auto meshes		= brush.GetMeshes();
+			auto& mesh		= meshes[idx];
+			auto mesh_ptr	= FlexKit::GetMeshResource(mesh);
 
-				item->setText(mesh_ptr->ID);
-			}
+			item->setText(mesh_ptr->ID);
 		},
-		[&](QListWidget* item)
-		{
-		});
+		[&](QListWidget* item){});
 
 	panelCtx.PushVerticalLayout();
 
 	panelCtx.AddButton("Add",
-		[&gameObject, &brush, inspector = panelCtx.inspector, remoteObject, &project = this->project, &viewport = this->viewport]()
+		[&gameObject, &brush, inspector = panelCtx.inspector, remoteObject, &project = this->project, &viewport = this->viewport, list]()
 		{
 			auto resourcePicker = new EditorResourcePickerDialog(MeshResourceTypeID, project);
 
 			resourcePicker->OnSelection(
-				[&, inspector = inspector](ProjectResource_ptr resource_ptr)
+				[&, inspector = inspector, list](ProjectResource_ptr resource_ptr)
 				{
 					if (resource_ptr->resource->GetResourceTypeID() == MeshResourceTypeID)
 					{
-						/*
-						if (remoteObject)
+						auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
+						brush.PushMesh(trimesh);
+
+						if (brush.GetMaterial() == FlexKit::InvalidHandle)
 						{
-							struct ResourceBlobMessage : public FlexKit::Serializable<ResourceBlobMessage, MessageInterface, GetCRC32("ResourceBlobMessage")>
-							{
-								ResourceBlobMessage(FlexKit::GUID_t IN_guid = INVALIDHANDLE) : guid{ IN_guid } {}
+							auto& materials		= FlexKit::MaterialComponent::GetComponent();
+							auto newMaterial	= materials.CreateMaterial(viewport.gbufferPass);
 
-								FlexKit::GUID_t guid;
-
-								void Do(EditorPlayerState& state) override
-								{
-									if (auto mesh = FlexKit::GetMesh(guid); mesh != INVALIDHANDLE)
-									{
-										static auto defaultMaterial = 
-											[]
-											{
-												auto& materials = FlexKit::MaterialComponent::GetComponent();
-												auto material = materials.CreateMaterial();
-
-												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) });
-												materials.Add2Pass(material, FlexKit::PassHandle{ GetCRCGUID(SHADOWMAPPASS) });
-												materials.AddRef(material);
-
-												return material;
-											}();
-
-										if (!state.gameObject->hasView(FlexKit::MaterialComponentID))
-											state.gameObject->AddView<FlexKit::MaterialView>(defaultMaterial);
-
-										if (!state.gameObject->hasView(FlexKit::BrushComponentID))
-											state.gameObject->AddView<FlexKit::BrushView>(mesh).SetMaterial(FlexKit::GetMaterialHandle(*state.gameObject));
-
-										auto& brushView = *state.gameObject->GetView<FlexKit::BrushView>();
-										auto& meshes	= brushView.GetBrush().meshes;
-										meshes.push_back(mesh);
-									}
-									else
-										FK_LOG_ERROR("EditorPlayer: Failed to find asset!");
-								}
-
-								void Serialize(auto& archive)
-								{
-									archive& guid;
-								}
-							};
-
-							remoteContext->Send(std::make_shared<ResourceBlobMessage>(resource_ptr->resource->GetResourceGUID()));
+							brush.SetMaterial(newMaterial);
 						}
-						else
-						*/
-						{
-							auto trimesh = viewport.LoadTriMeshResource(resource_ptr);
-							brush.PushMesh(trimesh);
 
-							if (brush.GetMaterial() == FlexKit::InvalidHandle)
-							{
-								auto& materials = FlexKit::MaterialComponent::GetComponent();
-								auto newMaterial = materials.CreateMaterial(viewport.gbufferPass);
+						if (viewport.isVisible())
+							viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
 
-								brush.SetMaterial(newMaterial);
-							}
-
-							if (viewport.isVisible())
-								viewport.GetScene()->scene.AddGameObject(gameObject, FlexKit::GetSceneNode(gameObject));
-						}
+						list->update();
 					}
 				});
 

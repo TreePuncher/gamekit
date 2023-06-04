@@ -88,8 +88,8 @@ Forward_VS_OUT Forward_VS(Vertex In)
 	Forward_VS_OUT Out;
 	Out.depth		= -POS_VS.z / MaxZ;
 	Out.POS			= mul(PV, float4(POS_WS, 1));
-	Out.Normal		= normalize(mul(WT, float4(-In.Normal, 0.0f)));
-	Out.Tangent		= normalize(mul(WT, float4(-In.Tangent, 0.0f)));
+	Out.Normal		= normalize(mul(WT, float4(In.Normal, 0.0f)));
+	Out.Tangent		= normalize(mul(WT, float4(In.Tangent, 0.0f)));
 	Out.Bitangent	= cross(Out.Tangent, Out.Normal);
 	Out.UV			= In.UV;
 

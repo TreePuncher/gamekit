@@ -4,8 +4,10 @@
 #include "EditorApplication.h"
 #include "EditorColliderComponent.h"
 #include "EditorGameplayComponents.hpp"
+#include "EditorMeshResourceViewer.h"
 #include "EditorTextureResources.h"
 #include "EditorTextureImporter.h"
+
 #include "gltfImport.h"
 #include "MaterialResource.h"
 #include "TextureUtilities.h"
@@ -233,8 +235,9 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	
 	mainWindow.connect(quitAction, &QAction::triggered, &mainWindow, &EditorMainWindow::Close, Qt::QueuedConnection);
 
-	ResourceBrowserWidget::AddResourceViewer(std::make_shared<TextureResourceViewer>(editorRenderer, (QWidget*)&mainWindow));
-	ResourceBrowserWidget::AddResourceViewer(std::make_shared<SceneResourceViewer>(editorRenderer, project, mainWindow));
+	ResourceBrowserWidget::AddResourceViewer(std::make_unique<TextureResourceViewer>(editorRenderer, (QWidget*)&mainWindow));
+	ResourceBrowserWidget::AddResourceViewer(std::make_unique<MeshResourceViewer>(&mainWindow));
+	ResourceBrowserWidget::AddResourceViewer(std::make_unique<SceneResourceViewer>(editorRenderer, project, mainWindow));
 
 	// connect script gadgets
 	for (auto& gadget : scripts->GetGadgets())
