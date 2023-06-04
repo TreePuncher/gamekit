@@ -71,6 +71,9 @@
     <QtMoc Include="EditorPrefabRenderer.h">
       <Filter>Headers</Filter>
     </QtMoc>
+    <QtMoc Include="EditorMeshResourceViewer.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -224,6 +227,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorPrefabRenderer.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorMeshResourceViewer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
@@ -384,6 +390,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorTextureImport.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorMeshResourceForm.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

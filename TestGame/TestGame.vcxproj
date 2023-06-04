@@ -47,6 +47,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
+  <ImportGroup Label="Shared">
+    <Import Project="..\Engine\Engine.vcxitems" Label="Shared" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -155,6 +158,8 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <EnableModules>false</EnableModules>
+      <BuildStlModules>false</BuildStlModules>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -183,7 +188,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="playgroundmode.hpp" />
-    <ClInclude Include="SoundComponents.h" />
+    <ClInclude Include="SoundComponent.h" />
     <ClInclude Include="ThirdPersonUtilities.h" />
   </ItemGroup>
   <ItemGroup>

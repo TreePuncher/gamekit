@@ -83,8 +83,8 @@ public:
     static std::optional<FlexKit::Blob> GetByteCode(const std::string& moduleName);
     static std::optional<FlexKit::Blob> CompileToBlob(const std::string& string, ErrorCallbackFN errorCallback = [](int, int, const char*, const char*, int) {});
 
-    ScriptContext   CreateContext();
-    void            ReleaseContext(ScriptContext);
+    asIScriptContext*   CreateContext();
+    void                ReleaseContext(asIScriptContext*);
 
     asIScriptEngine*    GetScriptEngine()   { return FlexKit::GetScriptEngine(); }
     const std::string&  GetTextBuffer()     { return outputTextBuffer; }
@@ -112,10 +112,10 @@ protected:
 };
 
 
-bool    RunScriptFunction   (ScriptContext, Module, const std::string_view view);
-void*   GetReturnObject     (ScriptContext);
-void    SetArg              (ScriptContext ctx, uint32_t idx, void* obj);
-void    SetArgAddress       (ScriptContext ctx, uint32_t idx, void* obj);
+bool    RunScriptFunction   (asIScriptContext*, Module, const std::string_view view);
+void*   GetReturnObject     (asIScriptContext*);
+void    SetArg              (asIScriptContext* ctx, uint32_t idx, void* obj);
+void    SetArgAddress       (asIScriptContext* ctx, uint32_t idx, void* obj);
 
 
 /**********************************************************************

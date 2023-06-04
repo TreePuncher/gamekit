@@ -113,20 +113,18 @@ namespace FlexKit
 		else return NAN;
 	}
 
-	/*
-	float2* AnimatorGetFloat2_AS(AnimatorView* view, uint32_t idx)
+	float2 AnimatorGetFloat2_AS(AnimatorView* view, uint32_t idx)
 	{
 		if (auto res = view->GetInputValue(idx); res.has_value())
 		{
-			auto outValue       = ConstructFloat2();
+			auto outValue       = float2{};
 			auto animatorValue  = res.value();
 
-			*outValue = animatorValue->xy;
+			outValue = animatorValue->xy;
 			return outValue;
 		}
-		else return nullptr;
+		else return {};
 	}
-	*/
 
 	float3 AnimatorGetFloat3_AS(AnimatorView* view, uint32_t idx)
 	{
@@ -465,11 +463,11 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectType("Animator", 0, asOBJ_REF | asOBJ_NOCOUNT);																					FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "uint ValueType(uint)",				asFUNCTION(AnimatorViewGetInputType_AS), asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat(uint, float)",			asFUNCTION(AnimatorSetFloat1_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
-		//res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat2(idx, float2)",		asFUNCTION(AnimatorSetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat2(uint, float2)",		asFUNCTION(AnimatorSetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat3(uint, float3 &in)",	asFUNCTION(AnimatorSetFloat3_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void SetFloat4(uint, float4 &in)",	asFUNCTION(AnimatorSetFloat4_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "float  GetFloat(uint)",				asFUNCTION(AnimatorGetFloat1_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
-		//res = scriptEngine->RegisterObjectMethod("Animator", "float2@ GetFloat2(idx)",			asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "float2 GetFloat2(uint)",				asFUNCTION(AnimatorGetFloat2_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "float3 GetFloat3(uint)",				asFUNCTION(AnimatorGetFloat3_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "float4 GetFloat4(uint)",				asFUNCTION(AnimatorGetFloat4_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 
@@ -670,6 +668,39 @@ namespace FlexKit
 
 		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opMul(const uint32)", asFUNCTION(uint3DivScaler), asCALL_CDECL_OBJFIRST);																	FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectMethod("uint3", "uint3 opDiv(const uint32)", asFUNCTION(uint3MulScaler), asCALL_CDECL_OBJFIRST);
+
+
+		/************************************************************************************************/
+
+
+		res = scriptEngine->RegisterObjectType("float2", sizeof(float2), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opAssign(float2)",				asMETHODPR(float2, operator =, (const float2&) noexcept, float2&), asCALL_THISCALL);			FK_ASSERT(res >= 0);
+
+		res = scriptEngine->RegisterObjectMethod("float2", "float2 opAdd(const float2& in)",		asMETHODPR(float2, operator+,	(const float2&) const noexcept, float2),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2 opSub(const float2& in)",		asMETHODPR(float2, operator -,	(const float2&) const noexcept, float2),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2 opMul(const float2& in)",		asMETHODPR(float2, operator *,	(const float2&) const noexcept, float2),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2 opDiv(const float2& in)",		asMETHODPR(float2, operator /,	(const float2&) const noexcept, float2),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opAddAssign(const float2& in)",	asMETHODPR(float2, operator +=,	(const float2&)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opAddAssign(float)",			asMETHODPR(float2, operator +=,	(const float)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opSubAssign(const float2& in)",	asMETHODPR(float2, operator -=,	(const float2&)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opSubAssign(float)",			asMETHODPR(float2, operator -=,	(const float)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opMulAssign(const float2& in)",	asMETHODPR(float2, operator *=,	(const float)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opMulAssign(float)",			asMETHODPR(float2, operator *=,	(const float)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opDivAssign(const float2& in)",	asMETHODPR(float2, operator /=,	(const float2&)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2& opDivAssign(float)",			asMETHODPR(float2, operator /=,	(const float)	noexcept,	float2&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("float2", "float	Magnitude()",			asMETHOD(float2, magnitude),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float	MagnitudeSq()",			asMETHOD(float2, magnitudeSq),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2&	Abs()",					asMETHOD(float2, abs),			asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "bool	isNan()",				asMETHOD(float2, isNaN),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "void	Normalize()",			asMETHOD(float2, normalize),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float2", "float2&	Normal()",				asMETHOD(float2, normal),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterGlobalFunction("bool Compare(float2, float2, float)",	asFUNCTION(float2::Compare),	asCALL_CDECL);															FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectProperty("float2", "float x", asOFFSET(float2, x));																										FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectProperty("float2", "float y", asOFFSET(float2, y));																										FK_ASSERT(res >= 0);
 
 
 		/************************************************************************************************/

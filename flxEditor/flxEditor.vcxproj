@@ -257,6 +257,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="EditorMeshResourceViewer.cpp" />
     <ClCompile Include="EditorPlayer.cpp" />
     <ClCompile Include="EditorSceneEntityComponents.cpp" />
     <ClCompile Include="EditorSelectedPrefabObject.cpp" />
@@ -269,6 +270,7 @@
       <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">%(Filename).moc</QtMocFileName>
     </ClCompile>
     <QtMoc Include="EditorSelectObjectDialog.h" />
+    <QtMoc Include="EditorMeshResourceViewer.h" />
     <ClInclude Include="EditorPlayer.h" />
     <ClInclude Include="EditorSceneEntityComponents.h" />
     <ClInclude Include="EditorTextureImporter.h" />
@@ -437,6 +439,7 @@
     <QtUic Include="EditorAnimationInputTab.ui" />
     <QtUic Include="EditorCodeEditor.ui" />
     <QtUic Include="EditorImportGLTF.ui" />
+    <QtUic Include="EditorMeshResourceForm.ui" />
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />
     <QtUic Include="EditorSelectObjectDialog.ui" />

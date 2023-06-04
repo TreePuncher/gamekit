@@ -252,72 +252,105 @@ namespace FlexKit
 		}
 
 
-		inline bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
+		bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
 
-		inline float&   operator[] (const size_t i) noexcept        { FK_ASSERT(i < 2); return i ? y : x; }
-		inline float    operator[] (const size_t i) const noexcept  { FK_ASSERT(i < 2); return i ? y : x; }
+		float&   operator[] (const size_t i) noexcept        { FK_ASSERT(i < 2); return i ? y : x; }
+		float    operator[] (const size_t i) const noexcept  { FK_ASSERT(i < 2); return i ? y : x; }
 
-		inline float2 operator + ( const float2& a ) const noexcept { return float2( this->x + a.x,	this->y + a.y );		}
-		inline float2 operator + ( const float   a ) const noexcept { return float2( x + a, y + a );						}
-		inline float2 operator - ( const float2& a ) const noexcept { return float2( x - a.x, y - a.y );					}
-		inline float2 operator - ( const float   a ) const noexcept { return float2( this->x - a,	this->y - a );			}
-		inline float2 operator * ( const float2& a ) const noexcept { return float2( this->x * a.x,	this->y * a.y );		}
-		inline float2 operator * ( const float   a ) const noexcept { return float2( this->x * a,	this->y * a );			}
-		inline float2 operator / ( const float2& a ) const noexcept { return float2( this->x / a.x,	this->y / a.y );		}
-		inline float2 operator / ( const float   a ) const noexcept { return float2( this->x / a,	this->y / a );			}
-		inline float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
+		float2 operator + ( const float2& a ) const noexcept { return float2( x + a.x,	y + a.y );						}
+		float2 operator + ( const float   a ) const noexcept { return float2( x + a, y + a );							}
+		float2 operator - ( const float2& a ) const noexcept { return float2( x - a.x, y - a.y );						}
+		float2 operator - ( const float   a ) const noexcept { return float2( x - a,	y - a );						}
+		float2 operator * ( const float2& a ) const noexcept { return float2( x * a.x,	y * a.y );						}
+		float2 operator * ( const float   a ) const noexcept { return float2( x * a,	y * a );						}
+		float2 operator / ( const float2& a ) const noexcept { return float2( x / a.x,	y / a.y );						}
+		float2 operator / ( const float   a ) const noexcept { return float2( x / a,	y / a );						}
+		float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
-		inline float2& operator = (const float2& a) noexcept = default;// { x = a.x; y = a.y; return *this; }
+		float2& operator = (const float2& a) noexcept = default;// { x = a.x; y = a.y; return *this; }
 
-		inline float2 operator *= (const float2& a) noexcept
+		float2& operator *= (const float2& v) noexcept
 		{ 
-			*this = *this * a;
+			*this = *this * v;
 			return *this; 
 		}
 
+		float2& operator *= (const float s) noexcept
+		{
+			*this = *this * s;
+			return *this;
+		}
 
-		inline float2&	operator -= (const float2& rhs) noexcept
+		float2& operator /= (const float2& v) noexcept
+		{
+			*this = *this / v;
+			return *this;
+		}
+
+		float2& operator /= (const float s) noexcept
+		{
+			*this = *this / s;
+			return *this;
+		}
+
+		float2&	operator -= (const float2& rhs) noexcept
+		{
+			*this = *this - rhs;
+			return *this;
+		}
+
+		float2& operator -= (const float rhs) noexcept
 		{
 			*this = *this - rhs;
 			return *this;
 		}
 
 
-		inline float2&	operator += (const float2& rhs) noexcept
+		float2&	operator += (const float2& rhs) noexcept
 		{
 			*this = *this + rhs;
 			return *this;
 		}
 
 
-		inline bool operator > (const float2& rhs) const noexcept
+		float2& operator += (const float rhs) noexcept
+		{
+			*this = *this + rhs;
+			return *this;
+		}
+
+
+		bool operator > (const float2& rhs) const noexcept
 		{
 			return (x > rhs.x) && (y > rhs.y);
 		}
 
 
-		inline bool operator < (const float2& rhs) const noexcept
+		bool operator < (const float2& rhs) const noexcept
 		{
 			auto temp = !(*this > rhs);
 			return temp;
 		}
 
 
-		inline void Add( const float2& lhs, const float2& rhs ) noexcept
+		void Add( const float2& lhs, const float2& rhs ) noexcept
 		{
 			x = lhs.x + rhs.x;
 			y = lhs.y + rhs.y;
 		}
 
-		inline float2 floor() const noexcept
+
+		float2 floor() const noexcept
 		{
 			return { ::floorf(x), ::floorf(y) };
 		}
 
-		inline float2 ceil() const noexcept
+
+		float2 ceil() const noexcept
 		{
 			return { ::ceilf(x), ::ceilf(y) };
 		}
+
 
 		operator float* () noexcept { return XY; }
 
@@ -325,7 +358,43 @@ namespace FlexKit
 		float Product() const noexcept { return x * y; }
 		float Sum()	    const noexcept { return x + y; }
 
-		float Magnitude() const noexcept
+
+		bool isNaN() const noexcept
+		{
+			return std::isnan(x) || std::isnan(y);
+		}
+
+
+		float2 abs() const noexcept
+		{
+			return  float2{ std::abs(x), std::abs(y) };
+		}
+
+
+		static bool Compare(float2 lhs, float2 rhs, float e) noexcept
+		{
+			return (lhs - rhs).magnitudeSq() <= (e * e);
+		}
+
+
+		float2& normal() noexcept
+		{
+			const float m = magnitude();
+			x /= m;
+			y /= m;
+
+			return *this;
+		}
+
+		float2 normalize() const noexcept
+		{
+			const float		m		= magnitude();
+			const float2	self	= *this;
+
+			return self / m;
+		}
+
+		float magnitude() const noexcept
 		{ 
 			const auto V_2 = (*this * *this);
 			return  sqrt(V_2.Sum());
@@ -334,6 +403,11 @@ namespace FlexKit
 		float magnitudeSq() const noexcept
 		{
 			return (*this * *this).Sum();
+		}
+
+		static float2 Zero() noexcept
+		{
+			return { 0, 0 };
 		}
 
 		struct

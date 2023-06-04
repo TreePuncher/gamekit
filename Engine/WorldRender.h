@@ -308,10 +308,15 @@ namespace FlexKit
 		size_t UAVTexturePoolByteSize	= 512	* MEGABYTE;
 	};
 
+	struct WorldRenderOptions
+	{
+		EGITECHNIQUE GI = EGITECHNIQUE::DISABLE;
+	};
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const PoolSizes& poolSizes = PoolSizes{});
+		WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const WorldRenderOptions& options = {}, const PoolSizes& poolSizes = PoolSizes{});
 		~WorldRender();
 
 		void HandleTextures();

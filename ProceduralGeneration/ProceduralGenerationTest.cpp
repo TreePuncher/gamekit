@@ -17,7 +17,7 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState		{ IN_framework },
 
 	animators				{ framework.core.GetBlockMemory() },
-	brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+	brushes					{ framework.core.GetBlockMemory() },
 	cameras					{ framework.core.GetBlockMemory() },
 	sceneNodes				{ },
 	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },

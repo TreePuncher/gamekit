@@ -6,6 +6,7 @@
 #include "intersection.h"
 
 #include <iostream>
+#include <ranges>
 
 #if USING(TOOTLE)
 #include <tootlelib.h>
@@ -21,7 +22,8 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
-
+	using std::views::zip;
+	using std::views::iota;
 	using FlexKit::MeshUtilityFunctions::IndexList;
 	using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
 
@@ -192,7 +194,7 @@ namespace FlexKit
 		dirtyFlag = false;
 	}
 
-	void MeshResource::UnLoad()
+	void MeshResource::Unload()
 	{
 		data.release();
 
@@ -218,6 +220,15 @@ namespace FlexKit
 
 		fclose(F);
 	}
+
+	MeshResource::MeshResourceData& MeshResource::Object()
+	{
+		if (!data)
+			Load();
+
+		return *data;
+	}
+
 
 
 	/************************************************************************************************/
@@ -258,9 +269,10 @@ namespace FlexKit
 
 			static_vector<FlexKit::SubMesh, 32> subMeshes;
 			
-			for(auto& subMesh : lod.subMeshs)
+			for(auto&& [idx, subMesh]: zip(iota(0), lod.subMeshs))
 			{
 				SubMesh newSubMesh;
+				newSubMesh.materialIndex = idx;
 
 				auto kdbTree = std::make_shared<MeshKDBTree>(subMesh.tokens);
 				auto submesh = CreateOptimizedMesh(*kdbTree);

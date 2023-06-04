@@ -31,7 +31,7 @@ public:
 		FrameworkState{ IN_framework },
 
 		animators				{ framework.core.GetBlockMemory() },
-		brushes					{ framework.core.GetBlockMemory(), framework.GetRenderSystem() },
+		brushes					{ framework.core.GetBlockMemory() },
 		cameras					{ framework.core.GetBlockMemory() },
 		sceneNodes				{ },
 		materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
@@ -261,7 +261,7 @@ public:
 			core.GetTempMemoryMT()
 		);
 		
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
 
 		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 

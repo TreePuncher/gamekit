@@ -16,6 +16,7 @@ class EditorScriptEngine;
 class EditorSelectedPrefabObject;
 class QMenuBar;
 class QTimer;
+class ProjectResource;
 class SelectionContext;
 
 namespace FlexKit
@@ -37,9 +38,15 @@ public:
 
 	FlexKit::LayerHandle GetPhysicsLayer() const;
 
+	void CreateAnimatedPrefab(ProjectResource* mesh, ProjectResource* skeleton);
+	void CreatePrefab();
+
+	void Load(ProjectResource*);
+	void Save();
+
 private:
-	FlexKit::Animation*		LoadAnimation		(std::string&, bool);
-	void					ReleaseAnimation	(FlexKit::Animation*);
+	FlexKit::Animation*		ASAPI_LoadAnimation		(std::string&, bool);
+	void					ASAPI_ReleaseAnimation	(FlexKit::Animation*);
 
 	Ui::EditorAnimationEditor	ui;
 	SelectionContext&			globalSelection;
@@ -56,7 +63,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2021 - 2022 Robert May
+Copyright (c) 2021 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -175,6 +175,7 @@ namespace FlexKit
 
 		void MarkDirty() { dirtyFlag = true; }
 
+
 		/*
 		std::optional<VertexBufferView*> GetBuffer(VERTEXBUFFER_TYPE type) const
 		{
@@ -271,8 +272,9 @@ namespace FlexKit
 		}
 
 		void Load();
-		void UnLoad();
+		void Unload();
 		void Save();
+
 
 		struct  RInfo
 		{
@@ -340,6 +342,8 @@ namespace FlexKit
 				ar& morphTargetBuffers;
 			}
 		};
+
+		MeshResourceData& Object();
 
 		bool dirtyFlag = true;
 		std::unique_ptr<MeshResourceData> data;

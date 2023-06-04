@@ -563,7 +563,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		}
 	}
 
-#if 1
+#if 0
 	static float4 Colors[] = {
 		float4(0.5f, 0.5f, 0.5f, 0), 
 		float4(1, 0, 0, 0), 
@@ -599,7 +599,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return depth;
 		//return float4(N / 2.0f + 0.5f);
 	//return float4(0, 0, 0, 0);
-	//return Albedo * Albedo;
+	return Albedo * Albedo;
 	//return float4(positionWS, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);
@@ -608,7 +608,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	//return float4(N.xyz, 1);
 	//return pow(float4(roughness, metallic, 0, 0), 2.2f);
 	//return float4(N_WS, 1);
-	return float4(N / 2 + 0.5f, 1);
+	//return float4(N / 2 + 0.5f, 1);
 	// 
 	//return float4(N_WS.xyz / 2 + 0.5f, 1);// *smoothstep(0.2, 1.0f, (float(localLightCount) / float(lightCount)));
 	//return color * (float(localLightCount) / float(lightCount));

@@ -57,7 +57,7 @@
     <ClInclude Include="ThirdPersonUtilities.h">
       <Filter>game</Filter>
     </ClInclude>
-    <ClInclude Include="SoundComponents.h">
+    <ClInclude Include="SoundComponent.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="Player.h">

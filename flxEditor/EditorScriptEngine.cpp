@@ -393,7 +393,7 @@ std::optional<FlexKit::Blob> EditorScriptEngine::CompileToBlob(const std::string
 /************************************************************************************************/
 
 
-ScriptContext EditorScriptEngine::CreateContext()
+asIScriptContext* EditorScriptEngine::CreateContext()
 {
 	return FlexKit::GetContext();
 }
@@ -402,7 +402,7 @@ ScriptContext EditorScriptEngine::CreateContext()
 /************************************************************************************************/
 
 
-void EditorScriptEngine::ReleaseContext(ScriptContext context)
+void EditorScriptEngine::ReleaseContext(asIScriptContext* context)
 {
 	FlexKit::ReleaseContext(context);
 }
@@ -486,7 +486,7 @@ void EditorScriptEngine::RunStdString(const std::string& string, asIScriptContex
 /************************************************************************************************/
 
 
-bool RunScriptFunction(ScriptContext ctx, Module module, const std::string_view view)
+bool RunScriptFunction(asIScriptContext* ctx, Module module, const std::string_view view)
 {
 	if (!module)
 		return false;
@@ -507,7 +507,7 @@ bool RunScriptFunction(ScriptContext ctx, Module module, const std::string_view 
 /************************************************************************************************/
 
 
-void* GetReturnObject(ScriptContext ctx)
+void* GetReturnObject(asIScriptContext* ctx)
 {
 	return ctx->GetReturnObject();
 }
@@ -516,7 +516,7 @@ void* GetReturnObject(ScriptContext ctx)
 /************************************************************************************************/
 
 
-void SetArg(ScriptContext ctx, uint32_t idx, void* obj)
+void SetArg(asIScriptContext* ctx, uint32_t idx, void* obj)
 {
 	ctx->SetArgObject(idx, obj);
 }
@@ -525,7 +525,7 @@ void SetArg(ScriptContext ctx, uint32_t idx, void* obj)
 /************************************************************************************************/
 
 
-void SetArgAddress(ScriptContext ctx, uint32_t idx, void* obj)
+void SetArgAddress(asIScriptContext* ctx, uint32_t idx, void* obj)
 {
 	ctx->SetArgAddress(idx, obj);
 }
