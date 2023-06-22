@@ -7,6 +7,7 @@
 #include <angelscript.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
 #include <angelscript/scriptany/scriptany.h>
+#include <angelscript/scripthelper/scripthelper.h>
 #include <angelscript/scriptarray/scriptarray.h>
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptmath/scriptmath.h>
@@ -17,6 +18,65 @@ namespace FlexKit
 
 
 	iAllocator* allocator;
+
+
+	/************************************************************************************************/
+
+
+	uint32_t	AngelScriptEvent::GetEventType()
+	{
+		return eventType;
+	}
+
+	uint32_t	AngelScriptEvent::GetFieldCount()
+	{
+		return fields.size();
+	}
+
+	template<typename ... TY_ARGS>
+	struct Overloaded : TY_ARGS...
+	{
+		using TY_ARGS::operator () ...;
+	};
+
+	uint32_t AngelScriptEvent::GetUintField(uint32_t idx)
+	{
+		return std::visit(
+			Overloaded
+			{
+				[](uint32_t& val)
+				{
+					return val;
+				},
+				[](auto& __) -> uint32_t
+				{
+					return -1;
+				},
+			},
+			fields[idx]);
+	}
+
+	float AngelScriptEvent::GetFloatField(uint32_t idx)
+	{
+		return std::visit(
+			Overloaded
+			{
+				[](float& val)
+				{
+					return val;
+				},
+				[](auto& __) -> float
+				{
+					return NAN;
+				},
+			},
+			fields[idx]);
+	}
+
+	void AngelScriptEvent::Clear()
+	{
+		fields.clear();
+	}
 
 
 	/************************************************************************************************/
@@ -344,6 +404,7 @@ namespace FlexKit
 		RegisterStdStringUtils(scriptEngine);
 		RegisterScriptMath(scriptEngine);
 		RegisterScriptMathComplex(scriptEngine);
+		RegisterExceptionRoutines(scriptEngine);
 
 
 		/************************************************************************************************/
@@ -367,19 +428,19 @@ namespace FlexKit
 
 		res = scriptEngine->RegisterEnum("ComponentID");
 
-		res = scriptEngine->RegisterEnumValue("ComponentID", "AnimatorComponentID",           AnimatorComponentID);           FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "BindPointComponentID",          BindPointComponentID);          FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "BrushComponentID",              BrushComponentID);              FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "CameraComponentID",             CameraComponentID);             FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKComponentID",             FABRIKComponentID);             FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKTargetComponentID",       FABRIKTargetComponentID);       FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "MaterialComponentID",           MaterialComponentID);           FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "PointLightShadowMapID",         PointLightShadowMapID);         FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "LightComponentID",         LightComponentID);         FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "SceneVisibilityComponentID",    SceneVisibilityComponentID);    FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "SkeletonComponentID",           SkeletonComponentID);           FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "StringComponentID",             StringComponentID);             FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterEnumValue("ComponentID", "TransformComponentID",          TransformComponentID);          FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "AnimatorComponentID",				AnimatorComponentID);			FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "BindPointComponentID",			BindPointComponentID);			FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "BrushComponentID",				BrushComponentID);				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "CameraComponentID",				CameraComponentID);				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKComponentID",				FABRIKComponentID);				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "FABRIKTargetComponentID",			FABRIKTargetComponentID);		FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "MaterialComponentID",				MaterialComponentID);			FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "PointLightShadowMapID",			PointLightShadowMapID);			FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "LightComponentID",				LightComponentID);				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "SceneVisibilityComponentID",		SceneVisibilityComponentID);	FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "SkeletonComponentID",				SkeletonComponentID);			FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "StringComponentID",				StringComponentID);				FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterEnumValue("ComponentID", "TransformComponentID",			TransformComponentID);			FK_ASSERT(res >= 0);
 
 
 		/************************************************************************************************/
@@ -430,11 +491,11 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);                                                                              FK_ASSERT(res >= 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",									asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",									asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "uint	 CreatePose(uint poseID, AllocatorHandle@)",	asFUNCTION(PoseStateCreatePose), asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindJoint(string)",						asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST); FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectType("PoseState", 0, asOBJ_REF | asOBJ_NOCOUNT);																						FK_ASSERT(res >= 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "int GetPoseCount()",									asFUNCTION(PoseStatePoseCount), asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "Pose@ GetPose(int)",									asFUNCTION(PoseStateGetPose),   asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "uint	 CreatePose(uint poseID, AllocatorHandle@)",	asFUNCTION(PoseStateCreatePose), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("PoseState", "JointHandle FindJoint(string)",						asFUNCTION(GetBone),            asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/
@@ -491,18 +552,25 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectMethod("GameObject", "Quaternion		GetOrientation()",		asFUNCTION(GetOrientation_AS),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("GameObject", "float3			GetScale()",			asFUNCTION(GetScale_AS),			asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetWorldPosition(float3& in)",		asFUNCTION(SetWorldPosition_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetLocalPosition(float3& in)",		asFUNCTION(SetLocalPosition_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetOrientation(Quaternion& in)",	asFUNCTION(SetOrientation_AS), asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetScale(float3& in)",				asFUNCTION(SetScale_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetWorldPosition(float3& in)",		asFUNCTION(SetWorldPosition_AS),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetLocalPosition(float3& in)",		asFUNCTION(SetLocalPosition_AS),	asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetOrientation(Quaternion& in)",	asFUNCTION(SetOrientation_AS),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("GameObject", "void SetScale(float3& in)",				asFUNCTION(SetScale_AS),			asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/
 
 
+		res = scriptEngine->RegisterObjectType("AnimationEvent", 0, asOBJ_REF | asOBJ_NOCOUNT);																					FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("AnimationEvent", "uint GetEventType()",		asMETHOD(AngelScriptEvent, GetEventType),	asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("AnimationEvent", "uint GetFieldCount()",		asMETHOD(AngelScriptEvent, GetFieldCount),	asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("AnimationEvent", "uint GetUintField(uint)",	asMETHOD(AngelScriptEvent, GetUintField),	asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("AnimationEvent", "float GetFloatField(uint)",	asMETHOD(AngelScriptEvent, GetFloatField),	asCALL_THISCALL);			FK_ASSERT(res > 0);
+
 		res = scriptEngine->RegisterInterface("AnimatorInterface");																									FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PreUpdate(GameObject@ object, double dt)");											FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void PostUpdate(GameObject@ object, double dt)");											FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterInterfaceMethod("AnimatorInterface", "void HandleEvent(GameObject@ object, AnimationEvent&)");											FK_ASSERT(res > 0);
 
 
 	}   /************************************************************************************************/

@@ -111,7 +111,7 @@ namespace FlexKit
 	struct BrushAnimationState
 	{
 		static_vector<AnimationStateEntry>	Clips; // Animations in
-        PoseState*					        Target;
+		PoseState*					        Target;
 	};
 
 
@@ -237,7 +237,7 @@ namespace FlexKit
 	{
 		AnimationStateMachine*	ASM;
 		BlendTree*				BlendTree;
-        PoseState*		        Target;
+		PoseState*		        Target;
 	};
 
 
@@ -278,9 +278,6 @@ namespace FlexKit
 	FLEXKITAPI void ASDisableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
 
 
-	FLEXKITAPI void UpdateASM(double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, Scene* Scene);
-
-
 	/************************************************************************************************/
 
 
@@ -301,8 +298,8 @@ namespace FlexKit
 			return;
 
 		if (J != InvalidHandle)
-        {
-            const float4 xyzw{ xyz, 0 };
+		{
+			const float4 xyzw{ xyz, 0 };
 			PS->Joints[J].ts = PS->Joints[J].ts + xyzw;
 			PS->Dirty = true;
 		}
@@ -313,7 +310,8 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != InvalidHandle) {
+		if (J != InvalidHandle)
+		{
 			float s = E->Joints[J].ts.w;
 			E->Joints[J].ts = float4( xyz.x, xyz.y, xyz.z, s);
 			E->Dirty = true;
@@ -354,14 +352,14 @@ namespace FlexKit
 	FLEXKITAPI float4x4     GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
 	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S, NodeHandle Node, iAllocator* TEMP);
 
-    FLEXKITAPI LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);
+	FLEXKITAPI LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);
 	FLEXKITAPI void         DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    FLEXKITAPI Skeleton*        Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory);
+	FLEXKITAPI Skeleton*        Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory);
 
 
 	/************************************************************************************************/

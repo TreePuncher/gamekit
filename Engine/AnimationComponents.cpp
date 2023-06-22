@@ -259,9 +259,9 @@ namespace FlexKit
 
 			for (size_t I = 0; I < trackCount; ++I)
 			{
-				const AnimationTrackHeader* header      = reinterpret_cast<AnimationTrackHeader*>(animationBlob->Buffer + currentFileOffset);
-				const AnimationKeyFrame*    keyFrames   = reinterpret_cast<AnimationKeyFrame*>(animationBlob->Buffer + currentFileOffset + sizeof(AnimationTrackHeader));
-				const uint32_t              frameCount  = header->frameCount;
+				const AnimationTrackHeader*	header		= reinterpret_cast<AnimationTrackHeader*>(animationBlob->Buffer + currentFileOffset);
+				const AnimationKeyFrame*	keyFrames	= reinterpret_cast<AnimationKeyFrame*>(animationBlob->Buffer + currentFileOffset + sizeof(AnimationTrackHeader));
+				const uint32_t				frameCount	= header->frameCount;
 
 				Vector<AnimationKeyFrame> frames{ &allocator, frameCount };
 
@@ -274,10 +274,10 @@ namespace FlexKit
 				}
 
 				AnimationTrack track{
-					.keyFrames  = std::move(frames),
-					.type       = header->type,
-					.trackName  = header->trackName,
-					.target     = header->target,
+					.keyFrames	= std::move(frames),
+					.type		= header->type,
+					.trackName	= header->trackName,
+					.target		= header->target,
 				};
 
 				currentFileOffset += header->byteSize;
@@ -494,7 +494,6 @@ namespace FlexKit
 	}
 
 
-
 	uint32_t AnimatorComponent::AnimatorView::AddInput(const char* name, AnimatorInputType type, void* _ptr) noexcept
 	{
 		auto& state = GetState();
@@ -665,7 +664,7 @@ namespace FlexKit
 	AnimatorComponent::AnimationState::State AnimatorComponent::AnimationState::Update(AnimationStateContext& ctx, double dT)
 	{
 		if (state == State::Finished)
-			return state;
+			return State::None;
 
 		float endT = 0;
 		for (auto& track : tracks)
@@ -680,9 +679,15 @@ namespace FlexKit
 			T += (float)dT;
 
 		if (state == State::Looping && T >= endT)
+		{
 			T = 0.0f;
+			return State::Restarted;
+		}
 		else if (state == State::Playing && T >= endT)
+		{
 			state = State::Finished;
+			return State::Finished;
+		}
 
 		return state;
 	}
@@ -698,20 +703,35 @@ namespace FlexKit
 
 		if (func)
 		{
-			auto ctx = GetContext();
+			asIScriptContext* ctx = GetContext();
+			if (!ctx)
+			{
+				FK_LOG_ERROR("Animator: Failed to get script context!");
+				return;
+			}
+			
 			ctx->Prepare(func);
+
+			EXITSCOPE({
+				ctx->Unprepare();
+				ReleaseContext(ctx);
+				});
+
 			ctx->SetArgAddress(0, &gameObject);
-			ctx->Execute();
+
+			if (int r = ctx->Execute(); r == asEXECUTION_EXCEPTION)
+			{
+				FK_LOG_ERROR("Animator: Exception raised!");
+				return;
+			}
 
 			auto animatorObj = static_cast<asIScriptObject*>(ctx->GetReturnAddress());
 
 			if (animatorObj)
 				animator.SetController(allocator.allocate<AngelScriptController>(*animatorObj, gameObject, *allocator));
-
-			ctx->Unprepare();
-			ReleaseContext(ctx);
-
 		}
+		else
+			FK_LOG_ERROR("Animator: Function 'IniateAnimator(GameObject@) not found in module!'");
 	}
 
 
@@ -766,7 +786,7 @@ namespace FlexKit
 						});
 
 					if (auto controller = animator.controller; controller)
-						controller->Update(context, dT);
+						controller->Update(context, dT, temporaryAllocator);
 				}
 			});
 	}
@@ -857,8 +877,8 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		Skeleton* skeleton      = pose.Sk;
-		const size_t jointCount = skeleton->JointCount;
+		Skeleton* skeleton		= pose.Sk;
+		const size_t jointCount	= skeleton->JointCount;
 
 		auto temp = (JointPose*)tempMemory._aligned_malloc(sizeof(PoseState) * pose.JointCount);
 		for (size_t I = 0; I < pose.JointCount; ++I)
@@ -1189,62 +1209,91 @@ namespace FlexKit
 		obj->AddRef();
 	}
 
+	void RunCtx(auto ctx)
+	{
+		if (ctx->Execute() == asEXECUTION_ERROR)
+		{
+			auto line		= ctx->GetLineNumber();
+			auto function	= ctx->GetFunction();
+			auto name		= function->GetName();
 
-	void AngelScriptController::Update(AnimationStateContext& animationCtx, double dT)
+			FK_LOG_ERROR("AngelScriptObject: %u : line", name, line);
+		}
+	}
+
+	void AngelScriptController::Update(AnimationStateContext& animationCtx, double dT, iAllocator& tempMemory)
 	{
 		auto ctx = GetContext();
+		AngelScriptEvent evt{ tempMemory };
 
-		__try
+		[&]
 		{
-			auto api_obj	= static_cast<asIScriptObject*>(obj);
-			auto preUpdate	= api_obj->GetObjectType()->GetMethodByName("PreUpdate");
-			auto postUpdate	= api_obj->GetObjectType()->GetMethodByName("PostUpdate");
-
-			ctx->Prepare(preUpdate);
-			ctx->SetObject(obj);
-			ctx->SetArgAddress(0, gameObject);
-			ctx->SetArgDouble(1, dT);
-
-			if (ctx->Execute() == asEXECUTION_ERROR)
+			__try
 			{
-				auto line		= ctx->GetLineNumber();
-				auto function	= ctx->GetFunction();
-				auto name		= function->GetName();
+				auto api_obj = static_cast<asIScriptObject*>(obj);
+				auto preUpdate = api_obj->GetObjectType()->GetMethodByName("PreUpdate");
+				auto postUpdate = api_obj->GetObjectType()->GetMethodByName("PostUpdate");
+				auto handlEvent = api_obj->GetObjectType()->GetMethodByName("HandleEvent");
 
-				FK_LOG_ERROR("AngelScriptObject: %s : line %u", name, line);
-				DebugBreak();
+				ctx->Prepare(preUpdate);
+				ctx->SetObject(obj);
+				ctx->SetArgAddress(0, gameObject);
+				ctx->SetArgDouble(1, dT);
+
+				RunCtx(ctx);
+
+				ctx->Prepare(handlEvent);
+				ctx->SetObject(obj);
+				ctx->SetArgAddress(0, gameObject);
+
+				auto* animator = gameObject->GetView<AnimatorView>();
+				for (auto& animation : animator->GetState().animations)
+				{
+					switch (animation.Update(animationCtx, dT))
+					{
+					case AnimatorComponent::AnimationState::State::Restarted:
+					{
+						ctx->SetArgAddress(1, &evt);
+						evt.eventType = (uint32_t)AnimatorComponent::AnimationState::State::Restarted;
+						evt.fields.emplace_back(animation.ID);
+
+						RunCtx(ctx);
+					}	break;
+					case AnimatorComponent::AnimationState::State::Finished:
+					{
+						ctx->SetArgAddress(1, &evt);
+						evt.eventType = (uint32_t)AnimatorComponent::AnimationState::State::Finished;
+						evt.fields.emplace_back(animation.ID);
+
+						RunCtx(ctx);
+					}	break;
+					}
+
+					evt.Clear();
+				}
+
+				ctx->Prepare(postUpdate);
+				ctx->SetObject(obj);
+				ctx->SetArgAddress(0, gameObject);
+				ctx->SetArgDouble(1, dT);
+
+				RunCtx(ctx);
+			}
+			__except (STATUS_ACCESS_VIOLATION == GetExceptionCode())
+			{
+				FK_LOG_ERROR("AngelScriptObject: Hardware Fault");
+				FK_LOG_ERROR("AngelScriptObject: Releasing Object");
+
+				ctx->SetException("Critical Failure : Hardware Fault");
+				auto* animator = gameObject->GetView<AnimatorView>();
+				animator->ClearController();
+				ctx->Unprepare();
+				ReleaseContext(ctx);
 			}
 
-			auto* animator = gameObject->GetView<AnimatorView>();
-			for (auto& animation : animator->GetState().animations)
-				animation.Update(animationCtx, dT);
-			
-			ctx->Prepare(postUpdate);
-			ctx->SetObject(obj);
-			ctx->SetArgAddress(0, gameObject);
-			ctx->SetArgDouble(1, dT);
-
-			if (ctx->Execute() == asEXECUTION_ERROR)
-			{
-				auto line		= ctx->GetLineNumber();
-				auto function	= ctx->GetFunction();
-				auto name		= function->GetName();
-
-				FK_LOG_ERROR("AngelScriptObject: %u : line", name, line);
-			}
-		}
-		__except (STATUS_ACCESS_VIOLATION == GetExceptionCode())
-		{
-			FK_LOG_ERROR("AngelScriptObject: Hardware Fault");
-			FK_LOG_ERROR("AngelScriptObject: Releasing Object");
-			
-			ctx->SetException("Critical Failure : Hardware Fault");
-			auto* animator = gameObject->GetView<AnimatorView>();
-			animator->ClearController();
-		}
-
-		ctx->Unprepare();
-		ReleaseContext(ctx);
+			ctx->Unprepare();
+			ReleaseContext(ctx);
+		}();
 	}
 
 

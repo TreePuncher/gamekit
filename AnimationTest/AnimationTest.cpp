@@ -30,7 +30,7 @@ public:
 		int x = 0;
 	}
 
-	void Update(AnimationStateContext& ctx, double dT) override
+	void Update(AnimationStateContext& ctx, double dT, iAllocator& temp) override
 	{
 
 	}
