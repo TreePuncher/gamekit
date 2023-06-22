@@ -36,7 +36,9 @@ FlexKit::Animation* EditorPrefabEditor::ASAPI_LoadAnimation(std::string& id, boo
 	auto resource	= project.FindProjectResource(id)->resource;
 	auto blob		= resource->CreateBlob();
 
-	FlexKit::AddAssetBuffer((FlexKit::Resource*)blob.buffer);
+	auto [_ptr, size] = blob.Release();
+
+	FlexKit::AddAssetBuffer((FlexKit::Resource*)_ptr);
 	return FlexKit::LoadAnimation(resource->GetResourceGUID(), FlexKit::SystemAllocator);
 }
 
@@ -441,7 +443,7 @@ void EditorPrefabEditor::Load(ProjectResource* projectObj)
 	} context{ localSelection->gameObject, renderer, project, previewWindow->layer, &prefabObjectRes->entity };
 
 	auto loadRes =
-		[&](auto& resourceID)
+		[&](auto& resourceID) -> ProjectResource_ptr
 		{
 			auto sceneRes	= context.FindSceneResource(resourceID);
 
@@ -449,6 +451,10 @@ void EditorPrefabEditor::Load(ProjectResource* projectObj)
 			auto buffer		= blob.buffer;
 			blob.buffer		= nullptr;
 			blob.bufferSize	= 0;
+
+			if (!buffer)
+				return ProjectResource_ptr{ nullptr };
+
 			FlexKit::AddAssetBuffer((Resource*)buffer);
 
 			return sceneRes;
@@ -462,6 +468,13 @@ void EditorPrefabEditor::Load(ProjectResource* projectObj)
 		localSelection->animator = animator.get();
 
 		auto resource	= loadRes(animator->scriptResource);
+
+		if (resource == nullptr)
+		{
+			FK_LOG_ERROR("Failed to prefab script! Check for errors in script and try again.");
+			return;
+		}
+
 		auto scriptRes	= std::static_pointer_cast<ScriptResource>(resource->resource);
 		localSelection->resource	= scriptRes;
 

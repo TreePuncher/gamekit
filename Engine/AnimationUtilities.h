@@ -38,7 +38,7 @@ namespace FlexKit
 	using DirectX::XMMATRIX;
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	using JointHandle = FlexKit::Handle_t<16, GetTypeGUID(JointHandle)>;
@@ -58,7 +58,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    struct JointPose
+	struct JointPose
 	{
 		JointPose() {}
 		JointPose(Quaternion Q, float4 TS) : r(Q), ts(TS) {}
@@ -72,35 +72,35 @@ namespace FlexKit
 	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct SkeletonResourceBlob
-    {
-        struct JointEntry
-        {
-            FlexKit::float4x4		IPose;
-            FlexKit::JointPose		Pose;
-            FlexKit::JointHandle	Parent;
-            uint16_t				Pad;
-            char					ID[64];
-        };
+	struct SkeletonResourceBlob
+	{
+		struct JointEntry
+		{
+			FlexKit::float4x4		IPose;
+			FlexKit::JointPose		Pose;
+			FlexKit::JointHandle	Parent;
+			uint16_t				Pad;
+			char					ID[64];
+		};
 
-        struct Header
-        {
-            size_t			ResourceSize;
-            EResourceType	Type;
-            size_t			GUID;
-            size_t			Pad;
+		struct Header
+		{
+			size_t			ResourceSize;
+			EResourceType	Type;
+			size_t			GUID;
+			size_t			Pad;
 
-            char ID[FlexKit::ID_LENGTH];
+			char ID[FlexKit::ID_LENGTH];
 
 
-            size_t JointCount;
-        } header;
+			size_t JointCount;
+		} header;
 
-        JointEntry Joints[];
-    };
+		JointEntry Joints[];
+	};
 
 
 	/************************************************************************************************/
@@ -125,91 +125,91 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
-    struct AnimationInterpolator
-    {
-        enum class InterpolatorType
-        {
-            Constant,
-            Linear,
-            Bezier, // FUTURE
-            Hermite // FUTURE
-        } Type;
-    };
-
-
-    struct AnimationKeyFrame
-    {
-        float Begin;
-        float End;
-
-        enum class KeyFrameType
-        {
-            FLOAT,
-            FLOAT2,
-            FLOAT3,
-            FLOAT4,
-            QUAT,
-        };
-
-        AnimationInterpolator   interpolator;
-        float4                  Value;
-    };
-
-    enum class TrackType
-    {
-        Skeletal
-    };
-
-    struct AnimationTrackHeader
-    {
-        char        trackName[64];
-        char        target[64];
-
-        TrackType   type;
-
-        uint32_t    frameCount;
-        uint32_t    byteSize;
-    };
-
-
-    /************************************************************************************************/
-
-
-    struct AnimationResourceBlob
+	struct AnimationInterpolator
 	{
-        struct AnimationResourceHeader
-        {
-            size_t			ResourceSize;
-            EResourceType	Type;
+		enum class InterpolatorType
+		{
+			Constant,
+			Linear,
+			Bezier, // FUTURE
+			Hermite // FUTURE
+		} Type;
+	};
 
-            GUID_t					GUID;
-            Resource::ResourceState	State;
-            uint32_t				RefCount;
 
-            char   ID[FlexKit::ID_LENGTH];
+	struct AnimationKeyFrame
+	{
+		float Begin;
+		float End;
 
-            uint32_t trackCount;
+		enum class KeyFrameType
+		{
+			FLOAT,
+			FLOAT2,
+			FLOAT3,
+			FLOAT4,
+			QUAT,
+		};
 
-            static size_t size() noexcept { return sizeof(AnimationResourceHeader); }
-        }   header;
+		AnimationInterpolator   interpolator;
+		float4                  Value;
+	};
+
+	enum class TrackType
+	{
+		Skeletal
+	};
+
+	struct AnimationTrackHeader
+	{
+		char        trackName[64];
+		char        target[64];
+
+		TrackType   type;
+
+		uint32_t    frameCount;
+		uint32_t    byteSize;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct AnimationResourceBlob
+	{
+		struct AnimationResourceHeader
+		{
+			size_t			ResourceSize;
+			EResourceType	Type;
+
+			GUID_t					GUID;
+			Resource::ResourceState	State;
+			uint32_t				RefCount;
+
+			char   ID[FlexKit::ID_LENGTH];
+
+			uint32_t trackCount;
+
+			static size_t size() noexcept { return sizeof(AnimationResourceHeader); }
+		}   header;
 
 		char	Buffer[];
 	};
 
-    	struct PoseState_DESC
+		struct PoseState_DESC
 	{
 		size_t JointCount;
 	};
 
-    using AnimationFieldID_t = uint32_t;
+	using AnimationFieldID_t = uint32_t;
 
-    template<typename T>
-    concept Animatable = requires () { T::GetAnimationFieldID(); };
+	template<typename T>
+	concept Animatable = requires () { T::GetAnimationFieldID(); };
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	struct PoseState
@@ -222,27 +222,27 @@ namespace FlexKit
 		size_t		padding[2];
 
 
-        struct Pose
-        {
-            void Clear(size_t jointCount)
-            {
-                for (size_t I = 0; I < jointCount; ++I)
-                    jointPose[I] = JointPose{ Quaternion(0, 0, 0, 1), float4(0, 0, 0, 1) };
-            }
+		struct Pose
+		{
+			void Clear(size_t jointCount)
+			{
+				for (size_t I = 0; I < jointCount; ++I)
+					jointPose[I] = JointPose{ Quaternion(0, 0, 0, 1), float4(0, 0, 0, 1) };
+			}
 
-            JointPose*  jointPose;
-            Skeleton*   sk;
-            uint32_t    poseID;
+			JointPose*  jointPose;
+			Skeleton*   sk;
+			uint32_t    poseID;
 
-            static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(Pose); }
-        };
+			static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(Pose); }
+		};
 
-        Pose& CreateSubPose(uint32_t ID, iAllocator& allocator);
-        Pose* FindPose(uint32_t poseID);
+		Pose& CreateSubPose(uint32_t ID, iAllocator& allocator);
+		Pose* FindPose(uint32_t poseID);
 
-        Vector<Pose> poses;
+		Vector<Pose> poses;
 
-        static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(PoseState); }
+		static AnimationFieldID_t GetAnimationFieldID() { return GetTypeGUID(PoseState); }
 	};
 
 
@@ -252,7 +252,7 @@ namespace FlexKit
 	struct FLEXKITAPI Skeleton
 	{
 		Skeleton() = default;
-        Skeleton(iAllocator* allocator, size_t jointCount = 64);
+		Skeleton(iAllocator* allocator, size_t jointCount = 64);
 
 		Joint&			operator [] (JointHandle hndl);
 
@@ -261,7 +261,7 @@ namespace FlexKit
 		JointHandle		AddJoint			(Joint J, const float4x4& I);
 		void			AddAnimationClip	(AnimationClip, iAllocator* allocator);
 
-        PoseState       CreatePoseState(iAllocator& allocator);
+		PoseState       CreatePoseState(iAllocator& allocator);
 
 		float4x4		GetInversePose		(const JointHandle H);
 		JointHandle		FindJoint			(const char*);
@@ -284,43 +284,43 @@ namespace FlexKit
 	};
 
 
-    
+	
 	/************************************************************************************************/
 
 
-    PoseState           CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
-    ResourceHandle      LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem&, CopyContextHandle handle, iAllocator&);
+	PoseState           CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
+	ResourceHandle      LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem&, CopyContextHandle handle, iAllocator&);
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct AnimatorBlobInputState
-    {
-        uint32_t    type;
-        char        data[16];
-        char        name[32];
-    };
+	struct AnimatorBlobInputState
+	{
+		uint32_t    type;
+		char        data[16];
+		char        name[32];
+	};
 
 
-    struct AnimatorBlobAnimatorState
-    {
-        uint64_t animationResourceID;
-        uint32_t initialState;
-    };
+	struct AnimatorBlobAnimatorState
+	{
+		uint64_t animationResourceID;
+		uint32_t initialState;
+	};
 
 
-    struct AnimatorBlobHeader
-    {
-        uint32_t CRC32;
-        uint32_t blockType;
-        uint32_t blockSize;
-        uint32_t componentID;
+	struct AnimatorBlobHeader
+	{
+		uint32_t CRC32;
+		uint32_t blockType;
+		uint32_t blockSize;
+		uint32_t componentID;
 
-        uint64_t scriptResource;
-        uint32_t inputCount;
-        uint32_t stateCount;
-    };
+		uint64_t scriptResource;
+		uint32_t inputCount;
+		uint32_t stateCount;
+	};
 
 
 }	/************************************************************************************************/

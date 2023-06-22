@@ -63,6 +63,16 @@ namespace FlexKit
 			return *this;
 		}
 
+		std::pair<char*, size_t> Release() noexcept
+		{
+			std::pair<char*, size_t> resource{ buffer, bufferSize };
+
+			buffer		= nullptr;
+			bufferSize	= 0;
+
+			return resource;
+		}
+
 		size_t						GUID		= INVALIDHANDLE;
 		std::string					ID;
 		FlexKit::EResourceType		resourceType;

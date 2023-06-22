@@ -273,7 +273,7 @@ namespace FlexKit
 
 	struct IAnimatorController
 	{
-		virtual void Update(AnimationStateContext&, double dT) = 0;
+		virtual void Update(AnimationStateContext&, double dT, iAllocator& temp) = 0;
 		virtual void Release() = 0;
 	};
 
@@ -281,7 +281,7 @@ namespace FlexKit
 	{
 		AngelScriptController(asIScriptObject&, GameObject&, iAllocator&);
 
-		void Update(AnimationStateContext&, double dT)	override;
+		void Update(AnimationStateContext&, double dT, iAllocator&)	override;
 		void Release()			override;
 
 		asIScriptObject*	obj			= nullptr;
@@ -319,8 +319,10 @@ namespace FlexKit
 				Paused,
 				Playing,
 				Finished,
-				Looping
-			}   state = State::Playing;
+				Looping,
+				Restarted,
+				None
+			}	state = State::Playing;
 
 			struct FrameRange
 			{

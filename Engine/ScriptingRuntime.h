@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <Containers.h>
 
 class asIScriptContext;
 class asIScriptEngine;
@@ -11,6 +12,23 @@ class asIScriptModule;
 namespace FlexKit
 {
 	class iAllocator;
+
+	struct AngelScriptEvent
+	{
+		AngelScriptEvent(iAllocator& allocator) :
+			fields{ allocator } {}
+
+		uint32_t	GetEventType();
+		uint32_t	GetFieldCount();
+		uint32_t	GetUintField(uint32_t);
+		float		GetFloatField(uint32_t);
+
+		void Clear();
+
+
+		uint32_t eventType = -1;
+		Vector<std::variant<uint32_t, float>> fields;
+	};
 
 	struct ScriptContext
 	{
