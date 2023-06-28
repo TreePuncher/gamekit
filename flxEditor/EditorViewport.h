@@ -132,7 +132,6 @@ private:
 	FlexKit::int2					previousMousePosition{ -160000, -160000 };
 
 	Ui::EditorViewport				ui;
-	FlexKit::ImGUIIntegrator		hud;
 
 	DXRenderWindow*					renderWindow;
 	SelectionContext&				selectionContext;

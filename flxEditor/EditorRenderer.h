@@ -12,6 +12,7 @@
 #include "TextureStreamingUtilities.h"
 #include "WorldRender.h"
 
+#include <DebugUI.h>
 #include <TriggerComponent.h>
 #include <SharedEngineMemory.hpp>
 
@@ -49,6 +50,7 @@ public:
 	FlexKit::TextureStreamingEngine	textureEngine;
 	FlexKit::WorldRender			worldRender;
 	CSGRender						csgRender;
+	FlexKit::ImGUIIntegrator		hud;
 
 private:
 	struct TempBuffer
@@ -78,6 +80,7 @@ private:
 	// Temp Buffers
 	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
+
 
 	QApplication&					QtApplication;
 	FlexKit::FKApplication&			application;

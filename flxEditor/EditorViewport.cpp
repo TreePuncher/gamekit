@@ -614,7 +614,6 @@ void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::
 
 EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN_context, QWidget *parent)
 	: QWidget{ parent }
-	, hud				{ IN_renderer.GetRenderSystem(), FlexKit::SystemAllocator }
 	, menuBar			{ new QMenuBar{ this } }
 	, renderer			{ IN_renderer }
 	, gbuffer			{ { 100, 200 }, IN_renderer.framework.GetRenderSystem() }
@@ -1129,7 +1128,7 @@ void EditorViewport::ClearSelection()
 
 FlexKit::ImGUIIntegrator& EditorViewport::GetHUD()
 {
-	return hud;
+	return renderer.hud;
 }
 
 /************************************************************************************************/
@@ -1193,7 +1192,7 @@ void EditorViewport::keyPressEvent(QKeyEvent* evt)
 				mode.back()->keyPressEvent(evt);
 			else if (mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != TranslationModeID))
 			{
-				auto _ptr = std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, *this, viewportCamera, hud);
+				auto _ptr = std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, *this, viewportCamera, renderer.hud);
 				_ptr->manipulatorState = op;
 				mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(_ptr));
 			}
@@ -1372,13 +1371,14 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			!(mode.size() && mode.back()->GetModeID() == VewportPanModeID))
 	{
 		mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
-			std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, hud, mode.size() ? mode.back() : nullptr)));
+			std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, renderer.hud, mode.size() ? mode.back() : nullptr)));
 	}
-	const auto HW           = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
-	QPoint globalCursorPos  = QCursor::pos();
-	auto localPosition      = renderWindow->mapFromGlobal(globalCursorPos);
 
-	hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
+	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+	QPoint globalCursorPos	= QCursor::pos();
+	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
+
+	renderer.hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
 
 	ImGui::NewFrame();
 	ImGuizmo::BeginFrame();
@@ -1471,7 +1471,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 	else
 		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
-	hud.DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
+	renderer.hud.DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
 	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 
 	T += dT;

@@ -510,10 +510,11 @@ void EditorPrefabPreview::RenderStatic(
 
 			builder.AddDataDependency(cameras);
 
-			if (animate)
+			if (animate || singleStep)
 			{
-				auto& animationUpdate = FlexKit::UpdateAnimations(dispatcher, dT);
+				auto& animationUpdate = FlexKit::UpdateAnimations(dispatcher, singleStep ? stepSize : dT);
 				builder.AddDataDependency(animationUpdate);
+				singleStep = false;
 			}
 		},
 		[=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, FlexKit::iAllocator& allocator)
@@ -550,18 +551,15 @@ void EditorPrefabPreview::RenderStatic(
 			{
 				float4x4 transforms[768];
 
-				auto& operator [](size_t idx)
-				{
-					return transforms[idx];
-				}
+				auto& operator [](size_t idx) { return transforms[idx]; }
 			};
 
 			const size_t poseBufferSize =
 				AlignedSize<EntityPoses>();
 
-			auto passConstantBuffer = data.reserveCB(passBufferSize);
-			auto entityConstantBuffer = data.reserveCB(entityBufferSize);
-			auto poseBuffer = data.reserveCB(poseBufferSize);
+			auto passConstantBuffer		= data.reserveCB(passBufferSize);
+			auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
+			auto poseBuffer				= data.reserveCB(poseBufferSize);
 
 			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer };
 			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
@@ -685,14 +683,19 @@ void EditorPrefabPreview::RenderAnimated(
 		auto& object = *selection;
 
 		if (turnTable)
-			FlexKit::Yaw(object.gameObject, 1.0f / 60.0f);
+		{
+			yaw += turnTableRate * dT;
+			yaw = fmod(yaw, 1.0f);
+		}
+
+		FlexKit::SetOrientation(object.gameObject, Quaternion{ 0, yaw * 360.0f, 0 });
 
 		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
 			
 		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
 		{
-			const auto node = FlexKit::GetSceneNode(object.gameObject);
-			const auto PV   = GetCameraConstants(previewCamera).PV;
+			const auto		node	= FlexKit::GetSceneNode(object.gameObject);
+			const float4x4	PV		= GetCameraConstants(previewCamera).PV;
 
 			FlexKit::LineSegments lines = FlexKit::DEBUG_DrawPoseState(*pose, node, allocator);
 
@@ -734,6 +737,101 @@ void EditorPrefabPreview::RenderAnimated(
 			renderTarget,
 			allocator);
 
+	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+	QPoint globalCursorPos	= QCursor::pos();
+	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
+
+	renderer.hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
+
+	ImGui::NewFrame();
+
+	if (playBackWindow)
+	{
+		if (ImGui::Begin("Playback", nullptr)) {
+			ImGui::SetWindowPos({ 0, 0 });
+			ImGui::Checkbox("Play", &animate);
+			ImGui::SliderFloat("Step size", &stepSize, -1.0f, 1.0f);
+
+			if (ImGui::Button("Single Step"))
+				singleStep = !singleStep;
+
+			ImGui::SliderFloat("Rotate View", &yaw, 0, 1.0f);
+			ImGui::SliderFloat("TurnTable Rate", &turnTableRate, 0, 3.0f);
+		}
+		ImGui::End();
+	}
+
+	if (jointInfoWindow && selection && selection->ID != -1)
+	{
+		auto& object = *selection;
+
+		if (const auto poseState = FlexKit::GetPoseState(object.gameObject); poseState && ImGui::Begin("Joint Info", nullptr))
+		{
+					FlexKit::Skeleton* S		= poseState->Sk;
+			static	FlexKit::Skeleton* prev_S	 = nullptr;
+
+			static std::vector<std::string>			strings;
+			static std::vector<std::string_view>	labels;
+
+			if (S != prev_S)
+			{
+				strings.clear();
+				labels.clear();
+				prev_S = S;
+
+				for (size_t I = 0; I < poseState->JointCount; I++)
+				{
+					const auto& joint = S->Joints[I];
+
+					if (joint.mID)
+						labels.push_back(joint.mID);
+					else
+					{
+						strings.push_back(fmt::format("Joint {}", I));
+						labels.push_back(strings.back());
+					}
+				}
+			}
+
+
+			static const char*	selectedStr = nullptr;
+			static size_t		selected = 0;
+
+			if (ImGui::BeginCombo("Joint ", labels[selected].data()))
+			{
+				for (size_t I = 0; I < poseState->JointCount; I++)
+				{
+					const auto& joint = S->Joints[I];
+
+					if (ImGui::Selectable(labels[I].data(), I == selected))
+					{
+						selected = I;
+					}
+
+					if (I == selected)
+						ImGui::SetItemDefaultFocus();
+
+				}
+
+				ImGui::EndCombo();
+			}
+
+			const auto	jointState			= poseState->Joints[selected];
+			std::string jointID				= fmt::format("Joint Handle: {}", selected);
+			std::string jointOrientation	= fmt::format("Orientation: [{}, {}, {}, {}]",	jointState.r.x, jointState.r.y, jointState.r.z, jointState.r.w);
+			std::string jointTranslation	= fmt::format("Position: [{}, {}, {}]",			jointState.ts.x, jointState.ts.y, jointState.ts.z);
+
+			ImGui::Text(jointID.c_str());
+			ImGui::Text(jointOrientation.c_str());
+			ImGui::Text(jointTranslation.c_str());
+			ImGui::End();
+		}
+	}
+
+	ImGui::EndFrame();
+	ImGui::Render();
+
+	renderer.hud.DrawImGui(dT, dispatcher, frameGraph, temporaryBuffers.ReserveVertexBuffer, temporaryBuffers.ReserveConstantBuffer, renderTarget);
 	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 }
 
@@ -943,6 +1041,57 @@ void EditorPrefabPreview::CenterCamera()
 	FlexKit::SetPositionW(node, updatedPosition_WS.xyz());
 	FlexKit::MarkCameraDirty(previewCamera);
 }
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabPreview::mousePressEvent(QMouseEvent* event)
+{
+	const auto screen = QGuiApplication::screenAt(event->pos());
+	if (!screen)
+		return;
+
+	const auto pos		= event->localPos();
+	const auto x		= pos.x();
+	const auto y		= pos.y();
+	const auto WH		= renderWindow->WH();
+	const auto ratio	= screen->devicePixelRatio();
+
+	FlexKit::Event mouseEvent;
+	mouseEvent.InputSource		= FlexKit::Event::Mouse;
+	mouseEvent.Action			= FlexKit::Event::Pressed;
+	mouseEvent.mType			= FlexKit::Event::Input;
+	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
+
+	renderer.hud.HandleInput(mouseEvent);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorPrefabPreview::mouseReleaseEvent(QMouseEvent* event)
+{
+	const auto screen = QGuiApplication::screenAt(event->pos());
+	if (!screen)
+		return;
+
+	const auto pos		= event->localPos();
+	const auto x		= pos.x();
+	const auto y		= pos.y();
+	const auto WH		= renderWindow->WH();
+	const auto ratio	= screen->devicePixelRatio();
+
+	FlexKit::Event mouseEvent;
+	mouseEvent.InputSource		= FlexKit::Event::Mouse;
+	mouseEvent.Action			= FlexKit::Event::Release;
+	mouseEvent.mType			= FlexKit::Event::Input;
+	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
+
+	renderer.hud.HandleInput(mouseEvent);
+}
+
 
 
 /**********************************************************************

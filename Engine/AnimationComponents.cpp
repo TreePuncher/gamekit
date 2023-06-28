@@ -318,6 +318,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void AnimatorComponent::AnimatorView::Clear()
+	{
+		auto& componentData = GetComponent()[animator];
+		componentData.animations.clear();
+	}
+
+
+	/************************************************************************************************/
+
+
 	PlayID_t AnimatorComponent::AnimatorView::Play(Animation& anim, bool loop)
 	{
 		auto&           componentData   = GetComponent()[animator];
@@ -330,6 +340,7 @@ namespace FlexKit
 		auto& gameObject    = *componentData.gameObject;
 		auto  skeleton      = GetSkeleton(gameObject);
 
+		double duration = 0;
 		for (auto& track : anim.tracks)
 		{
 			switch (track.type)
@@ -366,11 +377,12 @@ namespace FlexKit
 		}
 
 		AnimationState animState{
-			.T          = 0.0f,
-			.ID         = ID,
-			.state      = loop ? AnimationState::State::Looping : AnimationState::State::Playing,
-			.tracks     = std::move(tracks),
-			.resource   = &anim,
+			.T			= 0.0f,
+			.ID			= ID,
+			.state		= loop ? AnimationState::State::Looping : AnimationState::State::Playing,
+			.tracks		= std::move(tracks),
+			.duration	= anim.Duration(),
+			.resource	= &anim,
 		};
 
 		componentData.animations.emplace_back(std::move(animState));
@@ -392,7 +404,7 @@ namespace FlexKit
 				return clip.ID == playID;
 			});
 
-		componentData.animations.remove_unstable(res);
+		componentData.animations.remove_stable(res);
 	}
 
 
@@ -435,6 +447,28 @@ namespace FlexKit
 		{
 			auto T = res->resource->Duration() * Saturate(p);
 			res->T = T;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void AnimatorComponent::AnimatorView::SetSpeed(PlayID_t playID, float s)
+	{
+		auto& componentData = GetComponent()[animator];
+
+		auto res = std::find_if(
+			componentData.animations.begin(),
+			componentData.animations.end(),
+			[&](AnimationState& clip)
+			{
+				return clip.ID == playID;
+			});
+
+		if (res != componentData.animations.end())
+		{
+			res->speed = s;
 		}
 	}
 
@@ -578,18 +612,21 @@ namespace FlexKit
 			auto interpolate =
 				[&]() -> Quaternion
 				{
-					const auto timepointBegin   = range.begin->Begin;
-					const auto timepointEnd     = range.end->Begin;
-					const auto timeRange        = timepointEnd - timepointBegin;
+					const auto timepointBegin	= range.begin->Begin;
+					const auto timepointEnd		= range.end->Begin;//t < range.end->Begin ? t < range.end->Begin : ;
+					const auto timeRange		= timepointEnd - timepointBegin;
 
-					const auto I = clamp(0.0f, (t - range.begin->Begin) / timeRange, 1.0f);
+					const auto& AValue			= range.begin->Value;
+					const auto& BValue			= range.end->Value;
 
-					const auto& AValue = range.begin->Value;
-					const auto& BValue = range.end->Value;
+					if (timeRange == 0.0f)
+						return Quaternion{ BValue[0], BValue[1], BValue[2], BValue[3] };;
 
+					const auto I = clamp(0.0f, (t - timepointBegin) / timeRange, 1.0f);
 					const auto A = Quaternion{ AValue[0], AValue[1], AValue[2], AValue[3] };
 					const auto B = Quaternion{ BValue[0], BValue[1], BValue[2], BValue[3] };
 
+					//return A;// Qlerp(A, B, I);
 					return Qlerp(A, B, I);
 				};
 
@@ -611,12 +648,12 @@ namespace FlexKit
 			const auto timepointBegin   = range.begin->Begin;
 			const auto timepointEnd     = range.end->Begin;
 			const auto timeRange        = timepointEnd - timepointBegin;
-			const auto u                = clamp(0.0f, (t - range.begin->Begin) / timeRange, 1.0f);
+			const auto u                = timeRange > 0.0 ? clamp(0.0f, (t - range.begin->Begin) / timeRange, 1.0f) : 0.0f;
 
 			const auto defaultPose  = res->sk->JointPoses[joint];
 			const auto xyz          = lerp(range.begin->Value.xyz(), range.end->Value.xyz(), u);
 
-			//res->jointPose[joint].ts += xyz - defaultPose.ts.xyz();
+			//res->jointPose[joint].ts += defaultPose.ts.xyz() - xyz;
 		}
 	}
 
@@ -636,6 +673,8 @@ namespace FlexKit
 
 	AnimationKeyFrame* AnimatorComponent::AnimationState::TrackState::FindFrame(double T)
 	{
+		//T += track->keyFrames.front().Begin;
+
 		for (auto& frame : track->keyFrames)
 		{
 			if (frame.Begin <= T && frame.End > T)
@@ -666,30 +705,42 @@ namespace FlexKit
 		if (state == State::Finished)
 			return State::None;
 
-		float endT = 0;
-		for (auto& track : tracks)
-		{
-			endT = Max(track.track->keyFrames.back().End, endT);
+		const double scaled_dT = dT * speed;
 
-			if (auto frame = track.FindFrame(T); frame)
-				track.target->Apply({ frame, track.FindNextFrame(frame) }, T, ctx);
+		if (state != State::Paused && T + scaled_dT < duration)
+		{
+			T += (float)scaled_dT;
+			for (auto& track : tracks)
+			{
+				if (auto frame = track.FindFrame(T); frame)
+					track.target->Apply({ frame, track.FindNextFrame(frame) }, T, ctx);
+			}
+			return state;
 		}
-
-		if(state != State::Paused)
-			T += (float)dT;
-
-		if (state == State::Looping && T >= endT)
+		else if (state == State::Looping && T + scaled_dT >= duration)
 		{
-			T = 0.0f;
+			const double nextFrameT = fmod(T + scaled_dT, duration);
+
+			for (auto& track : tracks)
+			{
+				auto frameA = track.FindFrame(T);
+				auto frameB = track.FindFrame(nextFrameT);
+
+				if (frameA && frameB)
+					track.target->Apply({ frameA, frameB }, T, ctx);
+			}
+
+			T = nextFrameT;
+
 			return State::Restarted;
 		}
-		else if (state == State::Playing && T >= endT)
+		else if (state == State::Playing && T + scaled_dT >= duration)
 		{
 			state = State::Finished;
 			return State::Finished;
 		}
 
-		return state;
+		return State::Error;
 	}
 
 

@@ -203,6 +203,7 @@ namespace FlexKit
 			return {};
 	}
 
+
 	void* AnimatorGetCallback_AS(AnimatorView* view, uint32_t idx)
 	{
 		auto& state = view->GetState();
@@ -210,10 +211,18 @@ namespace FlexKit
 		return &state.callbacks[idx];
 	}
 
+
 	void AnimatorCallback_Call(AnimatorCallback* view, GameObject* gameObject)
 	{
 		(*view)(*gameObject);
 	}
+
+
+	void AnimatorClear_AS(AnimatorView* view, Animation* anim, bool loop)
+	{
+		view->Clear();
+	}
+
 
 	uint32_t AnimatorPlayAnimation_AS(AnimatorView* view, Animation* anim, bool loop)
 	{
@@ -239,6 +248,12 @@ namespace FlexKit
 	void AnimatorSetProgressAnimation_AS(AnimatorView* view, uint32_t playID, float p)
 	{
 		view->SetProgress(playID, p);
+	}
+
+
+	void AnimatorSetPlaySpeed_AS(AnimatorView* view, uint32_t playID, float p)
+	{
+		view->SetSpeed(playID, p);
 	}
 
 
@@ -534,10 +549,12 @@ namespace FlexKit
 
 		res = scriptEngine->RegisterObjectMethod("Animator", "AnimatorCallback@ GetCallback(uint)",	asFUNCTION(AnimatorGetCallback_AS), asCALL_CDECL_OBJFIRST);				FK_ASSERT(res > 0);
 
+		res = scriptEngine->RegisterObjectMethod("Animator", "void Clear()",						asFUNCTION(AnimatorClear_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "PlayID Play(Animation@, bool)",		asFUNCTION(AnimatorPlayAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void Stop(PlayID)",					asFUNCTION(AnimatorStopAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void Pause(PlayID)",					asFUNCTION(AnimatorPauseAnimation_AS), asCALL_CDECL_OBJFIRST);			FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Animator", "void SetProgress(PlayID, float)",		asFUNCTION(AnimatorSetProgressAnimation_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Animator", "void SetPlaySpeed(PlayID, float)",	asFUNCTION(AnimatorSetPlaySpeed_AS), asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 
 
 		/************************************************************************************************/

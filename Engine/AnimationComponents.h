@@ -5,6 +5,7 @@
 #include "AnimationRuntimeUtilities.h"
 
 #include "Components.h"
+#include "MemoryUtilities.h"
 #include "RuntimeComponentIDs.h"
 #include "Scene.h"
 #include "Transforms.h"
@@ -311,19 +312,6 @@ namespace FlexKit
 
 		struct AnimationState
 		{
-			float       T;
-			uint32_t    ID;
-
-			enum class State
-			{
-				Paused,
-				Playing,
-				Finished,
-				Looping,
-				Restarted,
-				None
-			}	state = State::Playing;
-
 			struct FrameRange
 			{
 				AnimationKeyFrame* begin;
@@ -371,10 +359,27 @@ namespace FlexKit
 				ITrackTarget*	target;
 			};
 
+			enum class State
+			{
+				Paused,
+				Playing,
+				Finished,
+				Looping,
+				Restarted,
+				None,
+				Error
+			};
 
 			State Update(AnimationStateContext& ctx, double dT);
 
+			float		T;
+			float		speed = 1.0f;
+			uint32_t	ID;
+
+			State state = State::Playing;
+
 			Vector<TrackState>	tracks;
+			double				duration = 0.0;
 			Animation*			resource;
 		};
 
@@ -457,10 +462,13 @@ namespace FlexKit
 
 			void Release();
 
+
+			void		Clear();
 			PlayID_t	Play(Animation& anim, bool loop = false);
 			void		Stop(PlayID_t playID);
 			void		Pause(PlayID_t playID);
 			void		SetProgress(PlayID_t playID, float);
+			void		SetSpeed(PlayID_t playID, float);
 
 
 			std::optional<InputValue*>			GetInputValue(uint32_t idx) noexcept;
