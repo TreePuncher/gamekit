@@ -110,16 +110,27 @@ public:
 	bool boundingVolume		= false;
 	bool SMboundingVolumes	= false;
 
+	bool playBackWindow		= false;
+	bool jointInfoWindow	= false;
+
+
+	bool	singleStep			= false;
+	float	stepSize			= 1.0f / 60.0f;
+	float	yaw					= 0.0f;
+	float	turnTableRate		= 1.0f;
+
 	FlexKit::LayerHandle	layer = FlexKit::InvalidHandle;
 
 	void CenterCamera();
+
+	void mousePressEvent(QMouseEvent* event) override;
+	void mouseReleaseEvent(QMouseEvent* event) override;
 
 private:
 	FlexKit::CameraHandle			previewCamera;
 	EditorRenderer&					renderer;
 	EditorProject&					project;
 	DXRenderWindow*					renderWindow;
-	//SharedWindow					sharedWindow;
 	EditorSelectedPrefabObject*		selection;
 	FlexKit::DepthBuffer			depthBuffer;
 

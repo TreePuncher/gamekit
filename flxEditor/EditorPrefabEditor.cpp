@@ -168,6 +168,8 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 	auto toggleQDTree			= viewMenu->addAction("KD Tree Debug Vis");
 	auto boundingVolumeVis		= viewMenu->addAction("Brush Bounding Volume");
 	auto subMeshVolumesVis		= viewMenu->addAction("SubMesh Bounding Volumes");
+	auto jointInfo				= viewMenu->addAction("Joint Info");
+	auto playBack				= viewMenu->addAction("Playback");
 
 	connect(
 		centerView, &QAction::triggered,
@@ -254,6 +256,24 @@ EditorPrefabEditor::EditorPrefabEditor(SelectionContext& IN_selection, EditorScr
 			localSelection->UpdateDefaultValue(idx, defaultValue);
 		});
 
+	jointInfo->setCheckable(true);
+	jointInfo->setChecked(previewWindow->jointInfoWindow);
+	connect(
+		jointInfo, &QAction::triggered,
+		[=]
+		{
+			previewWindow->jointInfoWindow = jointInfo->isChecked();
+		});
+
+	playBack->setCheckable(true);
+	playBack->setChecked(previewWindow->playBackWindow);
+	connect(
+		playBack, &QAction::triggered,
+		[=]
+		{
+			previewWindow->playBackWindow = playBack->isChecked();
+		});
+
 	timer = new QTimer{ this };
 	connect(timer, &QTimer::timeout,
 		[&]()
@@ -319,6 +339,10 @@ class EmptyAnimatorObject : AnimatorInterface
 	}
 
 	void PostUpdate(GameObject@ object, double dt)
+	{
+	}
+
+	void HandleEvent(GameObject@ gameObject, AnimationEven& evt)
 	{
 	}
 };

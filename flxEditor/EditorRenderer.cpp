@@ -13,6 +13,7 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	constantBuffer	{ IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
 	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
 	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), {}, { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
+	hud				{ IN_framework.core.RenderSystem, FlexKit::SystemAllocator },
 
 	materialComponent	{ IN_framework.GetRenderSystem(), textureEngine, IN_framework.core.GetBlockMemory() },
 

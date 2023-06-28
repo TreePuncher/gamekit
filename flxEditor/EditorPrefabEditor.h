@@ -44,6 +44,7 @@ public:
 	void Load(ProjectResource*);
 	void Save();
 
+
 private:
 	FlexKit::Animation*		ASAPI_LoadAnimation		(std::string&, bool);
 	void					ASAPI_ReleaseAnimation	(FlexKit::Animation*);
