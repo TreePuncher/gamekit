@@ -479,9 +479,14 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		ID3D12PipelineState* GetPipelineState(PSOHandle State)	const
+		ID3D12PipelineState* GetPipelineState(PSOHandle state)	const
 		{
-			return renderSystem.GetPSO(State);
+			return renderSystem.GetPSO(state);
+		}
+
+		const RootSignature* GetPipelineStateRootSig(PSOHandle state) const
+		{
+			return renderSystem.GetPSORootSignature(state);
 		}
 
 

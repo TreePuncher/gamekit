@@ -93,8 +93,8 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 {
 	auto& rs		= IN_framework.GetRenderSystem();
 	auto& allocator = framework.core.GetBlockMemory();
-	rs.RegisterPSOLoader(DRAW_LINE_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO });
-	rs.RegisterPSOLoader(DRAW_LINE3D_PSO, { &rs.Library.RS6CBVs4SRVs, CreateDraw2StatePSO });
+	rs.RegisterPSOLoader(DRAW_LINE_PSO,		CreateDrawLineStatePSO);
+	rs.RegisterPSOLoader(DRAW_LINE3D_PSO,	CreateDraw2StatePSO);
 
 	RegisterPhysicsDebugVis(framework.GetRenderSystem());
 	AddAssetFile(R"(assets\TestWorld.gameres)");

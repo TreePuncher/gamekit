@@ -31,7 +31,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawTriStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -71,13 +71,13 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawRect");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
-	ID3D12PipelineState* CreateTexturedTriStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTexturedTriStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -118,14 +118,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawRectTextured");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTexturedTriStateDEBUGPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
 		auto DrawRectPShader = RS->LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
@@ -166,14 +166,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTextured");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawLineStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -214,7 +214,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLine");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -228,7 +228,7 @@ namespace FlexKit
 		float2 UV
 	};
 	*/
-	ID3D12PipelineState* CreateDraw2StatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDraw2StatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("V10Main",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -271,14 +271,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Draw2");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDrawTri3DStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawTri3DStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("V11Main",	        "vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawFlatTriangle",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -319,14 +319,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawMeshFlat");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* LoadOcclusionState(RenderSystem* RS)
+	LoadPipelineStateRes LoadOcclusionState(RenderSystem* RS)
 	{
 		Shader VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
 
@@ -365,7 +365,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawOcclusion");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -528,7 +528,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
+	LoadPipelineStateRes LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
 	{
 		auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
 		auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
@@ -568,7 +568,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ClearRenderTargetUINT2");
 
-		return PSO;
+		return { PSO, &renderSystem->Library.RS6CBVs4SRVs };
 	}
 
 

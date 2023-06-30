@@ -85,9 +85,9 @@ namespace FlexKit
 	};
 
 
-	ID3D12PipelineState* CreateCullTerrainComputePSO			(RenderSystem* renderSystem);
-	ID3D12PipelineState* CreateForwardRenderTerrainPSO			(RenderSystem* renderSystem);
-	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO	(RenderSystem* renderSystem);
+	LoadPipelineStateRes CreateCullTerrainComputePSO			(RenderSystem* renderSystem);
+	LoadPipelineStateRes CreateForwardRenderTerrainPSO			(RenderSystem* renderSystem);
+	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO	(RenderSystem* renderSystem);
 
 
 	struct TileMaps
@@ -354,18 +354,15 @@ namespace FlexKit
 		{
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_COMPUTE_CULL_PSO, 
-				{	&renderSystem->Library.RS4CBVs_SO,
-					CreateCullTerrainComputePSO });
+				CreateCullTerrainComputePSO);
 
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_RENDER_FOWARD_PSO,
-				{	&renderSystem->Library.RS4CBVs_SO,
-					CreateForwardRenderTerrainPSO });
+				CreateForwardRenderTerrainPSO);
 
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_RENDER_FOWARD_WIREFRAME_PSO,
-				{	&renderSystem->Library.RS4CBVs_SO,
-					CreateForwardRenderTerrainWireFramePSO });
+				CreateForwardRenderTerrainWireFramePSO);
 
 			renderSystem->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
 			renderSystem->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);

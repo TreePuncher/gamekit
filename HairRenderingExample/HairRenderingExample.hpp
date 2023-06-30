@@ -72,11 +72,11 @@ public:
 	HairRenderingTest(FlexKit::GameFramework& IN_framework);
 	~HairRenderingTest() final;
 
-	ID3D12PipelineState* CreateApplyForcesPSO();
-	ID3D12PipelineState* CreateApplyShapeConstraintsPSO();
-	ID3D12PipelineState* CreateApplyEdgeLengthConstraintPSO();
-	ID3D12PipelineState* CreateStrandRenderPSO();
-	ID3D12PipelineState* CreateDebugRenderPSO();
+	FlexKit::LoadPipelineStateRes CreateApplyForcesPSO();
+	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO();
+	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO();
+	FlexKit::LoadPipelineStateRes CreateStrandRenderPSO();
+	FlexKit::LoadPipelineStateRes CreateDebugRenderPSO();
 
 	void ClearStyleBuffers(HairStyle& style);
 

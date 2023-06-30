@@ -52,15 +52,15 @@ namespace FlexKit
 
 		renderSystem.SetDebugName(octreeBuffer, "OctreeBuffer");
 
-		renderSystem.RegisterPSOLoader(VXGI_DRAWVOLUMEVISUALIZATION,    { &renderSystem.Library.RSDefault, CreateUpdateVolumeVisualizationPSO});
+		renderSystem.RegisterPSOLoader(VXGI_DRAWVOLUMEVISUALIZATION,    CreateUpdateVolumeVisualizationPSO);
 
-		renderSystem.RegisterPSOLoader(VXGI_SAMPLEINJECTION,            { &renderSystem.Library.RSDefault, CreateInjectVoxelSamplesPSO });
-		renderSystem.RegisterPSOLoader(VXGI_GATHERDISPATCHARGS,         { &renderSystem.Library.RSDefault, [this](RenderSystem* rs) { return CreateVXGIGatherDispatchArgsPSO(rs); } });
-		renderSystem.RegisterPSOLoader(VXGI_GATHERDRAWARGS,             { &renderSystem.Library.RSDefault, CreateVXGIGatherDrawArgsPSO });
-		renderSystem.RegisterPSOLoader(VXGI_GATHERSUBDIVISIONREQUESTS,  { &renderSystem.Library.RSDefault, CreateVXGIGatherSubDRequestsPSO });
-		renderSystem.RegisterPSOLoader(VXGI_PROCESSSUBDREQUESTS,        { &renderSystem.Library.RSDefault, CreateVXGIProcessSubDRequestsPSO });
-		renderSystem.RegisterPSOLoader(VXGI_INITOCTREE,                 { &renderSystem.Library.RSDefault, CreateVXGI_InitOctree });
-		renderSystem.RegisterPSOLoader(VXGI_ALLOCATENODES,              { &removeSignature, [this](RenderSystem* rs){ return CreateAllocatePSO(rs); } });
+		renderSystem.RegisterPSOLoader(VXGI_SAMPLEINJECTION,            CreateInjectVoxelSamplesPSO);
+		renderSystem.RegisterPSOLoader(VXGI_GATHERDISPATCHARGS,			[this](RenderSystem* rs) { return CreateVXGIGatherDispatchArgsPSO(rs); });
+		renderSystem.RegisterPSOLoader(VXGI_GATHERDRAWARGS,				CreateVXGIGatherDrawArgsPSO);
+		renderSystem.RegisterPSOLoader(VXGI_GATHERSUBDIVISIONREQUESTS,	CreateVXGIGatherSubDRequestsPSO);
+		renderSystem.RegisterPSOLoader(VXGI_PROCESSSUBDREQUESTS,		CreateVXGIProcessSubDRequestsPSO);
+		renderSystem.RegisterPSOLoader(VXGI_INITOCTREE,					CreateVXGI_InitOctree);
+		renderSystem.RegisterPSOLoader(VXGI_ALLOCATENODES,				[this](RenderSystem* rs){ return CreateAllocatePSO(rs); });
 
 		gatherDispatchArgs  = renderSystem.GetPSO(VXGI_GATHERDISPATCHARGS);
 	}
@@ -470,7 +470,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateMarkErasePSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateMarkErasePSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("MarkEraseNodes", "cs_6_5", R"(assets\shaders\VXGI_Erase.hlsl)");
 
@@ -484,13 +484,13 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateAllocatePSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateAllocatePSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("ReleaseNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
@@ -504,14 +504,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateTransferPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateTransferPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("TransferNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
@@ -525,14 +525,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateInjectVoxelSamplesPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateInjectVoxelSamplesPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("Injection", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -546,14 +546,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIGatherDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDispatchArgsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
 
@@ -567,14 +567,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &gatherSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIEraseDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIEraseDispatchArgsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateRemoveArgs", "cs_6_5", R"(assets\shaders\VXGI_RemoveArgs.hlsl)");
 
@@ -588,14 +588,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &gatherSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIDecrementDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIDecrementDispatchArgsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DecrementCounter.hlsl)");
 
@@ -609,14 +609,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &removeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIGatherDrawArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDrawArgsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_5", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
 
@@ -630,14 +630,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -651,14 +651,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -672,14 +672,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };;
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateVXGI_InitOctree(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGI_InitOctree(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("Init", "cs_6_5", R"(assets\shaders\VXGI_InitOctree.hlsl)");
 
@@ -693,14 +693,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* GILightingEngine::CreateUpdateVolumeVisualizationPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateUpdateVolumeVisualizationPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("FullScreenQuad_VS",  "vs_6_5", "assets\\shaders\\VoxelDebugVis.hlsl");
 		auto PShader = RS->LoadShader("VoxelDebug_PS",      "ps_6_5", "assets\\shaders\\VoxelDebugVis.hlsl");
@@ -745,14 +745,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "UpdateVolumeVisualization");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateVoxelizerPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateVoxelizerPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("voxelize_VS", "vs_6_5", "assets\\shaders\\Voxelizer.hlsl");
 		auto GShader = RS->LoadShader("voxelize_GS", "gs_6_5", "assets\\shaders\\Voxelizer.hlsl");
@@ -793,14 +793,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Voxelizer");
 
-		return PSO;
+		return { PSO, &voxelizeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("Main", "cs_6_5", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)"),
@@ -809,14 +809,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(pso, "GatherVoxelArgs");
 
-		return pso;
+		return { pso, &markSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("MarkNodes", "cs_6_5", R"(assets\shaders\Voxelizer_MarkNodes.hlsl)"),
@@ -825,14 +825,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(pso, "MarkNodes");
 
-		return pso;
+		return { pso, &markSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("ExpandNodes", "cs_6_5", R"(assets\shaders\Voxelizer_ExpandNodes.hlsl)"),
@@ -841,14 +841,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(pso, "ExpandNodes");
 
-		return pso;
+		return { pso, &markSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("FillNodes", "cs_6_5", R"(assets\shaders\Voxelizer_BuildHighestMipLevel.hlsl)"),
@@ -857,14 +857,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(pso, "FillNodes");
 
-		return pso;
+		return { pso, &markSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("BuildLevel", "cs_6_5", R"(assets\shaders\Voxelizer_BuildMIPLevel.hlsl)"),
@@ -873,7 +873,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(pso, "BuildLevel");
 
-		return pso;
+		return { pso, &markSignature };
 	}
 
 
@@ -909,62 +909,44 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(
 			SVO_GatherArguments,
+			[&](RenderSystem* RS)
 			{
-				&voxelizeSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateGatherArgsPSO(RS);
-				}
+				return CreateGatherArgsPSO(RS);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			SVO_Voxelize,
+			[&](RenderSystem* RS)
 			{
-				&voxelizeSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateVoxelizerPSO(RS);
-				}
+				return CreateVoxelizerPSO(RS);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			SVO_GATHERSUBDIVISIONREQUESTS,
+			[&](RenderSystem* RS)
 			{
-				&markSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateMarkNodesPSO(RS);
-				}
+				return CreateMarkNodesPSO(RS);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			SVO_EXPANDNODES,
+			[&](RenderSystem* RS)
 			{
-				&markSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateExpandNodesPSO(RS);
-				}
+				return CreateExpandNodesPSO(RS);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			SVO_FILLNODES,
+			[&](RenderSystem* RS)
 			{
-				&markSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateFillAttributesPSO(RS);
-				}
+				return CreateFillAttributesPSO(RS);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			SVO_BUILDMIPLEVEL,
+			[&](RenderSystem* RS)
 			{
-				&markSignature,
-				[&](RenderSystem* RS)
-				{
-					return CreateBuildMIPLevelPSO(RS);
-				}
+				return CreateBuildMIPLevelPSO(RS);
 			});
 
 		dispatch = renderSystem.CreateIndirectLayout(

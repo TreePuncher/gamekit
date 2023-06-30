@@ -12,7 +12,7 @@ namespace FlexKit
 	using std::views::zip;
 
 
-	ID3D12PipelineState* ShadowMapper::CreateRowSums(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateRowSums(RenderSystem* RS)
 	{
 		auto CShader = RS->LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
@@ -25,34 +25,34 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &rootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ShadowMapper::CreateColumnSums(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateColumnSums(RenderSystem* RS)
 	{
 		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
-		PSO_Desc.pRootSignature = rootSignature;
-		PSO_Desc.CS = CShader;
+		PSO_Desc.pRootSignature	= rootSignature;
+		PSO_Desc.CS				= CShader;
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &rootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -107,14 +107,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ShadowMapPass");
 
-		return PSO;
+		return { PSO, &rootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -172,7 +172,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ShadowMapAnimatedPass");
 
-		return PSO;
+		return { PSO, &rootSignature };
 	}
 
 
@@ -305,10 +305,10 @@ namespace FlexKit
 
 		rootSignature.Build(renderSystem, &allocator);
 
-		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapPass(rs); }});
-		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	{ &rootSignature, [&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); } });
-		renderSystem.RegisterPSOLoader(BUILDROWSUMS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateRowSums(rs); } });
-		renderSystem.RegisterPSOLoader(BUILDCOLUMNSUMS,			{ &rootSignature, [&](RenderSystem* rs) { return CreateColumnSums(rs); } });
+		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			[&](RenderSystem* rs) { return CreateShadowMapPass(rs); });
+		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	[&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); });
+		renderSystem.RegisterPSOLoader(BUILDROWSUMS,			[&](RenderSystem* rs) { return CreateRowSums(rs); });
+		renderSystem.RegisterPSOLoader(BUILDCOLUMNSUMS,			[&](RenderSystem* rs) { return CreateColumnSums(rs); });
 	}
 
 

@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <utility>
 
 #include <d3d12.h>
+#include <d3dx12.h>
 #include <d3d12sdklayers.h>
 #include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
@@ -51,10 +52,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <variant>
 #include <optional>
 #include <directx-dxc/dxcapi.h>
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <DirectXMath/DirectXMath.h>
 
 #include <Windows.h>
 #include "MathUtils.h"

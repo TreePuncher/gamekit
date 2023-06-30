@@ -156,7 +156,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
@@ -196,14 +196,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback PS");
 
-		return PSO;
+		return { PSO, &feedbackPassRootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
@@ -250,14 +250,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &feedbackPassRootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
 	{
 		const char* file = RS->vendorID == DeviceVendor::AMD ?
 				"assets\\shaders\\TextureFeedback\\TextureFeedbackCompressor_AMD.hlsl" :
@@ -278,14 +278,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback compressor shader");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS)
 	{
 		auto computeShader = RS->LoadShader(
 			"PreFixSumBlockSizes", "cs_6_5",
@@ -303,14 +303,13 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback prefix sum shader");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
-
-	ID3D12PipelineState* CreateTextureFeedbackMergeBlocks(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackMergeBlocks(RenderSystem* RS)
 	{
 		auto computeShader = RS->LoadShader(
 			"MergeBlocks", "cs_6_5",
@@ -328,14 +327,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Merge Block shader");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTextureFeedbackSetBlockSizes(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackSetBlockSizes(RenderSystem* RS)
 	{
 		auto computeShader = RS->LoadShader(
 			"SetBlockCounters", "cs_6_5",
@@ -353,7 +352,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
@@ -533,11 +532,11 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKPASS,
-			{ &feedbackPassRootSignature, [&](auto rs) { return CreateTextureFeedbackPassPSO(rs); } });
+			[&](auto rs) { return CreateTextureFeedbackPassPSO(rs); });
 
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKANIMATEDPASS,
-			{ &feedbackPassRootSignature, [&](auto rs) { return CreateTextureFeedbackAnimatedPassPSO(rs); } });
+			[&](auto rs) { return CreateTextureFeedbackAnimatedPassPSO(rs); });
 
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,

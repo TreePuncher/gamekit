@@ -25,10 +25,10 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	csg				{ IN_framework.core.GetBlockMemory() }
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateTexturedTriStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTriStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawTri3DStatePSO });
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, FlexKit::CreateDrawLineStatePSO });
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,	FlexKit::CreateTexturedTriStatePSO);
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,		FlexKit::CreateDrawTriStatePSO);
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,		FlexKit::CreateDrawTri3DStatePSO);
+	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,		FlexKit::CreateDrawLineStatePSO);
 
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);

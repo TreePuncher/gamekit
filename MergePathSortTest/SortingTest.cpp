@@ -46,21 +46,21 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	auto res2 = sortingRootSignature.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
 	FK_ASSERT(res2, "Failed to create root signature!");
 
-	framework.GetRenderSystem().RegisterPSOLoader(InitiateBuffer, {
-		.rootSignature = &sortingRootSignature,
-		.loadState = [&](auto) { return CreateInitiateDataPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		InitiateBuffer,
+		[&](auto) { return CreateInitiateDataPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(LocalSort, {
-		.rootSignature = &sortingRootSignature,
-		.loadState = [&](auto) { return CreateLocalSortPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		LocalSort,
+		[&](auto) { return CreateLocalSortPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(CreateMergePath, {
-		.rootSignature = &sortingRootSignature,
-		.loadState = [&](auto) { return CreateMergePathPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		CreateMergePath,
+		[&](auto) { return CreateMergePathPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(GlobalMerge, {
-		.rootSignature = &sortingRootSignature,
-		.loadState = [&](auto) { return CreateGlobalMergePSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		GlobalMerge,
+		[&](auto) { return CreateGlobalMergePSO(); });
 }
 
 /************************************************************************************************/
@@ -289,7 +289,7 @@ bool SortTest::EventHandler(FlexKit::Event evt)
 /************************************************************************************************/
 
 
-ID3D12PipelineState* SortTest::CreateInitiateDataPSO()
+FlexKit::LoadPipelineStateRes SortTest::CreateInitiateDataPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader CShader = renderSystem.LoadShader("Initiate", "cs_6_2", R"(assets\shaders\Sorting\InitiateBuffer.hlsl)");
@@ -313,14 +313,14 @@ ID3D12PipelineState* SortTest::CreateInitiateDataPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return PSO;
+	return { PSO, &sortingRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* SortTest::CreateLocalSortPSO()
+FlexKit::LoadPipelineStateRes SortTest::CreateLocalSortPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader CShader = renderSystem.LoadShader("LocalBitonicSort", "cs_6_2", R"(assets\shaders\Sorting\BitonicSort.hlsl)");
@@ -344,14 +344,14 @@ ID3D12PipelineState* SortTest::CreateLocalSortPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return PSO;
+	return { PSO, &sortingRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* SortTest::CreateMergePathPSO()
+FlexKit::LoadPipelineStateRes SortTest::CreateMergePathPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader CShader = renderSystem.LoadShader("CreateMergePath", "cs_6_6", R"(assets\shaders\Sorting\MergePath.hlsl)");
@@ -375,14 +375,14 @@ ID3D12PipelineState* SortTest::CreateMergePathPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return PSO;
+	return { PSO, &sortingRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
+FlexKit::LoadPipelineStateRes SortTest::CreateGlobalMergePSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader CShader = renderSystem.LoadShader("GlobalMerge", "cs_6_6", R"(assets\shaders\Sorting\Merge.hlsl)", { .hlsl2021 = true });
@@ -406,7 +406,7 @@ ID3D12PipelineState* SortTest::CreateGlobalMergePSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return PSO;
+	return { PSO, &sortingRootSignature };
 }
 
 

@@ -232,6 +232,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct BrushConstants;
+
+	struct MarkClustersPass
+	{
+		BrushConstants&					entityConstants;
+		CameraHandle					camera;
+		ReserveConstantBufferFunction	reserveCB;
+		FrameResourceHandle				clustersObject;
+	};
+
+
+	/************************************************************************************************/
+
+
 	constexpr PSOHandle LIGHTPREPASS                    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
 	constexpr PSOHandle CREATECLUSTERS                  = PSOHandle(GetTypeGUID(CREATECLUSTERS));
 	constexpr PSOHandle CREATECLUSTERBUFFER             = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
@@ -317,6 +331,15 @@ namespace FlexKit
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
 
+		void MarkClusters_Pass(
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								CameraHandle					camera,
+								ResourceHandle					renderTarget,
+								GatherPassesTask&				passes,
+								BrushConstants&					entityConstants,
+								ReserveConstantBufferFunction	reserveCB,
+								iAllocator*						allocator);
 
 		LightBufferUpdate& UpdateLightBuffers(
 								UpdateDispatcher&				dispatcher,
@@ -370,33 +393,36 @@ namespace FlexKit
 
 	private:
 		RootSignature	rootSignature;
+		RootSignature 	markClustersSignature;
+
+
 		ResourceHandle	clusterBuffer = InvalidHandle;
 		IndirectLayout	dispatch;
 		IndirectLayout	gather;
 		IndirectLayout	draw;
 
-		static ID3D12PipelineState* CreateLightPassPSO                  (RenderSystem* RS);
-		static ID3D12PipelineState* CreateGBufferPassPSO                (RenderSystem* RS);
-		static ID3D12PipelineState* CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
-			   ID3D12PipelineState* CreateDeferredShadingPassPSO        (RenderSystem* RS);
-		static ID3D12PipelineState* CreateDeferredShadingPassComputePSO (RenderSystem* RS);
-		static ID3D12PipelineState* CreateComputeTiledDeferredPSO       (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLightPassPSO                  (RenderSystem* RS);
+		static LoadPipelineStateRes CreateGBufferPassPSO                (RenderSystem* RS);
+		static LoadPipelineStateRes CreateGBufferSkinnedPassPSO         (RenderSystem* RS);
+			   LoadPipelineStateRes CreateDeferredShadingPassPSO        (RenderSystem* RS);
+		static LoadPipelineStateRes CreateDeferredShadingPassComputePSO (RenderSystem* RS);
+		static LoadPipelineStateRes CreateComputeTiledDeferredPSO       (RenderSystem* RS);
 
-		static ID3D12PipelineState* CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS);
-		static ID3D12PipelineState* CreateLightBVH_PHASE1_PSO       (RenderSystem* RS);
-		static ID3D12PipelineState* CreateLightBVH_PHASE2_PSO       (RenderSystem* RS);
-		static ID3D12PipelineState* CreateLightBVH_DEBUGVIS_PSO     (RenderSystem* RS);
-		static ID3D12PipelineState* CreateLightListArgs_PSO         (RenderSystem* RS);
-		static ID3D12PipelineState* CreateCluster_DEBUGVIS_PSO      (RenderSystem* RS);
-		static ID3D12PipelineState* CreateCluster_DEBUGARGSVIS_PSO  (RenderSystem* RS);
-		static ID3D12PipelineState* CreateClusterLightListsPSO      (RenderSystem* RS);
-		static ID3D12PipelineState* CreateResolutionMatch_PSO       (RenderSystem* RS);
-		static ID3D12PipelineState* CreateClearResolutionMatch_PSO  (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLightBVH_PHASE1_PSO       (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLightBVH_PHASE2_PSO       (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLightBVH_DEBUGVIS_PSO     (RenderSystem* RS);
+		static LoadPipelineStateRes CreateLightListArgs_PSO         (RenderSystem* RS);
+		static LoadPipelineStateRes CreateCluster_DEBUGVIS_PSO      (RenderSystem* RS);
+		static LoadPipelineStateRes CreateCluster_DEBUGARGSVIS_PSO  (RenderSystem* RS);
+		static LoadPipelineStateRes CreateClusterLightListsPSO      (RenderSystem* RS);
+		static LoadPipelineStateRes CreateResolutionMatch_PSO       (RenderSystem* RS);
+		static LoadPipelineStateRes CreateClearResolutionMatch_PSO  (RenderSystem* RS);
 
-		static ID3D12PipelineState* CreateClustersPSO               (RenderSystem* RS);
-		static ID3D12PipelineState* CreateClusterBufferPSO          (RenderSystem* RS);
-		static ID3D12PipelineState* CreateClearClusterCountersPSO   (RenderSystem* RS);
-		static ID3D12PipelineState* CreateDEBUGBVHVIS               (RenderSystem* RS);
+		static LoadPipelineStateRes CreateClustersPSO               (RenderSystem* RS);
+		static LoadPipelineStateRes CreateClusterBufferPSO          (RenderSystem* RS);
+		static LoadPipelineStateRes CreateClearClusterCountersPSO   (RenderSystem* RS);
+		static LoadPipelineStateRes CreateDEBUGBVHVIS               (RenderSystem* RS);
 
 	};
 }

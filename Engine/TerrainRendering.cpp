@@ -33,7 +33,7 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateCullTerrainComputePSO(RenderSystem* renderSystem)
 	{
 		auto cullTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\cullterrain.hlsl");
 		auto cullTerrain_shader_GS = renderSystem->LoadShader("CullTerrain", "gs_6_0", "assets\\cullterrain.hlsl");
@@ -107,14 +107,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CullTerrain");
 
-		return PSO;
+		return { PSO, &renderSystem->Library.RS4CBVs_SO };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 	{
 		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain", "gs_6_0", "assets\\forwardRenderTerrain.hlsl");
@@ -160,14 +160,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTerrain");
 
-		return PSO;
+		return { PSO, &renderSystem->Library.RS4CBVs_SO };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
 	{
 		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS",		"vs_6_0", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain",		"gs_6_0", "assets\\forwardRenderTerrain.hlsl");
@@ -217,7 +217,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTerrainWireframe");
 
-		return PSO;
+		return { PSO, &renderSystem->Library.RS4CBVs_SO };
 	}
 
 

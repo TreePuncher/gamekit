@@ -164,7 +164,7 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 /************************************************************************************************/
 
 
-ID3D12PipelineState* HairRenderingTest::CreateApplyForcesPSO()
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 {
 	auto& renderSystem	= framework.GetRenderSystem();
 	Shader CShader		= renderSystem.LoadShader("ApplyForces", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
@@ -185,19 +185,19 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyForcesPSO()
 		.pPipelineStateSubobjectStream	= &stream
 	};
 
-	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	ID3D12PipelineState* pso = nullptr;
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
-	SETDEBUGNAME(PSO, "ApplyForces");
+	SETDEBUGNAME(pso, "ApplyForces");
 
-	return PSO;
+	return { pso, &strandRenderRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* HairRenderingTest::CreateApplyShapeConstraintsPSO()
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO()
 {
 	auto& renderSystem	= framework.GetRenderSystem();
 	Shader CShader		= renderSystem.LoadShader("ApplyShapeConstraints", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
@@ -218,19 +218,19 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyShapeConstraintsPSO()
 		.pPipelineStateSubobjectStream	= &stream
 	};
 
-	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	ID3D12PipelineState* pso = nullptr;
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
-	SETDEBUGNAME(PSO, "ApplyShapeConstraints");
+	SETDEBUGNAME(pso, "ApplyShapeConstraints");
 
-	return PSO;
+	return { pso, &strandRenderRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	Shader CShader = renderSystem.LoadShader("ApplyEdgeLengthContraints", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
@@ -251,12 +251,12 @@ ID3D12PipelineState* HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 		.pPipelineStateSubobjectStream = &stream
 	};
 
-	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	ID3D12PipelineState* pso = nullptr;
+	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
-	SETDEBUGNAME(PSO, "ApplyEdgeLengthContraints");
+	SETDEBUGNAME(pso, "ApplyEdgeLengthContraints");
 
-	return PSO;
+	return { pso, &strandRenderRootSignature };
 }
 
 
@@ -294,21 +294,21 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	auto res2 = strandRenderRootSignature.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
 	FK_ASSERT(res2, "Failed to create root signature!");
 
-	framework.GetRenderSystem().RegisterPSOLoader(StrandRenderPSO, {
-		.rootSignature	= &strandRenderRootSignature,
-		.loadState		= [&](auto) { return CreateStrandRenderPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		StrandRenderPSO,
+		[&](auto) { return CreateStrandRenderPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyForcesPSO, {
-		.rootSignature	= &strandRenderRootSignature,
-		.loadState		= [&](auto) { return CreateApplyForcesPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		ApplyForcesPSO,
+		[&](auto) { return CreateApplyForcesPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyShapeConstraintsPSO, {
-		.rootSignature	= &strandRenderRootSignature,
-		.loadState		= [&](auto) { return CreateApplyShapeConstraintsPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		ApplyShapeConstraintsPSO, 
+		[&](auto) { return CreateApplyShapeConstraintsPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyEdgeLengthConstraintPSO, {
-		.rootSignature	= &strandRenderRootSignature,
-		.loadState		= [&](auto) { return CreateApplyEdgeLengthConstraintPSO(); } });
+	framework.GetRenderSystem().RegisterPSOLoader(
+		ApplyEdgeLengthConstraintPSO,
+		[&](auto) { return CreateApplyEdgeLengthConstraintPSO(); });
 
 	framework.GetRenderSystem().QueuePSOLoad(StrandRenderPSO);
 	framework.GetRenderSystem().QueuePSOLoad(ApplyForcesPSO);
@@ -349,7 +349,7 @@ HairRenderingTest::~HairRenderingTest()
 /************************************************************************************************/
 
 
-ID3D12PipelineState* HairRenderingTest::CreateStrandRenderPSO()
+LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader vshader = renderSystem.LoadShader("VMain", "vs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
@@ -388,14 +388,14 @@ ID3D12PipelineState* HairRenderingTest::CreateStrandRenderPSO()
 
 	SETDEBUGNAME(pso, "DrawStrands");
 
-	return pso;
+	return { pso, &strandRenderRootSignature };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* HairRenderingTest::CreateDebugRenderPSO()
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateDebugRenderPSO()
 {
 	auto& renderSystem = framework.GetRenderSystem();
 	FlexKit::Shader vshader = renderSystem.LoadShader("VMain", "vs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", {.enable16BitTypes = true });
@@ -434,7 +434,7 @@ ID3D12PipelineState* HairRenderingTest::CreateDebugRenderPSO()
 
 	SETDEBUGNAME(pso, "DrawStrandsDebug");
 
-	return pso;
+	return { pso, &strandRenderRootSignature };
 }
 
 

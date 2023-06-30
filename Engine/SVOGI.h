@@ -129,12 +129,12 @@ namespace FlexKit
 		void BuildMIPLevels (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
 
 
-		ID3D12PipelineState* CreateVoxelizerPSO         (RenderSystem* RS);
-		ID3D12PipelineState* CreateGatherArgsPSO        (RenderSystem* RS);
-		ID3D12PipelineState* CreateMarkNodesPSO         (RenderSystem* RS);
-		ID3D12PipelineState* CreateExpandNodesPSO       (RenderSystem* RS);
-		ID3D12PipelineState* CreateFillAttributesPSO    (RenderSystem* RS);
-		ID3D12PipelineState* CreateBuildMIPLevelPSO     (RenderSystem* RS);
+		LoadPipelineStateRes CreateVoxelizerPSO         (RenderSystem* RS);
+		LoadPipelineStateRes CreateGatherArgsPSO        (RenderSystem* RS);
+		LoadPipelineStateRes CreateMarkNodesPSO         (RenderSystem* RS);
+		LoadPipelineStateRes CreateExpandNodesPSO       (RenderSystem* RS);
+		LoadPipelineStateRes CreateFillAttributesPSO    (RenderSystem* RS);
+		LoadPipelineStateRes CreateBuildMIPLevelPSO     (RenderSystem* RS);
 
 
 		RootSignature voxelizeSignature;
@@ -227,19 +227,19 @@ namespace FlexKit
 		ID3D12PipelineState* gatherDispatchArgs;
 		ID3D12PipelineState* gatherDispatchArgs2;
 
-		ID3D12PipelineState* CreateAllocatePSO                  (RenderSystem* RS);
-		ID3D12PipelineState* CreateTransferPSO                  (RenderSystem* RS);
-		ID3D12PipelineState* CreateVXGIGatherDispatchArgsPSO    (RenderSystem* RS);
-		ID3D12PipelineState* CreateVXGIEraseDispatchArgsPSO     (RenderSystem* RS);
-		ID3D12PipelineState* CreateVXGIDecrementDispatchArgsPSO (RenderSystem* RS);
+		LoadPipelineStateRes CreateAllocatePSO                  (RenderSystem* RS);
+		LoadPipelineStateRes CreateTransferPSO                  (RenderSystem* RS);
+		LoadPipelineStateRes CreateVXGIGatherDispatchArgsPSO    (RenderSystem* RS);
+		LoadPipelineStateRes CreateVXGIEraseDispatchArgsPSO     (RenderSystem* RS);
+		LoadPipelineStateRes CreateVXGIDecrementDispatchArgsPSO (RenderSystem* RS);
 
-		static ID3D12PipelineState* CreateVXGI_InitOctree              (RenderSystem* RS);
-		static ID3D12PipelineState* CreateInjectVoxelSamplesPSO        (RenderSystem* RS);
-		static ID3D12PipelineState* CreateMarkErasePSO                  (RenderSystem* RS);
-		static ID3D12PipelineState* CreateUpdateVolumeVisualizationPSO (RenderSystem* RS);
-		static ID3D12PipelineState* CreateVXGIGatherDrawArgsPSO        (RenderSystem* RS);
-		static ID3D12PipelineState* CreateVXGIGatherSubDRequestsPSO    (RenderSystem* RS);
-		static ID3D12PipelineState* CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
+		static LoadPipelineStateRes CreateVXGI_InitOctree              (RenderSystem* RS);
+		static LoadPipelineStateRes CreateInjectVoxelSamplesPSO        (RenderSystem* RS);
+		static LoadPipelineStateRes CreateMarkErasePSO                  (RenderSystem* RS);
+		static LoadPipelineStateRes CreateUpdateVolumeVisualizationPSO (RenderSystem* RS);
+		static LoadPipelineStateRes CreateVXGIGatherDrawArgsPSO        (RenderSystem* RS);
+		static LoadPipelineStateRes CreateVXGIGatherSubDRequestsPSO    (RenderSystem* RS);
+		static LoadPipelineStateRes CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
 	};
 }
 

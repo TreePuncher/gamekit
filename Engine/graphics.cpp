@@ -1468,6 +1468,105 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool RootSignature::LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
+	{
+		auto result = renderSystem.LoadRootSignature(dir, entry);
+		
+		if(result)
+		{
+			auto&& rootSignature = result.value();
+			
+			ID3D12VersionedRootSignatureDeserializer* deserializer;
+			auto res  = D3D12CreateVersionedRootSignatureDeserializer(rootSignature.buffer, rootSignature.bufferSize, IID_PPV_ARGS(&deserializer));
+
+			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* versioned_desc;
+			deserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_0, &versioned_desc);
+			auto desc = &versioned_desc->Desc_1_1;
+
+			size_t parametersEnd = desc->NumParameters;
+			for(size_t itr = 0; itr < parametersEnd; itr++)
+			{
+				switch(desc->pParameters[itr].ParameterType)
+				{
+					case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+					{
+						auto& parameter = desc->pParameters[itr].DescriptorTable;
+						
+						for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
+						{
+							DesciptorHeapLayout<16> layout;
+							switch(range.RangeType)
+							{
+							case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
+							{
+								layout.SetParameterAsSRV(
+									idx, 
+									range.BaseShaderRegister, 
+									range.NumDescriptors,
+									range.RegisterSpace);
+							}	break;
+							case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
+							{
+								layout.SetParameterAsShaderUAV(
+									idx, 
+									range.BaseShaderRegister, 
+									range.NumDescriptors,
+									range.RegisterSpace);
+							}	break;
+							case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
+							{
+								layout.SetParameterAsCBV(
+									idx, 
+									range.BaseShaderRegister, 
+									range.NumDescriptors,
+									range.RegisterSpace);
+							}	break;
+							case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
+							{
+								FK_ASSERT(0, "Unimplemented funcionality!");
+							}	break;
+							}
+
+							Heaps.emplace_back(Heaps.size(), layout);
+						}
+					
+						SetParameterAsDescriptorTable(itr, Heaps.back().Heap, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					}	break;
+					case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+					{
+						auto& parameter = desc->pParameters[itr].Constants;
+						SetParameterAsUINT(itr, parameter.Num32BitValues, parameter.ShaderRegister, parameter.RegisterSpace, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					}	break;
+					case D3D12_ROOT_PARAMETER_TYPE_CBV:
+					{
+						auto& parameter = desc->pParameters[itr].Descriptor;
+						SetParameterAsCBV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					}	break;
+					case D3D12_ROOT_PARAMETER_TYPE_SRV:
+					{
+						auto& parameter = desc->pParameters[itr].Descriptor;
+						SetParameterAsSRV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					}	break;
+					case D3D12_ROOT_PARAMETER_TYPE_UAV:
+					{
+						auto& parameter = desc->pParameters[itr].Descriptor;
+						SetParameterAsUAV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					}	break;
+				}
+			}
+
+			deserializer->Release();
+
+			return Build(renderSystem, temp);
+		}
+		else		
+			return false;
+	}
+
+
+	/************************************************************************************************/
+
+
 	Context::Context(
 				RenderSystem*	renderSystem_IN,
 				iAllocator*		allocator) :
@@ -4804,7 +4903,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateClearBufferPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateClearBufferPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
@@ -4818,7 +4917,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.ClearBuffer };
 	}
 
 
@@ -5263,7 +5362,7 @@ namespace FlexKit
 		FreeList_CopyQueue.Allocator		= in->Memory;
 		DefaultTexture						= _CreateDefaultTexture();
 
-		RegisterPSOLoader(CLEARBUFFERPSO, { &Library.ClearBuffer, CreateClearBufferPSO });
+		RegisterPSOLoader(CLEARBUFFERPSO, CreateClearBufferPSO);
 		QueuePSOLoad(CLEARBUFFERPSO);
 
 		directUploadBuffer = UploadBuffer(pDevice);
@@ -5365,9 +5464,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc)
+	void RenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN fn)
 	{
-		PipelineStates.RegisterPSOLoader(State, std::move(desc));
+		PipelineStates.RegisterPSOLoader(State, std::move(fn));
 	}
 
 
@@ -7142,6 +7241,107 @@ namespace FlexKit
 
 			return std::move(out);
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::expected<Shader, std::string> RenderSystem::LoadRootSignature(const char* file, const char* entry)
+	{
+		std::filesystem::path filePath{ file };
+		auto parentPath = filePath.parent_path();
+
+		wchar_t entryW[64];
+		wchar_t profileW[] = L"rootsig_1_1";
+
+		if(entry != nullptr)
+			mbstowcs(entryW, entry, 64);
+
+		IDxcBlobEncoding* blob;
+		auto HR1 = hlslLibrary->CreateBlobFromFile(filePath.c_str(), nullptr, &blob);
+
+		if (FAILED(HR1))
+		{
+			LPSTR string = nullptr;
+
+			const auto msgLen = FormatMessageA(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				nullptr,
+				HR1,
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPSTR)&string,
+				0,
+				nullptr);
+
+			FK_LOG_ERROR("Signature failed to load: %s", string);
+
+			LocalFree(string);
+
+			return {};
+		}
+
+		IncludeHandler includeHandler;
+		includeHandler.includePath = parentPath;
+		includeHandler.handler = hlslIncludeHandler;
+
+
+		IDxcCompiler2* debugCompiler = nullptr;
+		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
+
+		static_vector<LPCWSTR> arguments;
+
+		arguments.push_back(L"/extractrootsignature");
+
+		IDxcOperationResult* result = nullptr;
+		auto HR2 = hlslCompiler->Compile(
+			blob,
+			filePath.c_str(),
+			entry != nullptr ? entryW : nullptr,
+			profileW,
+			arguments.data(), (UINT)arguments.size(),
+			nullptr, 0,
+			&includeHandler,
+			&result);
+
+		if (FAILED(HR2))
+		{
+			if (result)
+				result->Release();
+
+			return std::unexpected{ std::string{ "Failed to load file: " } + file };
+		}
+		else
+		{
+			IDxcBlob* byteCodeBlob;
+			HRESULT status;
+			result->GetStatus(&status);
+
+			if (FAILED(status))
+			{
+				IDxcBlobEncoding* errors;
+				result->GetErrorBuffer(&errors);
+
+				auto errorString = (const char*)errors->GetBufferPointer();
+				FK_LOG_ERROR("%s\nFailed to compile root signature \nFile: %s\nPress Enter to try again\n", filePath.string().c_str());
+
+				errors->Release();
+
+				return std::unexpected{ std::string{ errorString } };
+			}
+
+			auto HR = result->GetResult(&byteCodeBlob);
+
+			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
+
+			Shader out{ byteCodeBlob };
+			byteCodeBlob->Release();
+			result->Release();
+
+			return out;
+		}
+
+		return std::unexpected{ std::string{ "Unexpected error!" } };
 	}
 
 	

@@ -13,7 +13,7 @@ namespace FlexKit
 	using namespace std::views;
 
 
-	ID3D12PipelineState* ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -72,14 +72,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "GBufferPassPSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateGBufferSkinnedPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",       "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -144,14 +144,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
 		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
@@ -197,14 +197,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DeferredShadingPSO");
 
-		return PSO;
+		return { PSO, &rootSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
 	{
 		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
@@ -218,14 +218,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DeferredShadingComputePSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
@@ -241,14 +241,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ClearClusteredCounters");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -284,14 +284,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBuffers_DEBUGVIS");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
@@ -307,13 +307,13 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE1");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
@@ -329,14 +329,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE2");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -372,14 +372,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_DEBUGVIS");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
 
@@ -395,14 +395,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusterArguments");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
 
@@ -418,14 +418,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightListArgs");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
 
@@ -441,14 +441,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightLists");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateResolutionMatch_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
@@ -464,13 +464,13 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ResolutionMatch_UNUSED");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateClearResolutionMatch_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
@@ -486,14 +486,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ResolutionMatchClear_UNUSED");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateClustersPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
@@ -509,13 +509,13 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -551,14 +551,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
 		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
@@ -599,14 +599,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateBVH_DEBUGVIS");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
 
@@ -622,14 +622,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusterBuffer");
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
 
@@ -645,7 +645,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateComputeTiledDeferred");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
@@ -753,33 +753,34 @@ namespace FlexKit
 
 
 	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
-		dispatch		{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
-		draw			{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) },
-		rootSignature	{ persistent }
+		dispatch				{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
+		draw					{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) },
+		rootSignature			{ persistent },
+		markClustersSignature	{ persistent }
 	{
-		renderSystem.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,		{ &renderSystem.Library.RSDefault, CreateComputeTiledDeferredPSO });
+		renderSystem.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,		CreateComputeTiledDeferredPSO);
 
-		renderSystem.RegisterPSOLoader(CREATECLUSTERS,				{ &renderSystem.Library.ComputeSignature, CreateClustersPSO				});
-		renderSystem.RegisterPSOLoader(CREATECLUSTERBUFFER,			{ &renderSystem.Library.ComputeSignature, CreateClusterBufferPSO		});
-		renderSystem.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,		{ &renderSystem.Library.ComputeSignature, CreateClusterLightListsPSO	});
-		renderSystem.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,		{ &renderSystem.Library.ComputeSignature, CreateLightBVH_PHASE1_PSO		});
-		renderSystem.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,		{ &renderSystem.Library.ComputeSignature, CreateLightBVH_PHASE2_PSO		});
-		renderSystem.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,		{ &renderSystem.Library.ComputeSignature, CreateLightListArgs_PSO		});
-		renderSystem.RegisterPSOLoader(CLEARCOUNTERSPSO,			{ &renderSystem.Library.ComputeSignature, CreateClearClusterCountersPSO	});
+		renderSystem.RegisterPSOLoader(CREATECLUSTERS,				CreateClustersPSO);
+		renderSystem.RegisterPSOLoader(CREATECLUSTERBUFFER,			CreateClusterBufferPSO);
+		renderSystem.RegisterPSOLoader(CREATECLUSTERLIGHTLISTS,		CreateClusterLightListsPSO);
+		renderSystem.RegisterPSOLoader(CREATELIGHTBVH_PHASE1,		CreateLightBVH_PHASE1_PSO);
+		renderSystem.RegisterPSOLoader(CREATELIGHTBVH_PHASE2,		CreateLightBVH_PHASE2_PSO);
+		renderSystem.RegisterPSOLoader(CREATELIGHTLISTARGS_PSO,		CreateLightListArgs_PSO);
+		renderSystem.RegisterPSOLoader(CLEARCOUNTERSPSO,			CreateClearClusterCountersPSO);
 
-		renderSystem.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,		{ &renderSystem.Library.RSDefault, CreateLightBVH_DEBUGVIS_PSO });
-		renderSystem.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,		{ &renderSystem.Library.RSDefault, CreateCluster_DEBUGVIS_PSO });
-		renderSystem.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,	{ &renderSystem.Library.RSDefault, CreateCluster_DEBUGARGSVIS_PSO });
-		renderSystem.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,		{ &renderSystem.Library.RSDefault, CreateLight_DEBUGARGSVIS_PSO });
-		renderSystem.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,	{ &renderSystem.Library.RSDefault, CreateResolutionMatch_PSO });
-		renderSystem.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,	{ &renderSystem.Library.RSDefault, CreateClearResolutionMatch_PSO});
+		renderSystem.RegisterPSOLoader(LIGHTBVH_DEBUGVIS_PSO,		CreateLightBVH_DEBUGVIS_PSO);
+		renderSystem.RegisterPSOLoader(CLUSTER_DEBUGVIS_PSO,		CreateCluster_DEBUGVIS_PSO);
+		renderSystem.RegisterPSOLoader(CLUSTER_DEBUGARGSVIS_PSO,	CreateCluster_DEBUGARGSVIS_PSO);
+		renderSystem.RegisterPSOLoader(CREATELIGHTDEBUGVIS_PSO,		CreateLight_DEBUGARGSVIS_PSO);
+		renderSystem.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,	CreateResolutionMatch_PSO);
+		renderSystem.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,	CreateClearResolutionMatch_PSO);
 
-		renderSystem.RegisterPSOLoader(GBUFFERPASS,				{ &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferPassPSO			});
-		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateGBufferSkinnedPassPSO	});
-		renderSystem.RegisterPSOLoader(SHADINGPASS,				{ &renderSystem.Library.RS6CBVs4SRVs, [this](auto rs){ return CreateDeferredShadingPassPSO(rs);	} });
-		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateDeferredShadingPassComputePSO });
+		renderSystem.RegisterPSOLoader(GBUFFERPASS,				CreateGBufferPassPSO);
+		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,		CreateGBufferSkinnedPassPSO);
+		renderSystem.RegisterPSOLoader(SHADINGPASS,				[this](auto rs){ return CreateDeferredShadingPassPSO(rs);	});
+		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,		CreateDeferredShadingPassComputePSO);
 
-		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH, { &renderSystem.Library.RSDefault, CreateDEBUGBVHVIS });
+		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,			CreateDEBUGBVHVIS);
 
 
 		rootSignature.AllowIA = true;
@@ -798,11 +799,12 @@ namespace FlexKit
 		rootSignature.Build(renderSystem, persistent);
 
 		SETDEBUGNAME(rootSignature.Get_ptr(), "Shading");
+
+		markClustersSignature.LoadSignature(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
+		SETDEBUGNAME(markClustersSignature.Get_ptr(), "Shading");
 	}
 
 
-
-	
 	/************************************************************************************************/
 
 
@@ -889,6 +891,71 @@ namespace FlexKit
 					});
 			};
 	}
+
+
+	/************************************************************************************************/
+
+
+	void ClusteredRender::MarkClusters_Pass(
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								CameraHandle					camera,
+								ResourceHandle					renderTarget,
+								GatherPassesTask&				passes,
+								BrushConstants&					entityConstants,
+								ReserveConstantBufferFunction	reserveCB,
+								iAllocator*						allocator)
+	{
+		auto getStaticPass		= [&passTable = passes.GetData()]() -> std::span<const PVEntry> { return passTable.GetPass(MLAB_DRAW); };
+		
+		
+		PassDescription<MarkClustersPass> staticPass =
+		{
+			.sharedData = {
+				.entityConstants 	= entityConstants,
+				.camera				= camera,
+				.reserveCB			= reserveCB,
+			},
+			.getPVS = getStaticPass,
+		};
+
+		auto setup	= 
+		[&](FrameGraphNodeBuilder& builder, MarkClustersPass& data)
+		{
+			const uint2 WH = (builder.GetRenderSystem().GetTextureWH(renderTarget) / 32) + 1;
+
+			data.clustersObject = builder.AcquireVirtualResource(
+				GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_UINT), 
+				DeviceAccessState::DASUAV, VirtualResourceScope::Frame);
+
+			builder.AddNodeDependency(entityConstants.node);
+		};
+
+		auto draw	=
+		[](const auto begin, const auto end, std::span<const PVEntry> pvs, MarkClustersPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		{
+			//auto markClusters1 = resources.GetPipelineState(0); // Static meshes
+			//auto rootSignature = resources.GetPipelineStateRootSig(0);
+
+			ctx.SetRenderTargets({}, false);
+
+			auto& brushConstantBuffer = data.entityConstants.GetConstantBuffer();
+			auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
+
+			for(const auto& draw : std::span<const PVEntry>{ begin, end })
+			{
+				for(auto&& [idx, mesh] : zip(iota(0), draw.brush->meshes))
+				{
+					const auto triMesh 	= GetMeshResource(mesh);
+					auto lodLevel 		= triMesh->lods[idx];
+					ctx.SetGraphicsConstantBufferView(0, brushConstants[draw.submissionID]);
+				}
+			}
+		};
+
+		frameGraph.AddPass(staticPass, setup, draw);
+	}
+
 
 	/************************************************************************************************/
 
@@ -2032,7 +2099,7 @@ namespace FlexKit
 					if (mode == BVHVisMode::BVH || mode == BVHVisMode::Both)
 						verts.push_back(v);
 				}
-
+				
 				auto vertices       = VertexBufferDataSet{ verts.data(), verts.size() * sizeof(Vertex), vertexBuffer };
 				auto constants      = ConstantBufferDataSet{ constantData, constantBuffer };
 				auto renderTargets  = { resources.GetResource(desc.renderTargetObject) };
