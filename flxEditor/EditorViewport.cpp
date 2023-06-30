@@ -801,7 +801,7 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 	show();
 
 	auto& RS = IN_renderer.GetRenderSystem();
-	RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO, { &RS.Library.RS6CBVs4SRVs, FlexKit::CreateDraw2StatePSO });
+	RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO, FlexKit::CreateDraw2StatePSO);
 
 	auto undoHotKey = new QShortcut(QKeySequence(QKeySequence::Delete), this);
 	connect(undoHotKey, &QShortcut::activated, [&]() { DeleteSelectionItem(); });

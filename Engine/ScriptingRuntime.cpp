@@ -30,7 +30,7 @@ namespace FlexKit
 
 	uint32_t	AngelScriptEvent::GetFieldCount()
 	{
-		return fields.size();
+		return uint32_t(fields.size());
 	}
 
 	template<typename ... TY_ARGS>

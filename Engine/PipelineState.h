@@ -50,18 +50,13 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-	using LOADSTATE_FN = FlexKit::TypeErasedCallable<ID3D12PipelineState* (RenderSystem*), 16>;
-
-	//typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
-
-	/************************************************************************************************/
-
-	struct PipelineStateDescription
+	struct LoadPipelineStateRes
 	{
-		RootSignature*	rootSignature;
-		LOADSTATE_FN	loadState;
+		ID3D12PipelineState*	pipelineState;
+		RootSignature* 			rootSignature;
 	};
 
+	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*), 16>;
 
 	/************************************************************************************************/
 
@@ -129,7 +124,7 @@ namespace FlexKit
 		ID3D12PipelineState*			GetPSO			(PSOHandle);
 		RootSignature const * const 	GetPSORootSig	(PSOHandle) const;
 
-		void							RegisterPSOLoader(PSOHandle, PipelineStateDescription Loader );
+		void							RegisterPSOLoader(PSOHandle, LOADSTATE_FN);
 
 	private:
 		PipelineStateObject*	_GetStateObject			(PSOHandle);

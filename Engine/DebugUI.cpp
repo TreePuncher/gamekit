@@ -17,7 +17,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
+	LoadPipelineStateRes Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
 	{
 		auto DrawRectVShader = renderSystem->LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
 		auto DrawRectPShader = renderSystem->LoadShader("ImGui_PS", "ps_6_0", "assets\\shaders\\imguiShaders.hlsl");
@@ -68,7 +68,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawIMGUI");
 
-		return PSO;
+		return { PSO, &renderSystem->Library.RSDefault };
 	}
 
 
@@ -91,7 +91,7 @@ namespace FlexKit
 		io.FontGlobalScale              = 1.5f;
 		io.KeyMap[ImGuiKey_Backspace]   = VK_BACK;
 
-		renderSystem.RegisterPSOLoader(DRAW_imgui, { &renderSystem.Library.RSDefault, Create_DrawImGUI });
+		renderSystem.RegisterPSOLoader(DRAW_imgui, Create_DrawImGUI);
 		renderSystem.QueuePSOLoad(DRAW_imgui);
 
 		unsigned char* tex_pixels = nullptr;

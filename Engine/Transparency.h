@@ -2,72 +2,101 @@
 #include "FrameGraph.h"
 #include "graphics.h"
 #include "Scene.h"
+#include "ResourceHandles.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
 
 
-    constexpr PSOHandle OITBLEND        = PSOHandle(GetTypeGUID(OITBLEND));
-    constexpr PSOHandle OITDRAW         = PSOHandle(GetTypeGUID(OITDRAW));
-    constexpr PSOHandle OITDRAWANIMATED = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
+	constexpr PSOHandle OITBLEND        = PSOHandle(GetTypeGUID(OITBLEND));
+	constexpr PSOHandle OITDRAW         = PSOHandle(GetTypeGUID(OITDRAW));
+	constexpr PSOHandle OITDRAWANIMATED = PSOHandle(GetTypeGUID(OITDRAWANIMATED));
 
 
-    /************************************************************************************************/
+	constexpr PSOHandle		MarkClusters	= PSOHandle(GetTypeGUID(MarkClusters));
+	constexpr PassHandle	MLAB_DRAW		= PassHandle(GetTypeGUID(MLAB_DRAW));
 
 
-    struct OITPass
+	/************************************************************************************************/
+
+
+	struct OITPass
 	{
-        ReserveConstantBufferFunction       reserveCB;
+		ReserveConstantBufferFunction       reserveCB;
 
-        UpdateTaskTyped<GetPVSTaskData>&    PVS;
+		UpdateTaskTyped<GetPVSTaskData>&    PVS;
 
-        CameraHandle            camera;
-        FrameResourceHandle     accumalatorObject;
-        FrameResourceHandle     counterObject;
-        FrameResourceHandle     depthTarget;
+		CameraHandle            camera;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    struct OITBlend
+	struct OITBlend
 	{
-        FrameResourceHandle     renderTargetObject;
-        FrameResourceHandle     accumalatorObject;
-        FrameResourceHandle     counterObject;
-        FrameResourceHandle     depthTarget;
+		FrameResourceHandle     renderTargetObject;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    class Transparency
-    {
-    public:
-        Transparency(RenderSystem&);
+	struct OIT_MLAB
+	{
+		FrameResourceHandle     renderTargetObject;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
+	};
 
-        OITPass& OIT_WB_Pass(
-		        UpdateDispatcher&               dispatcher,
-		        FrameGraph&                     frameGraph,
-                GatherPassesTask&               passes,
-                CameraHandle                    camera,
-		        ResourceHandle                  depthTarget,
-		        ReserveConstantBufferFunction   reserveCB,
-		        iAllocator*                     allocator);
 
-        OITBlend& OIT_WB_Blend(
-		        UpdateDispatcher&               dispatcher,
-		        FrameGraph&                     frameGraph,
-                OITPass&                        OITPass,
-                FrameResourceHandle             renderTarget,
-		        iAllocator*                     allocator);
-        
-        static ID3D12PipelineState* CreateOITBlendPSO                  (RenderSystem* RS);
-        static ID3D12PipelineState* CreateOITDrawPSO                   (RenderSystem* RS);
-        static ID3D12PipelineState* CreateOITDrawAnimatedPSO           (RenderSystem* RS);
-    };
+	/************************************************************************************************/
+
+
+	class Transparency
+	{
+	public:
+		Transparency(RenderSystem&, iAllocator& allocator);
+
+		OITPass& OIT_WB_Pass(
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				GatherPassesTask&				passes,
+				CameraHandle					camera,
+				ResourceHandle					depthTarget,
+				ReserveConstantBufferFunction	reserveCB,
+				iAllocator*						allocator);
+
+		OITBlend& OIT_WB_Blend(
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				OITPass&						OITPass,
+				FrameResourceHandle				renderTarget,
+				iAllocator*						allocator);
+
+		void MarkClusters_Pass(
+			UpdateDispatcher&					dispatcher,
+			FrameGraph&							frameGraph,
+			OITPass&							OITPass,
+			FrameResourceHandle					renderTarget,
+			iAllocator*							allocator);
+
+		static LoadPipelineStateRes	CreateOITBlendPSO					(RenderSystem* RS);
+		static LoadPipelineStateRes	CreateOITDrawPSO					(RenderSystem* RS);
+		static LoadPipelineStateRes	CreateOITDrawAnimatedPSO			(RenderSystem* RS);
+
+		ID3D12PipelineState*		CreateMarkClustersPSO				(RenderSystem* RS);
+		ID3D12PipelineState*		CreateMLABDrawPSO					(RenderSystem* RS);
+
+		RootSignature	MLABDrawSignature;
+	};
 
 
 }   /************************************************************************************************/
@@ -75,7 +104,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2016-2021 Robert May
+Copyright (c) 2016-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

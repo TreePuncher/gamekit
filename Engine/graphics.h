@@ -823,6 +823,31 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		std::unreachable();
 	}
 
+	inline PIPELINE_DESTINATION ShaderVis2PipelineDest(D3D12_SHADER_VISIBILITY visibility)
+	{
+		switch (visibility)
+		{
+		case D3D12_SHADER_VISIBILITY_HULL:
+			return PIPELINE_DEST_HS;
+		case D3D12_SHADER_VISIBILITY_GEOMETRY:
+			return PIPELINE_DEST_GS;
+		case  D3D12_SHADER_VISIBILITY_VERTEX:
+			return PIPELINE_DEST_VS;
+		case D3D12_SHADER_VISIBILITY_PIXEL:
+			return PIPELINE_DEST_PS;
+		case D3D12_SHADER_VISIBILITY_DOMAIN:
+			return PIPELINE_DEST_DS;
+		case D3D12_SHADER_VISIBILITY_AMPLIFICATION:
+			return PIPELINE_DEST_AS;
+  		case D3D12_SHADER_VISIBILITY_MESH:
+			return PIPELINE_DEST_MS;
+		default:
+			return FlexKit::PIPELINE_DEST_ALL;
+		}
+
+		std::unreachable();
+	}
+
 
 	/************************************************************************************************/
 
@@ -1859,6 +1884,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		const DesciptorHeapLayout<16>& GetDescHeap(size_t idx) const { return Heaps[idx].Heap; }
 
+		bool LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
 
 		size_t GetDesciptorTableSize(size_t idx) const
 		{
@@ -3276,9 +3302,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	// Basic Draw States
 	// TODO: MOVE THESE OUT OF THIS HEADER!
-	ID3D12PipelineState* CreateDrawTriStatePSO	( RenderSystem* RS );
-	ID3D12PipelineState* CreateDrawLineStatePSO	( RenderSystem* RS );
-	ID3D12PipelineState* CreateDraw2StatePSO	( RenderSystem* RS );
+	LoadPipelineStateRes CreateDrawTriStatePSO	(RenderSystem* RS);
+	LoadPipelineStateRes CreateDrawLineStatePSO	(RenderSystem* RS);
+	LoadPipelineStateRes CreateDraw2StatePSO	(RenderSystem* RS);
 
 
 	/************************************************************************************************/
@@ -3723,7 +3749,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
-		void RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc);
+		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
 		void QueuePSOLoad(PSOHandle State);
 
 		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const;
@@ -3795,7 +3821,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void			UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState);
 
-		Shader  LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
+		Shader								LoadShader			(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
+		std::expected<Shader, std::string>	LoadRootSignature	(const char* file, const char* entry);
 
 		PipelineStateLibraryDesc    CreatePipelibrary();
 

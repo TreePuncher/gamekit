@@ -6,7 +6,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateLightPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateLightPassPSO(RenderSystem* RS)
 	{
 		auto lightPassShader = RS->LoadShader("tiledLightCulling", "cs_6_0", "assets\\shaders\\lightPass.hlsl");
 
@@ -18,14 +18,14 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &RS->Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateForwardDrawPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 		auto DrawRectPShader = RS->LoadShader("Forward_PS", "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -89,14 +89,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ForwardDraw");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDepthPrePassPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDepthPrePassPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("DepthPass_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
@@ -146,14 +146,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DepthPrePass");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 		auto PShader = RS->LoadShader("BilateralBlurHorizontal_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
@@ -191,14 +191,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "HorizontalBlur");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 		auto PShader = RS->LoadShader("BilateralBlurVertical_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
@@ -235,14 +235,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "VerticalBlur");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateEnvironmentPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateEnvironmentPassPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("passthrough_VS", "vs_6_0", "assets\\shaders\\DeferredRender.hlsl");
 		auto PShader = RS->LoadShader("environment_PS", "ps_6_0", "assets\\shaders\\DeferredRender.hlsl");
@@ -289,14 +289,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "EnvironmentalLightingPass");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateForwardDrawInstancedPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\DrawInstancedVShader.hlsl");
 		auto PShader = RS->LoadShader("FlatWhite",	"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
@@ -359,14 +359,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawFlatWhite");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateBuildZLayer(RenderSystem* RS)
+	LoadPipelineStateRes CreateBuildZLayer(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
@@ -380,14 +380,14 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDepthBufferCopy(RenderSystem* RS)
+	LoadPipelineStateRes CreateDepthBufferCopy(RenderSystem* RS)
 	{
 		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
@@ -401,18 +401,18 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOcclusionDrawPSO(RenderSystem* RS)
 	{
 		FK_ASSERT(0);
 
-		return nullptr;
+		return { nullptr, nullptr };
 
 		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
@@ -460,14 +460,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "OcclusionCulling");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("texture2CubeMap_VS", "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 		auto GShader = RS->LoadShader("texture2CubeMap_GS", "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
@@ -507,14 +507,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapIrradiance");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 	
-	ID3D12PipelineState* CreateTexture2CubeMapGGXPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("texture2CubeMap_VS",     "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 		auto GShader = RS->LoadShader("texture2CubeMap_GS",     "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
@@ -554,7 +554,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapGGX");
 
-		return PSO;
+		return { PSO, &RS->Library.RSDefault };
 	}
 
 
@@ -616,7 +616,7 @@ namespace FlexKit
 			lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
-			transparency				{ renderSystem },
+			transparency				{ renderSystem, *persistent },
 
 			rootSignatureToneMapping	{ persistent }
 	{
@@ -630,23 +630,23 @@ namespace FlexKit
 		rootSignatureToneMapping.SetParameterAsUINT(2, 16, 0, 0);
 		rootSignatureToneMapping.Build(renderSystem, persistent);
 
-		renderSystem.RegisterPSOLoader(FORWARDDRAW,						{ &renderSystem.Library.RS6CBVs4SRVs,       CreateForwardDrawPSO,		  });
-		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,			{ &renderSystem.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
+		renderSystem.RegisterPSOLoader(FORWARDDRAW,						CreateForwardDrawPSO);
+		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,			CreateForwardDrawInstancedPSO);
 
-		renderSystem.RegisterPSOLoader(LIGHTPREPASS,					{ &renderSystem.Library.ComputeSignature,   CreateLightPassPSO			  });
-		renderSystem.RegisterPSOLoader(DEPTHPREPASS,					{ &renderSystem.Library.RS6CBVs4SRVs,       CreateDepthPrePassPSO         });
+		renderSystem.RegisterPSOLoader(LIGHTPREPASS,					CreateLightPassPSO);
+		renderSystem.RegisterPSOLoader(DEPTHPREPASS,					CreateDepthPrePassPSO);
 
-		renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,					{ &renderSystem.Library.RS6CBVs4SRVs,       CreateEnvironmentPassPSO      });
+		renderSystem.RegisterPSOLoader(ENVIRONMENTPASS,					CreateEnvironmentPassPSO);
 
-		renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,		{ &renderSystem.Library.RSDefault, CreateBilaterialBlurHorizontalPSO });
-		renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,		{ &renderSystem.Library.RSDefault, CreateBilaterialBlurVerticalPSO   });
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,		CreateBilaterialBlurHorizontalPSO);
+		renderSystem.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,		CreateBilaterialBlurVerticalPSO);
 
-		renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,				{ &renderSystem.Library.RSDefault, CreateBuildZLayer });
-		renderSystem.RegisterPSOLoader(DEPTHCOPY,						{ &renderSystem.Library.RSDefault, CreateDepthBufferCopy });
+		renderSystem.RegisterPSOLoader(ZPYRAMIDBUILDLEVEL,				CreateBuildZLayer);
+		renderSystem.RegisterPSOLoader(DEPTHCOPY,						CreateDepthBufferCopy);
 
-		renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,			{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); } });
-		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,			{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); } });
-		renderSystem.RegisterPSOLoader(TONEMAP,							{ &renderSystem.Library.RSDefault, [&](auto renderSystem){ return CreateToneMapping(renderSystem); } });
+		renderSystem.RegisterPSOLoader(AVERAGELUMINANCE_BLOCK,			[&](auto renderSystem){ return CreateAverageLumanceLocal(renderSystem); });
+		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,			[&](auto renderSystem){ return CreateAverageLumanceGlobal(renderSystem); });
+		renderSystem.RegisterPSOLoader(TONEMAP,							[&](auto renderSystem){ return CreateToneMapping(renderSystem); });
 
 		renderSystem.QueuePSOLoad(GBUFFERPASS);
 		renderSystem.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -985,9 +985,10 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder) -> BrushConstants
 			{
 				builder.AddDataDependency(passes);
-
+				
 				return BrushConstants
 					{
+						.node				= builder.GetNodeHandle(),
 						.constants			= builder.CreateConstantBuffer(),
 						.getConstantBuffer	= CreateOnceReserveBuffer(reserveConstants, &allocator),
 						.passes				= passes,
@@ -998,7 +999,7 @@ namespace FlexKit
 			{
 				auto& materials = MaterialComponent::GetComponent();
 				auto& brushes	= data.passes.GetData().solid;
-
+				
 				data.entityTable.reserve(brushes.size());
 
 				size_t offset = 0;
@@ -1605,7 +1606,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem)
+	LoadPipelineStateRes WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem)
 	{
 		auto lightPassShader = renderSystem->LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
@@ -1617,10 +1618,10 @@ namespace FlexKit
 		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return PSO;
+		return { PSO, &rootSignatureToneMapping };
 	}
 
-	ID3D12PipelineState* WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem)
+	LoadPipelineStateRes WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem)
 	{
 		auto lightPassShader = renderSystem->LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
@@ -1634,10 +1635,10 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CalculateLuminance");
 
-		return PSO;
+		return { PSO, &rootSignatureToneMapping };
 	}
 
-	ID3D12PipelineState* WorldRender::CreateToneMapping(RenderSystem* renderSystem)
+	LoadPipelineStateRes WorldRender::CreateToneMapping(RenderSystem* renderSystem)
 	{
 		auto VShader = renderSystem->LoadShader("FullScreen", "vs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 		auto PShader = renderSystem->LoadShader("ToneMap", "ps_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
@@ -1670,7 +1671,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ToneMapping");
 
-		return PSO;
+		return { PSO, &rootSignatureToneMapping };
 	}
 
 

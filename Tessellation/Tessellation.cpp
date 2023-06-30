@@ -52,10 +52,10 @@ public:
 		rootSig.AllowSO = false;
 		FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
 
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					{ &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			{ &rootSig, [&](auto* renderSystem) { return LoadPSO(renderSystem, true); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,	{ &rootSig, [&](auto* renderSystem) { return LoadPSO2(renderSystem); } });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,			{ &rootSig, [&](auto* renderSystem) { return LoadPSO3(renderSystem); } });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem, true); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,	[&](RenderSystem* renderSystem) { return LoadPSO2(renderSystem); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,			[&](RenderSystem* renderSystem) { return LoadPSO3(renderSystem); });
 
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify	= &FlexKit::EventsWrapper;
@@ -440,7 +440,7 @@ public:
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* LoadPSO(FlexKit::RenderSystem* renderSystem, bool wireframe = false)
+	LoadPipelineStateRes LoadPSO(FlexKit::RenderSystem* renderSystem, bool wireframe = false)
 	{
 		auto ACC_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes= true });
 		auto ACC_DShader = renderSystem->LoadShader("DS_Main", "ds_6_2", "assets\\shaders\\ACCQuad.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes= true });
@@ -508,14 +508,14 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObject");
 
-		return PSO;
+		return { PSO, &rootSig };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* LoadPSO2(FlexKit::RenderSystem* renderSystem)
+	LoadPipelineStateRes LoadPSO2(FlexKit::RenderSystem* renderSystem)
 	{
 		auto Debug_VShader = renderSystem->LoadShader("VS_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 		auto Debug_GShader = renderSystem->LoadShader("GS_Main", "gs_6_0", "assets\\shaders\\ACCDebug.hlsl");
@@ -574,11 +574,11 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug");
 
-		return PSO;
+		return { PSO, &rootSig };
 	}
 
 
-	ID3D12PipelineState* LoadPSO3(FlexKit::RenderSystem* renderSystem)
+	LoadPipelineStateRes LoadPSO3(FlexKit::RenderSystem* renderSystem)
 	{
 		auto Debug_VShader = renderSystem->LoadShader("VS2_Main", "vs_6_2", "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
 		auto Debug_PShader = renderSystem->LoadShader("PS2_Main", "ps_6_2",  "assets\\shaders\\ACCDebug.hlsl", FlexKit::ShaderOptions{ .enable16BitTypes = true });
@@ -632,7 +632,7 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug2");
 
-		return PSO;
+		return { PSO, &rootSig };
 	}
 
 	/************************************************************************************************/

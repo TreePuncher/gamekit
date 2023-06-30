@@ -730,7 +730,7 @@ namespace FlexKit
 					track.target->Apply({ frameA, frameB }, T, ctx);
 			}
 
-			T = nextFrameT;
+			T = float(nextFrameT);
 
 			return State::Restarted;
 		}

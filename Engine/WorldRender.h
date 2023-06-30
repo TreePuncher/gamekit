@@ -99,21 +99,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateForwardDrawPSO			    (RenderSystem* RS);
-	ID3D12PipelineState* CreateForwardDrawInstancedPSO	    (RenderSystem* RS);
-	ID3D12PipelineState* CreateOcclusionDrawPSO			    (RenderSystem* RS);
-	ID3D12PipelineState* CreateDepthPrePassPSO              (RenderSystem* RS);
-	ID3D12PipelineState* CreateEnvironmentPassPSO           (RenderSystem* RS);
+	LoadPipelineStateRes CreateForwardDrawPSO			    (RenderSystem* RS);
+	LoadPipelineStateRes CreateForwardDrawInstancedPSO	    (RenderSystem* RS);
+	LoadPipelineStateRes CreateOcclusionDrawPSO			    (RenderSystem* RS);
+	LoadPipelineStateRes CreateDepthPrePassPSO              (RenderSystem* RS);
+	LoadPipelineStateRes CreateEnvironmentPassPSO           (RenderSystem* RS);
 
-	ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS);
-	ID3D12PipelineState* CreateTexture2CubeMapGGXPSO        (RenderSystem* RS);
+	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS);
+	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO        (RenderSystem* RS);
 
-	ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
-	ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
+	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
+	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
 
-
-	ID3D12PipelineState* CreateBuildZLayer                  (RenderSystem* RS);
-	ID3D12PipelineState* CreateDepthBufferCopy              (RenderSystem* RS);
+	LoadPipelineStateRes CreateBuildZLayer                  (RenderSystem* RS);
+	LoadPipelineStateRes CreateDepthBufferCopy              (RenderSystem* RS);
 
 
 	/************************************************************************************************/
@@ -265,6 +264,7 @@ namespace FlexKit
 			static_vector<uint32_t, 16> subMaterial;
 		};
 
+		FrameGraphNodeHandle			node;
 		FrameResourceHandle				constants;
 		CreateOnceReserveBufferFunction	getConstantBuffer;
 		GatherPassesTask&				passes;
@@ -443,9 +443,9 @@ namespace FlexKit
 		}
 
 	//private:
-		ID3D12PipelineState* CreateAverageLumanceLocal(RenderSystem* rs);
-		ID3D12PipelineState* CreateAverageLumanceGlobal(RenderSystem* rs);
-		ID3D12PipelineState* CreateToneMapping(RenderSystem* rs);
+		LoadPipelineStateRes CreateAverageLumanceLocal(RenderSystem* rs);
+		LoadPipelineStateRes CreateAverageLumanceGlobal(RenderSystem* rs);
+		LoadPipelineStateRes CreateToneMapping(RenderSystem* rs);
 
 
 		RenderSystem&			renderSystem;

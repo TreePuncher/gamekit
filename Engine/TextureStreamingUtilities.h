@@ -470,8 +470,8 @@ namespace FlexKit
 		void StartAsyncTask	(ReadBackResourceHandle resource);
 		void CopyResults	(ReadBackResourceHandle resource);
 
-		ID3D12PipelineState* CreateTextureFeedbackPassPSO			(RenderSystem*);
-		ID3D12PipelineState* CreateTextureFeedbackAnimatedPassPSO	(RenderSystem*);
+		LoadPipelineStateRes CreateTextureFeedbackPassPSO			(RenderSystem*);
+		LoadPipelineStateRes CreateTextureFeedbackAnimatedPassPSO	(RenderSystem*);
 
 		inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
 

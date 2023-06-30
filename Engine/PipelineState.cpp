@@ -194,7 +194,7 @@ namespace FlexKit
 
 					PSO->stale = false;
 
-					if (!res) {
+					if (!res.pipelineState) {
 						PSO->state = PipelineStateObject::PSO_States::Failed;
 						FK_LOG_ERROR("PSO Load FAILED!");
 						return nullptr;
@@ -208,11 +208,12 @@ namespace FlexKit
 
 					FK_LOG_2("Finished PSO Load");
 
-					PSO->state = PipelineStateObject::PSO_States::Loaded;
-					PSO->PSO = res;
+					PSO->state			= PipelineStateObject::PSO_States::Loaded;
+					PSO->PSO			= res.pipelineState;
+					PSO->rootSignature	= res.rootSignature;
 					PSO->CV.notify_all();
 
-					return res;
+					return res.pipelineState;
 				}
 			}
 
@@ -248,7 +249,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::RegisterPSOLoader(PSOHandle handle, PipelineStateDescription PSODesc)
+	void PipelineStateTable::RegisterPSOLoader(PSOHandle handle, LOADSTATE_FN fn)
 	{
 		PipelineStateObject* PSO = _GetNearestStateObject(handle);
 
@@ -259,8 +260,7 @@ namespace FlexKit
 			PSO					= &allocator->allocate<PipelineStateObject>();
 			PSO->id				= handle;
 			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= std::move(PSODesc.loadState);
-			PSO->rootSignature	= PSODesc.rootSignature;
+			PSO->loader			= std::move(fn);
 			_AddStateObject(PSO);
 			return;
 		}
@@ -270,8 +270,7 @@ namespace FlexKit
 			// First node in chain
 			PSO->id				= handle;
 			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= std::move(PSODesc.loadState);
-			PSO->rootSignature	= PSODesc.rootSignature;
+			PSO->loader			= std::move(fn);
 			return;
 		}
 
@@ -279,8 +278,7 @@ namespace FlexKit
 		{
 			// node exists
 			PSO->stale			= true;
-			PSO->loader			= std::move(PSODesc.loadState);
-			PSO->rootSignature	= PSODesc.rootSignature;
+			PSO->loader			= std::move(fn);
 			return;
 		}
 
@@ -291,8 +289,7 @@ namespace FlexKit
 			PSO					= &allocator->allocate<PipelineStateObject>();
 			PSO->id				= handle;
 			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader			= std::move(PSODesc.loadState);
-			PSO->rootSignature	= PSODesc.rootSignature;
+			PSO->loader			= std::move(fn);
 			_AddStateObject(PSO);
 			return;
 		}
@@ -350,7 +347,6 @@ namespace FlexKit
 	bool PipelineStateTable::_AddStateObject(PipelineStateObject* PSO)
 	{
 		const auto handle = PSO->id;
-
 
 		PipelineStateObject** node = &States[handle.INDEX % States.size()];
 
@@ -424,7 +420,7 @@ namespace FlexKit
 
 			auto res = loader(RS);
 
-			if (!res) {
+			if (!res.pipelineState) {
 				if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)
 					PSO->state = PipelineStateObject::PSO_States::Failed;
 
@@ -432,7 +428,8 @@ namespace FlexKit
 				return;
 			}
 
-			PSO->PSO	= res;
+			PSO->PSO			= res.pipelineState;
+			PSO->rootSignature	= res.rootSignature;
 
 			if (PSO->stale && loader != PSO->loader)
 				continue;

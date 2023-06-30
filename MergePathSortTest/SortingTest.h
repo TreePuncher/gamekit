@@ -15,10 +15,10 @@ public:
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) final;
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph) final;
 
-	ID3D12PipelineState* CreateInitiateDataPSO();
-	ID3D12PipelineState* CreateLocalSortPSO();
-	ID3D12PipelineState* CreateMergePathPSO();
-	ID3D12PipelineState* CreateGlobalMergePSO();
+	FlexKit::LoadPipelineStateRes CreateInitiateDataPSO();
+	FlexKit::LoadPipelineStateRes CreateLocalSortPSO();
+	FlexKit::LoadPipelineStateRes CreateMergePathPSO();
+	FlexKit::LoadPipelineStateRes CreateGlobalMergePSO();
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;

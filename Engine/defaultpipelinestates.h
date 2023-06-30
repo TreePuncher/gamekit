@@ -51,15 +51,15 @@ namespace FlexKit
 
 	inline constexpr PSOHandle DRAW_TRI3D_PSO				= PSOHandle(GetTypeGUID(DRAW_TRI3D_PSO));
 
-	ID3D12PipelineState* CreateDrawTriStatePSO		(RenderSystem* RS);
-	ID3D12PipelineState* CreateTexturedTriStatePSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateDrawLineStatePSO		(RenderSystem* RS);
-	ID3D12PipelineState* CreateDraw2StatePSO		(RenderSystem* RS);
+	LoadPipelineStateRes CreateDrawTriStatePSO		(RenderSystem* RS);
+	LoadPipelineStateRes CreateTexturedTriStatePSO	(RenderSystem* RS);
+	LoadPipelineStateRes CreateDrawLineStatePSO		(RenderSystem* RS);
+	LoadPipelineStateRes CreateDraw2StatePSO		(RenderSystem* RS);
 
-	ID3D12PipelineState* CreateDrawTri3DStatePSO	(RenderSystem* RS);
+	LoadPipelineStateRes CreateDrawTri3DStatePSO	(RenderSystem* RS);
 
 
-	ID3D12PipelineState* LoadClearRenderTarget_RG32 (RenderSystem* renderSystem);
+	LoadPipelineStateRes LoadClearRenderTarget_RG32 (RenderSystem* renderSystem);
 
 
 	/************************************************************************************************/

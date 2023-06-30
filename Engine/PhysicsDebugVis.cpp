@@ -8,7 +8,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateWireframeDebugVis(RenderSystem* RS)
+	LoadPipelineStateRes CreateWireframeDebugVis(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -51,14 +51,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepthWireFrameDebug");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 	
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateSolidDebugVis(RenderSystem* RS)
+	LoadPipelineStateRes CreateSolidDebugVis(RenderSystem* RS)
 	{
 		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -100,7 +100,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepth");
 
-		return PSO;
+		return { PSO, &RS->Library.RS6CBVs4SRVs };
 	}
 
 	static const PSOHandle Wireframe	= PSOHandle(GetTypeGUID(CreateWireframeDebugVis));
@@ -112,8 +112,8 @@ namespace FlexKit
 
 	void RegisterPhysicsDebugVis(RenderSystem& renderSystem)
 	{
-		renderSystem.RegisterPSOLoader(Wireframe,	{ &renderSystem.Library.RS6CBVs4SRVs, CreateWireframeDebugVis });
-		renderSystem.RegisterPSOLoader(Solid,		{ &renderSystem.Library.RS6CBVs4SRVs, CreateSolidDebugVis });
+		renderSystem.RegisterPSOLoader(Wireframe,	CreateWireframeDebugVis);
+		renderSystem.RegisterPSOLoader(Solid,		CreateSolidDebugVis);
 	}
 
 

@@ -16,7 +16,7 @@
 /************************************************************************************************/
 
 
-ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
+FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS)
 {
 	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
 	auto DrawRectPShader = RS->LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
@@ -81,14 +81,14 @@ ID3D12PipelineState* CreateFlatSkinnedPassPSO(RenderSystem* RS)
 
 	SETDEBUGNAME(PSO, "DrawGrayPrefab");
 
-	return PSO;
+	return { PSO, &RS->Library.RS6CBVs4SRVs };
 }
 
 
 /************************************************************************************************/
 
 
-ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
+FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS)
 {
 	auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
 	auto DrawRectPShader = RS->LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
@@ -146,7 +146,7 @@ ID3D12PipelineState* CreateFlatPassPSO(RenderSystem* RS)
 
 	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
-	return PSO;
+	return { PSO, &RS->Library.RS6CBVs4SRVs };
 }
 
 
@@ -257,8 +257,8 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 	FlexKit::SetCameraNode(previewCamera, FlexKit::GetZeroedNode());
 
 	auto& renderSystem = renderer.GetRenderSystem();
-	renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatSkinnedPassPSO });
-	renderSystem.RegisterPSOLoader(FLAT_PSO,		{ &renderSystem.Library.RS6CBVs4SRVs, &CreateFlatPassPSO });
+	renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	&CreateFlatSkinnedPassPSO);
+	renderSystem.RegisterPSOLoader(FLAT_PSO,		&CreateFlatPassPSO);
 
 
 #if LOCALPLAYER
