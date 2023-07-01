@@ -853,8 +853,8 @@ namespace FlexKit
 		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in) { Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this; }
 
 		explicit operator bool() { return GetByType<bool>(); }
-		template<typename Ty_1>	operator Ty_1() const { return GetByType<Ty_1>(); }
-		template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
+		template<typename Ty_1>	operator Ty_1() const	{ return GetByType<Ty_1>(); }
+		template<typename Ty_1>	operator Ty_1()			{ return GetByType<Ty_1>(); }
 
 		template<size_t index>	auto& Get() noexcept { static_assert(index >= 2, "Invalid Index"); }
 		template<>	constexpr auto& Get<0>() noexcept { return V1; }

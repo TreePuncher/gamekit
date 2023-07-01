@@ -50,4 +50,25 @@ namespace FlexKit
 	using ResourceHandle				= Handle_t<32u, GetTypeGUID(ResourceHandle)>;
 	using TriMeshHandle					= Handle_t<16u, GetTypeGUID(TriMesh)>;
 	using VertexBufferHandle			= Handle_t<32u, GetTypeGUID(VertexBuffer)>;
+
+	using CPUDescriptorHandle			= Handle_t<64, GetTypeGUID(CPUDescriptorHandle)>;
+	using GPUDescriptorHandle			= Handle_t<64, GetTypeGUID(GPUDescriptorHandle)>;
+	using DescHeapPOS					= Pair<CPUDescriptorHandle, GPUDescriptorHandle>;
+
+
+	struct DescriptorRange
+	{
+		DescHeapPOS	begin;
+		uint32_t	size;
+		uint32_t	stride;
+
+		DescHeapPOS operator [](size_t idx)
+		{
+			return {
+				CPUDescriptorHandle{ begin.V1 + idx * stride } ,
+				GPUDescriptorHandle{ begin.V2 + idx * stride } };
+		}
+
+		operator DescHeapPOS() const { return begin; }
+	};
 }

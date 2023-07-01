@@ -135,7 +135,7 @@ namespace FlexKit
 		operator uint32_t(){ return INDEX; }
 
 		//unsigned int    INDEX		: HandleSize    = 0xffffffff;
-		unsigned int    INDEX		: HandleSize;
+		uint64_t   INDEX		: HandleSize;
 #if USING( DEBUGHANDLES )
 		unsigned int	TYPE		: 28            = 0;
 		unsigned int	FLAGS		: 4             = 0;

@@ -922,26 +922,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	using DescHeapPOS = Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>;
-	using VertexResourceBuffer = ID3D12Resource*;
-
-
-	/************************************************************************************************/
-
-
-	struct DescriptorRange
-	{
-		FlexKit::DescHeapPOS	begin;
-		uint32_t				size;
-		uint32_t				stride;
-
-		FlexKit::DescHeapPOS operator [](size_t idx)
-		{
-			return { begin.V1.ptr + idx * stride,  begin.V2.ptr + idx * stride, };
-		}
-
-		operator FlexKit::DescHeapPOS () const { return begin; }
-	};
+	//using DescHeapPOS			= std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>;
+	using VertexResourceBuffer	= ID3D12Resource*;
 
 
 	/************************************************************************************************/
@@ -1653,19 +1635,19 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		DescriptorHeap& Init		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 		DescriptorHeap& Init		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& Init2       (Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
+		DescriptorHeap& Init2		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
 		DescriptorHeap& NullFill	(Context& ctx, const size_t end = -1);
 
 		bool SetCBV					(Context& ctx, size_t idx, const ConstantBufferDataSet& constants);
 		bool SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
-		bool SetCBV                 (Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
+		bool SetCBV					(Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle);
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
 		bool SetSRVArray			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		bool SetSRV3D               (Context& ctx, size_t idx, ResourceHandle);
+		bool SetSRV3D				(Context& ctx, size_t idx, ResourceHandle);
 
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
 		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
@@ -1688,7 +1670,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
-		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
+		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
+		operator GPUDescriptorHandle			() const { return descriptorHeap; }
 
 		DescriptorHeap	GetHeapOffsetted(size_t offset, Context& ctx) const;
 
@@ -4388,8 +4371,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		};
 
 		struct RTV_View {
-			ResourceHandle  resource;
-			DescHeapPOS     descriptor;
+			ResourceHandle	resource;
+			DescHeapPOS		descriptor;
 		};
 
 		static_vector<StreamOutResource, 128>		TrackedSOBuffers;
@@ -5744,7 +5727,9 @@ private:
 
 	inline DescHeapPOS IncrementHeapPOS(const DescHeapPOS POS, const size_t size, const size_t increment) {
 		const size_t offset = size * increment;
-		return { POS.V1.ptr + offset, POS.V2.ptr + offset };
+		return {
+			CPUDescriptorHandle{ POS.V1	+ offset },
+			GPUDescriptorHandle{ POS.V2	+ offset }  };
 	}
 
 
