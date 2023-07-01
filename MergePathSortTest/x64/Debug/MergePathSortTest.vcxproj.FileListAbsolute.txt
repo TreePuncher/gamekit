@@ -15,3 +15,9 @@ D:\repos\FlexKit\builds\Debug\D3D12\D3D12Core.pdb
 D:\repos\FlexKit\builds\Debug\D3D12\D3D12SDKLayers.dll
 D:\repos\FlexKit\builds\Debug\D3D12\D3D12SDKLayers.pdb
 D:\repos\FlexKit\MergePathSortTest\x64\Debug\MergePathSortTest.vcxproj.CopyComplete
+C:\repos\gamekit\builds\Debug\WinPixEventRuntime.dll
+C:\repos\gamekit\builds\Debug\D3D12\D3D12Core.dll
+C:\repos\gamekit\builds\Debug\D3D12\D3D12Core.pdb
+C:\repos\gamekit\builds\Debug\D3D12\D3D12SDKLayers.dll
+C:\repos\gamekit\builds\Debug\D3D12\D3D12SDKLayers.pdb
+C:\repos\gamekit\MergePathSortTest\x64\Debug\MergePathSortTest.vcxproj.CopyComplete

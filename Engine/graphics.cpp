@@ -152,7 +152,9 @@ namespace FlexKit
 					DebugBreak();
 
 				return DescriptorRange{
-							.begin	= { cpuHeap.ptr + offset, gpuHeap.ptr + offset },
+							.begin = {
+											CPUDescriptorHandle { (uint64_t)cpuHeap.ptr + offset },
+											GPUDescriptorHandle { (uint64_t)gpuHeap.ptr + offset } },
 							.size	= (uint32_t)size,
 							.stride = (uint32_t)descriptorSize,
 						};
@@ -201,8 +203,8 @@ namespace FlexKit
 	void DescriptorHeapAllocator::Release_ST(const DescriptorRange range, uint64_t lockIdx, uint64_t completedIdx) noexcept
 	{
 		auto& [cpu_ptr, gpu_ptr] = range.begin;
-		auto offset1 = (gpu_ptr.ptr - gpuHeap.ptr) / descriptorSize;
-		auto offset2 = (cpu_ptr.ptr - cpuHeap.ptr) / descriptorSize;
+		auto offset1 = (gpu_ptr - gpuHeap.ptr) / descriptorSize;
+		auto offset2 = (cpu_ptr - cpuHeap.ptr) / descriptorSize;
 
 		FK_ASSERT(offset1 == offset2); // quick sanity check
 
@@ -612,8 +614,8 @@ namespace FlexKit
 		FillState		= std::move(rhs.FillState);
 		Layout			= rhs.Layout;
 
-		rhs.descriptorHeap = DescHeapPOS{ 0u, 0u };
-		rhs.Layout = nullptr;
+		rhs.descriptorHeap	= DescHeapPOS{ InvalidHandle, InvalidHandle };
+		rhs.Layout			= nullptr;
 	}
 
 
@@ -626,7 +628,7 @@ namespace FlexKit
 		FillState		= std::move(rhs.FillState);
 		Layout			= rhs.Layout;
 
-		rhs.descriptorHeap = DescHeapPOS{ 0u, 0u };
+		rhs.descriptorHeap = DescHeapPOS{ InvalidHandle, InvalidHandle };
 		rhs.Layout = nullptr;
 
 		return *this;
@@ -2225,13 +2227,13 @@ namespace FlexKit
 
 				if (res != renderTargetViews.end())
 				{
-					RTV_CPU_HANDLES.push_back(res->descriptor);
+					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 });
 				}
 				else
 				{
 					auto view = _ReserveRTV(1);
 					PushRenderTarget(renderSystem, renderTarget, view);
-					RTV_CPU_HANDLES.push_back(view);
+					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 					renderTargetViews.push_back({ renderTarget, view });
 				}
 			}
@@ -2244,7 +2246,7 @@ namespace FlexKit
 			{
 				auto WH = Min(depthWH, textureWH);
 
-				RTV_CPU_HANDLES.push_back(view);
+				RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
 			}
 		}
@@ -2265,10 +2267,10 @@ namespace FlexKit
 				auto DSV = _ReserveDSV(1);
 				PushDepthStencil(renderSystem, depthStencil, DSV);
 
-				DSV_CPU_HANDLE = DSV;
+				DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ DSV.V1 };
 			}
 			else
-				DSV_CPU_HANDLE = res->descriptor;
+				DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 };
 		}
 
 
@@ -2300,13 +2302,13 @@ namespace FlexKit
 
 				if (res != renderTargetViews.end())
 				{
-					RTV_CPU_HANDLES.push_back(res->descriptor);
+					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 });
 				}
 				else
 				{
 					auto view = _ReserveRTV(1);
 					PushRenderTarget(renderSystem, renderTarget, view);
-					RTV_CPU_HANDLES.push_back(view);
+					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 					renderTargetViews.push_back({ renderTarget, view });
 				}
 			}
@@ -2317,7 +2319,7 @@ namespace FlexKit
 			
 			for (auto& renderTarget : RTs)
 			{
-				RTV_CPU_HANDLES.push_back(view);
+				RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
 			}
 		}
@@ -2332,7 +2334,7 @@ namespace FlexKit
 
 			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor, DSV.arraySize);
 
-			DSV_CPU_HANDLE = descriptor;
+			DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.V1 };
 		}
 
 		DeviceContext->OMSetRenderTargets(
@@ -2620,7 +2622,9 @@ namespace FlexKit
 
 	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
 	{
-		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, range.begin.V2);
+		DeviceContext->SetGraphicsRootDescriptorTable(
+			(UINT)idx,
+			D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
 	}
 
 
@@ -3372,7 +3376,10 @@ namespace FlexKit
 		auto descriptor = _GetDepthDesciptor(depthBuffer);
 		PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
 
-		DeviceContext->ClearDepthStencilView(descriptor, D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
+		DeviceContext->ClearDepthStencilView(
+			D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.V1 },
+			D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
+
 		renderSystem->Textures.MarkRTUsed(depthBuffer);
 	}
 
@@ -3396,13 +3403,13 @@ namespace FlexKit
 
 		if (res != renderTargetViews.end())
 		{
-			RTV_CPU_HANDLES = res->descriptor;
+			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V2 };
 		}
 		else
 		{
 			auto view = _ReserveRTV(1);
 			PushRenderTarget(renderSystem, renderTarget, view);
-			RTV_CPU_HANDLES = view;
+			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 };
 			renderTargetViews.push_back({ renderTarget, view });
 		}
 
@@ -3434,7 +3441,10 @@ namespace FlexKit
 
 		FlushBarriers();
 
-		DeviceContext->ClearUnorderedAccessViewFloat(view, view, resource, clearColor, 0, nullptr);
+		DeviceContext->ClearUnorderedAccessViewFloat(
+			D3D12_GPU_DESCRIPTOR_HANDLE{ view.V2 },
+			D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 },
+			resource, clearColor, 0, nullptr);
 	}
 
 	/************************************************************************************************/
@@ -3465,8 +3475,8 @@ namespace FlexKit
 			tex,
 			GPUview.value());
 
-		const auto CPUHandle = CPUview.Get<0>();
-		const auto GPUHandle = GPUview.value().Get<1>();
+		const auto CPUHandle = D3D12_CPU_DESCRIPTOR_HANDLE{ CPUview.Get<0>() };
+		const auto GPUHandle = D3D12_GPU_DESCRIPTOR_HANDLE{ GPUview.value().Get<1>() };
 
 		FlushBarriers();
 
@@ -3485,8 +3495,8 @@ namespace FlexKit
 
 		PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
 
-		const auto CPUHandle = view.Get<0>();
-		const auto GPUHandle = view.Get<1>();
+		const auto CPUHandle = D3D12_CPU_DESCRIPTOR_HANDLE{ view.Get<0>() };
+		const auto GPUHandle = D3D12_GPU_DESCRIPTOR_HANDLE{ view.Get<1>() };
 
 		FlushBarriers();
 
@@ -4040,10 +4050,10 @@ namespace FlexKit
 
 	DescHeapPOS Context::_ReserveDSV(size_t count)
 	{
-		auto currentCPU = DSV_CPU;
+		auto currentCPU = CPUDescriptorHandle{ DSV_CPU.ptr };
 		DSV_CPU.ptr = DSV_CPU.ptr + renderSystem->DescriptorDSVSize * count;
 
-		return { currentCPU, 0 };
+		return { currentCPU, InvalidHandle };
 	}
 
 
@@ -4076,7 +4086,7 @@ namespace FlexKit
 		auto currentCPU = SRV_LOCAL_CPU;
 		SRV_LOCAL_CPU.ptr = SRV_LOCAL_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
 
-		return { currentCPU, 0 };
+		return { CPUDescriptorHandle{ currentCPU.ptr }, InvalidHandle };
 	}
 
 
@@ -4088,7 +4098,7 @@ namespace FlexKit
 		auto currentCPU = RTV_CPU;
 		RTV_CPU.ptr = RTV_CPU.ptr + renderSystem->DescriptorRTVSize * count;
 
-		return { currentCPU, 0 };
+		return { CPUDescriptorHandle{ currentCPU.ptr }, InvalidHandle };
 	}
 
 
@@ -10239,7 +10249,7 @@ namespace FlexKit
 			
 
 		auto resource = RS->GetDeviceResource(target);
-		RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, POS);
+		RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
 	}
@@ -10256,7 +10266,7 @@ namespace FlexKit
 		DSVDesc.Texture2D.MipSlice	= 0;
 		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
+		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V2 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
@@ -10272,7 +10282,7 @@ namespace FlexKit
 		DSVDesc.Texture2DArray.MipSlice         = (UINT)MipSlice;
 		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
+		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V2 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
@@ -10286,7 +10296,7 @@ namespace FlexKit
 		D3D12_CONSTANT_BUFFER_VIEW_DESC CBV_DESC = {};
 		CBV_DESC.BufferLocation = Buffer ? Buffer->GetGPUVirtualAddress() + Offset : 0;
 		CBV_DESC.SizeInBytes	= (UINT)BufferSize;
-		RS->pDevice->CreateConstantBufferView(&CBV_DESC, POS);
+		RS->pDevice->CreateConstantBufferView(&CBV_DESC, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10310,7 +10320,7 @@ namespace FlexKit
 		FK_ASSERT(desc.Buffer.StructureByteStride < 512);
 		FK_ASSERT(desc.Buffer.NumElements > 0);
 
-		RS->pDevice->CreateShaderResourceView(Buffer, &desc, POS);
+		RS->pDevice->CreateShaderResourceView(Buffer, &desc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10331,7 +10341,7 @@ namespace FlexKit
 			desc.Texture2D.ResourceMinLODClamp	= 0;
 		}
 
-		RS->pDevice->CreateShaderResourceView(Buffer, &desc, POS);
+		RS->pDevice->CreateShaderResourceView(Buffer, &desc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
 
@@ -10351,7 +10361,7 @@ namespace FlexKit
 			ViewDesc.Texture2D.ResourceMinLODClamp = 0;
 		}
 
-		RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10377,7 +10387,7 @@ namespace FlexKit
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10403,7 +10413,7 @@ namespace FlexKit
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 } );
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10427,7 +10437,7 @@ namespace FlexKit
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10447,7 +10457,7 @@ namespace FlexKit
 			ViewDesc.TextureCube.ResourceMinLODClamp = 0;
 		}
 
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(resource), &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(resource), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10464,7 +10474,7 @@ namespace FlexKit
 		UAVDesc.Texture2D.MipSlice   = 0;
 		UAVDesc.Texture2D.PlaneSlice = 0;
 
-		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 		
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10481,7 +10491,7 @@ namespace FlexKit
 		UAVDesc.Texture2D.MipSlice   = mipLevel;
 		UAVDesc.Texture2D.PlaneSlice = 0;
 
-		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 		
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10496,7 +10506,7 @@ namespace FlexKit
 		UAVDesc.Texture3D.FirstWSlice   = 0;
 		UAVDesc.Texture3D.WSize         = width;
 
-		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 		
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10512,7 +10522,7 @@ namespace FlexKit
 		UAVDesc.ViewDimension				= D3D12_UAV_DIMENSION_TEXTURE1D;
 		UAVDesc.Texture1D.MipSlice          = 0;
 
-		RS->pDevice->CreateUnorderedAccessView(resource, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(resource, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10535,7 +10545,7 @@ namespace FlexKit
 		FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
 		FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
 
-		RS->pDevice->CreateUnorderedAccessView(buffer.resource, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(buffer.resource, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10558,7 +10568,7 @@ namespace FlexKit
 		FK_ASSERT(UAVDesc.Buffer.StructureByteStride < 512);
 		FK_ASSERT(UAVDesc.Buffer.NumElements > 0);
 
-		RS->pDevice->CreateUnorderedAccessView(buffer.resource, counter, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(buffer.resource, counter, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -10578,7 +10588,7 @@ namespace FlexKit
 		UAVDesc.Texture2DArray.ArraySize		= 6;
 		UAVDesc.Texture2DArray.PlaneSlice		= 0;
 
-		RS->pDevice->CreateUnorderedAccessView(resource, nullptr, &UAVDesc, POS);
+		RS->pDevice->CreateUnorderedAccessView(resource, nullptr, &UAVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
