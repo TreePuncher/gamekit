@@ -1,11 +1,11 @@
 #pragma once
 #include <variant>
 
-#include "Components.h"
-#include "ResourceHandles.h"
-#include "graphics.h"
 #include "Assets.h"
+#include "Components.h"
 #include "ComponentBlobs.h"
+#include "MathUtils.h"
+#include "ResourceHandles.h"
 #include "RuntimeComponentIDs.h"
 
 namespace FlexKit
@@ -13,7 +13,7 @@ namespace FlexKit
 
 
 	class TextureStreamingEngine;
-
+	class RenderSystem;
 
 	/************************************************************************************************/
 
