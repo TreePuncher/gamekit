@@ -44,6 +44,7 @@ Global
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.Debug|x64.ActiveCfg = Debug|x64
+		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.Debug|x64.Build.0 = Debug|x64
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.Debug|x86.ActiveCfg = Debug|x64
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.Release|x64.ActiveCfg = Release|x64
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.Release|x86.ActiveCfg = Release|x64
@@ -61,6 +62,7 @@ Global
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.UnityBuild|x86.ActiveCfg = UnityBuild|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.UnityBuild|x86.Build.0 = UnityBuild|x64
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Debug|x64.ActiveCfg = Debug|x64
+		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Debug|x64.Build.0 = Debug|x64
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Debug|x86.ActiveCfg = Debug|Win32
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Debug|x86.Build.0 = Debug|Win32
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Release|x64.ActiveCfg = Release|x64
@@ -172,8 +174,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		Qt5Version = qt5
 		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
+		Qt5Version = qt5
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Engine\Engine.vcxitems*{233cc021-9348-439b-8d0f-3e714dbe39f8}*SharedItemsImports = 4
