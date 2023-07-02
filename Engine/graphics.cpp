@@ -1455,9 +1455,13 @@ namespace FlexKit
 			SignatureBlob->GetBufferPointer(),
 			SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&Signature));
 
-		FK_ASSERT(SUCCEEDED(HR));
+		if (FAILED(HR))
+			return false;
+
 		SETDEBUGNAME(Signature, "ShadingRTSig");
 		SignatureBlob->Release(); 
+
+		hash = FNVa62((const char*)SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize());
 
 		DesciptorHeaps.clear();
 

@@ -155,6 +155,21 @@ namespace FlexKit
 		return CRC;
 	}
 
+	inline constexpr uint64_t FNVa62(const char* buffer, size_t size)
+	{
+		constexpr uint64_t FNV_prime = 0x00000100000001B3;
+
+		uint64_t hash = 0xcbf29ce484222325;
+
+		for (size_t itr = 0; itr < size; itr++)
+		{
+			hash = hash ^ buffer[itr];
+			hash = hash * FNV_prime;
+		}
+
+		return hash;
+	}
+
 #define GetCRC32(A) ~FlexKit::IDGen<sizeof(A)-2>::GetHash(A)
 
 	template<size_t SIZE, typename TY>

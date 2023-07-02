@@ -1,3 +1,4 @@
+#include "FrameGraph.h"
 #include "Transparency.h"
 #include "Materials.h"
 
@@ -5,7 +6,58 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	LoadPipelineStateRes Transparency::CreateOITDrawPSO(RenderSystem* RS)
+	struct OITPass
+	{
+		ReserveConstantBufferFunction       reserveCB;
+
+		UpdateTaskTyped<GetPVSTaskData>& PVS;
+
+		CameraHandle            camera;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct OITBlend
+	{
+		FrameResourceHandle     renderTargetObject;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct OIT_MLAB
+	{
+		FrameResourceHandle     renderTargetObject;
+		FrameResourceHandle     accumalatorObject;
+		FrameResourceHandle     counterObject;
+		FrameResourceHandle     depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes	CreateOITBlendPSO(RenderSystem* RS);
+	LoadPipelineStateRes	CreateOITDrawPSO(RenderSystem* RS);
+	LoadPipelineStateRes	CreateOITDrawAnimatedPSO(RenderSystem* RS);
+
+	LoadPipelineStateRes	CreateMarkClustersPSO(RenderSystem* RS);
+	LoadPipelineStateRes	CreateMLABDrawPSO(RenderSystem* RS);
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes CreateOITDrawPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
 		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
@@ -26,7 +78,6 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -76,7 +127,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Transparency::CreateOITDrawAnimatedPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOITDrawAnimatedPSO(RenderSystem* RS)
 	{
 		return {};
 	}
@@ -85,7 +136,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Transparency::CreateOITBlendPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OITBlend.hlsl");
 		auto PShader = RS->LoadShader("BlendMain", "ps_6_0", "assets\\shaders\\OITBlend.hlsl");
@@ -206,8 +257,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Transparency::Transparency(RenderSystem& renderSystem, iAllocator& allocator) :
-		MLABDrawSignature{ allocator }
+	Transparency::Transparency(RenderSystem& renderSystem, iAllocator& allocator) 
+		//MLABDrawSignature{ allocator }
 	{
 		renderSystem.RegisterPSOLoader(OITBLEND,		CreateOITBlendPSO);
 		renderSystem.RegisterPSOLoader(OITDRAW,			CreateOITDrawPSO);
@@ -439,7 +490,6 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
-
 
 
 /**********************************************************************

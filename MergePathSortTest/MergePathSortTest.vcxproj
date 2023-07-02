@@ -121,7 +121,7 @@
       <OmitFramePointers>false</OmitFramePointers>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
-      <TranslateIncludes>true</TranslateIncludes>
+      <TranslateIncludes>false</TranslateIncludes>
       <BuildStlModules>false</BuildStlModules>
       <EnableModules>false</EnableModules>
     </ClCompile>
@@ -141,7 +141,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AddCodeBeforeSourceInclude>#include &lt;sdkddkver.h&gt;</AddCodeBeforeSourceInclude>
-      <TranslateIncludes>true</TranslateIncludes>
+      <TranslateIncludes>false</TranslateIncludes>
       <BuildStlModules>false</BuildStlModules>
       <EnableModules>false</EnableModules>
     </ClCompile>

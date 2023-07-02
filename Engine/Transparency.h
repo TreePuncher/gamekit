@@ -1,6 +1,5 @@
 #pragma once
-#include "FrameGraph.h"
-#include "graphics.h"
+
 #include "Scene.h"
 #include "ResourceHandles.h"
 
@@ -20,45 +19,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct OITPass
-	{
-		ReserveConstantBufferFunction       reserveCB;
+	struct OITPass;
+	struct OITBlend;
+	struct OIT_MLAB;
 
-		UpdateTaskTyped<GetPVSTaskData>&    PVS;
-
-		CameraHandle            camera;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct OITBlend
-	{
-		FrameResourceHandle     renderTargetObject;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct OIT_MLAB
-	{
-		FrameResourceHandle     renderTargetObject;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
-	};
-
-
-	/************************************************************************************************/
-
+	class RenderSystem;
+	class FrameGraph;
 
 	class Transparency
 	{
@@ -88,14 +54,7 @@ namespace FlexKit
 			FrameResourceHandle					renderTarget,
 			iAllocator*							allocator);
 
-		static LoadPipelineStateRes	CreateOITBlendPSO					(RenderSystem* RS);
-		static LoadPipelineStateRes	CreateOITDrawPSO					(RenderSystem* RS);
-		static LoadPipelineStateRes	CreateOITDrawAnimatedPSO			(RenderSystem* RS);
-
-		ID3D12PipelineState*		CreateMarkClustersPSO				(RenderSystem* RS);
-		ID3D12PipelineState*		CreateMLABDrawPSO					(RenderSystem* RS);
-
-		RootSignature	MLABDrawSignature;
+		//RootSignature	MLABDrawSignature;
 	};
 
 
