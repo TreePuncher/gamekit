@@ -28,6 +28,7 @@
         "physx",
         "range-v3",
         "scnlib",
+        "simde",
         "slikenet",
         "stb",
         "tinygltf",

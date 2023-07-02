@@ -1720,6 +1720,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Release();
 		}
 
+		bool operator == (this RootSignature& lhs, RootSignature& rhs)
+		{
+			return lhs.hash == rhs.hash;
+		}
+
 		operator ID3D12RootSignature* () const { return Signature; }
 
 		ID3D12RootSignature* Get_ptr() const { return Signature; };
@@ -1933,6 +1938,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		};
 
 		ID3D12RootSignature*		Signature;
+		uint64_t					hash = 0xffffffffffffffff;
 		static_vector<size_t, 12>	Tags;
 		Vector<HeapEntry>			Heaps;
 		static_vector<RootEntry>	RootEntries;

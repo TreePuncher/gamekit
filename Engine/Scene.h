@@ -6,12 +6,9 @@
 #include "Materials.h"
 
 #include "AnimationUtilities.h" 
-#include "graphics.h"
 #include "CoreSceneObjects.h"
 #include "defaultpipelinestates.h"
 #include "RuntimeComponentIDs.h"
-
-#include "FrameGraph.h"
 
 namespace FlexKit
 {
@@ -709,7 +706,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::optional<GameObject*> FindGameObject(Scene& scene, const char* id);
+	GameObject* FindGameObject(Scene& scene, const char* id);
 
 
 	/************************************************************************************************/
@@ -801,7 +798,7 @@ namespace FlexKit
 
 	struct ShadowCaster
 	{
-		LightHandle	pointLight	= InvalidHandle;
+		LightHandle			pointLight	= InvalidHandle;
 		NodeHandle			node		= InvalidHandle;
 		ResourceHandle		shadowMap	= InvalidHandle;
 		float4x4			matrix		= float4x4::Identity();

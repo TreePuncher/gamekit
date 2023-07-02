@@ -22,7 +22,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	std::optional<GameObject*> FindGameObject(Scene& scene, const char* id)
+	GameObject* FindGameObject(Scene& scene, const char* id)
 	{
 		auto& visableComponent = SceneVisibilityComponent::GetComponent();
 
@@ -46,7 +46,7 @@ namespace FlexKit
 				return &gameObject;
 		}
 
-		return {};
+		return nullptr;
 	}
 
 
