@@ -1529,7 +1529,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			FlexKit::DescriptorHeap descHeap;
 			descHeap.Init(
 				ctx,
-				resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+				resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
 				&allocator);
 			descHeap.NullFill(ctx);
 

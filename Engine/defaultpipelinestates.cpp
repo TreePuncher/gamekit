@@ -49,7 +49,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -71,7 +71,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawRect");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -96,7 +96,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -118,7 +118,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawRectTextured");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -144,7 +144,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -166,7 +166,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTextured");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -192,7 +192,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -214,7 +214,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLine");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -249,7 +249,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -271,7 +271,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Draw2");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -297,7 +297,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -319,7 +319,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawMeshFlat");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -345,7 +345,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC GDesc = {};
-		GDesc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+		GDesc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 		GDesc.VS                    = VShader;
 		GDesc.PS                    = { nullptr, 0 };
 		GDesc.RasterizerState       = Rast_Desc;
@@ -365,7 +365,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawOcclusion");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -543,20 +543,20 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature = renderSystem->Library.RSDefault;
-			PSO_Desc.VS = VShader;
-			PSO_Desc.PS = PShader;
-			PSO_Desc.RasterizerState = Rast_Desc;
-			PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets = 1;
-			PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R32G32_UINT;
-			PSO_Desc.SampleDesc.Count = 1;
-			PSO_Desc.SampleDesc.Quality = 0;
-			PSO_Desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
-			PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState = Depth_Desc;
+			PSO_Desc.pRootSignature			= *renderSystem->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 1;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R32G32_UINT;
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_UNKNOWN;
+			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
 
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
 		}
@@ -568,7 +568,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ClearRenderTargetUINT2");
 
-		return { PSO, &renderSystem->Library.RS6CBVs4SRVs };
+		return { PSO, renderSystem->Library.RS6CBVs4SRVs };
 	}
 
 

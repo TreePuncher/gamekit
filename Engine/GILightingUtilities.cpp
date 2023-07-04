@@ -251,7 +251,6 @@ namespace FlexKit
 	{
 	public:
 		NOOBs_First_RTX_Technqiue(RenderSystem& renderSystem, iAllocator& IN_allocator) :
-			globalRootSig	{ &IN_allocator },
 			persistent		{ 4 * MEGABYTE, renderSystem, IN_allocator },
 			temporary		{ renderSystem, IN_allocator },
 			rayGenTable		{ renderSystem.CreateUAVBufferResource(4096, false) },
@@ -267,7 +266,7 @@ namespace FlexKit
 
 			renderSystem.RegisterPSOLoader(InlineTest, [&](RenderSystem* renderSystem) { return CreateInlineTest(*renderSystem); });
 
-			CreatePipelineLibrary(renderSystem);
+			CreatePipelineLibrary(renderSystem, IN_allocator);
 		}
 
 
@@ -276,7 +275,7 @@ namespace FlexKit
 			stateObject->Release();
 		}
 
-		void CreatePipelineLibrary(RenderSystem& renderSystem)
+		void CreatePipelineLibrary(RenderSystem& renderSystem, iAllocator& temp)
 		{
 			const char awesomeRaytracingCode[] = R"(assets\shaders\RTX\MyFirstRTX.hlsl)";
 
@@ -316,16 +315,19 @@ namespace FlexKit
 			UAV_layout.SetParameterAsShaderUAV(0, 1, 1);
 			UAV_layout.SetParameterAsSRV(1, 1, 2);
 
-			globalRootSig.AllowIA = true;
-			globalRootSig.AllowSO = true;
-			globalRootSig.SetParameterAsSRV(0, 0);
-			globalRootSig.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
-			globalRootSig.SetParameterAsDescriptorTable(2, UAV_layout);
-			globalRootSig.Build(&renderSystem, &allocator);
+			RootSignatureBuilder builder{ temp };
+
+			builder.AllowIA = true;
+			builder.AllowSO = true;
+			builder.SetParameterAsSRV(0, 0);
+			builder.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable(2, UAV_layout);
+			globalRootSig = builder.Build(&renderSystem, allocator);
+
 
 			D3D12_GLOBAL_ROOT_SIGNATURE signature =
 			{
-				.pGlobalRootSignature = globalRootSig
+				.pGlobalRootSignature = *globalRootSig
 			};
 
 			D3D12_DXIL_LIBRARY_DESC dxil_desc[1] =
@@ -657,7 +659,7 @@ namespace FlexKit
 					ConstantBufferDataSet cameraConstants{ GetCameraConstants(data.camera), constantBuffer };
 
 					DescriptorHeap heap{};
-					heap.Init(ctx, globalRootSig.GetDescHeap(0), &allocator);
+					heap.Init(ctx, globalRootSig->GetDescHeap(0), &allocator);
 					heap.SetUAVTexture(ctx, 0, resources.UAV(data.target2D, ctx));
 					heap.SetSRV(ctx, 1, resources.NonPixelShaderResource(data.depthBuffer, ctx), DeviceFormat::R32_FLOAT);
 					heap.SetSRV(ctx, 2, resources.NonPixelShaderResource(data.albedo, ctx));
@@ -712,7 +714,7 @@ namespace FlexKit
 			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem.LoadShader("main", "cs_6_5", file);
 
 			D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-				globalRootSig,
+				*globalRootSig,
 				shaderByteCode
 			};
 
@@ -721,7 +723,7 @@ namespace FlexKit
 
 			FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-			return { PSO, &globalRootSig };
+			return { PSO, globalRootSig };
 		}
 
 
@@ -733,8 +735,8 @@ namespace FlexKit
 		ResourceHandle		missShaderTable;
 		ResourceHandle		rayGenTable;
 
-		ID3D12StateObject*		stateObject = nullptr;
-		RootSignature			globalRootSig;
+		ID3D12StateObject*		stateObject		= nullptr;
+		const RootSignature*	globalRootSig	= nullptr;
 
 		MemoryPoolAllocator	ASpool;
 

@@ -86,7 +86,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
 			PSO_Desc.VS                            = cullTerrain_shader_VS;
 			PSO_Desc.GS                            = cullTerrain_shader_GS;
 			PSO_Desc.SampleMask                    = UINT_MAX;
@@ -107,7 +107,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CullTerrain");
 
-		return { PSO, &renderSystem->Library.RS4CBVs_SO };
+		return { PSO, renderSystem->Library.RS4CBVs_SO };
 	}
 
 
@@ -137,7 +137,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
 			PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
 			PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
 			PSO_Desc.PS							   = forwardRenderTerrain_shader_PS;
@@ -160,7 +160,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTerrain");
 
-		return { PSO, &renderSystem->Library.RS4CBVs_SO };
+		return { PSO, renderSystem->Library.RS4CBVs_SO };
 	}
 
 
@@ -194,7 +194,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature			= *renderSystem->Library.RS4CBVs_SO;
 			PSO_Desc.VS						= forwardRenderTerrain_shader_VS;
 			PSO_Desc.GS						= forwardRenderTerrain_shader_GS;
 			PSO_Desc.PS						= ShaderPaint_Wire;
@@ -217,7 +217,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawTerrainWireframe");
 
-		return { PSO, &renderSystem->Library.RS4CBVs_SO };
+		return { PSO, renderSystem->Library.RS4CBVs_SO };
 	}
 
 

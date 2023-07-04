@@ -1364,7 +1364,6 @@ namespace FlexKit
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
-		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
 		RenderSystem& GetRenderSystem() { return resources->renderSystem; }
@@ -3034,7 +3033,7 @@ namespace FlexKit
 							context.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 							DescriptorHeap descHeap;
-							auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0);
+							auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);
 
 							descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
 							descHeap.NullFill(context, 1);
@@ -3314,7 +3313,7 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
 					&allocator);
 				descHeap.NullFill(ctx);
 
@@ -3463,7 +3462,7 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
 					&allocator);
 				descHeap.NullFill(ctx);
 

@@ -392,8 +392,8 @@ namespace FlexKit
 
 
 	private:
-		RootSignature	rootSignature;
-		RootSignature 	markClustersSignature;
+		const RootSignature*	rootSignature;
+		const RootSignature* 	markClustersSignature;
 
 
 		ResourceHandle	clusterBuffer = InvalidHandle;

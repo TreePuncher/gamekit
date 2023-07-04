@@ -37,56 +37,27 @@ namespace FlexKit
 
 	struct _InvalidHandle_t {} inline static const InvalidHandle;
 
-	template<size_t HandleSize = 32, size_t ID = (size_t)-1>
+	template<size_t HandleSize = 32, size_t ID = (size_t)-1, typename InternalType = uint32_t>
 	class Handle_t
 	{
 	public:
-		typedef Handle_t<HandleSize, ID> THISTYPE_t;
 		constexpr static const size_t GetHandleSize() { return HandleSize; }
 
-		constexpr Handle_t()
-		{
-#if USING( DEBUGHANDLES )
-			INDEX = 0XFFFFFFFF;
-			TYPE = 0XFFFF;
-			FLAGS = HANDLE_FLAGS::HF_ERROR;
-#endif
-		}
-		constexpr Handle_t(unsigned int index, unsigned int type, unsigned int flags)
-			: INDEX(index)
-#if USING( DEBUGHANDLES )
-			, TYPE(type)
-			, FLAGS(flags)
-#endif
-		{}
+		constexpr Handle_t()									= default;
+		constexpr Handle_t(			Handle_t&	in)	noexcept	= default;
+		constexpr Handle_t(const	Handle_t&	in)	noexcept	= default;
+		constexpr Handle_t(			Handle_t&&	in)	noexcept	= default;
 
-		constexpr Handle_t(const Handle_t<HandleSize>& in) noexcept
-		{
-			INDEX = in.INDEX;
-#if USING( DEBUGHANDLES )
-			TYPE = in.TYPE;
-			FLAGS = in.FLAGS;
-#endif
-		}
-
-		constexpr explicit Handle_t(size_t in) :
-			INDEX{ (unsigned int)in }
-		{
-#if USING( DEBUGHANDLES )
-			TYPE = 0XFFFF;
-			FLAGS = HANDLE_FLAGS::HF_ERROR;
-#endif
-		}
-
+		template<typename TY> requires std::is_integral_v<TY>
+		constexpr Handle_t(const TY in)					noexcept : INDEX{ (InternalType)in } {}
 		constexpr Handle_t(_InvalidHandle_t)
 		{
-			INDEX = 0XFFFFFFFF;
+			INDEX = (InternalType)0xffffffffffffffff;
 		}
-
 
 		//operator uint32_t() const { return to_uint(); }
 
-		bool				operator ==	(const THISTYPE_t in) const
+		bool				operator ==	(const Handle_t in) const
 		{
 #if USING( DEBUGHANDLES )
 			if (TYPE == in.TYPE && FLAGS == in.FLAGS && INDEX == in.INDEX)
@@ -98,50 +69,138 @@ namespace FlexKit
 			return false;
 		}
 
-		bool operator !=	(const THISTYPE_t in) const
+		bool operator !=	(const Handle_t in) const
 		{
 			return !(*this == in);
 		}
 
-		const uint32_t	to_uint() const
+		const InternalType	to_uint() const
 		{
 			return INDEX;
 		}
 
 
-		Handle_t& operator =(const Handle_t<HandleSize>& in) noexcept
-		{
-			INDEX = in.index;
-			return (*this);
-		}
+		Handle_t& operator =	(const	Handle_t& in)	noexcept = default;
+		Handle_t& operator =	(Handle_t&& in)			noexcept = default;
 
-		Handle_t<HandleSize, ID> operator = (_InvalidHandle_t)
+		Handle_t<HandleSize, ID> operator = (_InvalidHandle_t) noexcept
 		{
-			INDEX = 0XFFFFFFFF;
+			INDEX = (InternalType)0xffffffffffffffff;
 			return {};
 		}
-		
+
+		template<typename TY> requires std::is_integral_v<TY>
+		bool operator == (TY x)
+		{
+			return x == INDEX;
+		}
 
 		bool operator == (_InvalidHandle_t)
 		{
-			return (*this == THISTYPE_t(InvalidHandle));
+			return (*this == Handle_t{ InvalidHandle });
 		}
 
 		bool operator != (_InvalidHandle_t handle)
 		{
-			return !(*this == handle);
+			return !(*this == Handle_t{ InvalidHandle });
 		}
 
-		operator uint32_t(){ return INDEX; }
+		operator InternalType(){ return INDEX; }
 
-		//unsigned int    INDEX		: HandleSize    = 0xffffffff;
-		uint64_t   INDEX		: HandleSize;
+
+		InternalType   INDEX : HandleSize;
 #if USING( DEBUGHANDLES )
 		unsigned int	TYPE		: 28            = 0;
 		unsigned int	FLAGS		: 4             = 0;
 #endif
 
-		operator size_t () const { return INDEX; }
+		operator InternalType () const { return INDEX; }
+
+		enum HANDLE_FLAGS
+		{
+			HF_ERROR = 0x0001,
+			HF_FREE	 = 0x0002,
+			HF_USED	 = 0x0004
+		};
+	};
+
+
+	template<size_t ID>
+	class Handle_t<64, ID, uint64_t>
+	{
+	public:
+		constexpr static const size_t GetHandleSize() { return 64; }
+
+		constexpr Handle_t()									= default;
+		constexpr Handle_t(			Handle_t&	in)	noexcept	= default;
+		constexpr Handle_t(const	Handle_t&	in)	noexcept	= default;
+		constexpr Handle_t(			Handle_t&&	in)	noexcept	= default;
+
+		template<typename TY> requires std::is_integral_v<TY>
+		constexpr Handle_t(const TY in)					noexcept : INDEX{ (uint64_t)in } {}
+		constexpr Handle_t(_InvalidHandle_t)
+		{
+			INDEX = 0xffffffffffffffff;
+		}
+
+		bool				operator ==	(const Handle_t in) const
+		{
+#if USING( DEBUGHANDLES )
+			if (TYPE == in.TYPE && FLAGS == in.FLAGS && INDEX == in.INDEX)
+				return true;
+#else
+			if (INDEX == in.INDEX)
+				return true;
+#endif
+			return false;
+		}
+
+		bool operator !=	(const Handle_t in) const
+		{
+			return !(*this == in);
+		}
+
+		const uint64_t	to_uint() const
+		{
+			return INDEX;
+		}
+
+
+		Handle_t& operator =	(const	Handle_t& in)	noexcept = default;
+		Handle_t& operator =	(Handle_t&& in)			noexcept = default;
+
+		Handle_t operator	= (_InvalidHandle_t) noexcept
+		{
+			INDEX = 0xffffffffffffffff;
+			return {};
+		}
+
+		template<typename TY> requires std::is_integral_v<TY>
+		bool operator == (TY x)
+		{
+			return x == INDEX;
+		}
+
+		bool operator == (_InvalidHandle_t)
+		{
+			return (*this == Handle_t{ InvalidHandle });
+		}
+
+		bool operator != (_InvalidHandle_t handle)
+		{
+			return !(*this == Handle_t{ InvalidHandle });
+		}
+
+		operator uint64_t(){ return INDEX; }
+
+
+		uint64_t   INDEX;
+#if USING( DEBUGHANDLES )
+		unsigned int	TYPE		: 28            = 0;
+		unsigned int	FLAGS		: 4             = 0;
+#endif
+
+		operator uint64_t () const { return INDEX; }
 
 		enum HANDLE_FLAGS
 		{
@@ -189,9 +248,6 @@ namespace FlexKit
 
 			inline index_t&	operator[] ( const HANDLE in )
 			{
-				#ifdef _DEBUG
-				//HandleUtilities::CheckType(in, mType);
-				#endif
 				return Indexes[ in.INDEX ];
 			}
 
@@ -206,10 +262,10 @@ namespace FlexKit
 					const auto idx = FreeList;
 					FreeList = Indexes[idx];
 
-					return { (index_t)idx, mType, FlexKit::Handle::HF_USED };
+					return { (index_t)idx };
 				}
 
-				return { (index_t)Indexes.push_back(-1), mType, FlexKit::Handle::HF_USED };
+				return { (index_t)Indexes.push_back(-1) };
 			}
 
 			inline void	Clear()
@@ -228,7 +284,7 @@ namespace FlexKit
 			inline void	RemoveHandle( HANDLE in )
 			{
 				Indexes[in] = FreeList;
-				FreeList    = in;
+				FreeList    = (index_t)in;
 			}
 
 			inline size_t size()
@@ -259,7 +315,7 @@ namespace FlexKit
 					if(Indexes[I] == idx)
 						return HANDLE(I);
 
-				return HANDLE(-1);
+				return InvalidHandle;
 			}
 
 			HandleTable( const HandleTable<HANDLE>& in )				= delete;	// Do not allow Table copying

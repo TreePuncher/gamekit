@@ -112,7 +112,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 					context.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_TRIANGLE);
 
 					FlexKit::DescriptorHeap descHeap;
-					auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0);
+					auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);
 
 					descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
 					descHeap.NullFill(context, 1);

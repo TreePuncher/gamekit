@@ -176,7 +176,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig	= strandRenderRootSignature,
+		.rootSig	= *strandRenderRootSignature,
 		.byteCode	= CShader,
 	};
 
@@ -190,7 +190,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 
 	SETDEBUGNAME(pso, "ApplyForces");
 
-	return { pso, &strandRenderRootSignature };
+	return { pso, strandRenderRootSignature };
 }
 
 
@@ -209,7 +209,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO(
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig	= strandRenderRootSignature,
+		.rootSig	= *strandRenderRootSignature,
 		.byteCode	= CShader,
 	};
 
@@ -223,7 +223,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO(
 
 	SETDEBUGNAME(pso, "ApplyShapeConstraints");
 
-	return { pso, &strandRenderRootSignature };
+	return { pso, strandRenderRootSignature };
 }
 
 
@@ -242,8 +242,8 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraint
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig = strandRenderRootSignature,
-		.byteCode = CShader,
+		.rootSig	= *strandRenderRootSignature,
+		.byteCode	= CShader,
 	};
 
 	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
@@ -256,7 +256,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraint
 
 	SETDEBUGNAME(pso, "ApplyEdgeLengthContraints");
 
-	return { pso, &strandRenderRootSignature };
+	return { pso, strandRenderRootSignature };
 }
 
 
@@ -267,7 +267,6 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	FrameworkState				{ IN_framework },
 	vertexBuffer				{ IN_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	constantBuffer				{ IN_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
-	strandRenderRootSignature	{ IN_framework.core.GetBlockMemory() },
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
@@ -285,14 +284,16 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Hair Rendering - WIP");
 
-	strandRenderRootSignature.AllowIA = true;
-	strandRenderRootSignature.SetParameterAsUINT(0, 16, 0, 0);
-	strandRenderRootSignature.SetParameterAsSRV(1, 0);
-	strandRenderRootSignature.SetParameterAsSRV(2, 1);
-	strandRenderRootSignature.SetParameterAsUAV(3, 0, 0);
+	FlexKit::RootSignatureBuilder builder{ framework.core.GetBlockMemory() };
 
-	auto res2 = strandRenderRootSignature.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
-	FK_ASSERT(res2, "Failed to create root signature!");
+	builder.AllowIA = true;
+	builder.SetParameterAsUINT(0, 16, 0, 0);
+	builder.SetParameterAsSRV(1, 0);
+	builder.SetParameterAsSRV(2, 1);
+	builder.SetParameterAsUAV(3, 0, 0);
+
+	strandRenderRootSignature = builder.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
+	FK_ASSERT(strandRenderRootSignature != nullptr, "Failed to create root signature!");
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		StrandRenderPSO,
@@ -339,7 +340,6 @@ HairRenderingTest::~HairRenderingTest()
 {
 	ReleaseStyle(style, framework.GetRenderSystem());
 
-	strandRenderRootSignature.Release();
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseResource(depthBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
@@ -366,7 +366,7 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature			= strandRenderRootSignature;
+		PSO_Desc.pRootSignature			= *strandRenderRootSignature;
 		PSO_Desc.VS						= vshader;
 		PSO_Desc.GS						= gshader;
 		PSO_Desc.PS						= pshader;
@@ -388,7 +388,7 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 
 	SETDEBUGNAME(pso, "DrawStrands");
 
-	return { pso, &strandRenderRootSignature };
+	return { pso, strandRenderRootSignature };
 }
 
 
@@ -412,7 +412,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateDebugRenderPSO()
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature			= strandRenderRootSignature;
+		PSO_Desc.pRootSignature			= *strandRenderRootSignature;
 		PSO_Desc.VS						= vshader;
 		PSO_Desc.GS						= gshader;
 		PSO_Desc.PS						= pshader;
@@ -434,7 +434,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateDebugRenderPSO()
 
 	SETDEBUGNAME(pso, "DrawStrandsDebug");
 
-	return { pso, &strandRenderRootSignature };
+	return { pso, strandRenderRootSignature };
 }
 
 

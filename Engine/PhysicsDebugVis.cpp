@@ -29,7 +29,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= DrawRectVShader;
 			PSO_Desc.PS						= DrawRectPShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -51,7 +51,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepthWireFrameDebug");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 	
@@ -78,7 +78,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= DrawRectVShader;
 			PSO_Desc.PS						= DrawRectPShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -100,7 +100,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepth");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 	static const PSOHandle Wireframe	= PSOHandle(GetTypeGUID(CreateWireframeDebugVis));

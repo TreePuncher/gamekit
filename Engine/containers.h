@@ -1,9 +1,10 @@
 #pragma once
 
 #include "buildsettings.h"
+#include "MathUtils.h"
 #include "memoryutilities.h"
 #include "static_vector.h"
-#include "MathUtils.h"
+#include "type.h"
 
 #if USING(USESTL)
 
@@ -2713,6 +2714,269 @@ namespace FlexKit
 
 	template<typename ... TY_args>
 	using GetLastArg = impl_GetLast<TY_args...>::tail;
+
+
+	template<typename TY_value, typename TY_key = uint64_t>
+	class HashTable
+	{
+	public:
+		HashTable() = default;
+
+
+		HashTable(iAllocator& IN_allocator) :
+			allocator{ &IN_allocator } {}
+
+
+		HashTable(iAllocator* IN_allocator) :
+			allocator{ IN_allocator } {}
+
+
+		HashTable(const HashTable& rhs) 
+		{
+			Clone(*this, rhs, allocator ? *allocator : rhs.allocator);
+		}
+
+
+		HashTable(HashTable&& rhs) noexcept
+		{
+			Move(*this, rhs);
+		}
+
+
+		~HashTable()
+		{
+			Release();
+		}
+
+
+		HashTable& operator = (const HashTable& rhs)
+		{
+			Clone(*this, rhs, allocator ? *allocator : rhs.allocator);
+			return (*this);
+		}
+
+
+		HashTable& operator = (HashTable&& rhs) noexcept
+		{
+			Move(*this, rhs);
+			return (*this);
+		}
+
+
+		TY_value* insert(const TY_key key, const TY_value& value)
+		{
+			if (max == 0)
+				reserve(16);
+			else if (used >= max * 0.8f)
+				reserve(max * 2);
+
+			const	uint64_t hash	= FNVa62((const char*) &key, sizeof(TY_key));
+					uint64_t idx	= hash % max;
+
+			const uint64_t end = Min(idx + 4, max);
+			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+		
+			if (idx >= end)
+				return nullptr;
+			else
+			{
+				used++;
+				keys[idx] = hash;
+				return new(values + idx) TY_value{ std::move(value) };
+			}
+		}
+
+
+		TY_value* insert(const TY_key key, TY_value&& value)
+		{
+			if (max == 0)
+				reserve(16);
+			else if (used >= max * 0.8f)
+				reserve(max * 2);
+
+			const	uint64_t hash	= FNVa62((const char*) &key, sizeof(TY_key));
+					uint64_t idx	= hash % max;
+
+			const uint64_t end = Min(idx + 4, max);
+			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+		
+			if (idx >= end)
+				return nullptr;
+			else
+			{
+				used++;
+				keys[idx] = hash;
+				return new(values + idx) TY_value{ std::move(value) };
+			}
+		}
+
+		template<typename ... TY_params>
+		TY_value* emplace(const TY_key key, TY_params&& ... args)
+		{
+			if (max == 0)
+				reserve(16);
+			else if (used >= max * 0.8f)
+				reserve(max * 2);
+
+			const	uint64_t hash	= FNVa62((const char*) &key, sizeof(TY_key));
+					uint64_t idx	= hash % max;
+
+			const uint64_t end = Min(idx + 4, max);
+			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+		
+			if (idx >= end)
+				return nullptr;
+			else
+			{
+				used++;
+				keys[idx] = hash;
+				return new(values + idx) TY_value{ std::forward<TY_params>(args)... };
+			}
+		}
+
+
+		TY_value* operator [] (const TY_key key) const noexcept
+		{
+			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
+					uint64_t idx	= hash % max;
+
+			const uint64_t end = Min(idx + 4, max);
+			while (keys[idx] != hash && idx < end) idx++;
+
+			if (idx >= end || keys[idx] != hash)
+				return nullptr;
+			else
+				return (values + idx);
+		}
+
+
+		bool remove(const TY_key key)
+		{
+			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
+					uint64_t idx	= hash % max;
+
+			const uint64_t end = Min(idx + 4, max);
+
+			for (; keys[idx] != key && idx < end; idx++);
+		
+			if (keys[idx] == key)
+			{
+				if constexpr (!std::is_trivially_destructible_v<TY_value>)
+					values[idx].~TY_value();
+
+				keys[idx] = 0xffffffffffffffff;
+				return true;
+			}
+			else
+				return false;
+		}
+
+
+		void reserve(const uint32_t newSize)
+		{
+			const size_t	newByteSize	= sizeof(TY_key) * newSize;
+			TY_key*			newKeys		= (TY_key*)allocator->_aligned_malloc(newByteSize);
+			TY_value*		newValues	= (TY_value*)allocator->_aligned_malloc(newByteSize);
+
+			memset(newKeys, 0xff, newByteSize);
+
+			if (used)
+			{
+				for (size_t itr = 0; itr < newSize; itr++)
+				{
+					const auto key = keys[itr];
+
+					const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
+							uint64_t idx	= hash % newSize;
+
+					newKeys[idx] = key;
+					if (key != 0xffffffffffffffff)
+					{
+						new(newValues + idx) TY_value{ std::move(values[itr]) };
+
+						if constexpr (!std::is_trivially_destructible_v<TY_value>)
+							newValues[itr].~TY_value();
+					}
+				}
+			}
+
+			allocator->_aligned_free(keys);
+			allocator->_aligned_free(values);
+
+			keys	= newKeys;
+			values	= newValues;
+			max		= newSize;
+		}
+
+
+		void Release()
+		{
+			if (used)
+			{
+				if constexpr (!std::is_trivially_destructible_v<TY_value>)
+				{
+					for (size_t itr = 0; itr < max; itr++)
+					{
+						if (keys[itr] != 0xffffffffffffffff)
+							values[itr].~TY_value();
+					}
+				}
+
+				allocator->_aligned_free(keys);
+				allocator->_aligned_free(values);
+			}
+
+			used	= 0;
+			max		= 0;
+			keys	= nullptr;
+			values	= nullptr;
+		}
+
+
+		static void Clone(HashTable& lhs, const HashTable& rhs, iAllocator* allocator)
+		{
+			lhs.allocator = allocator;
+
+			lhs.Release();
+			lhs.reserve(rhs.max);
+
+			const size_t end = rhs.max;
+			for (size_t itr = 0; itr < end; itr++)
+			{
+				auto key		= rhs.keys[itr];
+				lhs.keys[itr]	= key;
+
+				if (key != 0xffffffffffffffff)
+					new(lhs.values + itr) TY_value{ rhs.values[itr] };
+			}
+
+			lhs.used		= rhs.used;
+			lhs.max			= rhs.max;
+		}
+
+
+		static void Move(HashTable& lhs, HashTable& rhs)
+		{
+			lhs.keys		= rhs.keys;
+			lhs.values		= rhs.values;
+			lhs.used		= rhs.used;
+			lhs.max			= rhs.max;
+			lhs.allocator	= rhs.allocator;
+
+			rhs.keys		= nullptr;
+			rhs.values		= nullptr;
+			rhs.used		= 0;
+			rhs.max			= 0;
+			rhs.allocator	= nullptr;
+		}
+
+
+		uint32_t	used		= 0;
+		uint32_t	max			= 0;
+		TY_key*		keys		= nullptr;
+		TY_value*	values		= nullptr;
+		iAllocator* allocator	= nullptr;
+	};
 }	// namespace FlexKit;
 	/************************************************************************************************/
 #endif

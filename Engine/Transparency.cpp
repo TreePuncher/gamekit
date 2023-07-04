@@ -1,6 +1,7 @@
 #include "FrameGraph.h"
 #include "Transparency.h"
 #include "Materials.h"
+#include "WorldRender.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -12,10 +13,10 @@ namespace FlexKit
 
 		UpdateTaskTyped<GetPVSTaskData>& PVS;
 
-		CameraHandle            camera;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
+		CameraHandle			camera;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
 	};
 
 
@@ -24,10 +25,10 @@ namespace FlexKit
 
 	struct OITBlend
 	{
-		FrameResourceHandle     renderTargetObject;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
+		FrameResourceHandle		renderTargetObject;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
 	};
 
 
@@ -36,10 +37,10 @@ namespace FlexKit
 
 	struct OIT_MLAB
 	{
-		FrameResourceHandle     renderTargetObject;
-		FrameResourceHandle     accumalatorObject;
-		FrameResourceHandle     counterObject;
-		FrameResourceHandle     depthTarget;
+		FrameResourceHandle		renderTargetObject;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
 	};
 
 
@@ -78,6 +79,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -120,7 +122,7 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -138,8 +140,8 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\OITBlend.hlsl");
-		auto PShader = RS->LoadShader("BlendMain", "ps_6_0", "assets\\shaders\\OITBlend.hlsl");
+		auto VShader = RS->LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
+		auto PShader = RS->LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
@@ -148,7 +150,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -179,7 +181,7 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -207,7 +209,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -250,7 +252,7 @@ namespace FlexKit
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -312,7 +314,7 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
-				const RootSignature&	rootSig		= resources.renderSystem().Library.RSDefault;
+				const RootSignature*	rootSig		= resources.renderSystem().Library.RSDefault;
 				auto&					materials	= MaterialComponent::GetComponent();
 
 
@@ -410,7 +412,7 @@ namespace FlexKit
 
 							DescriptorHeap heap;
 
-							heap.Init2(ctx, rootSig.GetDescHeap(0), textures.size(), &tempAllocator);
+							heap.Init2(ctx, rootSig->GetDescHeap(0), textures.size(), &tempAllocator);
 
 							for (size_t I = 0; I < textures.size(); ++I)
 								heap.SetSRV(ctx, I, textures[I]);
@@ -465,8 +467,8 @@ namespace FlexKit
 				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
 				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
-				const RootSignature& rootSig = resources.renderSystem().Library.RSDefault;
-				auto& descHeapLayout = rootSig.GetDescHeap(0);
+				const RootSignature* rootSig = resources.renderSystem().Library.RSDefault;
+				auto& descHeapLayout = rootSig->GetDescHeap(0);
 				DescriptorHeap descHeap;
 
 				descHeap.Init2(ctx, descHeapLayout, 2, &tempAllocator);

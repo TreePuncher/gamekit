@@ -263,7 +263,7 @@ void RunSTDStringMessageHandler(const asSMessageInfo* msg, ErrorCallbackFN* call
 	if(callback)
 		(*callback)(msg->col, msg->row, msg->message, msg->section, msg->type);
 
-	fmt::print("AngelScript: Failure to build module! [ {}, {}, {}, {}, {} ]", msg->col, msg->row, msg->message, msg->section, msg->type);
+	fmt::print("AngelScript: Failure to build module! [ {}, {}, {}, {}, {} ]", msg->col, msg->row, msg->message, msg->section, (uint32_t)msg->type);
 }
 
 

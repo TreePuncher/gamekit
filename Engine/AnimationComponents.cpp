@@ -955,7 +955,7 @@ namespace FlexKit
 			const auto skeletonT    = GetPoseTransform(skeleton->JointPoses[I]);
 
 			const auto parent       = skeleton->Joints[I].mParent;
-			const auto P            = (parent != 0xFFFF) ? pose.CurrentPose[parent] : float4x4::Identity();
+			const auto P            = (parent != InvalidHandle) ? pose.CurrentPose[parent] : float4x4::Identity();
 
 			pose.CurrentPose[I]     = poseT * skeletonT * P;
 		}

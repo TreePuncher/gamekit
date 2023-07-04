@@ -21,7 +21,6 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	vertexBuffer				{ IN_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
-	sortingRootSignature		{ IN_framework.core.GetBlockMemory() },
 	timingQueries				{ IN_framework.core.RenderSystem.CreateTimeStampQuery(512) },
 	readBackBuffer				{ IN_framework.core.RenderSystem.CreateReadBackBuffer(512) },
 	debugUI						{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
@@ -37,14 +36,16 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Sorting Test - WIP");
 
-	sortingRootSignature.AllowIA = true;
-	sortingRootSignature.SetParameterAsUINT(0, 16, 0, 0);
-	sortingRootSignature.SetParameterAsSRV(1, 0);
-	sortingRootSignature.SetParameterAsSRV(2, 1);
-	sortingRootSignature.SetParameterAsUAV(3, 0, 0);
+	FlexKit::RootSignatureBuilder builder{ IN_framework.core.GetTempMemory() };
 
-	auto res2 = sortingRootSignature.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
-	FK_ASSERT(res2, "Failed to create root signature!");
+	builder.AllowIA = true;
+	builder.SetParameterAsUINT(0, 16, 0, 0);
+	builder.SetParameterAsSRV(1, 0);
+	builder.SetParameterAsSRV(2, 1);
+	builder.SetParameterAsUAV(3, 0, 0);
+
+	sortingRootSignature = builder.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
+	FK_ASSERT(sortingRootSignature != nullptr, "Failed to create root signature!");
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		InitiateBuffer,
@@ -68,7 +69,6 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 
 SortTest::~SortTest()
 {
-	sortingRootSignature.Release();
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
 }
 
@@ -301,8 +301,8 @@ FlexKit::LoadPipelineStateRes SortTest::CreateInitiateDataPSO()
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig = sortingRootSignature,
-		.byteCode = CShader,
+		.rootSig	= *sortingRootSignature,
+		.byteCode	= CShader,
 	};
 
 	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
@@ -313,7 +313,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateInitiateDataPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return { PSO, &sortingRootSignature };
+	return { PSO, sortingRootSignature };
 }
 
 
@@ -332,8 +332,8 @@ FlexKit::LoadPipelineStateRes SortTest::CreateLocalSortPSO()
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig = sortingRootSignature,
-		.byteCode = CShader,
+		.rootSig	= *sortingRootSignature,
+		.byteCode	= CShader,
 	};
 
 	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
@@ -344,7 +344,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateLocalSortPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return { PSO, &sortingRootSignature };
+	return { PSO, sortingRootSignature };
 }
 
 
@@ -363,8 +363,8 @@ FlexKit::LoadPipelineStateRes SortTest::CreateMergePathPSO()
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig = sortingRootSignature,
-		.byteCode = CShader,
+		.rootSig	= *sortingRootSignature,
+		.byteCode	= CShader,
 	};
 
 	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
@@ -375,7 +375,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateMergePathPSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return { PSO, &sortingRootSignature };
+	return { PSO, sortingRootSignature };
 }
 
 
@@ -394,8 +394,8 @@ FlexKit::LoadPipelineStateRes SortTest::CreateGlobalMergePSO()
 		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
 		D3D12_SHADER_BYTECODE					byteCode;
 	} stream = {
-		.rootSig = sortingRootSignature,
-		.byteCode = CShader,
+		.rootSig	= *sortingRootSignature,
+		.byteCode	= CShader,
 	};
 
 	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
@@ -406,7 +406,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateGlobalMergePSO()
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
-	return { PSO, &sortingRootSignature };
+	return { PSO, sortingRootSignature };
 }
 
 

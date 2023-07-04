@@ -37,7 +37,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable  = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= renderSystem->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *renderSystem->Library.RSDefault;
 			PSO_Desc.VS						= DrawRectVShader;
 			PSO_Desc.PS						= DrawRectPShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -68,7 +68,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawIMGUI");
 
-		return { PSO, &renderSystem->Library.RSDefault };
+		return { PSO, renderSystem->Library.RSDefault };
 	}
 
 
@@ -390,7 +390,7 @@ namespace FlexKit
 						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
 
 						FlexKit::DescriptorHeap heap;
-						heap.Init2( ctx, rootSig.GetDescHeap(0), 1, &allocator );
+						heap.Init2( ctx, rootSig->GetDescHeap(0), 1, &allocator );
 						heap.SetSRV(ctx, 0, texture);
 
 						ctx.SetGraphicsDescriptorTable(4, heap);

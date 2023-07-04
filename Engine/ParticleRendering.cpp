@@ -4,7 +4,7 @@
 
 namespace FlexKit
 {
-	ID3D12PipelineState* CreateParticleMeshInstancedPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateParticleMeshInstancedPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ParticleMeshInstanceVS", "vs_6_0", "assets\\shaders\\ParticleRendering.hlsl");
 		auto PShader = RS->LoadShader("ParticleMeshInstancePS", "ps_6_0", "assets\\shaders\\ParticleRendering.hlsl");
@@ -25,22 +25,22 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature = RS->Library.RSDefault;
-			PSO_Desc.VS = VShader;
-			PSO_Desc.PS = PShader;
-			PSO_Desc.RasterizerState = Rast_Desc;
-			PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets = 3;
-			PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;        // Albedo
-			PSO_Desc.RTVFormats[1] = DXGI_FORMAT_R16G16B16A16_FLOAT;    // Specular
-			PSO_Desc.RTVFormats[2] = DXGI_FORMAT_R16G16B16A16_FLOAT;    // Normal
-			PSO_Desc.SampleDesc.Count = 1;
-			PSO_Desc.SampleDesc.Quality = 0;
-			PSO_Desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState = Depth_Desc;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 3;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM;        // Albedo
+			PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R16G16B16A16_FLOAT;    // Specular
+			PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R16G16B16A16_FLOAT;    // Normal
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
 		}
 
@@ -50,14 +50,14 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawParticleMeshInstances");
 
-		return PSO;
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateParticleMeshInstancedDepthPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateParticleMeshInstancedDepthPSO(RenderSystem* RS)
 	{
 		auto VShader = RS->LoadShader("ParticleMeshInstanceDepthVS", "vs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
 		auto GShader = RS->LoadShader("ParticleMeshInstanceDepthGS", "gs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
@@ -75,19 +75,19 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature = RS->Library.RSDefault;
-			PSO_Desc.VS = VShader;
-			PSO_Desc.GS = GShader;
-			PSO_Desc.RasterizerState = Rast_Desc;
-			PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets = 0;
-			PSO_Desc.SampleDesc.Count = 1;
-			PSO_Desc.SampleDesc.Quality = 0;
-			PSO_Desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState = Depth_Desc;
+			PSO_Desc.pRootSignature				= *RS->Library.RSDefault;
+			PSO_Desc.VS							= VShader;
+			PSO_Desc.GS							= GShader;
+			PSO_Desc.RasterizerState			= Rast_Desc;
+			PSO_Desc.BlendState					= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask					= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType		= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets			= 0;
+			PSO_Desc.SampleDesc.Count			= 1;
+			PSO_Desc.SampleDesc.Quality			= 0;
+			PSO_Desc.DSVFormat					= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout				= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState			= Depth_Desc;
 			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
 		}
 
@@ -97,7 +97,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawParticleMeshInstancesDepth");
 
-		return PSO;
+		return { PSO, RS->Library.RSDefault };
 	}
 
 

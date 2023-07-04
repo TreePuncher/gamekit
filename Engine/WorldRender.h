@@ -473,7 +473,7 @@ namespace FlexKit
 		TextureStreamingEngine&		streamingEngine;
 		bool						enableOcclusionCulling;
 
-		FlexKit::RootSignature		rootSignatureToneMapping;
+		const FlexKit::RootSignature*	rootSignatureToneMapping;
 
 		DEBUG_WorldRenderTimingValues timingValues;
 	};

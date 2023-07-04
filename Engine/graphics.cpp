@@ -152,12 +152,11 @@ namespace FlexKit
 					DebugBreak();
 
 				return DescriptorRange{
-							.begin = {
-											CPUDescriptorHandle { (uint64_t)cpuHeap.ptr + offset },
-											GPUDescriptorHandle { (uint64_t)gpuHeap.ptr + offset } },
-							.size	= (uint32_t)size,
-							.stride = (uint32_t)descriptorSize,
-						};
+					.begin	= { { (uint64_t)cpuHeap.ptr + offset },
+								{ (uint64_t)gpuHeap.ptr + offset } },
+					.size	= (uint32_t)size,
+					.stride = (uint32_t)descriptorSize,
+				};
 			}
 		}
 
@@ -1308,164 +1307,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool RootSignature::Build(RenderSystem* RS, iAllocator* TempMemory)
+	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages)
 	{
-		if (Signature)
-			Release();
+		RootEntry Desc;
+		Desc.Type							= RootSignatureEntryType::UINT;
+		Desc.UINTConstant.size              = size;
+		Desc.UINTConstant.Register		    = cbRegister;
+		Desc.UINTConstant.RegisterSpace     = registerSpace;
+		Desc.UINTConstant.Accessibility	    = AccessableStages;
 
-		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps(TempMemory);
-		DesciptorHeaps.reserve(12);
-
-		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
-
-		for (const auto& I : RootEntries)
+		if (RootEntries.size() <= Index)
 		{
-			CD3DX12_ROOT_PARAMETER Param;
-
-			switch (I.Type)
-			{
-			case RootSignatureEntryType::UINT:
-			{
-				Param.InitAsConstants(
-					I.UINTConstant.size,
-					I.UINTConstant.Register,
-					I.UINTConstant.RegisterSpace,
-					PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
-			}   break;
-			case RootSignatureEntryType::DescriptorHeap:
-			{
-				const auto  HeapIdx = I.DescriptorHeap.HeapIdx;
-				const auto& HeapEntry = Heaps[HeapIdx];
-
-				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(TempMemory));
-
-				for (auto& H : HeapEntry.Heap.Entries)
-				{
-					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
-					switch (H.Type)
-					{
-					case DescHeapEntryType::ConstantBuffer:
-						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-						break;
-					case DescHeapEntryType::ShaderResource:
-						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-						break;
-					case DescHeapEntryType::UAVBuffer:
-						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-						break;
-					case DescHeapEntryType::HeapError:
-					default:
-						FK_ASSERT(false);
-						break;
-					}
-
-					CD3DX12_DESCRIPTOR_RANGE Range;
-					Range.Init(
-						RangeType,
-						H.Count, H.Register, H.Space);
-
-					DesciptorHeaps.back().push_back(Range);
-				}
-
-				const auto temp = DesciptorHeaps.back().size();
-				Param.InitAsDescriptorTable(
-					(UINT)DesciptorHeaps.back().size(), 
-					DesciptorHeaps.back().begin(), 
-					PipelineDest2ShaderVis(I.DescriptorHeap.Accessibility));
-			}	break;
-			case RootSignatureEntryType::ConstantBuffer:
-			{
-				Param.InitAsConstantBufferView
-				(	I.ConstantBuffer.Register, 
-					I.ConstantBuffer.RegisterSpace, 
-					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
-
-			}	break;
-			case RootSignatureEntryType::StructuredBuffer:
-			{
-				Param.InitAsShaderResourceView(
-					I.ShaderResource.Register,
-					I.ShaderResource.RegisterSpace,
-					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
-			}	break;
-			case RootSignatureEntryType::UnorderedAcess:
-			{
-				Param.InitAsUnorderedAccessView(
-					I.ShaderResource.Register,
-					I.ShaderResource.RegisterSpace,
-					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
-			}   break;
-			default:
+			if (!RootEntries.full())
+				RootEntries.resize(Index + 1);
+			else
 				return false;
-				FK_ASSERT(false);
-			}
-			Parameters.push_back(Param);
 		}
 
-		ID3DBlob* SignatureBlob = nullptr;
-		ID3DBlob* ErrorBlob = nullptr;
-		CD3DX12_STATIC_SAMPLER_DESC Default(0);
-		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
-
-		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
-			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_LINEAR,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP},
-
-			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_POINT },
-			CD3DX12_STATIC_SAMPLER_DESC{2,  D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-											0, 1, D3D12_COMPARISON_FUNC_LESS_EQUAL,
-											D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
-		};
-
-		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
-		RootSignatureDesc.pStaticSamplers	= Samplers;
-		RootSignatureDesc.NumStaticSamplers	= 3;
-
-		RootSignatureDesc.Flags |= AllowIA ? 
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : 
-			D3D12_ROOT_SIGNATURE_FLAG_NONE;
-		
-		RootSignatureDesc.Flags |= AllowSO ? 
-			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT :
-			D3D12_ROOT_SIGNATURE_FLAG_NONE;
-
-
-		HRESULT HR = D3D12SerializeRootSignature(
-			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
-			&SignatureBlob,		&ErrorBlob);
-		
-		if (!SUCCEEDED(HR))
-		{
-			std::cout << (char*)ErrorBlob->GetBufferPointer() << '\n';
-			ErrorBlob->Release();
-
-#ifdef _DEBUG 
-			FK_ASSERT(false, "Invalid Root Signature Description!");
-#endif
-
-			return false;
-		}
-
-		HR = RS->pDevice->CreateRootSignature(0, 
-			SignatureBlob->GetBufferPointer(),
-			SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&Signature));
-
-		if (FAILED(HR))
-			return false;
-
-		SETDEBUGNAME(Signature, "ShadingRTSig");
-		SignatureBlob->Release(); 
-
-		hash = FNVa62((const char*)SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize());
-
-		DesciptorHeaps.clear();
-
-		Signature->AddRef();
+		RootEntries[Index]  = Desc;
+		Tags[Index]         = -1;
 
 		return true;
 	}
@@ -1474,7 +1334,122 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool RootSignature::LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
+	bool RootSignatureBuilder::SetParameterAsCBV(
+		size_t Index, size_t Register, size_t RegisterSpace, 
+		PIPELINE_DESTINATION AccessableStages, size_t Tag)
+	{
+		RootEntry Desc;
+		Desc.Type					= RootSignatureEntryType::ConstantBuffer;
+		Desc.Direct.Register		= (uint32_t)Register;
+		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Accessibility	= AccessableStages;
+
+
+		if (RootEntries.size() <= Index)
+		{
+			if (!RootEntries.full())
+				RootEntries.resize(Index + 1);
+			else
+				return false;
+		}
+
+		RootEntries[Index] = Desc;
+		Tags[Index]        = Tag;
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool RootSignatureBuilder::SetParameterAsUAV(
+		size_t Index, size_t Register, size_t RegisterSpace,
+		PIPELINE_DESTINATION AccessableStages, size_t Tag)
+	{
+		RootEntry Desc;
+		Desc.Type					= RootSignatureEntryType::UnorderedAcess;
+		Desc.Direct.Register		= (uint32_t)Register;
+		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Accessibility	= AccessableStages;
+
+
+		if (RootEntries.size() <= Index)
+		{
+			if (!RootEntries.full())
+				RootEntries.resize(Index + 1);
+			else
+				return false;
+		}
+
+		RootEntries[Index] = Desc;
+		Tags[Index]        = Tag;
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool RootSignatureBuilder::SetParameterAsSRV(
+		size_t Index, size_t Register, size_t RegisterSpace,
+		PIPELINE_DESTINATION AccessableStages,
+		size_t Tag)
+	{
+		RootEntry Desc;
+		Desc.Type					= RootSignatureEntryType::StructuredBuffer;
+		Desc.Direct.Register		= (uint32_t)Register;
+		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Accessibility	= AccessableStages;
+
+		if (RootEntries.size() <= Index)
+		{
+			if (!RootEntries.full())
+				RootEntries.resize(Index + 1);
+			else
+				return false;
+		}
+
+		RootEntries[Index] = Desc;
+		Tags[Index]        = Tag;
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RootSignatureBuilder::Clear()
+	{
+		Tags.clear();
+		Heaps.clear();
+		RootEntries.clear();
+
+		AllowIA = true;
+		AllowSO = false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	const RootSignature* RootSignatureBuilder::Build(RenderSystem* RS, iAllocator& temp)
+	{
+		auto result = RenderSystem::_GetInstance()._CreateRootSignature(*this, temp);
+
+		if (result)
+			Clear();
+
+		return result;
+	}
+
+
+	/************************************************************************************************/
+
+
+	const RootSignature* RootSignatureBuilder::LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
 	{
 		auto result = renderSystem.LoadRootSignature(dir, entry);
 		
@@ -1563,10 +1538,39 @@ namespace FlexKit
 
 			deserializer->Release();
 
-			return Build(renderSystem, temp);
+			auto signature = renderSystem._CreateRootSignature(*this, temp);
+
+			if (!signature)
+				return nullptr;
+
+			Clear();
+
+			return signature;
 		}
 		else		
-			return false;
+			return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RootSignature::Release()
+	{
+		Signature->Release();
+		Heaps.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t RootSignature::GetDesciptorTableSize(size_t idx) const
+	{
+		//FK_ASSERT(RootEntries[idx].Type == RootSignatureEntryType::DescriptorHeap, "INVALID ARGUEMENT!");
+		//auto heapIdx = RootEntries[idx].DescriptorHeap.HeapIdx;
+		FK_ASSERT(idx < Heaps.size());
+		return Heaps[idx].Heap.size();
 	}
 
 
@@ -2161,20 +2165,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetRootSignature(const RootSignature& RS)
+	void Context::SetRootSignature(RootSigHandle rootSigHandle)
 	{
-		CurrentRootSignature = &RS;
-		DeviceContext->SetGraphicsRootSignature(RS);
+		auto rootSig			= renderSystem->_GetRootSignature(rootSigHandle);
+		CurrentRootSignature	= rootSig;
+		DeviceContext->SetGraphicsRootSignature(*rootSig);
+	}
+
+	void Context::SetRootSignature(const RootSignature* rootSig)
+	{
+		CurrentRootSignature	= rootSig;
+		DeviceContext->SetGraphicsRootSignature(*rootSig);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::SetComputeRootSignature(const RootSignature& RS)
+	void Context::SetComputeRootSignature(RootSigHandle rootSigHandle)
 	{
-		CurrentComputeRootSignature = &RS;
-		DeviceContext->SetComputeRootSignature(RS);
+		auto rootSig = renderSystem->_GetRootSignature(rootSigHandle);
+
+		CurrentComputeRootSignature = rootSig;
+		DeviceContext->SetComputeRootSignature(*rootSig);
+	}
+
+
+	void Context::SetComputeRootSignature(const RootSignature* rootSig)
+	{
+		CurrentComputeRootSignature = rootSig;
+		DeviceContext->SetComputeRootSignature(*rootSig);
 	}
 
 
@@ -3518,7 +3538,7 @@ namespace FlexKit
 		UpdateResourceStates();
 
 		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
-		DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
 		DeviceContext->SetPipelineState(PSO);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
@@ -3556,7 +3576,7 @@ namespace FlexKit
 		uint2 range{ begin / 16, end / 16};
 
 		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
-		DeviceContext->SetComputeRootSignature(renderSystem->Library.ClearBuffer);
+		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
 		DeviceContext->SetPipelineState(PSO);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
@@ -4142,7 +4162,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS, iAllocator* TempMemory)
+	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS, iAllocator& allocator, iAllocator& temp)
 	{
 		ID3D12Device* Device = RS->pDevice;
 
@@ -4163,6 +4183,8 @@ namespace FlexKit
 		{
 		*/
 
+		RootSignatureBuilder builder{ allocator };
+
 		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
 			CD3DX12_STATIC_SAMPLER_DESC(0, D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT, 
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
@@ -4174,72 +4196,66 @@ namespace FlexKit
 		};
 
 		{
-			CD3DX12_DESCRIPTOR_RANGE ranges[2];
-			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
-			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
-
-			RS->Library.RS6CBVs4SRVs.AllowIA = true;
+			builder.AllowIA = true;
 			DesciptorHeapLayout<2> DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 6);
 			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.RS6CBVs4SRVs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(5, 4, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(6, 5, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS6CBVs4SRVs.SetParameterAsSRV(7, 7, 0, PIPELINE_DEST_VS);
-			RS->Library.RS6CBVs4SRVs.Build(RS, TempMemory);
-			SETDEBUGNAME(RS->Library.RS6CBVs4SRVs, "RS4CBVs4SRVs");
+			builder.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			builder.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(5, 4, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(6, 5, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsSRV(7, 7, 0, PIPELINE_DEST_VS);
+			RS6CBVs4SRVs = builder.Build(RS, temp);
+			SETDEBUGNAME(*RS6CBVs4SRVs, "RS4CBVs4SRVs");
 		}
 		{
-			RS->Library.RS4CBVs_SO.AllowIA	= true;
-			RS->Library.RS4CBVs_SO.AllowSO	= true;
+			builder.AllowIA	= true;
+			builder.AllowSO	= true;
 			DesciptorHeapLayout<1> DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 8);
 
-			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(1, 1, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(2, 2, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs_SO.SetParameterAsDescriptorTable	(3, DescriptorHeap, -1);
-			RS->Library.RS4CBVs_SO.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs_SO.Build(RS, TempMemory);
+			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable	(3, DescriptorHeap, -1);
+			builder.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
+			RS4CBVs_SO = builder.Build(RS, temp);
 
-			SETDEBUGNAME(RS->Library.RS4CBVs_SO, "RS4CBVs_SO");
+			SETDEBUGNAME(*RS->Library.RS4CBVs_SO, "RS4CBVs_SO");
 		}
 		{
-			RS->Library.RS2UAVs4SRVs4CBs.AllowIA = true;
+			builder.AllowIA = true;
 			DesciptorHeapLayout<16> DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 4);
 			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
 			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RS2UAVs4SRVs4CBs.Build(RS, TempMemory);
+			builder.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			builder.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS2UAVs4SRVs4CBs = builder.Build(RS, temp);
 
-			SETDEBUGNAME(RS->Library.RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
+			SETDEBUGNAME(*RS->Library.RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
 		{
-			RS->Library.ShadingRTSig.AllowIA = false;
-
 			DesciptorHeapLayout<16> DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV		(0, 0, 8);
 			DescriptorHeap.SetParameterAsShaderUAV	(1, 0, 1);
 			DescriptorHeap.SetParameterAsCBV		(2, 0, 2);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.ShadingRTSig.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			RS->Library.ShadingRTSig.Build(RS, TempMemory);
+			builder.AllowIA = false;
+			builder.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			ShadingRTSig = builder.Build(RS, temp);
 
-			SETDEBUGNAME(RS->Library.ShadingRTSig, "ShadingRTSig");
+			SETDEBUGNAME(*ShadingRTSig, "ShadingRTSig");
 		}
 		{
-			RS->Library.RSDefault.AllowIA = true;
 
 			DesciptorHeapLayout<16> DescriptorHeapSRV;
 			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
@@ -4249,35 +4265,35 @@ namespace FlexKit
 			DescriptorHeapUAV.SetParameterAsShaderUAV(0, 0, -1);
 			FK_ASSERT(DescriptorHeapUAV.Check());
 
-			RS->Library.RSDefault.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsCBV				(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsDescriptorTable	(5, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.Build(RS, TempMemory);
+			builder.AllowIA = true;
+			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable	(4, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable	(5, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RSDefault = builder.Build(RS, temp);
 
-			SETDEBUGNAME(RS->Library.RSDefault, "RSDefault");
+			SETDEBUGNAME(*RSDefault, "RSDefault");
 		}
 		{
-			RS->Library.ComputeSignature.AllowIA = false;
+			builder.AllowIA = false;
 			DesciptorHeapLayout<16> DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV(0, 0, 4, 0);
 			DescriptorHeap.SetParameterAsSRV(1, 0, 4, 0);
 			DescriptorHeap.SetParameterAsCBV(2, 0, 2, 0);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.ComputeSignature.SetParameterAsDescriptorTable(0, DescriptorHeap, -1, PIPELINE_DEST_CS);
-			RS->Library.ComputeSignature.Build(RS, TempMemory);
+			builder.SetParameterAsDescriptorTable(0, DescriptorHeap, -1, PIPELINE_DEST_CS);
+			ComputeSignature = builder.Build(RS, temp);
 
-			SETDEBUGNAME(RS->Library.ShadingRTSig, "ComputeSignature");
-		}
-		{
-			RS->Library.ClearBuffer.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
-			RS->Library.ClearBuffer.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
-			RS->Library.ClearBuffer.Build(RS, TempMemory);
+			SETDEBUGNAME(*ComputeSignature, "ComputeSignature");
 
-			SETDEBUGNAME(RS->Library.ClearBuffer, "ClearBuffer");
+			builder.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
+			builder.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
+			ClearBuffer = builder.Build(RS, temp);
+
+			SETDEBUGNAME(*ClearBuffer, "ClearBuffer");
 		}
 	}
 
@@ -4922,7 +4938,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ClearBuffer,
+			*RS->Library.ClearBuffer,
 			computeShader
 		};
 
@@ -4931,7 +4947,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.ClearBuffer };
+		return { PSO, RS->Library.ClearBuffer };
 	}
 
 
@@ -5081,7 +5097,6 @@ namespace FlexKit
 
 	RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
 			Memory			{ IN_allocator },
-			Library			{ IN_allocator },
 			Queries			{ IN_allocator, this },
 			Textures		{ IN_allocator },
 			VertexBuffers	{ IN_allocator },
@@ -5089,10 +5104,17 @@ namespace FlexKit
 			PipelineStates	{ IN_allocator, this, IN_Threads },
 			StreamOutTable	{ IN_allocator },
 			ReadBackTable	{ IN_allocator },
+			rootSignatures	{ IN_allocator },
 			threads			{ *IN_Threads },
 			Syncs			{ IN_allocator, 64 },
 			Contexts		{ IN_allocator, 3 * (1 + IN_Threads->GetThreadCount()) },
-			heaps			{ pDevice, IN_allocator }{}
+			heaps			{ pDevice, IN_allocator }
+	{
+		if (globalInstance)
+			throw std::runtime_error{"Two Render Systems created!"};
+
+		globalInstance = this;
+	}
 
 
 	RenderSystem::~RenderSystem() { Release(); }
@@ -5105,10 +5127,10 @@ namespace FlexKit
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
 
-		Memory = in->Memory;
-		Settings.AAQuality = 0;
-		Settings.AASamples = 1;
-		UINT DeviceFlags = 0;
+		Memory				= in->Memory;
+		Settings.AAQuality	= 0;
+		Settings.AASamples	= 1;
+		UINT DeviceFlags	= 0;
 
 		ID3D12Device10* Device = nullptr;
 		ID3D12Debug1* Debug = nullptr;
@@ -5369,7 +5391,7 @@ namespace FlexKit
 
 		InitiateComplete = true;
 		
-		Library.Initiate(this, in->TempMemory);
+		Library.Initiate(this, *in->Memory, *in->TempMemory);
 		ReadBackTable.Initiate(Device);
 
 		FreeList_GraphicsQueue.Allocator	= in->Memory;
@@ -5422,8 +5444,6 @@ namespace FlexKit
 		ReadBackTable.Release();
 		Queries.Release();
 		directUploadBuffer.Release();
-
-		Library.Release();
 
 		if(GraphicsQueue)	GraphicsQueue->Release();
 		if(ComputeQueue)	ComputeQueue->Release();
@@ -6267,7 +6287,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* rootSignature)
+	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* rootSignatureID)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
@@ -6314,6 +6334,8 @@ namespace FlexKit
 			}
 		}
 
+		ID3D12RootSignature* dxRootSig = nullptr;
+
 		D3D12_COMMAND_SIGNATURE_DESC desc;
 		desc.ByteStride			= (UINT)entryStride;
 		desc.NumArgumentDescs	= (UINT)entries.size();
@@ -6322,7 +6344,7 @@ namespace FlexKit
 
 		auto HR = pDevice->CreateCommandSignature(
 			&desc,
-			rootSignature ? rootSignature->Get_ptr() : nullptr,
+			rootSignatureID ? *rootSignatureID : nullptr,
 			IID_PPV_ARGS(&signature));
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
@@ -8902,7 +8924,7 @@ namespace FlexKit
 				for ( auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location)
-						return TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04);
+						return TriMeshHandle{ HandleIndex };
 
 					++HandleIndex;
 				}
@@ -8930,7 +8952,7 @@ namespace FlexKit
 				for (auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location)
-						return TriMeshHandle((unsigned int)HandleIndex, GeometryTable.Handles.mType, 0x04);
+						return TriMeshHandle{ HandleIndex };
 
 					++HandleIndex;
 				}
@@ -9642,6 +9664,197 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	const RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
+	{
+		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps{ temp };
+		DesciptorHeaps.reserve(12);
+
+		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
+
+		for (const auto& I : builder.RootEntries)
+		{
+			CD3DX12_ROOT_PARAMETER Param;
+
+			switch (I.Type)
+			{
+			case RootSignatureEntryType::UINT:
+			{
+				Param.InitAsConstants(
+					I.UINTConstant.size,
+					I.UINTConstant.Register,
+					I.UINTConstant.RegisterSpace,
+					PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
+			}   break;
+			case RootSignatureEntryType::DescriptorHeap:
+			{
+				const auto  HeapIdx		= I.DescriptorHeap.HeapIdx;
+				const auto& HeapEntry	= builder.Heaps[HeapIdx];
+
+				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(temp));
+
+				for (auto& H : HeapEntry.Heap.Entries)
+				{
+					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
+					switch (H.Type)
+					{
+					case DescHeapEntryType::ConstantBuffer:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+						break;
+					case DescHeapEntryType::ShaderResource:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+						break;
+					case DescHeapEntryType::UAVBuffer:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+						break;
+					case DescHeapEntryType::HeapError:
+					default:
+						FK_ASSERT(false);
+						break;
+					}
+
+					CD3DX12_DESCRIPTOR_RANGE Range;
+					Range.Init(
+						RangeType,
+						H.Count, H.Register, H.Space);
+
+					DesciptorHeaps.back().push_back(Range);
+				}
+
+				const auto temp = DesciptorHeaps.back().size();
+				Param.InitAsDescriptorTable(
+					(UINT)DesciptorHeaps.back().size(),
+					DesciptorHeaps.back().begin(),
+					PipelineDest2ShaderVis(I.DescriptorHeap.Accessibility));
+			}	break;
+			case RootSignatureEntryType::ConstantBuffer:
+			{
+				Param.InitAsConstantBufferView
+				(I.Direct.Register,
+					I.Direct.RegisterSpace,
+					PipelineDest2ShaderVis(I.Direct.Accessibility));
+
+			}	break;
+			case RootSignatureEntryType::StructuredBuffer:
+			{
+				Param.InitAsShaderResourceView(
+					I.Direct.Register,
+					I.Direct.RegisterSpace,
+					PipelineDest2ShaderVis(I.Direct.Accessibility));
+			}	break;
+			case RootSignatureEntryType::UnorderedAcess:
+			{
+				Param.InitAsUnorderedAccessView(
+					I.Direct.Register,
+					I.Direct.RegisterSpace,
+					PipelineDest2ShaderVis(I.Direct.Accessibility));
+			}   break;
+			default:
+				return nullptr;
+				FK_ASSERT(false);
+			}
+			Parameters.push_back(Param);
+		}
+
+		ID3DBlob* SignatureBlob		= nullptr;
+		ID3DBlob* ErrorBlob			= nullptr;
+
+		CD3DX12_STATIC_SAMPLER_DESC Default(0);
+		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+
+		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
+			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_LINEAR,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_WRAP},
+
+			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_POINT },
+			CD3DX12_STATIC_SAMPLER_DESC{2,  D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
+											0, 1, D3D12_COMPARISON_FUNC_LESS_EQUAL,
+											D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
+		};
+
+		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
+		RootSignatureDesc.pStaticSamplers = Samplers;
+		RootSignatureDesc.NumStaticSamplers = 3;
+
+		RootSignatureDesc.Flags |= builder.AllowIA ?
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT :
+			D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+		RootSignatureDesc.Flags |= builder.AllowSO ?
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT :
+			D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+
+		HRESULT HR = D3D12SerializeRootSignature(
+			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			&SignatureBlob, &ErrorBlob);
+
+		if (!SUCCEEDED(HR))
+		{
+			std::cout << (char*)ErrorBlob->GetBufferPointer() << '\n';
+			ErrorBlob->Release();
+
+#ifdef _DEBUG 
+			FK_ASSERT(false, "Invalid Root Signature Description!");
+#endif
+
+			return nullptr;
+		}
+
+		auto hash = FNVa62((const char*)SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize());
+
+		ID3D12RootSignature* rootSignature = nullptr;
+		auto CreateHR = pDevice10->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
+
+		if (FAILED(CreateHR))
+		{
+			FK_LOG_ERROR("RenderSystem: Failed to create root signature!");
+			return nullptr;
+		}
+
+
+		auto& object			= Memory->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps));
+		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
+		auto rootSignatureEntry = rootSignatures.insert(hash, std::move(object_ptr));
+
+		builder.Clear();
+
+		return rootSignatureEntry->get();
+	}
+
+
+	/************************************************************************************************/
+
+
+	const RootSignature* RenderSystem::_GetRootSignature(uint64_t hashID) const
+	{
+		auto sig = rootSignatures[hashID];
+
+		if (!sig)
+			FK_LOG_WARNING("RenderSystem::_GetRootSignature: Failed to locate root signature %u", hashID);
+
+		return sig ? sig->get() : nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::_ReleaseRootSignature(uint64_t hashID)
+	{
+		std::unique_lock lock{ rootSignatureLock };
+
+		rootSignatures.remove(hashID);
+	}
+
+
+	/************************************************************************************************/
+
+
 	Context& RenderSystem::GetCommandList(std::optional<SyncPoint> ticket)
 	{
 		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++directSubmissionCounter;
@@ -10259,7 +10472,6 @@ namespace FlexKit
 	}
 
 
-
 	/************************************************************************************************/
 
 
@@ -10270,7 +10482,7 @@ namespace FlexKit
 		DSVDesc.Texture2D.MipSlice	= 0;
 		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V2 });
+		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
@@ -10286,7 +10498,7 @@ namespace FlexKit
 		DSVDesc.Texture2DArray.MipSlice         = (UINT)MipSlice;
 		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V2 });
+		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}

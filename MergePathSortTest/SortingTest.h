@@ -32,9 +32,9 @@ public:
 	bool									sampleTime	= true;
 	FlexKit::CircularBuffer<double, 256>	samples;
 
-	FlexKit::RootSignature			sortingRootSignature;
-	FlexKit::Win32RenderWindow		renderWindow;
+	const FlexKit::RootSignature*	sortingRootSignature;
 
+	FlexKit::Win32RenderWindow		renderWindow;
 	FlexKit::ImGUIIntegrator		debugUI;
 
 	FlexKit::ReadBackResourceHandle	readBackBuffer;

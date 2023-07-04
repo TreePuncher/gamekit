@@ -1053,15 +1053,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t FrameGraphNodeBuilder::GetDescriptorTableSize(PSOHandle State, size_t idx) const
-	{
-		auto rootSig	= resources->renderSystem.GetPSORootSignature(State);
-		auto tableSize	= rootSig->GetDesciptorTableSize(idx);
-
-		return tableSize;
-	}
-
-
 	const DesciptorHeapLayout<16>&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
 		auto rootSig = resources->renderSystem.GetPSORootSignature(State);
@@ -1073,8 +1064,8 @@ namespace FlexKit
 
 
 	FrameGraphNodeBuilder::CheckStateRes FrameGraphNodeBuilder::CheckResourceSituation(
-		Vector<FrameObjectLink>&    Set1,
-		Vector<FrameObjectLink>&    Set2,
+		Vector<FrameObjectLink>&	Set1,
+		Vector<FrameObjectLink>&	Set2,
 		FrameObjectLink&			Object)
 	{
 		auto Pred = [&](auto& lhs){	return (lhs.handle == Object.handle);	};
