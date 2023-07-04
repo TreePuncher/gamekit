@@ -4298,6 +4298,110 @@ private:
 	/************************************************************************************************/
 
 
+	struct PipelineBuilder
+	{
+		PipelineBuilder(iAllocator& allocator);
+
+		void AddRootSignature(const RootSignature* rootSig);
+		void AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+		void SetDebugName(const char* name) { debugName = name; }
+
+		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
+
+		class PipelineBlob
+		{
+		public:
+			PipelineBlob(iAllocator& IN_allocator) :
+				buffer { IN_allocator } {}
+
+
+			template<typename TY>
+			PipelineBlob(const TY& IN_struct)
+			{
+				//static_assert(std::is_pod_v<TY>, "POD types only!");
+
+				buffer.resize(sizeof(IN_struct));
+				memcpy(data(), &IN_struct, sizeof(TY));
+			}
+
+
+			PipelineBlob(const char* IN_buffer, const size_t size)
+			{
+				buffer.resize(size);
+				memcpy(data(), IN_buffer, size);
+			}
+
+
+			PipelineBlob operator + (const Blob& rhs_blob)
+			{
+				Blob out;
+
+				out += *this;
+				out += rhs_blob;
+
+				return out;
+			}
+
+
+			PipelineBlob& operator += (const Blob& rhs_blob)
+			{
+				const size_t offset = buffer.size();
+
+				buffer.resize(buffer.size() + rhs_blob.size());
+				memcpy(buffer.data() + offset, rhs_blob, rhs_blob.size());
+
+				return *this;
+			}
+
+
+			size_t size() const
+			{
+				return buffer.size();
+			}
+
+
+			void resize(size_t newSize)
+			{
+				buffer.resize(newSize);
+			}
+
+
+			char* data()
+			{
+				return buffer.data();
+			}
+
+
+			operator const char* () const
+			{
+				return buffer.data();
+			}
+
+
+			void Clear()
+			{
+				buffer.clear();
+			}
+
+			void Serialize(auto& ar)
+			{
+				ar& buffer;
+			}
+
+			Vector<char> buffer;
+		};
+
+		const char*				debugName	= nullptr;
+		const RootSignature*	rootSig		= nullptr;
+		PipelineBlob			blob;
+		Vector<Shader>			shaders;
+	};
+
+
+	/************************************************************************************************/
+
+
 	template<typename ... ARGS>
 	void SetScissorAndViewports(Context& ctx, std::tuple<ARGS...>	RenderTargets)
 	{
@@ -4735,6 +4839,17 @@ private:
 			bufferSize = rhs.bufferSize;
 		}
 
+		Shader(Shader&& rhs)
+		{
+			allocator	= rhs.allocator;
+			buffer		= rhs.buffer;
+			bufferSize	= rhs.bufferSize;
+
+			rhs.allocator	= nullptr;
+			rhs.buffer		= nullptr;
+			rhs.bufferSize	= 0;
+		}
+
 		~Shader()
 		{
 			if (allocator)
@@ -4749,7 +4864,10 @@ private:
 		}
 
 		operator bool() const { return ( buffer != nullptr ); }
-		operator D3D12_SHADER_BYTECODE() const { return{ (BYTE*)buffer, bufferSize }; }
+		operator D3D12_SHADER_BYTECODE() const
+		{
+			return{ (BYTE*)buffer, bufferSize };
+		}
 
 		Shader& operator = (const Shader& rhs)
 		{
