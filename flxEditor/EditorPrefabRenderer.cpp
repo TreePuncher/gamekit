@@ -58,7 +58,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS)
 	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 		PSO_Desc.VS                    = DrawRectVShader;
 		PSO_Desc.PS                    = DrawRectPShader;
 		PSO_Desc.RasterizerState       = Rast_Desc;
@@ -81,7 +81,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS)
 
 	SETDEBUGNAME(PSO, "DrawGrayPrefab");
 
-	return { PSO, &RS->Library.RS6CBVs4SRVs };
+	return { PSO, RS->Library.RS6CBVs4SRVs };
 }
 
 
@@ -123,7 +123,7 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS)
 	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
 		PSO_Desc.VS                    = DrawRectVShader;
 		PSO_Desc.PS                    = DrawRectPShader;
 		PSO_Desc.RasterizerState       = Rast_Desc;
@@ -146,7 +146,7 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS)
 
 	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
-	return { PSO, &RS->Library.RS6CBVs4SRVs };
+	return { PSO, RS->Library.RS6CBVs4SRVs };
 }
 
 
@@ -567,7 +567,7 @@ void EditorPrefabPreview::RenderStatic(
 			auto& rootSignature = frameResources.renderSystem().Library.RS6CBVs4SRVs;
 			ctx.SetRootSignature(rootSignature);
 
-			DescriptorHeap emptyHeap(ctx, rootSignature.GetDescHeap(0), allocator);
+			DescriptorHeap emptyHeap(ctx, rootSignature->GetDescHeap(0), allocator);
 			emptyHeap.NullFill(ctx);
 			ctx.SetGraphicsDescriptorTable(0, emptyHeap);
 

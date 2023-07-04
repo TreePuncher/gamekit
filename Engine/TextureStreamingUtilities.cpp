@@ -178,7 +178,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable      = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = { 0 };
-		PSO_Desc.pRootSignature			= feedbackPassRootSignature;
+		PSO_Desc.pRootSignature			= *feedbackPassRootSignature;
 		PSO_Desc.VS						= VShader;
 		PSO_Desc.PS						= PShader;
 		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -196,7 +196,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback PS");
 
-		return { PSO, &feedbackPassRootSignature };
+		return { PSO, feedbackPassRootSignature };
 	}
 
 
@@ -232,7 +232,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable      = true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = { 0 };
-		PSO_Desc.pRootSignature			= feedbackPassRootSignature;
+		PSO_Desc.pRootSignature			= *feedbackPassRootSignature;
 		PSO_Desc.VS						= VShader;
 		PSO_Desc.PS						= PShader;
 		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -250,7 +250,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &feedbackPassRootSignature };
+		return { PSO, feedbackPassRootSignature };
 	}
 
 
@@ -267,7 +267,7 @@ namespace FlexKit
 			"CompressBlocks", "cs_6_7", file);
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader,
 		};
 
@@ -278,7 +278,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback compressor shader");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -292,7 +292,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackBlockPreFixSum.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader,
 		};
 
@@ -303,7 +303,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback prefix sum shader");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -316,7 +316,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader,
 		};
 
@@ -327,7 +327,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Merge Block shader");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -341,7 +341,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader,
 		};
 
@@ -352,7 +352,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
@@ -501,34 +501,34 @@ namespace FlexKit
 			heap						{ IN_renderSystem.CreateHeap(desc.textureCacheSize, 0) },
 			mappedAssets				{ IN_allocator },
 			timeStats					{ IN_renderSystem.CreateTimeStampQuery(512) },
-			feedbackPassRootSignature	{ IN_allocator },
-			sortingRootSignature		{ IN_allocator },
 			pendingResults				{ { *IN_allocator }, 0 }
 	{
-		feedbackPassRootSignature.AllowIA = true;
+		RootSignatureBuilder builder{ IN_allocator };
+		builder.AllowIA = true;
 
 		DesciptorHeapLayout<1> srvHeap;
 		srvHeap.SetParameterAsSRV(0, 0, -1);
 		FK_ASSERT(srvHeap.Check());
 
-		feedbackPassRootSignature.SetParameterAsCBV(0, 0);
-		feedbackPassRootSignature.SetParameterAsCBV(1, 1, 0);
-		feedbackPassRootSignature.SetParameterAsUINT(2, 17, 2, 0, PIPELINE_DEST_PS);
-		feedbackPassRootSignature.SetParameterAsUAV(3, 0, 0, PIPELINE_DEST_PS);
-		feedbackPassRootSignature.SetParameterAsSRV(4, 0, 0, PIPELINE_DEST_VS);
-		feedbackPassRootSignature.SetParameterAsDescriptorTable(5, srvHeap, -1, PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(0, 0);
+		builder.SetParameterAsCBV(1, 1, 0);
+		builder.SetParameterAsUINT(2, 17, 2, 0, PIPELINE_DEST_PS);
+		builder.SetParameterAsUAV(3, 0, 0, PIPELINE_DEST_PS);
+		builder.SetParameterAsSRV(4, 0, 0, PIPELINE_DEST_VS);
+		builder.SetParameterAsDescriptorTable(5, srvHeap, -1, PIPELINE_DEST_PS);
 
-		feedbackPassRootSignature.Build(IN_renderSystem, IN_allocator);
-		SETDEBUGNAME(feedbackPassRootSignature, "textureFeedbackPassSignature");
+		feedbackPassRootSignature = builder.Build(IN_renderSystem, *IN_allocator);
+		FK_ASSERT(feedbackPassRootSignature != nullptr, "Failed to create feedbackPassRootSignature");
+		SETDEBUGNAME(*feedbackPassRootSignature, "textureFeedbackPassSignature");
 
-		sortingRootSignature.AllowIA = true;
-		sortingRootSignature.SetParameterAsUINT(0, 16, 0, 0);
-		sortingRootSignature.SetParameterAsSRV(1, 0);
-		sortingRootSignature.SetParameterAsSRV(2, 1);
-		sortingRootSignature.SetParameterAsUAV(3, 0, 0);
+		builder.AllowIA = true;
+		builder.SetParameterAsUINT(0, 16, 0, 0);
+		builder.SetParameterAsSRV(1, 0);
+		builder.SetParameterAsSRV(2, 1);
+		builder.SetParameterAsUAV(3, 0, 0);
 
-		auto res2 = sortingRootSignature.Build(IN_renderSystem, IN_allocator);
-		FK_ASSERT(res2, "Failed to create root signature!");
+		sortingRootSignature = builder.Build(IN_renderSystem, *IN_allocator);
+		FK_ASSERT(sortingRootSignature != nullptr, "Failed to create root signature!");
 
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKPASS,

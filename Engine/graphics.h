@@ -839,7 +839,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return PIPELINE_DEST_DS;
 		case D3D12_SHADER_VISIBILITY_AMPLIFICATION:
 			return PIPELINE_DEST_AS;
-  		case D3D12_SHADER_VISIBILITY_MESH:
+		case D3D12_SHADER_VISIBILITY_MESH:
 			return PIPELINE_DEST_MS;
 		default:
 			return FlexKit::PIPELINE_DEST_ALL;
@@ -1671,7 +1671,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
-		operator GPUDescriptorHandle			() const { return descriptorHeap; }
+		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
 
 		DescriptorHeap	GetHeapOffsetted(size_t offset, Context& ctx) const;
 
@@ -1682,16 +1682,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	private:
 
-		// not publically copyable
-		//DescriptorHeap(const DescriptorHeap&) = default;
-		//DescriptorHeap& operator = (const DescriptorHeap&) = default;
-
 		DescriptorHeap Clone() const
 		{
 			DescriptorHeap heap;
-			heap.descriptorHeap     = descriptorHeap;
-			heap.Layout             = Layout;
-			heap.FillState          = FillState;
+			heap.descriptorHeap		= descriptorHeap;
+			heap.Layout				= Layout;
+			heap.FillState			= FillState;
 
 			return heap;
 		}
@@ -1708,60 +1704,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	FLEXKITAPI class RootSignature
+
+	struct RootSignatureHeapEntry
+	{
+		size_t					idx;
+		DesciptorHeapLayout<16> Heap;
+	};
+
+	class RootSignatureBuilder
 	{
 	public:
-		RootSignature(iAllocator* Memory) :
-			Signature   { nullptr },
-			Heaps       { Memory } {}
+		RootSignatureBuilder(iAllocator* Memory) :
+			Heaps		{ Memory } {}
 
-		~RootSignature()
-		{
-			Release();
-		}
-
-		bool operator == (this RootSignature& lhs, RootSignature& rhs)
-		{
-			return lhs.hash == rhs.hash;
-		}
-
-		operator ID3D12RootSignature* () const { return Signature; }
-
-		ID3D12RootSignature* Get_ptr() const { return Signature; };
-
-		void Release()
-		{
-			if (Signature)
-				Signature->Release();
-
-			Signature = nullptr;
-			Heaps.Release();
-		}
-
-
-		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
-		{
-			RootEntry Desc;
-			Desc.Type							= RootSignatureEntryType::UINT;
-			Desc.UINTConstant.size              = size;
-			Desc.UINTConstant.Register		    = cbRegister;
-			Desc.UINTConstant.RegisterSpace     = registerSpace;
-			Desc.UINTConstant.Accessibility	    = AccessableStages;
-
-			if (RootEntries.size() <= Index)
-			{
-				if (!RootEntries.full())
-					RootEntries.resize(Index + 1);
-				else
-					return false;
-			}
-
-			RootEntries[Index]  = Desc;
-			Tags[Index]         = -1;
-
-			return true;
-		}
-
+		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 
 		template<size_t SIZE>
 		bool SetParameterAsDescriptorTable(
@@ -1789,109 +1745,27 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return false;
 		}
 
-
 		bool SetParameterAsCBV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0, 
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1)
-		{
-			RootEntry Desc;
-			Desc.Type							= RootSignatureEntryType::ConstantBuffer;
-			Desc.ConstantBuffer.Register		= (uint32_t)Register;
-			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
-			Desc.ConstantBuffer.Accessibility	= AccessableStages;
-
-
-			if (RootEntries.size() <= Index)
-			{
-				if (!RootEntries.full())
-					RootEntries.resize(Index + 1);
-				else
-					return false;
-			}
-
-			RootEntries[Index] = Desc;
-			Tags[Index]        = Tag;
-
-			return false;
-		}
-
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1);
 
 		bool SetParameterAsUAV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1)
-		{
-			RootEntry Desc;
-			Desc.Type							= RootSignatureEntryType::UnorderedAcess;
-			Desc.ConstantBuffer.Register		= (uint32_t)Register;
-			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
-			Desc.ConstantBuffer.Accessibility	= AccessableStages;
-
-
-			if (RootEntries.size() <= Index)
-			{
-				if (!RootEntries.full())
-					RootEntries.resize(Index + 1);
-				else
-					return false;
-			}
-
-			RootEntries[Index] = Desc;
-			Tags[Index]        = Tag;
-
-			return false;
-		}
-
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1);
 
 		bool SetParameterAsSRV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
 			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
-			size_t Tag = -1)
-		{
-			RootEntry Desc;
-			Desc.Type							= RootSignatureEntryType::StructuredBuffer;
-			Desc.ConstantBuffer.Register		= (uint32_t)Register;
-			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
-			Desc.ConstantBuffer.Accessibility	= AccessableStages;
+			size_t Tag = -1);
 
-			if (RootEntries.size() <= Index)
-			{
-				if (!RootEntries.full())
-					RootEntries.resize(Index + 1);
-				else
-					return false;
-			}
+		void Clear();
 
-			RootEntries[Index] = Desc;
-			Tags[Index]        = Tag;
-
-			return false;
-		}
-
-
-		bool Build(RenderSystem* RS, iAllocator* TempMemory);
-
-		const DesciptorHeapLayout<16>& GetDescHeap(size_t idx) const { return Heaps[idx].Heap; }
-
-		bool LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
-
-		size_t GetDesciptorTableSize(size_t idx) const
-		{
-			FK_ASSERT(RootEntries[idx].Type == RootSignatureEntryType::DescriptorHeap, "INVALID ARGUEMENT!");
-			auto heapIdx = RootEntries[idx].DescriptorHeap.HeapIdx;
-
-			return  Heaps[heapIdx].Heap.size();
-		}
-
+		[[nodiscard]]	const RootSignature* Build(RenderSystem* RS, iAllocator& TempMemory);
+		[[nodiscard]]	const RootSignature* LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
 
 		bool AllowIA	= true;
 		bool AllowSO	= false;
 
-	private:
-		struct HeapEntry
-		{
-			size_t					idx;
-			DesciptorHeapLayout<16> Heap;
-		};
 
 		struct RootEntry
 		{
@@ -1907,42 +1781,58 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 					PIPELINE_DESTINATION	Accessibility;
 				}UINTConstant;
 
-				struct DH
+				struct
 				{
 					size_t					HeapIdx;
 					PIPELINE_DESTINATION	Accessibility;
 				}DescriptorHeap;
 
-				struct CB
+				struct
 				{
 					uint32_t				Register;
 					uint32_t				RegisterSpace;
 					PIPELINE_DESTINATION	Accessibility;
-				}ConstantBuffer;
-
-				struct SR
-				{
-					uint32_t				Register;
-					uint32_t				RegisterSpace;
-					PIPELINE_DESTINATION	Accessibility;
-				}ShaderResource;
-
-				struct UAV
-				{
-					uint32_t				Register;
-					uint32_t				RegisterSpace;
-					PIPELINE_DESTINATION	Accessibility;
-				}UnorderedAccess;
-				// I thought these were going to be different but they all ended up the same
+				}Direct;
 			};
 		};
 
-		ID3D12RootSignature*		Signature;
-		uint64_t					hash = 0xffffffffffffffff;
-		static_vector<size_t, 12>	Tags;
-		Vector<HeapEntry>			Heaps;
-		static_vector<RootEntry>	RootEntries;
+		static_vector<size_t, 12>		Tags;
+		Vector<RootSignatureHeapEntry>	Heaps;
+		static_vector<RootEntry>		RootEntries;
 	};
+
+
+	/************************************************************************************************/
+
+
+	class RootSignature
+	{
+	public:
+		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps) :
+			Signature	{ rootSignature },
+			Heaps		{ std::move(IN_heaps) } {}
+
+
+		~RootSignature() { Release(); }
+
+		operator ID3D12RootSignature* ()	const { return Signature; }
+		ID3D12RootSignature* Get_ptr()		const { return Signature; };
+
+		void Release();
+
+		const DesciptorHeapLayout<16>&	GetDescHeap(size_t idx) const
+		{
+			return Heaps[idx].Heap;
+		}
+
+		size_t							GetDesciptorTableSize(size_t idx) const;
+
+		ID3D12RootSignature*			Signature = nullptr;
+		Vector<RootSignatureHeapEntry>	Heaps;
+	};
+
+
+	/************************************************************************************************/
 
 
 	struct TextureObject
@@ -2966,7 +2856,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		uint64_t sortingID() const
 		{
-			return heap << 32 | tileID;
+			return (uint64_t)heap.to_uint() << 32 | tileID;
 		};
 	};
 
@@ -3639,6 +3529,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool enable16BitTypes	= false;
 		bool hlsl2021			= false;
 		bool enableDebug		= false;
+		bool loadRootSignature	= false;
 	};
 
 	enum class BarrierType
@@ -3648,7 +3539,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Buffer,
 		Unknown,
 	};
-
 
 	struct BarrierSubResourceRange
 	{
@@ -3733,7 +3623,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		size_t						GetCurrentCounter();
-		ID3D12PipelineState* GetPSO(PSOHandle StateID);
+		ID3D12PipelineState*		GetPSO(PSOHandle StateID);
 		const RootSignature* const	GetPSORootSignature(PSOHandle StateID) const;
 
 
@@ -3829,7 +3719,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
 		[[nodiscard]] QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
 		[[nodiscard]] QueryHandle				CreateTimeStampQuery(size_t count);
-		[[nodiscard]] IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, RootSignature* signature = nullptr);
+		[[nodiscard]] IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* signature = nullptr);
 		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
@@ -3843,17 +3733,17 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetObjectLayout(ResourceHandle		handle, DeviceLayout state);
 
 
-		DeviceLayout GetObjectLayout(const QueryHandle		handle) const;
-		DeviceLayout GetObjectLayout(const SOResourceHandle	handle) const;
-		DeviceLayout GetObjectLayout(const ResourceHandle	handle) const;
+		DeviceLayout		GetObjectLayout(const QueryHandle		handle) const;
+		DeviceLayout		GetObjectLayout(const SOResourceHandle	handle) const;
+		DeviceLayout		GetObjectLayout(const ResourceHandle	handle) const;
 
 
-		ID3D12Heap* GetDeviceResource(const DeviceHeapHandle        handle) const;
-		ID3D12Resource* GetDeviceResource(const ReadBackResourceHandle	handle) const;
-		ID3D12Resource* GetDeviceResource(const ConstantBufferHandle	handle) const;
-		ID3D12Resource* GetDeviceResource(const ResourceHandle		    handle) const;
-		ID3D12Resource* GetDeviceResource(const SOResourceHandle		handle) const;
-		ID3D12Resource* GetSOCounterResource(const SOResourceHandle handle) const;
+		ID3D12Heap*			GetDeviceResource(const DeviceHeapHandle        handle) const;
+		ID3D12Resource*		GetDeviceResource(const ReadBackResourceHandle	handle) const;
+		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
+		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
+		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
+		ID3D12Resource*		GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
 
 		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
@@ -3874,17 +3764,22 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
 
-		void				SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
-		CopyContextHandle	OpenUploadQueue();
-		CopyContextHandle	GetImmediateCopyQueue();
-		Context&			GetCommandList(std::optional<SyncPoint> ticket = {});
+		void					SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
+		CopyContextHandle		OpenUploadQueue();
+		CopyContextHandle		GetImmediateCopyQueue();
+		Context&				GetCommandList(std::optional<SyncPoint> ticket = {});
 
 		// Internal
-		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
+		static RenderSystem&	_GetInstance() { return *globalInstance; }
+
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
 		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
+
+		const RootSignature*	_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);
+		const RootSignature*	_GetRootSignature(uint64_t hashID) const;
+		void					_ReleaseRootSignature(uint64_t hashID);
 
 		enum class DescriptorRangeAllocationError
 		{
@@ -3899,7 +3794,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
-		void	_ForceReleaseTexture(ResourceHandle handle);
+		void				_ForceReleaseTexture(ResourceHandle handle);
 
 		struct VidMemoryStates
 		{
@@ -3975,34 +3870,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		struct RootSigLibrary
 		{
-			RootSigLibrary(iAllocator* allocator) :
-				RSDefault			{ allocator },
-				ShadingRTSig		{ allocator },
-				RS4CBVs_SO			{ allocator },
-				RS6CBVs4SRVs		{ allocator },
-				RS2UAVs4SRVs4CBs	{ allocator },
-				ComputeSignature	{ allocator },
-				ClearBuffer			{ allocator } {}
+			void Initiate(RenderSystem* RS, iAllocator& allocator, iAllocator& temp);
 
-			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
-
-			void Release()
-			{
-				RS2UAVs4SRVs4CBs.Release();
-				RS6CBVs4SRVs.Release();
-				RS4CBVs_SO.Release();
-				ShadingRTSig.Release();
-				RSDefault.Release();
-				ComputeSignature.Release();
-			}
-
-			RootSignature RS2UAVs4SRVs4CBs;		// 4CBVs On all Stages, 4 SRV On all Stages
-			RootSignature RS6CBVs4SRVs;			// 4CBVs On all Stages, 4 SRV On all Stages
-			RootSignature RS4CBVs_SO;			// Stream Out Enabled
-			RootSignature ShadingRTSig;			// Signature For Compute Based Deferred Shading
-			RootSignature RSDefault;			// Default Signature for Rasting
-			RootSignature ComputeSignature;		//
-			RootSignature ClearBuffer;
+			const RootSignature* RS2UAVs4SRVs4CBs	= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
+			const RootSignature* RS6CBVs4SRVs		= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
+			const RootSignature* RS4CBVs_SO			= nullptr;	// Stream Out Enabled
+			const RootSignature* ShadingRTSig		= nullptr;	// Signature For Compute Based Deferred Shading
+			const RootSignature* RSDefault			= nullptr;	// Default Signature for Rasting
+			const RootSignature* ComputeSignature	= nullptr;	//
+			const RootSignature* ClearBuffer		= nullptr;
 		}Library;
 
 		Vector<Context>				Contexts;
@@ -4019,7 +3895,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ReadBackStateTable			ReadBackTable;
 		DescriptorHeapAllocator		descriptorHeapAllocator;
 
-		AvailableFeatures features;
+		AvailableFeatures			features;
 
 
 		struct FreeEntry
@@ -4039,12 +3915,28 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			size_t			waitCounter;
 		};
 
+
 		std::mutex						directUploadBufferMutex;
 		UploadBuffer					directUploadBuffer;
 
 		Vector<UploadSyncPoint>			Syncs;
 		Vector<FreeEntry>				FreeList_GraphicsQueue;
 		Vector<FreeEntry>				FreeList_CopyQueue;
+
+
+		struct RootSignatureDeleter
+		{
+			iAllocator* allocator;
+
+			void operator ()(RootSignature* _ptr)
+			{
+				allocator->release(*_ptr);
+			};
+		};
+
+		using RootSignature_ptr = std::unique_ptr<RootSignature, RootSignatureDeleter>;
+
+		HashTable<RootSignature_ptr>	rootSignatures;
 
 		ThreadManager&			threads;
 
@@ -4061,6 +3953,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		std::mutex				crashM;
 		std::mutex				barrierLock;
+		std::mutex				rootSignatureLock;
+
+		inline static RenderSystem*	globalInstance = nullptr;
 	};
 
 	
@@ -4112,8 +4007,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ClearUAVBuffer			(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 		void ClearUAVBufferRange	(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
-		void SetRootSignature			(const RootSignature& RS);
-		void SetComputeRootSignature	(const RootSignature& RS);
+		void SetRootSignature			(RootSigHandle);
+		void SetRootSignature			(const RootSignature*);
+		void SetComputeRootSignature	(RootSigHandle);
+		void SetComputeRootSignature	(const RootSignature*);
 		void SetPipelineState			(ID3D12PipelineState* PSO);
 
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
@@ -5033,8 +4930,11 @@ private:
 			return *this; 
 		}
 
-		operator ConstantBufferHandle () const { return CB; }
+		operator ConstantBufferHandle () const	{ return CB; }
+		operator ConstantBufferHandle ()		{ return CB; }
 
+
+		ConstantBufferHandle Handle() const { return CB; }
 
 		template<typename TY>
 		static constexpr size_t CalculateOffset()
@@ -5144,8 +5044,10 @@ private:
 			return *this; 
 		}
 
-		operator VertexBufferHandle () { return VB; }
+		operator VertexBufferHandle ()			{ return VB; }
+		operator VertexBufferHandle () const	{ return VB; }
 
+		VertexBufferHandle Handle() const { return VB;  }
 
 		template<typename _TY>
 		size_t Push(const _TY& data) noexcept
@@ -5220,60 +5122,59 @@ private:
 
 		template<typename TY>
 		ConstantBufferDataSet(const TY& initialData, CBPushBuffer& buffer) :
-			constantBuffer	{ buffer                    },
-			constantsOffset	{ buffer.Push(initialData)  },
-			size            { AlignedSize<TY>()         } {}
+			constantBuffer	{ buffer.Handle()			},
+			constantsOffset	{ buffer.Push(initialData)	},
+			size            { AlignedSize<TY>()			} {}
 
-		explicit ConstantBufferDataSet(const size_t& IN_offset, ConstantBufferHandle IN_buffer, size_t IN_size = 0) :
+		ConstantBufferDataSet(const size_t& IN_offset, ConstantBufferHandle IN_buffer, size_t IN_size = 0) :
 			constantBuffer  { IN_buffer },
 			constantsOffset { IN_offset },
 			size            { IN_size   } {} 
 
 		explicit ConstantBufferDataSet(char* initialData, const size_t bufferSize, CBPushBuffer& buffer) :
-			constantBuffer  { buffer                                },
-			constantsOffset { buffer.Push(initialData, bufferSize)  },
-			size            { AlignedSize(bufferSize)               } {}
+			constantBuffer  { buffer.Handle()						},
+			constantsOffset { buffer.Push(initialData, bufferSize)	},
+			size            { AlignedSize(bufferSize)				} {}
 
 		~ConstantBufferDataSet() = default;
 
 		ConstantBufferDataSet(const ConstantBufferDataSet& rhs)					= default;
 		ConstantBufferDataSet& operator = (const ConstantBufferDataSet& rhs)	= default;
 
-		ConstantBufferHandle    Handle() const { return constantBuffer;	}
-		size_t				    Offset() const { return constantsOffset; }
-		size_t                  Size() const { return size; }
+		ConstantBufferHandle	Handle() const { return constantBuffer;	}
+		size_t					Offset() const { return constantsOffset; }
+		size_t					Size() const { return size; }
 
 	private:
 		ConstantBufferHandle	constantBuffer		= InvalidHandle;
 		size_t					constantsOffset		= 0;
-		size_t                  size                = 0;
+		size_t					size                = 0;
 	};
 
 
 	/************************************************************************************************/
 
 
+
 	template<typename TY>
 	auto CreateCBIterator(const CBPushBuffer& source)
 	{
-		struct Proxy
+		struct CB_Proxy
 		{
-			Proxy operator[](const size_t idx) const
+			CB_Proxy operator[](this auto& self, const size_t idx) noexcept
 			{
-				return { offset, idx, CB };
+				return { self.offset, idx, self.CB };
 			}
 
-			operator ConstantBufferDataSet() const
-			{
-				return ConstantBufferDataSet{ offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB };
-			}
+			operator ConstantBufferDataSet () const		{ return { offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB, 0u }; }
+			operator ConstantBufferDataSet ()			{ return { offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB, 0u }; }
 
-			const size_t                offset;
-			const size_t                idx;
+			const size_t				offset;
+			const size_t				idx;
 			const ConstantBufferHandle	CB = InvalidHandle;
 		};
 
-		return Proxy{ source.begin(), 0, source };
+		return CB_Proxy{ source.begin(), 0, source };
 	}
 
 
@@ -5330,8 +5231,8 @@ private:
 
 		template<typename TY_CONTAINER, typename FN_TransformVertex>
 		VertexBufferDataSet(const SET_TRANSFORM_t, const TY_CONTAINER& initialData, const FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer },
-			offsetBegin		{ buffer.GetOffset() }
+			vertexBuffer	{ buffer.Handle()		},
+			offsetBegin		{ buffer.GetOffset()	}
 		{
 			using TY = decltype(TransformVertex(initialData.front(), buffer));
 			vertexStride = sizeof(decltype(TransformVertex(initialData.front(), buffer)));

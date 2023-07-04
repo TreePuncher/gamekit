@@ -497,8 +497,8 @@ namespace FlexKit
 		std::atomic_bool		taskInProgress		= false;
 		std::atomic_bool		taskStarted			= false;
 
-		RootSignature			feedbackPassRootSignature;
-		RootSignature			sortingRootSignature;
+		const RootSignature*	feedbackPassRootSignature;
+		const RootSignature*	sortingRootSignature;
 		ReadBackResourceHandle	feedbackReturnBuffer; // CPU + GPU
 
 		Vector<MappedAsset>		mappedAssets;

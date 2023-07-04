@@ -457,7 +457,7 @@ namespace FlexKit
 
 		if (auto res = CMP_LoadTexture(metaData->file.c_str(), &mipSet); res != CMP_OK)
 		{
-			fmt::print("Error {}: Loading source file!\n", res);
+			fmt::print("Error {}: Loading source file!\n", (uint32_t)res);
 
 			if(!metaData->file.empty())
 				fmt::print("Invalid directory string!\n");

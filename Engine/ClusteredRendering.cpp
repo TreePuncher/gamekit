@@ -47,7 +47,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= DrawRectVShader;
 			PSO_Desc.PS						= DrawRectPShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -72,7 +72,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "GBufferPassPSO");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -119,7 +119,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= DrawRectVShader;
 			PSO_Desc.PS						= DrawRectPShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -144,7 +144,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
 
-		return { PSO, &RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS->Library.RS6CBVs4SRVs };
 	}
 
 
@@ -166,7 +166,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= rootSignature;
+			PSO_Desc.pRootSignature			= *rootSignature;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -197,7 +197,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DeferredShadingPSO");
 
-		return { PSO, &rootSignature };
+		return { PSO, rootSignature };
 	}
 
 
@@ -209,7 +209,7 @@ namespace FlexKit
 		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
-		PSO_Desc.pRootSignature	= RS->Library.RSDefault;
+		PSO_Desc.pRootSignature	= *RS->Library.RSDefault;
 		PSO_Desc.CS				= CShader;
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -218,7 +218,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DeferredShadingComputePSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -230,7 +230,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -241,7 +241,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ClearClusteredCounters");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 
@@ -261,7 +261,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.GS						= GShader;
@@ -284,7 +284,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBuffers_DEBUGVIS");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -296,7 +296,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -307,7 +307,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE1");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
@@ -318,7 +318,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -329,7 +329,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE2");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 
@@ -349,7 +349,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.GS						= GShader;
@@ -372,7 +372,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_DEBUGVIS");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -384,7 +384,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -395,7 +395,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusterArguments");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -407,7 +407,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -418,7 +418,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightListArgs");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -430,7 +430,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -441,7 +441,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateLightLists");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -453,7 +453,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -464,7 +464,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ResolutionMatch_UNUSED");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
@@ -475,7 +475,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -486,7 +486,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ResolutionMatchClear_UNUSED");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 
@@ -498,7 +498,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -509,7 +509,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
@@ -528,7 +528,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
 			PSO_Desc.VS						= VShader;
 			PSO_Desc.PS						= PShader;
 			PSO_Desc.GS						= GShader;
@@ -551,7 +551,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -576,7 +576,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
 			PSO_Desc.VS                    = VShader;
 			PSO_Desc.PS                    = PShader;
 			PSO_Desc.GS                    = GShader;
@@ -599,7 +599,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateBVH_DEBUGVIS");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -611,7 +611,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.ComputeSignature,
+			*RS->Library.ComputeSignature,
 			computeShader
 		};
 
@@ -622,7 +622,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateClusterBuffer");
 
-		return { PSO, &RS->Library.ComputeSignature };
+		return { PSO, RS->Library.ComputeSignature };
 	}
 
 
@@ -634,7 +634,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -645,7 +645,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "CreateComputeTiledDeferred");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -754,9 +754,7 @@ namespace FlexKit
 
 	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
 		dispatch				{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
-		draw					{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) },
-		rootSignature			{ persistent },
-		markClustersSignature	{ persistent }
+		draw					{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) }
 	{
 		renderSystem.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,		CreateComputeTiledDeferredPSO);
 
@@ -782,26 +780,27 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,			CreateDEBUGBVHVIS);
 
-
-		rootSignature.AllowIA = true;
+		RootSignatureBuilder builder{ persistent };
 
 		DesciptorHeapLayout<16> DescriptorHeapSRV1;
 		DescriptorHeapSRV1.SetParameterAsSRV(0, 0, -1, 0);
 		DesciptorHeapLayout<16> DescriptorHeapSRV2;
 		DescriptorHeapSRV2.SetParameterAsSRV(0, 0, -1, 1);
 
-		rootSignature.SetParameterAsCBV(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.SetParameterAsCBV(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.SetParameterAsCBV(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.SetParameterAsCBV(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.SetParameterAsDescriptorTable(4, DescriptorHeapSRV1, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		rootSignature.Build(renderSystem, persistent);
+		builder.AllowIA = true;
+		builder.SetParameterAsCBV(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsDescriptorTable(4, DescriptorHeapSRV1, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		rootSignature = builder.Build(renderSystem, persistent);
+		FK_ASSERT(rootSignature != nullptr, "Failed to create feedbackPassRootSignature");
+		SETDEBUGNAME(*rootSignature, "ClusteredShading");
 
-		SETDEBUGNAME(rootSignature.Get_ptr(), "Shading");
-
-		markClustersSignature.LoadSignature(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
-		SETDEBUGNAME(markClustersSignature.Get_ptr(), "Shading");
+		markClustersSignature = builder.LoadSignature(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
+		FK_ASSERT(markClustersSignature != nullptr, "Failed to create feedbackPassRootSignature");
+		SETDEBUGNAME(*markClustersSignature, "markClustersSignature");
 	}
 
 
@@ -874,7 +873,7 @@ namespace FlexKit
 						const auto& rootSig	= resources.renderSystem().Library.ComputeSignature;
 
 						DescriptorHeap heap;
-						heap.Init2(ctx, rootSig.GetDescHeap(0), 10, &tempAllocator);
+						heap.Init2(ctx, rootSig->GetDescHeap(0), 10, &tempAllocator);
 						heap.SetUAVStructured(ctx, 0, resources.UAV(data.clusterBuffer, ctx), sizeof(GPUCluster));
 						heap.SetCBV(ctx, 8, passConstants);
 						heap.NullFill(ctx, 10);
@@ -1169,7 +1168,7 @@ namespace FlexKit
 				ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
 
 				DescriptorHeap clearHeap;
-				clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+				clearHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature->GetDescHeap(0), &allocator);
 				clearHeap.SetUAVStructured(ctx, 2, resources.GetResource(data.counterObject), sizeof(UINT), 0);
 				clearHeap.NullFill(ctx);
 
@@ -1180,7 +1179,7 @@ namespace FlexKit
 
 
 				DescriptorHeap clusterCreationResources;
-				clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+				clusterCreationResources.Init(ctx, resources.renderSystem().Library.ComputeSignature->GetDescHeap(0), &allocator);
 
 				// UAVs start at 0
 				clusterCreationResources.SetUAVStructured(ctx, 0, resources.UAV(data.clusterBufferObject, ctx), resources.UAV(data.counterObject, ctx), sizeof(GPUCluster), 0);
@@ -1208,7 +1207,7 @@ namespace FlexKit
 				//          move sorting of lights to a separate pass
 				//          then pull sorted light list into the two pass BVH construct
 				DescriptorHeap BVH_Phase1_Resources;
-				BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+				BVH_Phase1_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature->GetDescHeap(0), &allocator);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 0, resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 				BVH_Phase1_Resources.SetUAVStructured		(ctx, 1, resources.UAV(data.lightLookupObject, ctx), sizeof(uint), 0);
 				BVH_Phase1_Resources.SetStructuredResource	(ctx, 4, resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPULight));
@@ -1245,7 +1244,7 @@ namespace FlexKit
 
 
 						DescriptorHeap BVH_Phase2_Resources;
-						BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+						BVH_Phase2_Resources.Init(ctx, resources.renderSystem().Library.ComputeSignature->GetDescHeap(0), &allocator);
 						BVH_Phase2_Resources.SetUAVStructured(ctx, 0,		resources.UAV(data.lightBVH, ctx), sizeof(BVH_Node), 0);
 						BVH_Phase2_Resources.SetStructuredResource(ctx, 4,	resources.NonPixelShaderResource(data.lightBufferObject, ctx), sizeof(GPULight));
 						BVH_Phase2_Resources.SetCBV(ctx, 8, constantSet);
@@ -1274,7 +1273,7 @@ namespace FlexKit
 				ctx.EndEvent_DEBUG();
 
 				DescriptorHeap createArgumentResources;
-				createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
+				createArgumentResources.Init(ctx, resources.renderSystem().Library.ComputeSignature->GetDescHeap(0), &allocator);
 				createArgumentResources.SetUAVStructured(ctx, 0, resources.UAV(data.argumentBufferObject, ctx), sizeof(uint4), 0);
 				createArgumentResources.SetUAVStructured(ctx, 1, resources.UAV(data.lightCounterObject, ctx), sizeof(uint32_t), 0);
 				createArgumentResources.SetStructuredResource(ctx, 4, resources.PixelShaderResource(data.counterObject, ctx), sizeof(uint32_t));
@@ -1302,14 +1301,14 @@ namespace FlexKit
 				ConstantBufferDataSet   lightListConstantSet{ lightListConstants, constantBuffer3 };
 
 				DescriptorHeap createLightList_ShaderResources;
-				createLightList_ShaderResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 4, &allocator);
+				createLightList_ShaderResources.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(0), 4, &allocator);
 				createLightList_ShaderResources.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.lightBVH,				ctx), sizeofBVH_Node);
 				createLightList_ShaderResources.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.lightLookupObject,		ctx), sizeof(uint32_t));
 				createLightList_ShaderResources.SetStructuredResource(ctx, 2, resources.NonPixelShaderResource(data.lightBufferObject,		ctx), sizeof(GPULight));
 				createLightList_ShaderResources.SetStructuredResource(ctx, 3, resources.NonPixelShaderResource(data.clusterBufferObject,	ctx), sizeof(GPUCluster), 0);
 
 				DescriptorHeap createLightList_UAVResources;
-				createLightList_UAVResources.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 3, &allocator);
+				createLightList_UAVResources.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(1), 3, &allocator);
 				createLightList_UAVResources.SetUAVStructured(ctx, 0, resources.NonPixelShaderResource(data.lightLists,				ctx), sizeof(uint2), 0);
 				createLightList_UAVResources.SetUAVStructured(ctx, 1, resources.NonPixelShaderResource(data.lightListBuffer,		ctx), sizeof(uint32_t), 0);
 				createLightList_UAVResources.SetUAVStructured(ctx, 2, resources.NonPixelShaderResource(data.lightCounterObject,		ctx), sizeof(uint32_t), 0);
@@ -1506,7 +1505,7 @@ namespace FlexKit
 				DescriptorHeap defaultHeap{};
 				defaultHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0u),
+					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0u),
 					&allocator);
 
 				defaultHeap.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture);
@@ -1783,7 +1782,7 @@ namespace FlexKit
 				const size_t descriptorTableSize = 20 + lightCount;
 
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, rootSignature.GetDescHeap(0), descriptorTableSize, &allocator);
+				descHeap.Init2(ctx, rootSignature->GetDescHeap(0), descriptorTableSize, &allocator);
 				descHeap.SetSRV(ctx, 0, gbuffer.albedo);
 				descHeap.SetSRV(ctx, 1, gbuffer.MRIA);
 				descHeap.SetSRV(ctx, 2, gbuffer.normal);
@@ -1946,12 +1945,12 @@ namespace FlexKit
 				auto getArgs = [&]()
 				{
 					DescriptorHeap descHeap;
-					descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 2, &allocator);
+					descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(0), 2, &allocator);
 					descHeap.SetStructuredResource(ctx, 0, resources.GetResource(data.counterBuffer), sizeof(uint32_t), 0);
 					descHeap.NullFill(ctx, 2);
 
 					DescriptorHeap UAVHeap;
-					UAVHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
+					UAVHeap.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(1), 2, &allocator);
 					UAVHeap.SetUAVStructured(ctx, 0, resources.GetResource(data.indirectArgs), sizeof(uint32_t[4]), 0);
 					UAVHeap.NullFill(ctx, 2);
 
@@ -1964,14 +1963,14 @@ namespace FlexKit
 				getArgs();
 
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 3, &allocator);
+				descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(0), 3, &allocator);
 				descHeap.SetStructuredResource(ctx, 0, resources.NonPixelShaderResource(data.lightBVH, ctx), 4, 0);
 				descHeap.SetStructuredResource(ctx, 1, resources.NonPixelShaderResource(data.clusters, ctx), sizeof(GPUCluster), 0);
 				descHeap.SetStructuredResource(ctx, 2, resources.GetResource(data.pointLights), sizeof(float4[2]), 0);
 				descHeap.NullFill(ctx, 2);
 
 				DescriptorHeap nullHeap;
-				nullHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 2, &allocator);
+				nullHeap.Init2(ctx, resources.renderSystem().Library.RSDefault->GetDescHeap(1), 2, &allocator);
 				nullHeap.NullFill(ctx, 2);
 
 				ctx.SetGraphicsConstantBufferView(0, constants);

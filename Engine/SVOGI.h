@@ -137,8 +137,8 @@ namespace FlexKit
 		LoadPipelineStateRes CreateBuildMIPLevelPSO     (RenderSystem* RS);
 
 
-		RootSignature voxelizeSignature;
-		RootSignature markSignature;
+		const RootSignature* voxelizeSignature;
+		const RootSignature* markSignature;
 
 		IndirectLayout dispatch;
 	};
@@ -217,10 +217,9 @@ namespace FlexKit
 
 		IndirectLayout remove;
 
-		RootSignature gatherSignature;
-		RootSignature dispatchSignature;
-
-		RootSignature removeSignature;
+		const RootSignature* gatherSignature;
+		const RootSignature* dispatchSignature;
+		const RootSignature* removeSignature;
 
 		StaticVoxelizer staticVoxelizer;
 

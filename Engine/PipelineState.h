@@ -53,7 +53,7 @@ namespace FlexKit
 	struct LoadPipelineStateRes
 	{
 		ID3D12PipelineState*	pipelineState;
-		RootSignature* 			rootSignature;
+		const RootSignature*	rootSignature;
 	};
 
 	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*), 16>;
@@ -80,12 +80,12 @@ namespace FlexKit
 		bool changeState(const PipelineStateObject::PSO_States newState);
 		void Release(iAllocator* allocator);
 
-		ID3D12PipelineState*				PSO		= nullptr;
-		PSOHandle							id		= InvalidHandle;
-		bool								stale	= false;
-		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
-		PipelineStateObject*				next	= nullptr;
-		RootSignature*						rootSignature;
+		ID3D12PipelineState*				PSO				= nullptr;
+		PSOHandle							id				= InvalidHandle;
+		bool								stale			= false;
+		std::atomic<PSO_States>				state			= PSO_States::Unloaded;
+		PipelineStateObject*				next			= nullptr;
+		const RootSignature*				rootSignature	= nullptr;
 		LOADSTATE_FN						loader;
 		std::condition_variable				CV;
 	};

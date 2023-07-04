@@ -47,14 +47,15 @@ namespace FlexKit
 				FrameResourceHandle				renderTarget,
 				iAllocator*						allocator);
 
-		void MarkClusters_Pass(
+		/*
+		OIT_MLAB& MarkClusters_Pass(
 			UpdateDispatcher&					dispatcher,
 			FrameGraph&							frameGraph,
-			OITPass&							OITPass,
+			GatherPassesTask&					passes,
+			BrushConstants&						constants,
 			FrameResourceHandle					renderTarget,
 			iAllocator*							allocator);
-
-		//RootSignature	MLABDrawSignature;
+			*/
 	};
 
 

@@ -6,8 +6,8 @@ namespace FlexKit
 	static const PSOHandle INSTANCEPARTICLEDPASS		= PSOHandle(GetTypeGUID(INSTANCEPARTICLEDPASS));
 	static const PSOHandle INSTANCEPARTICLEDEPTHDPASS	= PSOHandle(GetTypeGUID(INSTANCEPARTICLEDEPTHDPASS));
 
-	ID3D12PipelineState* CreateParticleMeshInstancedDepthPSO(RenderSystem* RS);
-	ID3D12PipelineState* CreateParticleMeshInstancedPSO(RenderSystem* RS);
+	LoadPipelineStateRes CreateParticleMeshInstancedDepthPSO(RenderSystem* RS);
+	LoadPipelineStateRes CreateParticleMeshInstancedPSO(RenderSystem* RS);
 
 	struct DrawInstancedParticles
 	{

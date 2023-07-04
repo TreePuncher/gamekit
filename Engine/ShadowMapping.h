@@ -142,7 +142,7 @@ namespace FlexKit
 		LoadPipelineStateRes CreateRowSums(RenderSystem* RS);
 		LoadPipelineStateRes CreateColumnSums(RenderSystem* RS);
 
-		FlexKit::RootSignature rootSignature;
+		const FlexKit::RootSignature* rootSignature;
 	};
 
 

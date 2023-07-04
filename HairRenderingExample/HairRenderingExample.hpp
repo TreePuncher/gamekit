@@ -126,7 +126,7 @@ public:
 	FlexKit::NodeHandle				cameraRig;
 	FlexKit::CameraHandle			camera;
 
-	FlexKit::RootSignature			strandRenderRootSignature;
+	const FlexKit::RootSignature*	strandRenderRootSignature = nullptr;
 	FlexKit::Win32RenderWindow		renderWindow;
 	FlexKit::ResourceHandle			depthBuffer;
 

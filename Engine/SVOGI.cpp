@@ -9,32 +9,33 @@ namespace FlexKit
 
 			octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(768 * MEGABYTE)) },
 
-			gatherSignature     { &allocator },
-			dispatchSignature   { &allocator },
-			removeSignature     { &allocator },
+
 
 			staticVoxelizer     { renderSystem, allocator }
 	{
-		gatherSignature.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
-		gatherSignature.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
-		gatherSignature.SetParameterAsUAV(2, 2, 0, PIPELINE_DEST_CS);
-		gatherSignature.SetParameterAsUINT(3, 4, 0, 0, PIPELINE_DEST_CS);
-		gatherSignature.Build(&renderSystem, &allocator);
+		RootSignatureBuilder builder{ &allocator };
 
-		dispatchSignature.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
-		dispatchSignature.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
-		dispatchSignature.Build(&renderSystem, &allocator);
+
+		builder.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUAV(2, 2, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUINT(3, 4, 0, 0, PIPELINE_DEST_CS);
+		gatherSignature	= builder.Build(&renderSystem, allocator);
+
+		builder.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
+		dispatchSignature = builder.Build(&renderSystem, allocator);
 
 		DesciptorHeapLayout layout{};
 		layout.SetParameterAsShaderUAV(0, 2, 1);
 
-		removeSignature.AllowIA = false;
-		removeSignature.AllowSO = false;
-		removeSignature.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
-		removeSignature.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
-		removeSignature.SetParameterAsDescriptorTable(2, layout, 0, PIPELINE_DEST_CS);
-		removeSignature.SetParameterAsUINT(3, 4, 0, 0, PIPELINE_DEST_CS);
-		removeSignature.Build(&renderSystem, &allocator);
+		builder.AllowIA = false;
+		builder.AllowSO = false;
+		builder.SetParameterAsUAV(0, 0, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUAV(1, 1, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsDescriptorTable(2, layout, 0, PIPELINE_DEST_CS);
+		builder.SetParameterAsUINT(3, 4, 0, 0, PIPELINE_DEST_CS);
+		removeSignature = builder.Build(&renderSystem, allocator);
 
 		draw = renderSystem.CreateIndirectLayout(
 			{ ILE_DrawCall },
@@ -48,12 +49,11 @@ namespace FlexKit
 			{ ILE_RootDescriptorUINT, IndirectDrawDescription::Constant{.rootParameterIdx = 3, .destinationOffset = 0, .numValues = 4 } },
 			{ ILE_DispatchCall } },
 			&allocator,
-			& removeSignature);
+			removeSignature);
 
 		renderSystem.SetDebugName(octreeBuffer, "OctreeBuffer");
 
 		renderSystem.RegisterPSOLoader(VXGI_DRAWVOLUMEVISUALIZATION,    CreateUpdateVolumeVisualizationPSO);
-
 		renderSystem.RegisterPSOLoader(VXGI_SAMPLEINJECTION,            CreateInjectVoxelSamplesPSO);
 		renderSystem.RegisterPSOLoader(VXGI_GATHERDISPATCHARGS,			[this](RenderSystem* rs) { return CreateVXGIGatherDispatchArgsPSO(rs); });
 		renderSystem.RegisterPSOLoader(VXGI_GATHERDRAWARGS,				CreateVXGIGatherDrawArgsPSO);
@@ -109,7 +109,7 @@ namespace FlexKit
 
 
 				DescriptorHeap heap;
-				heap.Init2(ctx, rootSig.GetDescHeap(1), 1, &allocator);
+				heap.Init2(ctx, rootSig->GetDescHeap(1), 1, &allocator);
 				heap.SetUAVStructured(ctx, 0, resources.UAV(data.octree, ctx), resources.UAV(data.octree, ctx), sizeof(OctTreeNode), 0);
 
 				ctx.SetComputeRootSignature(rootSig);
@@ -268,7 +268,7 @@ namespace FlexKit
 		ctx.AddUAVBarrier(resources.GetResource(data.counters));
 
 		DescriptorHeap resourceHeap;
-		resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 1, &allocator);
+		resourceHeap.Init2(ctx, rootSig->GetDescHeap(0), 1, &allocator);
 		resourceHeap.SetSRV(ctx, 0, resources.GetResource(data.depthTarget), DeviceFormat::R32_FLOAT);
 
 		ctx.SetComputeDescriptorTable(4, resourceHeap);
@@ -279,7 +279,7 @@ namespace FlexKit
 		ctx.SetComputeConstantBufferView(0, cameraConstants);
 
 		DescriptorHeap uavHeap2;
-		uavHeap2.Init2(ctx, rootSig.GetDescHeap(1), 3, &allocator);
+		uavHeap2.Init2(ctx, rootSig->GetDescHeap(1), 3, &allocator);
 		uavHeap2.SetUAVStructured(ctx, 0, resources.UAV(data.sampleBuffer, ctx), resources.UAV(data.counters, ctx),   32, 0);
 		uavHeap2.SetUAVStructured(ctx, 1, resources.UAV(data.octree, ctx), resources.GetResource(data.octree), sizeof(OctTreeNode), 0);
 		uavHeap2.SetUAVStructured(ctx, 2, resources.UAV(data.octree, ctx), 4, 0);
@@ -434,7 +434,7 @@ namespace FlexKit
 				const ConstantBufferDataSet passConstants   { constantValues, constantBuffer };
 
 				DescriptorHeap resourceHeap;
-				resourceHeap.Init2(ctx, rootSig.GetDescHeap(0), 4, &allocator);
+				resourceHeap.Init2(ctx, rootSig->GetDescHeap(0), 4, &allocator);
 				resourceHeap.SetStructuredResource(ctx, 0, resources.PixelShaderResource(data.octree, ctx), sizeof(OctTreeNode), 4096 / sizeof(OctTreeNode));
 				resourceHeap.SetSRV(ctx, 1, resources.PixelShaderResource(data.depthTarget, ctx), DeviceFormat::R32_FLOAT);
 				resourceHeap.SetSRV(ctx, 2, resources.PixelShaderResource(data.normals, ctx));
@@ -475,7 +475,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("MarkEraseNodes", "cs_6_5", R"(assets\shaders\VXGI_Erase.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -484,7 +484,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 	/************************************************************************************************/
@@ -495,7 +495,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("ReleaseNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			removeSignature,
+			*removeSignature,
 			computeShader
 		};
 
@@ -504,7 +504,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -516,7 +516,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("TransferNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			removeSignature,
+			*removeSignature,
 			computeShader
 		};
 
@@ -525,7 +525,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -537,7 +537,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("Injection", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -546,7 +546,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -558,7 +558,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			gatherSignature,
+			*gatherSignature,
 			computeShader
 		};
 
@@ -567,7 +567,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &gatherSignature };
+		return { PSO, gatherSignature };
 	}
 
 
@@ -579,7 +579,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateRemoveArgs", "cs_6_5", R"(assets\shaders\VXGI_RemoveArgs.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			gatherSignature,
+			*gatherSignature,
 			computeShader
 		};
 
@@ -588,7 +588,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &gatherSignature };
+		return { PSO, gatherSignature };
 	}
 
 
@@ -600,7 +600,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DecrementCounter.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			removeSignature,
+			*removeSignature,
 			computeShader
 		};
 
@@ -609,7 +609,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &removeSignature };
+		return { PSO, removeSignature };
 	}
 
 
@@ -621,7 +621,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_5", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -630,7 +630,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -642,7 +642,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -651,7 +651,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -663,7 +663,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -672,7 +672,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };;
+		return { PSO, RS->Library.RSDefault };;
 	}
 
 
@@ -684,7 +684,7 @@ namespace FlexKit
 		Shader computeShader = RS->LoadShader("Init", "cs_6_5", R"(assets\shaders\VXGI_InitOctree.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS->Library.RSDefault,
+			*RS->Library.RSDefault,
 			computeShader
 		};
 
@@ -693,7 +693,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -723,7 +723,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask               = D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
 			PSO_Desc.VS                    = VShader;
 			PSO_Desc.PS                    = PShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -745,7 +745,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "UpdateVolumeVisualization");
 
-		return { PSO, &RS->Library.RSDefault };
+		return { PSO, RS->Library.RSDefault };
 	}
 
 
@@ -772,7 +772,7 @@ namespace FlexKit
 		};
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = voxelizeSignature;
+			PSO_Desc.pRootSignature        = *voxelizeSignature;
 			PSO_Desc.VS                    = VShader;
 			PSO_Desc.GS                    = GShader;
 			PSO_Desc.PS                    = PShader;
@@ -793,7 +793,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Voxelizer");
 
-		return { PSO, &voxelizeSignature };
+		return { PSO, voxelizeSignature };
 	}
 
 
@@ -804,12 +804,12 @@ namespace FlexKit
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("Main", "cs_6_5", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)"),
-			markSignature,
+			*markSignature,
 			*RS);
 
 		SETDEBUGNAME(pso, "GatherVoxelArgs");
 
-		return { pso, &markSignature };
+		return { pso, markSignature };
 	}
 
 
@@ -820,12 +820,12 @@ namespace FlexKit
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("MarkNodes", "cs_6_5", R"(assets\shaders\Voxelizer_MarkNodes.hlsl)"),
-			markSignature,
+			*markSignature,
 			*RS);
 
 		SETDEBUGNAME(pso, "MarkNodes");
 
-		return { pso, &markSignature };
+		return { pso, markSignature };
 	}
 
 
@@ -836,12 +836,12 @@ namespace FlexKit
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("ExpandNodes", "cs_6_5", R"(assets\shaders\Voxelizer_ExpandNodes.hlsl)"),
-			markSignature,
+			*markSignature,
 			*RS);
 
 		SETDEBUGNAME(pso, "ExpandNodes");
 
-		return { pso, &markSignature };
+		return { pso, markSignature };
 	}
 
 
@@ -852,12 +852,12 @@ namespace FlexKit
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("FillNodes", "cs_6_5", R"(assets\shaders\Voxelizer_BuildHighestMipLevel.hlsl)"),
-			markSignature,
+			*markSignature,
 			*RS);
 
 		SETDEBUGNAME(pso, "FillNodes");
 
-		return { pso, &markSignature };
+		return { pso, markSignature };
 	}
 
 
@@ -868,44 +868,44 @@ namespace FlexKit
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("BuildLevel", "cs_6_5", R"(assets\shaders\Voxelizer_BuildMIPLevel.hlsl)"),
-			markSignature,
+			*markSignature,
 			*RS);
 
 		SETDEBUGNAME(pso, "BuildLevel");
 
-		return { pso, &markSignature };
+		return { pso, markSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	StaticVoxelizer::StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator) :
-		voxelizeSignature   { &allocator },
-		markSignature       { &allocator }
+	StaticVoxelizer::StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator)
 	{
-		voxelizeSignature.AllowIA = true;
-		voxelizeSignature.AllowSO = false;
+		RootSignatureBuilder builder{ &allocator };
+
+		builder.AllowIA = true;
+		builder.AllowSO = false;
 
 		DesciptorHeapLayout layout{};
 		layout.SetParameterAsShaderUAV(0, 0, 1, 0);
 
-		voxelizeSignature.SetParameterAsUINT(0, 12, 0, 0, PIPELINE_DEST_ALL);
-		voxelizeSignature.SetParameterAsCBV(1, 1, 0, PIPELINE_DEST_ALL);
-		voxelizeSignature.SetParameterAsDescriptorTable(2, layout, -1, PIPELINE_DEST_PS);
-		voxelizeSignature.Build(renderSystem, &allocator);
+		builder.SetParameterAsUINT(0, 12, 0, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsCBV(1, 1, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsDescriptorTable(2, layout, -1, PIPELINE_DEST_PS);
+		voxelizeSignature = builder.Build(renderSystem, allocator);
 
 		DesciptorHeapLayout UAVLayout{};
 		UAVLayout.SetParameterAsShaderUAV(0, 0, 3, 0);
 
-		markSignature.AllowIA = false;
-		markSignature.AllowSO = false;
+		builder.AllowIA = false;
+		builder.AllowSO = false;
 
-		markSignature.SetParameterAsDescriptorTable(0, UAVLayout);
-		markSignature.SetParameterAsSRV(1, 0);
-		markSignature.SetParameterAsUINT(2, 4, 0, 0);
-		markSignature.SetParameterAsSRV(3, 1);
-		markSignature.Build(renderSystem, &allocator);
+		builder.SetParameterAsDescriptorTable(0, UAVLayout);
+		builder.SetParameterAsSRV(1, 0);
+		builder.SetParameterAsUINT(2, 4, 0, 0);
+		builder.SetParameterAsSRV(3, 1);
+		markSignature = builder.Build(renderSystem, allocator);
 
 		renderSystem.RegisterPSOLoader(
 			SVO_GatherArguments,
@@ -958,7 +958,7 @@ namespace FlexKit
 				{ ILE_DispatchCall }
 			},
 			&allocator,
-			&markSignature
+			markSignature
 		);
 	}
 
@@ -973,7 +973,7 @@ namespace FlexKit
 		ctx.SetPipelineState(gatherArgs);
 
 		DescriptorHeap heap;
-		heap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+		heap.Init2(ctx, markSignature->GetDescHeap(0), 2, &TL_allocator);
 		heap.SetUAVStructured(ctx, 0, resources.UAV(argBuffer, ctx), 32, offset);
 		heap.NullFill(ctx, 2);
 
@@ -1090,7 +1090,7 @@ namespace FlexKit
 		ctx.SetGraphicsConstantValue(0, 12, values);
 				
 		DescriptorHeap heap;
-		heap.Init(ctx, voxelizeSignature.GetDescHeap(0), &TL_allocator);
+		heap.Init(ctx, voxelizeSignature->GetDescHeap(0), &TL_allocator);
 		heap.SetUAVStructured(ctx, 0,
 			resourcesHandler.UAV(resources.sampleBuffer, ctx),
 			resourcesHandler.UAV(resources.sampleBuffer, ctx), 16, 0);
@@ -1162,7 +1162,7 @@ namespace FlexKit
 			ctx.AddUAVBarrier(resourceHandler.UAV(resources.tempBuffer, ctx));
 
 			DescriptorHeap UAVHeap{};
-			UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 2, &TL_allocator);
+			UAVHeap.Init2(ctx, markSignature->GetDescHeap(0), 2, &TL_allocator);
 			UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
 			UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
 
@@ -1177,7 +1177,7 @@ namespace FlexKit
 			GatherArgs(resources.argBuffer, resources.tempBuffer, resourceHandler, ctx, TL_allocator);
 
 			DescriptorHeap UAVHeap2{};
-			UAVHeap2.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
+			UAVHeap2.Init2(ctx, markSignature->GetDescHeap(0), 3, &TL_allocator);
 			UAVHeap2.SetUAVBuffer(ctx, 0, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
 			UAVHeap2.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 0);
 			UAVHeap2.SetUAVBuffer(ctx, 2, resourceHandler.UAV(resources.parentBuffer, ctx), 0);
@@ -1200,7 +1200,7 @@ namespace FlexKit
 
 		// Fill Highest level
 		DescriptorHeap UAVHeap{};
-		UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
+		UAVHeap.Init2(ctx, markSignature->GetDescHeap(0), 3, &TL_allocator);
 		UAVHeap.SetUAVStructured(ctx, 0, resourceHandler.UAV(resources.tempBuffer, ctx), resourceHandler.UAV(resources.tempBuffer, ctx), 4, 0);
 		UAVHeap.SetUAVBuffer(ctx, 1, resourceHandler.UAV(resources.octree, ctx), 4096 / 4);
 		UAVHeap.SetUAVBuffer(ctx, 2, resourceHandler.UAV(resources.parentBuffer, ctx));
@@ -1244,7 +1244,7 @@ namespace FlexKit
 			ctx.AddUAVBarrier(resourceHandler.UAV(target, ctx));
 
 			DescriptorHeap UAVHeap{};
-			UAVHeap.Init2(ctx, markSignature.GetDescHeap(0), 3, &TL_allocator);
+			UAVHeap.Init2(ctx, markSignature->GetDescHeap(0), 3, &TL_allocator);
 			UAVHeap.SetUAVStructured(ctx, 0,                                                                            // dirtyParents : register u0
 				resourceHandler.UAV(target, ctx),
 				resourceHandler.UAV(target, ctx), 4, 0);

@@ -18,14 +18,14 @@ namespace FlexKit
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
-		PSO_Desc.pRootSignature	= rootSignature;
+		PSO_Desc.pRootSignature	= *rootSignature;
 		PSO_Desc.CS				= CShader;
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &rootSignature };
+		return { PSO, rootSignature };
 	}
 
 
@@ -38,14 +38,14 @@ namespace FlexKit
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
-		PSO_Desc.pRootSignature	= rootSignature;
+		PSO_Desc.pRootSignature	= *rootSignature;
 		PSO_Desc.CS				= CShader;
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, &rootSignature };
+		return { PSO, rootSignature };
 	}
 
 
@@ -84,7 +84,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                         = rootSignature;
+			PSO_Desc.pRootSignature                         = *rootSignature;
 			PSO_Desc.VS                                     = VShader;
 			PSO_Desc.PS                                     = PShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -107,7 +107,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ShadowMapPass");
 
-		return { PSO, &rootSignature };
+		return { PSO, rootSignature };
 	}
 
 
@@ -149,7 +149,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                         = rootSignature;
+			PSO_Desc.pRootSignature                         = *rootSignature;
 			PSO_Desc.VS                                     = VShader;
 			PSO_Desc.PS                                     = PShader;
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -172,7 +172,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ShadowMapAnimatedPass");
 
-		return { PSO, &rootSignature };
+		return { PSO, rootSignature };
 	}
 
 
@@ -289,21 +289,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	ShadowMapper::ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
-		rootSignature   { &allocator },
 		resourcePool    { &allocator }
 	{
 		DesciptorHeapLayout heapLayout;
 		heapLayout.SetParameterAsShaderUAV(0, 0, 1);	// output
 
-		rootSignature.AllowIA = true;
-		rootSignature.AllowSO = false;
-		rootSignature.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
-		rootSignature.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
-		rootSignature.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
-		rootSignature.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
-		rootSignature.SetParameterAsDescriptorTable(4, heapLayout);
+		RootSignatureBuilder builder{ allocator };
+		builder.AllowIA = true;
+		builder.AllowSO = false;
+		builder.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
+		builder.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
+		builder.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
+		builder.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
+		builder.SetParameterAsDescriptorTable(4, heapLayout);
 
-		rootSignature.Build(renderSystem, &allocator);
+		rootSignature = builder.Build(renderSystem, allocator);
+		FK_ASSERT(rootSignature != nullptr, "Failed to create Root Signature!");
+
 
 		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			[&](RenderSystem* rs) { return CreateShadowMapPass(rs); });
 		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	[&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); });
@@ -363,7 +365,7 @@ namespace FlexKit
 								auto desc		= GPUResourceDesc::CubeMapUAV({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, 1, true);
 								desc.clearValue = clearValue;
 
-								auto [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
+								auto&& [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
 								break;
 							}
 							case LightType::SpotLight:
@@ -372,7 +374,7 @@ namespace FlexKit
 								auto desc		= GPUResourceDesc::UAVTexture({ ShadowMapSize, ShadowMapSize }, DeviceFormat::R32_FLOAT, true);
 								desc.clearValue = clearValue;
 
-								auto [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
+								auto&& [shadowMap, _] = resourceCtx.AcquireTemporary(frameHandles[handleIdx], desc);
 							}	break;
 						}
 					}

@@ -218,4 +218,6 @@ template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 #include <Windows.h>
 #include <debugapi.h>
 
+#pragma warning(disable : 4275)
+
 #endif//BUILDSETTING_H
