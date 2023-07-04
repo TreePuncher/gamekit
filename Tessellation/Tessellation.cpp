@@ -25,7 +25,6 @@ public:
 			CreateWin32RenderWindow(
 				IN_framework.GetRenderSystem(),
 				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 })).value() },
-		rootSig			{ IN_framework.core.GetBlockMemory() },
 		vertexBuffer	{ IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
 		constantBuffer	{ IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
 		cameras			{ IN_framework.core.GetBlockMemory() },
@@ -40,17 +39,20 @@ public:
 		vertices	= GetGregoryVertexBuffer(shape, framework.core.GetBlockMemory());
 		patchBuffer	= MoveBufferToDevice(framework.GetRenderSystem(), (const char*)patches.data(), patches.ByteSize());
 
-		rootSig.SetParameterAsSRV(0, 0, 0);
-		rootSig.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
-		rootSig.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_ALL);
-		rootSig.SetParameterAsUINT(3, 1, 2, 0, PIPELINE_DEST_ALL);
-		rootSig.SetParameterAsUAV(4, 0, 0, PIPELINE_DEST_ALL);
-		rootSig.SetParameterAsUAV(5, 1, 0, PIPELINE_DEST_ALL);
-		rootSig.SetParameterAsUAV(6, 2, 0, PIPELINE_DEST_ALL);
+		FlexKit::RootSignatureBuilder builder{ framework.core.GetBlockMemory() };
+		builder.SetParameterAsSRV(0, 0, 0);
+		builder.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsUINT(2, 16, 1, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsUINT(3, 1, 2, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsUAV(4, 0, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsUAV(5, 1, 0, PIPELINE_DEST_ALL);
+		builder.SetParameterAsUAV(6, 2, 0, PIPELINE_DEST_ALL);
 
-		rootSig.AllowIA = true;
-		rootSig.AllowSO = false;
-		FK_ASSERT(rootSig.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory()));
+		builder.AllowIA = true;
+		builder.AllowSO = false;
+		rootSig = builder.Build(IN_framework.GetRenderSystem(), IN_framework.core.GetTempMemory());
+
+		FK_ASSERT(rootSig != nullptr, "Failed to create root signature!");
 
 		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem); });
 		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem, true); });
@@ -483,7 +485,7 @@ public:
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = rootSig;
+			PSO_Desc.pRootSignature        = *rootSig;
 			PSO_Desc.VS                    = ACC_VShader;
 			PSO_Desc.DS                    = ACC_DShader;
 			PSO_Desc.HS                    = ACC_HShader;
@@ -508,7 +510,7 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObject");
 
-		return { PSO, &rootSig };
+		return { PSO, rootSig };
 	}
 
 
@@ -550,7 +552,7 @@ public:
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature         = rootSig;
+			PSO_Desc.pRootSignature         = *rootSig;
 			PSO_Desc.VS                     = Debug_VShader;
 			PSO_Desc.GS                     = Debug_GShader;
 			PSO_Desc.PS                     = Debug_PShader;
@@ -574,7 +576,7 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug");
 
-		return { PSO, &rootSig };
+		return { PSO, rootSig };
 	}
 
 
@@ -609,7 +611,7 @@ public:
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature         = rootSig;
+			PSO_Desc.pRootSignature         = *rootSig;
 			PSO_Desc.VS                     = Debug_VShader;
 			PSO_Desc.PS                     = Debug_PShader;
 			PSO_Desc.RasterizerState        = Rast_Desc;
@@ -632,7 +634,7 @@ public:
 
 		SETDEBUGNAME(PSO, "DrawTessellatedObjectDebug2");
 
-		return { PSO, &rootSig };
+		return { PSO, rootSig };
 	}
 
 	/************************************************************************************************/
@@ -648,7 +650,7 @@ public:
 	ResourceHandle			patchBuffer;
 	VertexBufferHandle		vertexBuffer;
 	ConstantBufferHandle	constantBuffer;
-	RootSignature			rootSig;
+	const RootSignature*	rootSig = nullptr;
 	Win32RenderWindow		renderWindow;
 	ResourceHandle			depthBuffer;
 	ResourceHandle			debug1Buffer;
