@@ -1567,10 +1567,64 @@ namespace FlexKit
 
 	size_t RootSignature::GetDesciptorTableSize(size_t idx) const
 	{
-		//FK_ASSERT(RootEntries[idx].Type == RootSignatureEntryType::DescriptorHeap, "INVALID ARGUEMENT!");
-		//auto heapIdx = RootEntries[idx].DescriptorHeap.HeapIdx;
 		FK_ASSERT(idx < Heaps.size());
 		return Heaps[idx].Heap.size();
+	}
+
+
+	/************************************************************************************************/
+
+
+	PipelineBuilder::PipelineBuilder(iAllocator& allocator) :
+		blob	{ allocator },
+		shaders	{ allocator } {}
+
+
+	/************************************************************************************************/
+
+	void PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
+	{
+		rootSig = IN_rootSig;
+
+		blob += (uint64_t)D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+		blob += rootSig->Get_ptr();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
+
+		blob += (uint64_t)D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
+		blob += D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+	}
+
+
+	/************************************************************************************************/
+
+
+	FlexKit::LoadPipelineStateRes PipelineBuilder::Build(RenderSystem& renderSystem)
+	{
+		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
+			.SizeInBytes					= blob.size(),
+			.pPipelineStateSubobjectStream	= blob.data()
+		};
+
+		ID3D12PipelineState* pso = nullptr;
+		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+
+		if (SUCCEEDED(HR))
+		{
+			if(pso)
+				SETDEBUGNAME(pso, debugName);
+
+			blob.Clear();
+		}
+
+		return { pso };
 	}
 
 
@@ -7271,7 +7325,7 @@ namespace FlexKit
 
 			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-			Shader out{ byteCodeBlob };
+			Shader out{ byteCodeBlob, Memory };
 			byteCodeBlob->Release();
 			result->Release();
 

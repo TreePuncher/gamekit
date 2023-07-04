@@ -744,6 +744,18 @@ namespace FlexKit
 		}
 
 
+		std::tuple<Ty*, size_t, iAllocator*> Steal() noexcept
+		{
+			auto temp		= A;
+			auto tempSize	= Size;
+
+			A		= nullptr;
+			Max		= 0;
+			Size	= 0;
+
+			return { temp, tempSize, Allocator };
+		}
+
 		/************************************************************************************************/
 
 

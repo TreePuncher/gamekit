@@ -166,31 +166,36 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 {
-	auto& renderSystem	= framework.GetRenderSystem();
-	Shader CShader		= renderSystem.LoadShader("ApplyForces", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	//auto& renderSystem	= framework.GetRenderSystem();
+	//Shader CShader		= renderSystem.LoadShader("ApplyForces", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	//
+	//struct
+	//{
+	//	D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
+	//	ID3D12RootSignature*					rootSig;
+	//	D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
+	//	D3D12_SHADER_BYTECODE					byteCode;
+	//} stream = {
+	//	.rootSig	= *strandRenderRootSignature,
+	//	.byteCode	= CShader,
+	//};
+	//
+	//D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
+	//	.SizeInBytes					= sizeof(stream),
+	//	.pPipelineStateSubobjectStream	= &stream
+	//};
+	//
+	//ID3D12PipelineState* pso = nullptr;
+	//auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+	//
+	//SETDEBUGNAME(pso, "ApplyForces");
 
-	struct
-	{
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		ID3D12RootSignature*					rootSig;
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
-		D3D12_SHADER_BYTECODE					byteCode;
-	} stream = {
-		.rootSig	= *strandRenderRootSignature,
-		.byteCode	= CShader,
-	};
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+	builder.AddRootSignature(strandRenderRootSignature);
+	builder.AddComputeShader("ApplyForces", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	builder.SetDebugName("ApplyForces");
 
-	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-		.SizeInBytes					= sizeof(stream),
-		.pPipelineStateSubobjectStream	= &stream
-	};
-
-	ID3D12PipelineState* pso = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
-
-	SETDEBUGNAME(pso, "ApplyForces");
-
-	return { pso, strandRenderRootSignature };
+	return builder.Build(framework.GetRenderSystem());
 }
 
 
