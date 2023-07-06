@@ -166,30 +166,6 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 {
-	//auto& renderSystem	= framework.GetRenderSystem();
-	//Shader CShader		= renderSystem.LoadShader("ApplyForces", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
-	//
-	//struct
-	//{
-	//	D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-	//	ID3D12RootSignature*					rootSig;
-	//	D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
-	//	D3D12_SHADER_BYTECODE					byteCode;
-	//} stream = {
-	//	.rootSig	= *strandRenderRootSignature,
-	//	.byteCode	= CShader,
-	//};
-	//
-	//D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-	//	.SizeInBytes					= sizeof(stream),
-	//	.pPipelineStateSubobjectStream	= &stream
-	//};
-	//
-	//ID3D12PipelineState* pso = nullptr;
-	//auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
-	//
-	//SETDEBUGNAME(pso, "ApplyForces");
-
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
 	builder.AddRootSignature(strandRenderRootSignature);
 	builder.AddComputeShader("ApplyForces", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
@@ -204,31 +180,12 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO()
 {
-	auto& renderSystem	= framework.GetRenderSystem();
-	Shader CShader		= renderSystem.LoadShader("ApplyShapeConstraints", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+	builder.AddRootSignature(strandRenderRootSignature);
+	builder.AddComputeShader("ApplyShapeConstraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	builder.SetDebugName("ApplyShapeConstraints");
 
-	struct
-	{
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		ID3D12RootSignature*					rootSig;
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2	= D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
-		D3D12_SHADER_BYTECODE					byteCode;
-	} stream = {
-		.rootSig	= *strandRenderRootSignature,
-		.byteCode	= CShader,
-	};
-
-	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-		.SizeInBytes					= sizeof(stream),
-		.pPipelineStateSubobjectStream	= &stream
-	};
-
-	ID3D12PipelineState* pso = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
-
-	SETDEBUGNAME(pso, "ApplyShapeConstraints");
-
-	return { pso, strandRenderRootSignature };
+	return builder.Build(framework.GetRenderSystem());
 }
 
 
@@ -237,31 +194,80 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO(
 
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 {
-	auto& renderSystem = framework.GetRenderSystem();
-	Shader CShader = renderSystem.LoadShader("ApplyEdgeLengthContraints", "cs_6_2", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+	builder.AddRootSignature(strandRenderRootSignature);
+	builder.AddComputeShader("ApplyEdgeLengthContraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
+	builder.SetDebugName("ApplyEdgeLengthContraints");
 
-	struct
-	{
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type1 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		ID3D12RootSignature* rootSig;
-		D3D12_PIPELINE_STATE_SUBOBJECT_TYPE		type2 = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
-		D3D12_SHADER_BYTECODE					byteCode;
-	} stream = {
-		.rootSig	= *strandRenderRootSignature,
-		.byteCode	= CShader,
-	};
+	return builder.Build(framework.GetRenderSystem());
+}
 
-	D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-		.SizeInBytes = sizeof(stream),
-		.pPipelineStateSubobjectStream = &stream
-	};
 
-	ID3D12PipelineState* pso = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+/************************************************************************************************/
 
-	SETDEBUGNAME(pso, "ApplyEdgeLengthContraints");
 
-	return { pso, strandRenderRootSignature };
+LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
+{
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+	builder.AddRootSignature(strandRenderRootSignature);
+
+	builder.AddVertexShader		("VMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddGeometryShader	("GMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddPixelShader		("PMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+
+	builder.AddInputTopology(ETopology::EIT_POINT);
+	builder.AddInputLayout({
+		.inputs = { { "POSITION",	0, DeviceFormat::R32G32B32A32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 }, },
+		.count	= 1
+		});
+
+	builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
+
+	builder.AddDepthStencilState({
+			.depthEnable = true,
+			.depthFunc = EComparison::LESS,
+		});
+
+	builder.AddRenderTargetState({
+			.targetCount = 1,
+			.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT },
+		});
+
+	builder.SetDebugName("DrawStrands");
+
+	return builder.Build(framework.core.RenderSystem);
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateDebugRenderPSO()
+{
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+	builder.AddVertexShader		("VMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddGeometryShader	("GDebug",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddPixelShader		("PDebug",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+
+	builder.AddInputTopology(EIT_POINT);
+
+	builder.AddInputLayout({
+			.inputs	= { { "POSITION",	0, DeviceFormat::R32G32B32A32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 }, }, 
+			.count = 1
+		});
+	
+	builder.AddDepthStencilState({
+			.depthEnable	= false,
+		});
+	
+	builder.AddRenderTargetState({
+			.targetCount	= 1,
+			.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT },
+		});
+
+	builder.SetDebugName("DrawStrandsDebug");
+
+	return builder.Build(framework.core.RenderSystem);
 }
 
 
@@ -348,98 +354,6 @@ HairRenderingTest::~HairRenderingTest()
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseResource(depthBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
-}
-
-
-/************************************************************************************************/
-
-
-LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
-{
-	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader vshader = renderSystem.LoadShader("VMain", "vs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-	FlexKit::Shader gshader = renderSystem.LoadShader("GMain", "gs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-	FlexKit::Shader pshader = renderSystem.LoadShader("PMain", "ps_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-
-	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
-	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= true;
-
-	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	};
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature			= *strandRenderRootSignature;
-		PSO_Desc.VS						= vshader;
-		PSO_Desc.GS						= gshader;
-		PSO_Desc.PS						= pshader;
-		PSO_Desc.RasterizerState		= Rast_Desc;
-		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		PSO_Desc.SampleMask				= UINT_MAX;
-		PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		PSO_Desc.NumRenderTargets		= 1;
-		PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT;
-		PSO_Desc.SampleDesc.Count		= 1;
-		PSO_Desc.SampleDesc.Quality		= 0;
-		PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
-		PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-		PSO_Desc.DepthStencilState		= Depth_Desc;
-	}
-	
-	ID3D12PipelineState* pso = nullptr;
-	renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&pso));
-
-	SETDEBUGNAME(pso, "DrawStrands");
-
-	return { pso, strandRenderRootSignature };
-}
-
-
-/************************************************************************************************/
-
-
-FlexKit::LoadPipelineStateRes HairRenderingTest::CreateDebugRenderPSO()
-{
-	auto& renderSystem = framework.GetRenderSystem();
-	FlexKit::Shader vshader = renderSystem.LoadShader("VMain", "vs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", {.enable16BitTypes = true });
-	FlexKit::Shader gshader = renderSystem.LoadShader("GDebug", "gs_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-	FlexKit::Shader pshader = renderSystem.LoadShader("PDebug", "ps_6_2", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-
-	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
-	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-	Depth_Desc.DepthEnable = false;
-
-	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-	};
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature			= *strandRenderRootSignature;
-		PSO_Desc.VS						= vshader;
-		PSO_Desc.GS						= gshader;
-		PSO_Desc.PS						= pshader;
-		PSO_Desc.RasterizerState		= Rast_Desc;
-		PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		PSO_Desc.SampleMask				= UINT_MAX;
-		PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-		PSO_Desc.NumRenderTargets		= 1;
-		PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT;
-		PSO_Desc.SampleDesc.Count		= 1;
-		PSO_Desc.SampleDesc.Quality		= 0;
-		PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
-		PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-		PSO_Desc.DepthStencilState		= Depth_Desc;
-	}
-	
-	ID3D12PipelineState* pso = nullptr;
-	renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&pso));
-
-	SETDEBUGNAME(pso, "DrawStrandsDebug");
-
-	return { pso, strandRenderRootSignature };
 }
 
 
@@ -666,7 +580,7 @@ void HairRenderingTest::DrawStrands(
 
 			ctx.SetGraphicsShaderResourceView(1, resources.GetResource(data.strandBuffer));
 			ctx.SetGraphicsConstantValue(0, 16, &shaderConstants);
-			ctx.SetPrimitiveTopology(EIT_POINT);
+			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.Draw((style.strandLength - 1) * style.strandCount);
 		});
 }
@@ -724,7 +638,7 @@ void HairRenderingTest::DrawDebug(
 
 			ctx.SetGraphicsShaderResourceView(1, resources.GetResource(data.strandBuffer));
 			ctx.SetGraphicsConstantValue(0, 16, &shaderConstants);
-			ctx.SetPrimitiveTopology(EIT_POINT);
+			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.Draw((style.strandLength - 1) * 20);
 		});
 }

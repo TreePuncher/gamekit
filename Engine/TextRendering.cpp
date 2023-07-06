@@ -256,7 +256,7 @@ namespace FlexKit
 				ctx.SetRenderTargets				({ resources.GetResource(data.renderTarget) }, false);
 
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
-				ctx.SetPrimitiveTopology			(EInputTopology::EIT_POINT);
+				ctx.SetInputPrimitive				(INPUTPRIMITIVEPOINTLIST);
 				ctx.SetVertexBuffers				(VertexBufferList{ { data.VertexBuffer, sizeof(TextEntry) } });
 
 				ctx.NullGraphicsConstantBufferView	(1);

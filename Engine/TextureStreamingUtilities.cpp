@@ -781,7 +781,8 @@ namespace FlexKit
 
 			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffer));
-			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
+
 
 			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
 
@@ -938,7 +939,7 @@ namespace FlexKit
 
 			ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffer));
-			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
 

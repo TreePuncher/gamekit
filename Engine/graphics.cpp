@@ -1575,19 +1575,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder::PipelineBuilder(iAllocator& allocator) :
-		blob	{ allocator },
-		shaders	{ allocator } {}
+	PipelineBuilder::PipelineBuilder(iAllocator& IN_allocator) :
+		allocator	{ IN_allocator },
+		blob		{ IN_allocator },
+		shaders		{ IN_allocator }
+	{
+		blob.buffer.reserve(1024);
+	}
 
 
 	/************************************************************************************************/
+
 
 	void PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
 	{
 		rootSig = IN_rootSig;
 
-		blob += (uint64_t)D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE;
-		blob += rootSig->Get_ptr();
+		blob += CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE{ rootSig->Get_ptr() };
 	}
 
 
@@ -1596,10 +1600,204 @@ namespace FlexKit
 
 	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_2", file, options));
 
-		blob += (uint64_t)D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS;
-		blob += D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_2", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_2", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_2", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_2", file, options));
+
+		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddInputLayout(const InputLayoutState& state)
+	{
+		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT layout;
+
+		auto inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC*));
+
+		for (auto&& [idx, input] : zip(iota(0u, state.count), state.inputs))
+		{
+			inputElements[idx] =
+				D3D12_INPUT_ELEMENT_DESC{
+					.SemanticName			= input.name,
+					.SemanticIndex			= input.index,
+					.Format					= TextureFormat2DXGIFormat(input.format),
+					.InputSlot				= input.slot,
+					.AlignedByteOffset		= input.alignedByteOffset,
+					.InputSlotClass			= ToDX(input.inputSlotClass),
+					.InstanceDataStepRate	= input.instanceStepRate
+				};
+		}
+
+		layout = D3D12_INPUT_LAYOUT_DESC{
+			.pInputElementDescs = inputElements,
+			.NumElements		= state.count,
+		};
+
+		blob += layout;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddInputTopology(const ETopology topology)
+	{
+		blob += CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddRasterizerState(const RasterizerState& state)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddDepthStencilState(const DepthStencilState& inputState)
+	{
+		CD3DX12_DEPTH_STENCIL_DESC state;
+
+		state.BackFace.StencilDepthFailOp	= (D3D12_STENCIL_OP)inputState.backFace.stencilDepthFailOp;
+		state.BackFace.StencilFailOp		= (D3D12_STENCIL_OP)inputState.backFace.stencilFailOp;
+		state.BackFace.StencilPassOp		= (D3D12_STENCIL_OP)inputState.backFace.stencilPassOp;
+		state.BackFace.StencilFunc			= (D3D12_COMPARISON_FUNC)inputState.backFace.stencilFunc;
+
+		state.FrontFace.StencilDepthFailOp	= (D3D12_STENCIL_OP)inputState.frontFace.stencilDepthFailOp;
+		state.FrontFace.StencilFailOp		= (D3D12_STENCIL_OP)inputState.frontFace.stencilFailOp;
+		state.FrontFace.StencilPassOp		= (D3D12_STENCIL_OP)inputState.frontFace.stencilPassOp;
+		state.FrontFace.StencilFunc			= (D3D12_COMPARISON_FUNC)inputState.frontFace.stencilFunc;
+
+		state.DepthEnable		= (uint32_t)inputState.depthEnable;
+		state.DepthFunc			= (D3D12_COMPARISON_FUNC)inputState.depthFunc;
+		state.DepthWriteMask	= (D3D12_DEPTH_WRITE_MASK)inputState.depthWriteMask;
+		state.StencilEnable		= inputState.stencilEnable;
+		state.StencilReadMask	= inputState.stencilReadMask;
+		state.StencilWriteMask	= inputState.stencilWriteMask;
+
+		blob += CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL{ state };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddBlendState(const BlendState& state)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
+	{
+		CD3DX12_RT_FORMAT_ARRAY formats{};
+		memset(&formats, 0, sizeof(formats));
+		formats.NumRenderTargets = state.targetCount;
+
+		for (auto [idx, format] : zip(iota(0u, state.targetCount), state.targetFormats))
+			formats.RTFormats[idx] = TextureFormat2DXGIFormat(format);
+
+		blob += CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS { formats };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
+	{
+		blob += CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT{ TextureFormat2DXGIFormat(format) };
 	}
 
 
@@ -1618,13 +1816,31 @@ namespace FlexKit
 
 		if (SUCCEEDED(HR))
 		{
-			if(pso)
+			if (pso && debugName)
 				SETDEBUGNAME(pso, debugName);
 
 			blob.Clear();
+			return { pso, rootSig };
 		}
+		else
+			return { nullptr, nullptr };
+	}
 
-		return { pso };
+
+	/************************************************************************************************/
+
+
+	FlexKit::LoadPipelineStateRes PipelineBuilder::BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size)
+	{
+		const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
+			.SizeInBytes					= size,
+			.pPipelineStateSubobjectStream	= buffer
+		};
+
+		ID3D12PipelineState* pso = nullptr;
+		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+
+		return { pso, nullptr };
 	}
 
 
@@ -2518,124 +2734,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetPrimitiveTopology(EInputTopology Topology)
+	void Context::SetInputPrimitive(EInputPrimitive topology)
 	{
-		D3D12_PRIMITIVE_TOPOLOGY D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_POINTLIST;
-		switch (Topology)
-		{
-		case EIT_LINE:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_LINELIST;
-			break;
-		case EIT_TRIANGLELIST:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-			break;
-		case EIT_TRIANGLE:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-			break;
-		case EIT_POINT:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_1:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_2:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_3:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_4:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_5:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_6:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_7:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_8:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_9:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_10:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_11:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_12:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_13:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_14:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_15:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_16:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_17:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_18:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_19:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_20:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_21:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_22:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_23:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_24:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_25:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_26:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_27:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_28:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_29:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_30:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_31:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST;
-			break;
-		case EInputTopology::EIT_PATCH_CP_32:
-			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST;
-			break;
-		default:
-			FK_ASSERT(0);
-		}
-
-		DeviceContext->IASetPrimitiveTopology(D3DTopology);
+		DeviceContext->IASetPrimitiveTopology((D3D12_PRIMITIVE_TOPOLOGY)topology);
 	}
 
 

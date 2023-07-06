@@ -682,7 +682,7 @@ namespace FlexKit
 				ctx->SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 				ctx->SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
 
-				ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+				ctx->SetInputPrimitive(INPUTPRIMITIVELINELIST);
 				ctx->SetVertexBuffers({ vertices });
 
 				ctx->SetGraphicsDescriptorTable(0, data.heap);
@@ -788,7 +788,7 @@ namespace FlexKit
 					
 					//ctx->SetRootSignature();
 					//ctx->SetPipelineState();
-					ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
+					ctx->SetInputPrimitive(INPUTPRIMITIVEPATCH_CP_1);
 					ctx->SetRenderTargets(
 						{ resources.GetResource(data.renderTarget) },
 						true, 

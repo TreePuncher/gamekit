@@ -3010,9 +3010,9 @@ namespace FlexKit
 					{ frameResources.GetResource(data.renderTarget) },
 					false);
 
-				context.SetRootSignature		(frameResources.renderSystem().Library.RS6CBVs4SRVs);
-				context.SetPipelineState		(frameResources.GetPipelineState(data.state));
-				context.SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
+				context.SetRootSignature	(frameResources.renderSystem().Library.RS6CBVs4SRVs);
+				context.SetPipelineState	(frameResources.GetPipelineState(data.state));
+				context.SetInputPrimitive	(INPUTPRIMITIVETRIANGLELIST);
 
 				size_t TextureDrawCount = 0;
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
@@ -3022,15 +3022,15 @@ namespace FlexKit
 					switch (D.Mode) {
 						case ShapeDraw::RenderMode::Line:
 						{
-							context.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+							context.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 						}	break;
 						case ShapeDraw::RenderMode::Triangle:
 						{
-							context.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 						}	break;
 						case ShapeDraw::RenderMode::Textured:
 						{
-							context.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 							DescriptorHeap descHeap;
 							auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);
@@ -3324,7 +3324,7 @@ namespace FlexKit
 				ctx.SetRenderTargets(
 					{ resources.GetResource(Data.RenderTarget) }, false);
 
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 				ctx.SetGraphicsDescriptorTable		(0, descHeap);
 				ctx.SetGraphicsConstantBufferView	(1, Data.cameraConstants);
 				ctx.SetGraphicsConstantBufferView	(2, Data.constants);
@@ -3474,7 +3474,7 @@ namespace FlexKit
 					{	resources.GetResource(Data.RenderTarget) }, false,
 						resources.GetResource(Data.DepthBuffer));
 
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
 				ctx.SetGraphicsDescriptorTable(0, descHeap);
@@ -3523,7 +3523,7 @@ namespace FlexKit
 				ctx.SetScissorRects();
 				ctx.SetRenderTargets();
 				*/
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 				ctx.Draw(6);
 			});
 	}
