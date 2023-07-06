@@ -357,7 +357,7 @@ namespace FlexKit
 
 
 				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({
 						resources.GetResource(data.accumalatorObject),
@@ -465,7 +465,7 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("OIT - Blend");
 
 				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				const RootSignature* rootSig = resources.renderSystem().Library.RSDefault;
 				auto& descHeapLayout = rootSig->GetDescHeap(0);

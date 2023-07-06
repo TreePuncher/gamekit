@@ -109,7 +109,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
 					context.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
 					context.SetPipelineState(frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO));
-					context.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_TRIANGLE);
+					context.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 					FlexKit::DescriptorHeap descHeap;
 					auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);

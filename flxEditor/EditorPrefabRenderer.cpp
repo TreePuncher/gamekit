@@ -574,7 +574,7 @@ void EditorPrefabPreview::RenderStatic(
 			if (poseState)
 			{
 				ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO));
-				ctx.SetPrimitiveTopology(FlexKit::EIT_TRIANGLELIST);
+				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets(
@@ -626,7 +626,7 @@ void EditorPrefabPreview::RenderStatic(
 			else
 			{
 				ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO));
-				ctx.SetPrimitiveTopology(FlexKit::EIT_TRIANGLELIST);
+				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets(

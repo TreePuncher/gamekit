@@ -1244,7 +1244,7 @@ public:
 					ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 					ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthBuffer));
 
-					ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_TRIANGLE);
+					ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 					ctx.SetGraphicsDescriptorTable(0, descHeap);
 
@@ -1383,7 +1383,7 @@ public:
 					for (const auto& brush : brushes)
 					{
 						ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
-						ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_LINE);
+						ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
 
 						Vertex v;
 						v.Color = FlexKit::float4{ 0, 0, 0, 0 };

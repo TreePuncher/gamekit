@@ -446,7 +446,7 @@ namespace FlexKit
 
 				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(1, passConstants);
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({
 						resources.GetResource(data.renderTarget),
@@ -1086,7 +1086,7 @@ namespace FlexKit
 
 		ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, VoxelResolution, VoxelResolution, 0, 1.0f } });
 		ctx.SetScissorRects({ D3D12_RECT{ 0, 0, VoxelResolution, VoxelResolution} });
-		ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 		ctx.SetGraphicsConstantValue(0, 12, values);
 				
 		DescriptorHeap heap;

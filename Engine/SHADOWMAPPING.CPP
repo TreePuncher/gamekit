@@ -623,7 +623,7 @@ namespace FlexKit
 		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
 
 		ctx.SetPipelineState(shadowMapPSO);
-		ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 		TriMeshHandle	currentMesh		= InvalidHandle;
 		size_t			currentLodIdx	= 0xffffffffffffffff;
@@ -718,7 +718,7 @@ namespace FlexKit
 		{
 			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
 			ctx.SetPipelineState(PSOAnimated);
-			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 			for (const auto& brush : animatedBrushes)
 			{
@@ -838,7 +838,7 @@ namespace FlexKit
 		auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS);
 
 		ctx.SetPipelineState(shadowMapPSO);
-		ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 		TriMeshHandle	currentMesh		= InvalidHandle;
 		size_t			currentLodIdx	= 0xffffffffffffffff;
@@ -909,7 +909,7 @@ namespace FlexKit
 			ctx.SetPipelineState(PSOAnimated);
 			ctx.SetScissorAndViewports({ passTarget });
 			ctx.SetRenderTargets({}, true, passTarget);
-			ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 			for (const auto& brush : animatedBrushes)
 			{

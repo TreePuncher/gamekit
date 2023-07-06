@@ -1471,7 +1471,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				// Setup pipeline resources
 				SetScissorAndViewports(
@@ -1821,7 +1821,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(rootSignature);
 				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
-				ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ resources.GetResource({ data.renderTargetObject })}, false, {});
@@ -1977,7 +1977,7 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(1, constants);
 				ctx.SetGraphicsConstantBufferView(2, constants);
 
-				ctx.SetPrimitiveTopology(EIT_POINT);
+				ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 				ctx.SetGraphicsDescriptorTable(4, descHeap);
 				ctx.SetGraphicsDescriptorTable(5, nullHeap);
 
@@ -2109,7 +2109,7 @@ namespace FlexKit
 				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 				ctx.SetPipelineState(drawElementsState);
 
-				ctx.SetPrimitiveTopology(EIT_POINT);
+				ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 				ctx.SetGraphicsConstantBufferView(0, constants);
 				ctx.SetVertexBuffers({ vertices });
 

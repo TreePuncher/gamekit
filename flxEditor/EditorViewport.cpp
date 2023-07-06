@@ -1539,7 +1539,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
 
-			ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_LINE);
+			ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
 
 			ctx.SetGraphicsDescriptorTable(0, descHeap);
 

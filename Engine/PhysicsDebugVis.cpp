@@ -175,12 +175,12 @@ namespace FlexKit
 
 					// Draw triangles
 					ctx.SetPipelineState(frameResources.GetPipelineState(Solid));
-					ctx.SetPrimitiveTopology(EIT_TRIANGLE);
+					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 					ctx.Draw(layer_ref.debugTriCount);
 
 					// Draw lines
 					ctx.SetPipelineState(PSO);
-					ctx.SetPrimitiveTopology(EIT_LINE);
+					ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 					ctx.Draw(layer_ref.debugLineCount, layer_ref.debugTriCount);
 
 					ctx.EndEvent_DEBUG();

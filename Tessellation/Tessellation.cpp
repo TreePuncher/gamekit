@@ -277,7 +277,7 @@ public:
 
 				ctx.SetRootSignature(rootSig);
 				ctx.SetPipelineState(resources.GetPipelineState(ACCQuad));
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_32);
+				ctx.SetInputPrimitive(INPUTPRIMITIVEPATCH_CP_32);
 				ctx.SetVertexBuffers({ VB });
 				ctx.SetIndexBuffer(IB);
 				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
@@ -307,7 +307,7 @@ public:
 				{
 					const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
 					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
-					ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
+					ctx.SetInputPrimitive(INPUTPRIMITIVEPATCH_CP_32);
 					ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 24 } });
 
 					ctx.Draw(20 * indices.size() / 32);
@@ -316,7 +316,7 @@ public:
 				{
 					const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
 					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals));
-					ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+					ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 					ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer2 + 64, MEGABYTE - 64, 12 } });
 					ctx.Draw(maxExpansionRate * maxExpansionRate * 9 * 16);
 				}

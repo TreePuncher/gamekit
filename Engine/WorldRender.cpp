@@ -1120,7 +1120,7 @@ namespace FlexKit
 					true,
 					resources.GetResource(data.depthBuffer));
 
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 				ctx.SetGraphicsDescriptorTable(0, heap);
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
@@ -1297,7 +1297,7 @@ namespace FlexKit
 					true,
 					resources.GetResource(data.depthBufferObject));
 
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 				ctx.SetGraphicsDescriptorTable(0, heap);
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
@@ -1732,7 +1732,7 @@ namespace FlexKit
 				ID3D12PipelineState* toneMap = resources.GetPipelineState(TONEMAP);
 
 				ctx.SetRootSignature(rootSignatureToneMapping);
-				ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 				ctx.SetPipelineState(toneMap);
 				ctx.SetGraphicsDescriptorTable(0, heap1);
 				//ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));

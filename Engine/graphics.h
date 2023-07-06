@@ -12,6 +12,7 @@
 #include "intersection.h"
 #include "Logging.h"
 #include "mathutils.h"
+#include "memoryutilities.h"
 #include "Transforms.h"
 #include "type.h"
 #include "KeycodesEnums.h"
@@ -1204,44 +1205,60 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum EInputTopology
+	enum ETopology
 	{
-		EIT_LINE,
-		EIT_TRIANGLELIST,
-		EIT_TRIANGLE,
-		EIT_POINT,
-		EIT_PATCH_CP_1,
-		EIT_PATCH_CP_2,
-		EIT_PATCH_CP_3,
-		EIT_PATCH_CP_4,
-		EIT_PATCH_CP_5,
-		EIT_PATCH_CP_6,
-		EIT_PATCH_CP_7,
-		EIT_PATCH_CP_8,
-		EIT_PATCH_CP_9,
-		EIT_PATCH_CP_10,
-		EIT_PATCH_CP_11,
-		EIT_PATCH_CP_12,
-		EIT_PATCH_CP_13,
-		EIT_PATCH_CP_14,
-		EIT_PATCH_CP_15,
-		EIT_PATCH_CP_16,
-		EIT_PATCH_CP_17,
-		EIT_PATCH_CP_18,
-		EIT_PATCH_CP_19,
-		EIT_PATCH_CP_20,
-		EIT_PATCH_CP_21,
-		EIT_PATCH_CP_22,
-		EIT_PATCH_CP_23,
-		EIT_PATCH_CP_24,
-		EIT_PATCH_CP_25,
-		EIT_PATCH_CP_26,
-		EIT_PATCH_CP_27,
-		EIT_PATCH_CP_28,
-		EIT_PATCH_CP_29,
-		EIT_PATCH_CP_30,
-		EIT_PATCH_CP_31,
-		EIT_PATCH_CP_32,
+		EIT_LINE			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
+		EIT_TRIANGLE		= D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+		EIT_POINT			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,
+		EIT_PATCH			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH,
+	};
+
+	enum EInputPrimitive
+	{
+		INPUTPRIMITIVELINELIST			= D3D_PRIMITIVE_TOPOLOGY_LINELIST,
+		INPUTPRIMITIVELINELIST_ADJ		= D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ,
+
+		INPUTPRIMITIVETRIANGLELIST		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+		INPUTPRIMITIVETRIANGLESTRIP		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
+		INPUTPRIMITIVETRIANGLEFAN		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN,
+
+		INPUTPRIMITIVETRIANGLELIST_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ,
+		INPUTPRIMITIVETRIANGLESTRIP_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,
+
+		INPUTPRIMITIVEPOINTLIST			= D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
+
+		INPUTPRIMITIVEPATCH_CP_1		= D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_2		= D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_3		= D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_4		= D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_5		= D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_6		= D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_7		= D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_8		= D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_9		= D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_10		= D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_11		= D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_12		= D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_13		= D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_14		= D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_15		= D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_16		= D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_17		= D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_18		= D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_19		= D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_20		= D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_21		= D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_22		= D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_23		= D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_24		= D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_25		= D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_26		= D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_27		= D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_28		= D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_29		= D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_30		= D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_31		= D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST,
+		INPUTPRIMITIVEPATCH_CP_32		= D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST,
 	};
 
 
@@ -4044,8 +4061,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void QueueReadBack(ReadBackResourceHandle readBack);
 		void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback);
 
-		void SetDepthStencil		(ResourceHandle DS);
-		void SetPrimitiveTopology	(EInputTopology Topology);
+		void SetDepthStencil	(ResourceHandle DS);
+		void SetInputPrimitive	(EInputPrimitive primitive);
 
 		void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
 
@@ -4298,16 +4315,240 @@ private:
 	/************************************************************************************************/
 
 
+	enum class EFillMode
+	{
+		WIREFRAME = 2,
+		SOLID = 3
+	};
+
+
+	enum class ECullMode
+	{
+		NONE	= 1,
+		FRONT	= 2,
+		BACK	= 3
+	};
+
+
+	enum class EComparison
+	{
+		NONE			= 0,
+		NEVER			= 1,
+		LESS			= 2,
+		EQUAL			= 3,
+		LESS_EQUAL		= 4,
+		GREATER			= 5,
+		NOT_EQUAL		= 6,
+		GREATER_EQUAL	= 7,
+		ALWAYS			= 8,
+		COUNT
+	};
+
+	enum class EInputClassification
+	{
+		PerVertex,
+		PerInstance
+	};
+
+	enum class EDepthWriteMask
+	{
+		Zero	= 0,
+		All		= 1
+	};
+
+
+	enum class EStencilOP
+	{
+		KEEP		= 1,
+		ZERO		= 2,
+		REPLACE		= 3,
+		INCR_SAT	= 4,
+		DECR_SAT	= 5,
+		INVERT		= 6,
+		INCR		= 7,
+		DECR		= 8
+	};
+
+
+	enum class EBlend
+	{
+		ZERO				= 1,
+		ONE					= 2,
+		SRC_COLOR			= 3,
+		INV_SRC_COLOR		= 4,
+		SRC_ALPHA			= 5,
+		INV_SRC_ALPHA		= 6,
+		DEST_ALPHA			= 7,
+		INV_DEST_ALPHA		= 8,
+		DEST_COLOR			= 9,
+		INV_DEST_COLOR		= 10,
+		SRC_ALPHA_SAT		= 11,
+		BLEND_FACTOR		= 14,
+		INV_BLEND_FACTOR	= 15,
+		SRC1_COLOR			= 16,
+		INV_SRC1_COLOR		= 17,
+		SRC1_ALPHA			= 18,
+		INV_SRC1_ALPHA		= 19,
+		ALPHA_FACTOR		= 20,
+		INV_ALPHA_FACTOR	= 21
+	};
+
+
+	enum class EBlendOP
+	{
+		ADD				= 1,
+		SUBTRACT		= 2,
+		REV_SUBTRACT	= 3,
+		MIN				= 4,
+		MAX				= 5
+	};
+
+
+	enum class ELogicOP
+	{
+		CLEAR			= 0,
+		SET				= 1,
+		COPY			= 2,
+		COPY_INVERTED	= 3,
+		NOOP			= 4,
+		INVERT			= 5,
+		AND				= 6,
+		NAND			= 7,
+		OR				= 8,
+		NOR				= 9,
+		XOR				= 10,
+		EQUIV			= 11,
+		AND_REVERSE		= 12,
+		AND_INVERTED	= 13,
+		OR_REVERSE		= 14,
+		OR_INVERTED		= 15
+	};
+
+
+	inline D3D12_INPUT_CLASSIFICATION ToDX(EInputClassification classifiction)
+	{
+		switch (classifiction)
+		{
+		case EInputClassification::PerVertex:
+			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+		case EInputClassification::PerInstance:
+			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+		}
+	}
+
+	struct EInputElement
+	{
+		const char*				name				= 0;
+		uint8_t					index				= 0;
+		DeviceFormat			format				= DeviceFormat::UNKNOWN;
+		uint16_t				slot				= 0;
+		uint16_t				alignedByteOffset	= 0;
+		EInputClassification	inputSlotClass		= EInputClassification::PerVertex;
+		uint16_t				instanceStepRate	= 0;
+	};
+
+
+	struct InputLayoutState
+	{
+		EInputElement	inputs[16];
+		uint8_t			count = 0;
+	};
+
+
+	struct RasterizerState
+	{
+		EFillMode	fill						= EFillMode::SOLID;
+		ECullMode	CullMode					= ECullMode::BACK;
+		bool		frontCounterClockWise		= false;
+		uint32_t	depthBias					= 0;
+		float		depthBiasClamp				= 0.0f;
+		float		slopeScaledDepthBias		= 0.0f;
+		bool		depthClipEnable				= true;
+		bool		multisampleEnable			= false;
+		bool		antialiasedLineEnable		= false;
+		uint32_t	forcedSampleCount			= 0;
+		bool		conservativeRasterEnable	= false;
+
+		static RasterizerState Default() { return {}; }
+	};
+
+
+	struct DepthStencilOP
+	{
+		EStencilOP	stencilFailOp		= EStencilOP::KEEP;
+		EStencilOP	stencilDepthFailOp	= EStencilOP::KEEP;
+		EStencilOP	stencilPassOp		= EStencilOP::KEEP;
+		EComparison	stencilFunc			= EComparison::ALWAYS;
+	};
+
+
+	struct DepthStencilState
+	{
+		bool				depthEnable			= false;
+		EDepthWriteMask		depthWriteMask		= EDepthWriteMask::All;
+		EComparison			depthFunc			= EComparison::LESS;
+		bool				stencilEnable		= false;
+		uint8_t				stencilReadMask		= 0xff;
+		uint8_t				stencilWriteMask	= 0xff;
+
+		DepthStencilOP	frontFace	= {};
+		DepthStencilOP	backFace	= {};
+	};
+
+
+	enum class EColorWriteEnable : uint32_t
+	{
+		RED		= 1,
+		GREEN	= 2,
+		BLUE	= 4,
+		ALPHA	= 8,
+		ALL		= (RED & GREEN & BLUE & ALPHA)
+	};
+
+
+	struct BlendState
+	{
+		static BlendState Default() { return {}; }
+	};
+
+
+	struct RenderTargetState
+	{
+		uint8_t			targetCount = 0;
+		DeviceFormat	targetFormats[16];
+	};
+
+
 	struct PipelineBuilder
 	{
 		PipelineBuilder(iAllocator& allocator);
 
-		void AddRootSignature(const RootSignature* rootSig);
-		void AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddRootSignature	(const RootSignature* rootSig);
 
-		void SetDebugName(const char* name) { debugName = name; }
+		void AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+		void AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+		void AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+		void AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+		void SetDebugName			(const char* name) { debugName = name; }
+
+		void AddInputLayout			(const InputLayoutState&	state = {});
+		void AddInputTopology		(const ETopology			topology);
+		void AddDepthStencilState	(const DepthStencilState&	state = {});
+		void AddRasterizerState		(const RasterizerState&		state = {});
+		void AddRenderTargetState	(const RenderTargetState&	state = {});
+		void AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		void AddBlendState			(const BlendState&			state = {});
 
 		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
+		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
 
 		class PipelineBlob
 		{
@@ -4333,27 +4574,28 @@ private:
 			}
 
 
-			PipelineBlob operator + (const Blob& rhs_blob)
-			{
-				Blob out;
-
-				out += *this;
-				out += rhs_blob;
-
-				return out;
-			}
-
-
-			PipelineBlob& operator += (const Blob& rhs_blob)
+			template<typename TY>
+			PipelineBlob& operator += (const TY& blob)
 			{
 				const size_t offset = buffer.size();
 
-				buffer.resize(buffer.size() + rhs_blob.size());
-				memcpy(buffer.data() + offset, rhs_blob, rhs_blob.size());
+				buffer.resize(buffer.size() + sizeof(blob));
+				memcpy(buffer.data() + offset, &blob, sizeof(blob));
 
 				return *this;
 			}
 
+			template<typename TY, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE TYPEID, typename TY_>
+			PipelineBlob& operator += (const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>& blob)
+			{
+				const size_t offset = buffer.size();
+
+				auto temp = std::make_tuple(blob);
+				buffer.resize(buffer.size() + sizeof(temp));
+				memcpy(buffer.data() + offset, &temp, sizeof(temp));
+
+				return *this;
+			}
 
 			size_t size() const
 			{
@@ -4396,6 +4638,7 @@ private:
 		const RootSignature*	rootSig		= nullptr;
 		PipelineBlob			blob;
 		Vector<Shader>			shaders;
+		iAllocator*				allocator	= nullptr;
 	};
 
 
@@ -4954,37 +5197,6 @@ private:
 
 	const size_t PLB_Stride  = sizeof(float[8]);
 	const size_t SPLB_Stride = sizeof(float[12]);
-
-
-	/************************************************************************************************/
-
-		
-	constexpr size_t AlignedSize(const size_t unalignedSize, const size_t alignment = 256)
-	{
-		const auto mask             = alignment - 1;
-		const auto offset           = unalignedSize & mask;
-		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
-
-		return unalignedSize + adjustedOffset;
-	}
-
-	template<typename TY>
-	constexpr size_t AlignedSize()
-	{
-		return AlignedSize(sizeof(TY));
-	}
-
-
-	/************************************************************************************************/
-
-
-	constexpr auto Align(size_t x, const size_t alignment)
-	{
-		size_t adjustment = alignment - x % alignment;
-		adjustment = adjustment == alignment ? 0 : adjustment;
-
-		return x += adjustment;
-	}
 
 
 	/************************************************************************************************/

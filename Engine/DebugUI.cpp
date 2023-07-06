@@ -346,7 +346,7 @@ namespace FlexKit
 					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui));
 					ctx.SetScissorAndViewports({ renderTarget });
 					ctx.SetRenderTargets({ renderTarget }, false);
-					ctx.SetPrimitiveTopology(FlexKit::EInputTopology::EIT_TRIANGLELIST);
+					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 					ctx.SetGraphicsConstantBufferView(0, constants);
 				};
 
