@@ -2271,6 +2271,7 @@ namespace FlexKit
 			return data.resources;
 		}
 
+		void AddMemoryPool		(PoolAllocatorInterface& poolAllocator);
 		void AddMemoryPool		(PoolAllocatorInterface* poolAllocator);
 		void AddTaskDependency	(UpdateTask& task);
 

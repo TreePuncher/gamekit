@@ -75,8 +75,12 @@ public:
 	FlexKit::LoadPipelineStateRes CreateApplyForcesPSO();
 	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO();
 	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO();
+
 	FlexKit::LoadPipelineStateRes CreateStrandRenderPSO();
+	FlexKit::LoadPipelineStateRes CreateBlendState();
+
 	FlexKit::LoadPipelineStateRes CreateDebugRenderPSO();
+
 
 	void ClearStyleBuffers(HairStyle& style);
 
@@ -131,6 +135,7 @@ public:
 
 	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
+	FlexKit::MemoryPoolAllocator	gpuAllocator;
 
 	FlexKit::RunOnceQueue<void (FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 };

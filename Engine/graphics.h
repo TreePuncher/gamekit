@@ -1220,7 +1220,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		INPUTPRIMITIVETRIANGLELIST		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
 		INPUTPRIMITIVETRIANGLESTRIP		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
-		INPUTPRIMITIVETRIANGLEFAN		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN,
 
 		INPUTPRIMITIVETRIANGLELIST_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ,
 		INPUTPRIMITIVETRIANGLESTRIP_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,
@@ -6229,7 +6228,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2014-2021 Robert May
+Copyright (c) 2014-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

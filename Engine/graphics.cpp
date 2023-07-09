@@ -1584,10 +1584,10 @@ namespace FlexKit
 				case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
 				{
 					auto& parameter = desc->pParameters[itr].DescriptorTable;
-						
+					DesciptorHeapLayout<16> layout;
+
 					for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 					{
-						DesciptorHeapLayout<16> layout;
 						switch(range.RangeType)
 						{
 						case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
@@ -1619,11 +1619,9 @@ namespace FlexKit
 							FK_ASSERT(0, "Unimplemented funcionality!");
 						}	break;
 						}
-
-						Heaps.emplace_back(Heaps.size(), layout);
 					}
 					
-					SetParameterAsDescriptorTable(itr, Heaps.back().Heap, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					SetParameterAsDescriptorTable(itr, layout, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 				}	break;
 				case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
 				{
@@ -1967,8 +1965,6 @@ namespace FlexKit
 			{
 				for (auto& shader : shaders)
 				{
-					RootSignatureBuilder builder{ renderSystem.Memory };
-
 					ID3D12RootSignature* dxRootSig = nullptr;
 					HR = renderSystem.pDevice10->CreateRootSignature(0,shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
 
@@ -2197,7 +2193,6 @@ namespace FlexKit
 
 
 		RTV_CPU = RHS.RTV_CPU;
-
 		DSV_CPU = RHS.DSV_CPU;
 
 		descHeapRTV = RHS.descHeapRTV;
@@ -3835,7 +3830,8 @@ namespace FlexKit
 
 	void Context::ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor)
 	{
-		auto view       = _ReserveSRVLocal(1);
+		auto viewCPU    = _ReserveSRVLocal(1);
+		auto viewGPU    = _ReserveSRV(1).value();
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
 		Texture2D tex{
@@ -3848,13 +3844,18 @@ namespace FlexKit
 		PushUAV2DToDescHeap(
 			renderSystem,
 			tex,
-			view);
+			viewCPU);
+
+		PushUAV2DToDescHeap(
+			renderSystem,
+			tex,
+			viewGPU);
 
 		FlushBarriers();
 
 		DeviceContext->ClearUnorderedAccessViewFloat(
-			D3D12_GPU_DESCRIPTOR_HANDLE{ view.V2 },
-			D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 },
+			D3D12_GPU_DESCRIPTOR_HANDLE{ viewGPU.V2 },
+			D3D12_CPU_DESCRIPTOR_HANDLE{ viewCPU.V1 },
 			resource, clearColor, 0, nullptr);
 	}
 
@@ -10260,9 +10261,6 @@ namespace FlexKit
 	{
 		std::shared_lock lock{ const_cast<std::shared_mutex&>(rootSignatureLock) };
 		auto sig = rootSignatures[hashID];
-
-		if (!sig)
-			FK_LOG_WARNING("RenderSystem::_GetRootSignature: Failed to locate root signature %u", hashID);
 
 		return sig ? sig->get() : nullptr;
 	}
