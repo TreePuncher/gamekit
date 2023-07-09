@@ -1449,7 +1449,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RootSignatureBuilder::LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
+	const RootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
 	{
 		auto result = renderSystem.LoadRootSignature(dir, entry);
 		
@@ -1555,6 +1555,112 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	const RootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* buffer, const size_t bufferSize, RenderSystem& renderSystem, iAllocator& temp)
+	{
+		ID3D12VersionedRootSignatureDeserializer* deserializer;
+		auto HR  = D3D12CreateVersionedRootSignatureDeserializer(buffer, bufferSize, IID_PPV_ARGS(&deserializer));
+		if (FAILED(HR))
+			return nullptr;
+
+		const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* versioned_desc;
+		HR	= deserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &versioned_desc);
+
+		if (FAILED(HR))
+			return nullptr;
+
+		ID3D12RootSignature* dxRootSig = nullptr;
+		HR = renderSystem.pDevice10->CreateRootSignature(0, buffer, bufferSize, IID_PPV_ARGS(&dxRootSig));
+
+		if (FAILED(HR))
+			return nullptr;
+
+		auto desc = &versioned_desc->Desc_1_1;
+
+		size_t parametersEnd = desc->NumParameters;
+		for(size_t itr = 0; itr < parametersEnd; itr++)
+		{
+			switch(desc->pParameters[itr].ParameterType)
+			{
+				case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+				{
+					auto& parameter = desc->pParameters[itr].DescriptorTable;
+						
+					for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
+					{
+						DesciptorHeapLayout<16> layout;
+						switch(range.RangeType)
+						{
+						case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
+						{
+							layout.SetParameterAsSRV(
+								idx, 
+								range.BaseShaderRegister, 
+								range.NumDescriptors,
+								range.RegisterSpace);
+						}	break;
+						case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
+						{
+							layout.SetParameterAsShaderUAV(
+								idx, 
+								range.BaseShaderRegister, 
+								range.NumDescriptors,
+								range.RegisterSpace);
+						}	break;
+						case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
+						{
+							layout.SetParameterAsCBV(
+								idx, 
+								range.BaseShaderRegister, 
+								range.NumDescriptors,
+								range.RegisterSpace);
+						}	break;
+						case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
+						{
+							FK_ASSERT(0, "Unimplemented funcionality!");
+						}	break;
+						}
+
+						Heaps.emplace_back(Heaps.size(), layout);
+					}
+					
+					SetParameterAsDescriptorTable(itr, Heaps.back().Heap, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+				}	break;
+				case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+				{
+					auto& parameter = desc->pParameters[itr].Constants;
+					SetParameterAsUINT(itr, parameter.Num32BitValues, parameter.ShaderRegister, parameter.RegisterSpace, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+				}	break;
+				case D3D12_ROOT_PARAMETER_TYPE_CBV:
+				{
+					auto& parameter = desc->pParameters[itr].Descriptor;
+					SetParameterAsCBV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+				}	break;
+				case D3D12_ROOT_PARAMETER_TYPE_SRV:
+				{
+					auto& parameter = desc->pParameters[itr].Descriptor;
+					SetParameterAsSRV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+				}	break;
+				case D3D12_ROOT_PARAMETER_TYPE_UAV:
+				{
+					auto& parameter = desc->pParameters[itr].Descriptor;
+					SetParameterAsUAV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+				}	break;
+			}
+		}
+
+		auto signature = renderSystem._CreateRootSignature(dxRootSig, *this);
+
+		deserializer->Release();
+
+		Clear();
+
+		return signature;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RootSignature::Release()
 	{
 		Signature->Release();
@@ -1601,6 +1707,7 @@ namespace FlexKit
 	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_2", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1613,6 +1720,7 @@ namespace FlexKit
 	void PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_2", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1625,6 +1733,7 @@ namespace FlexKit
 	void PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_2", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1637,6 +1746,7 @@ namespace FlexKit
 	void PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1649,6 +1759,7 @@ namespace FlexKit
 	void PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_2", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1661,6 +1772,7 @@ namespace FlexKit
 	void PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1673,6 +1785,7 @@ namespace FlexKit
 	void PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1685,6 +1798,7 @@ namespace FlexKit
 	void PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_2", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
@@ -1697,8 +1811,9 @@ namespace FlexKit
 	void PipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT layout;
+		memset(std::addressof(layout), 0, sizeof(layout));
 
-		auto inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC*));
+		auto inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC));
 
 		for (auto&& [idx, input] : zip(iota(0u, state.count), state.inputs))
 		{
@@ -1719,6 +1834,7 @@ namespace FlexKit
 			.NumElements		= state.count,
 		};
 
+		hash = FNVa62((const char*)inputElements, state.count * sizeof(D3D12_INPUT_ELEMENT_DESC), hash);
 		blob += layout;
 	}
 
@@ -1728,7 +1844,9 @@ namespace FlexKit
 
 	void PipelineBuilder::AddInputTopology(const ETopology topology)
 	{
-		blob += CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
+		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY dxTopolgy{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
+		hash = FNVa62((const char*)&dxTopolgy, sizeof(dxTopolgy), hash);
+		blob += dxTopolgy;
 	}
 
 
@@ -1737,6 +1855,23 @@ namespace FlexKit
 
 	void PipelineBuilder::AddRasterizerState(const RasterizerState& state)
 	{
+		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER2 rasterizerState;
+		memset(&rasterizerState, 0, sizeof(CD3DX12_RASTERIZER_DESC2));
+
+		CD3DX12_RASTERIZER_DESC2& desc = rasterizerState;
+		desc = CD3DX12_RASTERIZER_DESC2{ D3D12_DEFAULT };
+
+		desc.ConservativeRaster		= state.conservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+		desc.CullMode				= (D3D12_CULL_MODE)state.CullMode;
+		desc.DepthBias				= state.depthBias;
+		desc.DepthBiasClamp			= state.depthBiasClamp;
+		desc.FillMode				= (D3D12_FILL_MODE)state.fill;
+		desc.ForcedSampleCount		= state.forcedSampleCount;
+		desc.FrontCounterClockwise	= state.frontCounterClockWise;
+		desc.LineRasterizationMode	= (D3D12_LINE_RASTERIZATION_MODE)state.antialiasedLineMode;
+
+		hash = FNVa62((const char*)&rasterizerState, sizeof(rasterizerState), hash);
+		blob += rasterizerState;
 	}
 
 
@@ -1745,7 +1880,8 @@ namespace FlexKit
 
 	void PipelineBuilder::AddDepthStencilState(const DepthStencilState& inputState)
 	{
-		CD3DX12_DEPTH_STENCIL_DESC state;
+		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL depthStencil{};
+		CD3DX12_DEPTH_STENCIL_DESC& state = depthStencil;
 
 		state.BackFace.StencilDepthFailOp	= (D3D12_STENCIL_OP)inputState.backFace.stencilDepthFailOp;
 		state.BackFace.StencilFailOp		= (D3D12_STENCIL_OP)inputState.backFace.stencilFailOp;
@@ -1764,7 +1900,8 @@ namespace FlexKit
 		state.StencilReadMask	= inputState.stencilReadMask;
 		state.StencilWriteMask	= inputState.stencilWriteMask;
 
-		blob += CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL{ state };
+		hash = FNVa62((const char*)&depthStencil, sizeof(depthStencil), hash);
+		blob += depthStencil;
 	}
 
 
@@ -1773,6 +1910,12 @@ namespace FlexKit
 
 	void PipelineBuilder::AddBlendState(const BlendState& state)
 	{
+		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
+		CD3DX12_BLEND_DESC& desc = blendState;
+
+		memcpy(&desc, &state, sizeof(state));
+
+		blob += blendState;
 	}
 
 
@@ -1788,7 +1931,9 @@ namespace FlexKit
 		for (auto [idx, format] : zip(iota(0u, state.targetCount), state.targetFormats))
 			formats.RTFormats[idx] = TextureFormat2DXGIFormat(format);
 
-		blob += CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS { formats };
+		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS dxFormats{ formats };
+		hash = FNVa62((const char*)&dxFormats, sizeof(dxFormats), hash);
+		blob += dxFormats;
 	}
 
 
@@ -1797,7 +1942,9 @@ namespace FlexKit
 
 	void PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
 	{
-		blob += CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT{ TextureFormat2DXGIFormat(format) };
+		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT dxDepthFormat{ TextureFormat2DXGIFormat(format) };
+		hash = FNVa62((const char*)&dxDepthFormat, sizeof(dxDepthFormat), hash);
+		blob += dxDepthFormat;
 	}
 
 
@@ -1816,6 +1963,36 @@ namespace FlexKit
 
 		if (SUCCEEDED(HR))
 		{
+			if (!rootSig)
+			{
+				for (auto& shader : shaders)
+				{
+					RootSignatureBuilder builder{ renderSystem.Memory };
+
+					ID3D12RootSignature* dxRootSig = nullptr;
+					HR = renderSystem.pDevice10->CreateRootSignature(0,shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
+
+					if (SUCCEEDED(HR))
+					{
+						rootSig = renderSystem._GetRootSignature((uint64_t)dxRootSig);
+
+						if (!rootSig)
+						{
+							RootSignatureBuilder builder{ *renderSystem.Memory };
+							rootSig = builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, renderSystem, *renderSystem.Memory);
+						}
+						break;
+					}
+				}
+			}
+
+			if (!rootSig)
+			{
+				// TODO: use shader reflection!
+				FK_LOG_ERROR("Failed to acquire root signature!");
+				return { nullptr, nullptr };
+			}
+
 			if (pso && debugName)
 				SETDEBUGNAME(pso, debugName);
 
@@ -1841,6 +2018,15 @@ namespace FlexKit
 		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		return { pso, nullptr };
+	}
+
+
+	/************************************************************************************************/
+
+
+	FlexKit::LoadPipelineStateRes PipelineBuilder::BuildAndCache(RenderSystem& renderSystem)
+	{
+		return { nullptr, nullptr };
 	}
 
 
@@ -2157,11 +2343,9 @@ namespace FlexKit
 
 	void Context::DiscardResource(ResourceHandle resource)
 	{
-		//DebugBreak();
-
 		UpdateResourceStates();
 
-		//DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
+		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
 	}
 
 
@@ -2483,6 +2667,54 @@ namespace FlexKit
 
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputePipelineState(const PSOHandle stateHandle)
+	{
+		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle);
+
+		if (PSO == nullptr)
+			__debugbreak();
+
+		if (CurrentComputeRootSignature != rootSignature)
+		{
+			DeviceContext->SetComputeRootSignature(*rootSignature);
+			CurrentComputeRootSignature = rootSignature;
+		}
+
+		if (CurrentPipelineState != PSO)
+		{
+			CurrentPipelineState = PSO;
+			DeviceContext->SetPipelineState(PSO);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetGraphicsPipelineState(const PSOHandle stateHandle)
+	{
+		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle);
+
+		if (PSO == nullptr)
+			__debugbreak();
+
+		if (CurrentRootSignature != rootSignature)
+		{
+			DeviceContext->SetGraphicsRootSignature(*rootSignature);
+			CurrentRootSignature = rootSignature;
+		}
+
+		if (CurrentPipelineState != PSO)
+		{
+			CurrentPipelineState = PSO;
+			DeviceContext->SetPipelineState(PSO);
+		}
 	}
 
 
@@ -4006,7 +4238,9 @@ namespace FlexKit
 	{
 		shaderResources = range;
 
-		CurrentPipelineState = nullptr;
+		CurrentPipelineState		= nullptr;
+		CurrentRootSignature		= nullptr;
+		CurrentComputeRootSignature = nullptr;
 
 		if (FAILED(commandAllocator->Reset()))
 		{
@@ -5640,6 +5874,13 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+	std::tuple<ID3D12PipelineState*, const RootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle) const
+	{
+		auto object_ptr = PipelineStates.GetPSOObject(handle);
+
+		return { object_ptr->PSO, object_ptr->rootSignature };
+	}
 
 
 	void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
@@ -7535,7 +7776,7 @@ namespace FlexKit
 		return std::unexpected{ std::string{ "Unexpected error!" } };
 	}
 
-	
+
 	/************************************************************************************************/
 
 
@@ -9819,6 +10060,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	const RootSignature* RenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
+	{
+		std::shared_lock lock{ rootSignatureLock };
+
+		if (auto res = rootSignatures[(uint64_t)rootSig]; res != nullptr)
+			return res->get();
+
+		lock.unlock();
+
+		auto& object			= Memory->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps));
+		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
+
+		std::unique_lock unique{ rootSignatureLock };
+		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSig, std::move(object_ptr));
+
+		return &object;
+	}
+
+
+	/************************************************************************************************/
+
+
 	const RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps{ temp };
@@ -9960,8 +10223,6 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		auto hash = FNVa62((const char*)SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize());
-
 		ID3D12RootSignature* rootSignature = nullptr;
 		auto CreateHR = pDevice10->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
 
@@ -9972,9 +10233,19 @@ namespace FlexKit
 		}
 
 
+		std::shared_lock lock{ rootSignatureLock };
+
+		if (auto res = rootSignatures[(uint64_t)rootSignature]; res != nullptr)
+			return res->get();
+
+		lock.unlock();
+
 		auto& object			= Memory->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps));
 		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
-		auto rootSignatureEntry = rootSignatures.insert(hash, std::move(object_ptr));
+
+		std::unique_lock unique{ rootSignatureLock };
+
+		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSignature, std::move(object_ptr));
 
 		builder.Clear();
 
@@ -9987,6 +10258,7 @@ namespace FlexKit
 
 	const RootSignature* RenderSystem::_GetRootSignature(uint64_t hashID) const
 	{
+		std::shared_lock lock{ const_cast<std::shared_mutex&>(rootSignatureLock) };
 		auto sig = rootSignatures[hashID];
 
 		if (!sig)
@@ -10520,78 +10792,6 @@ namespace FlexKit
 			txt2d->Release();
 	}
 	
-
-	/************************************************************************************************/
-	
-/*
-	bool LoadAndCompileShaderFromFile(const char* FileLoc, ShaderDesc* desc, Shader* out )
-	{
-		size_t ConvertCount = 0;
-		wchar_t WString[256];
-		mbstowcs_s(&ConvertCount, WString, FileLoc, 128);
-		ID3DBlob* NewBlob   = nullptr;
-		ID3DBlob* Errors    = nullptr;
-
-		auto flags = D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES;
-
-#if NDEBUG
-		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
-#endif
-
-#if USING( DEBUGGRAPHICS )
-		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
-#endif
-
-
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, flags, 0, &NewBlob, &Errors);
-		if (FAILED(HR))	{
-			FK_LOG_ERROR((char*)Errors->GetBufferPointer());
-			return false;
-		}
-
-		*out = Shader{ NewBlob };
-		NewBlob->Release();
-
-		return true;
-	}
-	*/
-
-	/************************************************************************************************/
-
-
-	/*
-	Shader LoadShader_OLD(const char* Entry,  const char* ShaderVersion, const char* File)
-	{
-		Shader Shader;
-
-		bool res = false;
-		FlexKit::ShaderDesc SDesc;
-		strncpy_s(SDesc.entry, Entry, 128);
-		strncpy_s(SDesc.shaderVersion, ShaderVersion, 16);
-
-		do
-		{
-			FK_LOG_2("LoadingShader - %s - \n", Entry);
-			res = LoadAndCompileShaderFromFile(File, &SDesc, &Shader);
-#if USING( EDITSHADERCONTINUE )
-			if (!res)
-			{
-				std::cout << "Failed to Compile Shader\n Press Enter to try again\n";
-				char str[100];
-				std::cin >> str;
-			}
-#else
-			FK_ASSERT(res);
-#endif
-			if (res)
-				return Shader;
-
-		} while (!res);
-
-		return Shader;
-	}
-	*/
-
 
 	/************************************************************************************************/
 

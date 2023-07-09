@@ -48,10 +48,10 @@ namespace FlexKit
 		auto CP = FlexKit::GetPositionW( C->Node );
 		for( auto& v : *PVS_ )
 		{
-			auto b = v.brush;
-			auto P = FlexKit::GetPositionW( b->Node );
-			float D = float3( CP - P ).magnitudeSq() * ( b->DrawLast ? -1.0 : 1.0 );
-			v.SortID = D;
+			const Brush* b	= v.brush;
+			const float3 P	= GetPositionW( b->Node );
+			const float D	= float3{ CP - P }.magnitudeSq() * (b->DrawLast ? -1.0f : 1.0f);
+			v.SortID		= (uint64_t)D;
 		}
 
 		std::sort( PVS_->begin(), PVS_->end(), []( auto& R, auto& L ) -> bool

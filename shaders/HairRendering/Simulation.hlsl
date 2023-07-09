@@ -1,3 +1,9 @@
+#define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"						\
+			"RootConstants(num32BitConstants = 16, b0),"							\
+			"SRV(t0),"																\
+			"SRV(t1),"																\
+			"UAV(u0)"
+
 struct ControlPoint
 {
 	float3	pos;
@@ -22,6 +28,7 @@ cbuffer Constants : register(b0)
 	uint  strandLength;
 }
 
+[RootSignature(RS1)]
 [numthreads(1024, 1, 1)]
 void ApplyForces(const uint3 dispatchID : SV_DispatchThreadID)
 {	// Apply Forces
@@ -37,6 +44,7 @@ void ApplyForces(const uint3 dispatchID : SV_DispatchThreadID)
 }
 
 
+[RootSignature(RS1)]
 [numthreads(1024, 1, 1)]
 void ApplyShapeConstraints(const uint3 dispatchID : SV_DispatchThreadID)
 {	// Length Constraint
@@ -55,7 +63,7 @@ void ApplyShapeConstraints(const uint3 dispatchID : SV_DispatchThreadID)
 	output[dispatchID.x] = CP;
 }
 
-
+[RootSignature(RS1)]
 [numthreads(1024, 1, 1)]
 void ApplyEdgeLengthContraints(uint3 dispatchID : SV_DispatchThreadID)
 {

@@ -4,7 +4,6 @@
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
 
-#include "PipelineState.h"
 
 #include "buildsettings.h"
 #include "containers.h"
@@ -13,6 +12,7 @@
 #include "Logging.h"
 #include "mathutils.h"
 #include "memoryutilities.h"
+#include "PipelineState.h"
 #include "Transforms.h"
 #include "type.h"
 #include "KeycodesEnums.h"
@@ -1778,11 +1778,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Clear();
 
 		[[nodiscard]]	const RootSignature* Build(RenderSystem* RS, iAllocator& TempMemory);
-		[[nodiscard]]	const RootSignature* LoadSignature(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	const RootSignature* LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	const RootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, RenderSystem& renderSystem, iAllocator& temp);
 
 		bool AllowIA	= true;
 		bool AllowSO	= false;
-
 
 		struct RootEntry
 		{
@@ -3639,10 +3639,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			op();
 		}
 
-		size_t						GetCurrentCounter();
-		ID3D12PipelineState*		GetPSO(PSOHandle StateID);
-		const RootSignature* const	GetPSORootSignature(PSOHandle StateID) const;
-
+		size_t													GetCurrentCounter();
+		ID3D12PipelineState*									GetPSO(PSOHandle StateID);
+		const RootSignature* const								GetPSORootSignature(PSOHandle StateID) const;
+		std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature(PSOHandle StateID) const;
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
@@ -3794,6 +3794,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ResourceHandle			_CreateDefaultTexture();
 		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
+		const RootSignature*	_CreateRootSignature(ID3D12RootSignature* rootsig, RootSignatureBuilder& builder);
 		const RootSignature*	_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);
 		const RootSignature*	_GetRootSignature(uint64_t hashID) const;
 		void					_ReleaseRootSignature(uint64_t hashID);
@@ -3970,7 +3971,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		std::mutex				crashM;
 		std::mutex				barrierLock;
-		std::mutex				rootSignatureLock;
+		std::shared_mutex		rootSignatureLock;
 
 		inline static RenderSystem*	globalInstance = nullptr;
 	};
@@ -4029,6 +4030,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeRootSignature	(RootSigHandle);
 		void SetComputeRootSignature	(const RootSignature*);
 		void SetPipelineState			(ID3D12PipelineState* PSO);
+		void SetComputePipelineState	(const PSOHandle);
+		void SetGraphicsPipelineState	(const PSOHandle);
 
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
@@ -4215,7 +4218,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		UploadReservation ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
+		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
+		const RootSignature*	CurrentGraphicsRootSig() const		{ return CurrentRootSignature; }
+		const RootSignature*	CurrentComputeRootSig() const		{ return CurrentComputeRootSignature; }
+
 
 		// Not Yet Implemented
 		void SetUAVRead();
@@ -4247,7 +4253,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
 
 		void UpdateResourceStates();
-
 
 		ID3D12CommandAllocator*			commandAllocator		= nullptr;
 		ID3D12GraphicsCommandList7*		DeviceContext			= nullptr;
@@ -4314,6 +4319,14 @@ private:
 
 	/************************************************************************************************/
 
+
+	enum class ELineAliasMode
+	{
+		ALIASED					= 0,
+		ALPHA_ANTIALIASED		= 1,
+		QUADRILATERAL_WIDE		= 2,
+		QUADRILATERAL_NARROW	= 3
+	};
 
 	enum class EFillMode
 	{
@@ -4434,6 +4447,8 @@ private:
 		case EInputClassification::PerInstance:
 			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 		}
+
+		std::unreachable();
 	}
 
 	struct EInputElement
@@ -4457,17 +4472,17 @@ private:
 
 	struct RasterizerState
 	{
-		EFillMode	fill						= EFillMode::SOLID;
-		ECullMode	CullMode					= ECullMode::BACK;
-		bool		frontCounterClockWise		= false;
-		uint32_t	depthBias					= 0;
-		float		depthBiasClamp				= 0.0f;
-		float		slopeScaledDepthBias		= 0.0f;
-		bool		depthClipEnable				= true;
-		bool		multisampleEnable			= false;
-		bool		antialiasedLineEnable		= false;
-		uint32_t	forcedSampleCount			= 0;
-		bool		conservativeRasterEnable	= false;
+		EFillMode		fill						= EFillMode::SOLID;
+		ECullMode		CullMode					= ECullMode::BACK;
+		bool			frontCounterClockWise		= false;
+		bool			depthClipEnable				= true;
+		bool			multisampleEnable			= false;
+		bool			conservativeRasterEnable	= false;
+		ELineAliasMode	antialiasedLineMode			= ELineAliasMode::ALIASED;
+		float			depthBias					= 0.0f;
+		float			depthBiasClamp				= 0.0f;
+		float			slopeScaledDepthBias		= 0.0f;
+		uint32_t		forcedSampleCount			= 0;
 
 		static RasterizerState Default() { return {}; }
 	};
@@ -4496,7 +4511,7 @@ private:
 	};
 
 
-	enum class EColorWriteEnable : uint32_t
+	enum class EColorWriteEnable : uint8_t
 	{
 		RED		= 1,
 		GREEN	= 2,
@@ -4505,9 +4520,26 @@ private:
 		ALL		= (RED & GREEN & BLUE & ALPHA)
 	};
 
+	struct RenderTargetStateDesc
+	{
+		bool				blendEnable				= false;
+		bool				logicOpEnable			= false;
+		EBlend				srcBlend				= EBlend::ONE;
+		EBlend				dstBlend				= EBlend::ZERO;
+		EBlendOP			blendOp					= EBlendOP::ADD;
+		EBlend				srcBlendAlpha			= EBlend::ONE;
+		EBlend				dstBlendAlpha			= EBlend::ZERO;
+		EBlendOP			blendOpAlpha			= EBlendOP::ADD;
+		ELogicOP			logicOp					= ELogicOP::NOOP;
+		EColorWriteEnable	renderTargetWriteMask	= EColorWriteEnable::ALL;
+	};
 
 	struct BlendState
 	{
+		bool					alphaToCoverageEnable	= false;
+		bool					independentBlendEnable	= false;
+		RenderTargetStateDesc	renderTarget[8];
+
 		static BlendState Default() { return {}; }
 	};
 
@@ -4549,6 +4581,8 @@ private:
 
 		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
 		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
+		FlexKit::LoadPipelineStateRes BuildAndCache(RenderSystem& renderSystem);
+
 
 		class PipelineBlob
 		{
@@ -4589,10 +4623,10 @@ private:
 			PipelineBlob& operator += (const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>& blob)
 			{
 				const size_t offset = buffer.size();
+				const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>* _ptr = std::addressof(blob);
 
-				auto temp = std::make_tuple(blob);
-				buffer.resize(buffer.size() + sizeof(temp));
-				memcpy(buffer.data() + offset, &temp, sizeof(temp));
+				buffer.resize(buffer.size() + sizeof(const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>));
+				memcpy(buffer.data() + offset, _ptr, sizeof(const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>));
 
 				return *this;
 			}
@@ -4636,6 +4670,8 @@ private:
 
 		const char*				debugName	= nullptr;
 		const RootSignature*	rootSig		= nullptr;
+		bool					built		= false;
+		uint64_t				hash		= 0xcbf29ce484222325;
 		PipelineBlob			blob;
 		Vector<Shader>			shaders;
 		iAllocator*				allocator	= nullptr;

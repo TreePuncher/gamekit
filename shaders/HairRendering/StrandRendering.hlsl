@@ -1,3 +1,8 @@
+#define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"						\
+			"RootConstants(num32BitConstants = 16, b0),"							\
+			"SRV(t0),"																\
+			"SRV(t1),"																\
+			"UAV(u0)"
 
 /************************************************************************************************/
 
@@ -38,7 +43,7 @@ StructuredBuffer<ControlPoint> input : register(t0);
 
 /************************************************************************************************/
 
-
+[RootSignature(RS1)]
 uint VMain(const uint ID : SV_VertexID) : PRIMITIVEID
 {
 	return ID;
