@@ -235,6 +235,16 @@ namespace FlexKit
 		return PSO->rootSignature;
 	}
 
+
+	/************************************************************************************************/
+
+
+	const PipelineStateObject* PipelineStateTable::GetPSOObject(PSOHandle handle) const
+	{
+		return _GetStateObject(handle);
+	}
+
+
 	/************************************************************************************************/
 
 

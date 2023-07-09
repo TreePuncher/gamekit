@@ -798,7 +798,7 @@ namespace FlexKit
 		FK_ASSERT(rootSignature != nullptr, "Failed to create feedbackPassRootSignature");
 		SETDEBUGNAME(*rootSignature, "ClusteredShading");
 
-		markClustersSignature = builder.LoadSignature(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
+		markClustersSignature = builder.LoadSignatureFromFile(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
 		FK_ASSERT(markClustersSignature != nullptr, "Failed to create feedbackPassRootSignature");
 		SETDEBUGNAME(*markClustersSignature, "markClustersSignature");
 	}

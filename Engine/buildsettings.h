@@ -25,6 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef BUILDSETTING_H
 #define BUILDSETTING_H
 
+#pragma warning(disable : 4275)
+#pragma warning(disable : 4005)
+
+
 #define ON			+
 #define OFF			-
 #define USING(x) ((1 x 1)==2)
@@ -213,11 +217,12 @@ namespace FlexKit {
 
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
+
+
 #define NOMINMAX
 #include <winsock2.h>
 #include <Windows.h>
 #include <debugapi.h>
 
-#pragma warning(disable : 4275)
 
 #endif//BUILDSETTING_H

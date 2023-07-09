@@ -132,20 +132,20 @@ namespace FlexKit
 			return CRCLookup[(uint8_t)CRC ^ s[SIZE]] ^ (CRC >> 8);
 		}
 
-        constexpr static uint32_t GetHash2(const char* s)
-        {
-            uint32_t CRC = 0xffffffff;
+		constexpr static uint32_t GetHash2(const char* s)
+		{
+			uint32_t CRC = 0xffffffff;
 
-            for (size_t itr = 0; itr < SIZE; ++itr)
-                CRC = CRCLookup[(uint8_t)CRC ^ s[itr]] ^ (CRC >> 8);
+			for (size_t itr = 0; itr < SIZE; ++itr)
+				CRC = CRCLookup[(uint8_t)CRC ^ s[itr]] ^ (CRC >> 8);
 
-            return CRC;
-        }
+			return CRC;
+		}
 
 	};
 
-    template<typename TY>
-    inline constexpr uint32_t CRC32(const TY Buffer, const size_t BufferSize = 0)
+	template<typename TY>
+	inline constexpr uint32_t CRC32(const TY Buffer, const size_t BufferSize = 0)
 	{
 		uint32_t CRC = 0xffffffff;
 		for (size_t I = 0; I < BufferSize; ++I)
@@ -155,11 +155,9 @@ namespace FlexKit
 		return CRC;
 	}
 
-	inline constexpr uint64_t FNVa62(const char* buffer, size_t size)
+	inline constexpr uint64_t FNVa62(const char* buffer, size_t size, uint64_t hash = 0xcbf29ce484222325)
 	{
 		constexpr uint64_t FNV_prime = 0x00000100000001B3;
-
-		uint64_t hash = 0xcbf29ce484222325;
 
 		for (size_t itr = 0; itr < size; itr++)
 		{
@@ -176,17 +174,17 @@ namespace FlexKit
 	constexpr Type_t GenerateTypeGUID(const TY& A)
 	{
 		return ~IDGen<SIZE - 1>::GetHash2(A);
-        /*
-        //return GetCRC32(A);
+		/*
+		//return GetCRC32(A);
 
-        uint32_t CRC = 0xffffffff;
-        for (size_t I = 0; I < SIZE; ++I)
-        {
-            CRC = (uint8_t)CRC ^ A[I] ^ (CRC >> 8);
-        }
+		uint32_t CRC = 0xffffffff;
+		for (size_t I = 0; I < SIZE; ++I)
+		{
+			CRC = (uint8_t)CRC ^ A[I] ^ (CRC >> 8);
+		}
 
-        return CRC;
-        */
+		return CRC;
+		*/
 	}
 
 #define GetTypeGUID(A)	FlexKit::GenerateTypeGUID<sizeof(#A)>(#A)

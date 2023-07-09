@@ -167,7 +167,6 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 {
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
-	builder.AddRootSignature(strandRenderRootSignature);
 	builder.AddComputeShader("ApplyForces", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyForces");
 
@@ -181,7 +180,6 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO()
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO()
 {
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
-	builder.AddRootSignature(strandRenderRootSignature);
 	builder.AddComputeShader("ApplyShapeConstraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyShapeConstraints");
 
@@ -195,7 +193,6 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO(
 FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraintPSO()
 {
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
-	builder.AddRootSignature(strandRenderRootSignature);
 	builder.AddComputeShader("ApplyEdgeLengthContraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyEdgeLengthContraints");
 
@@ -209,7 +206,6 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraint
 LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 {
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
-	builder.AddRootSignature(strandRenderRootSignature);
 
 	builder.AddVertexShader		("VMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
 	builder.AddGeometryShader	("GMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
@@ -294,17 +290,6 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Hair Rendering - WIP");
-
-	FlexKit::RootSignatureBuilder builder{ framework.core.GetBlockMemory() };
-
-	builder.AllowIA = true;
-	builder.SetParameterAsUINT(0, 16, 0, 0);
-	builder.SetParameterAsSRV(1, 0);
-	builder.SetParameterAsSRV(2, 1);
-	builder.SetParameterAsUAV(3, 0, 0);
-
-	strandRenderRootSignature = builder.Build(framework.GetRenderSystem(), framework.core.GetTempMemory());
-	FK_ASSERT(strandRenderRootSignature != nullptr, "Failed to create root signature!");
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		StrandRenderPSO,
@@ -465,7 +450,6 @@ void HairRenderingTest::Simulate(
 
 	static double T = 0.0f;
 
-	auto& rootSignature = strandRenderRootSignature;
 	frameGraph.AddNode<RenderStrands>(
 		RenderStrands{
 			.reserveVB = reserveVB,
@@ -479,7 +463,7 @@ void HairRenderingTest::Simulate(
 			data.strandBuffer		= builder.UnorderedAccess(style.strandbuffer);
 			data.styleBuffer		= builder.NonPixelShaderResource(style.styleBuffer);
 		},
-		[=, &rootSignature, this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		[=, this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			struct Constants
 			{
@@ -497,27 +481,26 @@ void HairRenderingTest::Simulate(
 
 			T += dT;
 
-			ctx.SetComputeRootSignature(rootSignature);
-
 			const auto x = (style.strandCount * style.strandLength) / 1024 + ((style.strandCount * style.strandLength) % 1024 == 0 ? 0 : 1);
 
 			// Simulate A
+			ctx.SetComputePipelineState(ApplyForcesPSO);
+
 			ctx.SetComputeConstantValue(0, 4, &shaderConstants);
 			ctx.SetComputeShaderResourceView(1, resources.GetResource(data.styleBuffer));
 
-			ctx.SetPipelineState(resources.GetPipelineState(ApplyForcesPSO));
 			ctx.SetComputeShaderResourceView(2, resources.GetResource(data.sourceBuffer));
 			ctx.SetComputeUnorderedAccessView(3, resources.GetResource(data.destinationTarget));
 			ctx.Dispatch({ x, 1, 1 });
 
 			// Simulate B
-			ctx.SetPipelineState(resources.GetPipelineState(ApplyShapeConstraintsPSO));
+			ctx.SetComputePipelineState(ApplyShapeConstraintsPSO);
 			ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.destinationTarget, ctx));
 			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.sourceBuffer, ctx));
 			ctx.Dispatch({ x, 1, 1 });
 
 			// Simulate C
-			ctx.SetPipelineState(resources.GetPipelineState(ApplyEdgeLengthConstraintPSO));
+			ctx.SetComputePipelineState(ApplyEdgeLengthConstraintPSO);
 			ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.sourceBuffer, ctx));
 			ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.strandBuffer, ctx));
 			ctx.Dispatch({ (style.strandCount) / 1024 + ((style.strandCount) % 1024 == 0 ? 0 : 1), 1, 1 });
@@ -547,7 +530,6 @@ void HairRenderingTest::DrawStrands(
 		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
-	auto& rootSignature = strandRenderRootSignature;
 	frameGraph.AddNode(
 		RenderStrands{
 			.reserveVB = reserveVB,
@@ -561,12 +543,11 @@ void HairRenderingTest::DrawStrands(
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 			data.depthBuffer	= builder.DepthTarget(depthBuffer);
 		},
-		[=, &rootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			ctx.SetScissorAndViewports({ backBuffer });
 			ctx.SetRenderTargets({ backBuffer }, true, resources.GetResource(data.depthBuffer));
-			ctx.SetRootSignature(rootSignature);
-			ctx.SetPipelineState(resources.GetPipelineState(StrandRenderPSO));
+			ctx.SetGraphicsPipelineState(StrandRenderPSO);
 
 			const auto CameraValues = GetCameraConstants(camera);
 
@@ -606,7 +587,6 @@ void HairRenderingTest::DrawDebug(
 		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
-	auto& rootSignature = strandRenderRootSignature;
 	frameGraph.AddNode(
 		RenderDebug{
 			.reserveVB = reserveVB,
@@ -619,11 +599,10 @@ void HairRenderingTest::DrawDebug(
 			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 		},
-		[=, &rootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderDebug& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderDebug& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			ctx.SetScissorAndViewports({ backBuffer });
 			ctx.SetRenderTargets({ backBuffer }, false);
-			ctx.SetRootSignature(rootSignature);
 			ctx.SetPipelineState(resources.GetPipelineState(StrandRenderPSO));
 
 			const auto CameraValues = GetCameraConstants(camera);

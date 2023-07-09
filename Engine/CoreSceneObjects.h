@@ -176,7 +176,7 @@ namespace FlexKit
 
 	struct PVEntry
 	{
-		size_t			SortID			= 0;
+		uint64_t		SortID			= 0u;
 		const Brush*	brush			= nullptr;
 		GameObject*		gameObject		= nullptr;
 		uint32_t		OcclusionID		= (uint32_t)-1;

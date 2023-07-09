@@ -2775,7 +2775,7 @@ namespace FlexKit
 		}
 
 
-		TY_value* insert(const TY_key key, const TY_value& value)
+		TY_value* try_insert(const TY_key key, const TY_value& value)
 		{
 			if (max == 0)
 				reserve(16);
@@ -2799,7 +2799,7 @@ namespace FlexKit
 		}
 
 
-		TY_value* insert(const TY_key key, TY_value&& value)
+		TY_value* try_insert(const TY_key key, TY_value&& value)
 		{
 			if (max == 0)
 				reserve(16);
@@ -2820,6 +2820,31 @@ namespace FlexKit
 				keys[idx] = hash;
 				return new(values + idx) TY_value{ std::move(value) };
 			}
+		}
+
+		TY_value* insert(const TY_key key, const TY_value& value)
+		{
+			TY_value* ret = try_insert(key, value);
+			while (ret == nullptr)
+			{
+				reserve(max * 2);
+				TY_value* ret = try_insert(key, value);
+			}
+
+			return ret;
+		}
+
+
+		TY_value* insert(const TY_key key, TY_value&& value)
+		{
+			TY_value* ret = try_insert(key, std::move(value));
+			while (ret == nullptr)
+			{
+				reserve(max * 2);
+				ret = try_insert(key, std::move(value));
+			}
+
+			return ret;
 		}
 
 		template<typename ... TY_params>
@@ -2849,6 +2874,9 @@ namespace FlexKit
 
 		TY_value* operator [] (const TY_key key) const noexcept
 		{
+			if (!max)
+				return nullptr;
+
 			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 					uint64_t idx	= hash % max;
 
@@ -2884,6 +2912,11 @@ namespace FlexKit
 		}
 
 
+		size_t size() const noexcept
+		{
+			return max;
+		}
+
 		void reserve(const uint32_t newSize)
 		{
 			const size_t	newByteSize	= sizeof(TY_key) * newSize;
@@ -2907,7 +2940,7 @@ namespace FlexKit
 						new(newValues + idx) TY_value{ std::move(values[itr]) };
 
 						if constexpr (!std::is_trivially_destructible_v<TY_value>)
-							newValues[itr].~TY_value();
+							values[itr].~TY_value();
 					}
 				}
 			}
