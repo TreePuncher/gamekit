@@ -187,12 +187,22 @@ namespace FlexKit
 		return temp;
 	}
 
+
 	/************************************************************************************************/
 
 
-	void FrameGraph::AddMemoryPool(PoolAllocatorInterface* allocator)
+	void FrameGraph::AddMemoryPool(PoolAllocatorInterface& poolAllocator)
 	{
-		resources.AddMemoryPool(allocator);
+		resources.AddMemoryPool(&poolAllocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraph::AddMemoryPool(PoolAllocatorInterface* poolAllocator)
+	{
+		resources.AddMemoryPool(poolAllocator);
 	}
 
 
@@ -712,6 +722,10 @@ namespace FlexKit
 		else
 		{
 			auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, VirtualResourceScope::Temporary == lifeSpan);
+
+			if (heap == InvalidHandle)
+				FK_LOG_ERROR("Failed to find usable pool allocator");
+
 			context.AddDeferredCreation(resource, offset, heap, desc);
 
 			virtualResource	= resource;

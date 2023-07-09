@@ -2,7 +2,10 @@
 			"RootConstants(num32BitConstants = 16, b0),"							\
 			"SRV(t0),"																\
 			"SRV(t1),"																\
-			"UAV(u0)"
+			"DescriptorTable("														\
+				"visibility = SHADER_VISIBILITY_PIXEL,"								\
+				"UAV(u0))"
+
 
 /************************************************************************************************/
 
@@ -24,7 +27,7 @@ struct ControlPoint
 
 struct StrandVertex
 {
-	float3 color : COLOR;
+	float3 color	: COLOR;
 	float4 position : SV_POSITION;
 };
 
@@ -38,16 +41,35 @@ cbuffer constants : register(b0)
 };
 
 
-StructuredBuffer<ControlPoint> input : register(t0);
+StructuredBuffer	<ControlPoint>	input			: register(t0);
+Texture2D			<float4>		blendBuffer		: register(t1);
+RasterizerOrderedTexture2D<float4>	renderTarget	: register(u0);
 
 
 /************************************************************************************************/
+
 
 [RootSignature(RS1)]
 uint VMain(const uint ID : SV_VertexID) : PRIMITIVEID
 {
 	return ID;
 }
+
+
+static const float4 fullScreenTriangle[] =
+{
+	float4(-1, -1, 1, 1),
+	float4(-1,  3, 1, 1),
+	float4( 3, -1, 1, 1),
+};
+
+
+[RootSignature(RS1)]
+float4 VS_FullScreen(const uint ID : SV_VertexID) : SV_POSITION
+{
+	return fullScreenTriangle[ID];
+}
+
 
 
 /************************************************************************************************/
@@ -105,11 +127,19 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-float4 PMain(const float3 color : COLOR) : SV_TARGET
+void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION)//: SV_TARGET
 {
-	return float4(color, 1);
+	renderTarget[xy.xy] += float4(color * 0.2f, 0.2f);
 }
 
+
+/************************************************************************************************/
+
+
+float4 PS_Blend(const float4 xy : SV_POSITION) : SV_TARGET
+{
+	return renderTarget[xy.xy];
+}
 
 /************************************************************************************************/
 
@@ -137,7 +167,7 @@ void GDebug(point uint primitiveID[1] : PRIMITIVEID, inout LineStream<DebugVert>
 
 float4 PDebug(float4 color : COLOR) : SV_TARGET
 {
-	return float4(1, 1, 1, 1);
+	return float4(1, 0, 1, 1);
 }
 
 

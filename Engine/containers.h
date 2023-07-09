@@ -2561,6 +2561,14 @@ namespace FlexKit
 				});
 		}
 
+		template<typename TY_OBJ, typename TY_MEMBERFN>
+		TypeErasedCallable(TY_OBJ* object, TY_MEMBERFN function) noexcept
+		{
+			Assign([object, function](auto&&... args)
+				{
+					return (object->*function)(args...);
+				});
+		}
 
 		TypeErasedCallable(FN_PTR* fn_ptr) noexcept
 		{
@@ -2706,6 +2714,10 @@ namespace FlexKit
 		char			buffer[STORAGESIZE - sizeof(VTable*)];
 	};
 
+
+	/************************************************************************************************/
+
+
 	template<typename TY, typename ... TY_tail>
 	using GetHeadArg = TY;
 
@@ -2726,6 +2738,9 @@ namespace FlexKit
 
 	template<typename ... TY_args>
 	using GetLastArg = impl_GetLast<TY_args...>::tail;
+
+
+	/************************************************************************************************/
 
 
 	template<typename TY_value, typename TY_key = uint64_t>

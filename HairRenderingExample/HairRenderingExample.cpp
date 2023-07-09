@@ -15,6 +15,7 @@
 using namespace FlexKit;
 
 constexpr FlexKit::PSOHandle StrandRenderPSO				= FlexKit::PSOHandle{ GetCRCGUID(StrandRenderPSO) };
+constexpr FlexKit::PSOHandle BlendStatePSO					= FlexKit::PSOHandle{ GetCRCGUID(BlendStatePSO) };
 constexpr FlexKit::PSOHandle DebugRenderPSO					= FlexKit::PSOHandle{ GetCRCGUID(DebugRenderPSO) };
 constexpr FlexKit::PSOHandle ApplyForcesPSO					= FlexKit::PSOHandle{ GetCRCGUID(ApplyForcesPSO) };
 constexpr FlexKit::PSOHandle ApplyShapeConstraintsPSO		= FlexKit::PSOHandle{ GetCRCGUID(ApplyShapeConstraintsPSO) };
@@ -207,9 +208,9 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 {
 	PipelineBuilder builder{ framework.core.GetTempMemory() };
 
-	builder.AddVertexShader		("VMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-	builder.AddGeometryShader	("GMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
-	builder.AddPixelShader		("PMain", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddVertexShader		("VMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddGeometryShader	("GMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddPixelShader		("PS_Draw", R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
 
 	builder.AddInputTopology(ETopology::EIT_POINT);
 	builder.AddInputLayout({
@@ -217,19 +218,34 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRenderPSO()
 		.count	= 1
 		});
 
-	builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
+	builder.SetDebugName("DrawMLAB");
 
-	builder.AddDepthStencilState({
-			.depthEnable = true,
-			.depthFunc = EComparison::LESS,
+	return builder.Build(framework.core.RenderSystem);
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateBlendState()
+{
+	PipelineBuilder builder{ framework.core.GetTempMemory() };
+
+	builder.AddVertexShader		("VS_FullScreen",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+	builder.AddPixelShader		("PS_Blend",		R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true });
+
+	builder.AddInputTopology(ETopology::EIT_TRIANGLE);
+
+	builder.AddRasterizerState({
+			.CullMode	= ECullMode::NONE
 		});
 
 	builder.AddRenderTargetState({
-			.targetCount = 1,
-			.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT },
+			.targetCount	= 1,
+			.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT },
 		});
 
-	builder.SetDebugName("DrawStrands");
+	builder.SetDebugName("Blend");
 
 	return builder.Build(framework.core.RenderSystem);
 }
@@ -277,7 +293,8 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
-	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() }
+	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() },
+	gpuAllocator				{ IN_framework.GetRenderSystem(), 256 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures, IN_framework.core.GetBlockMemory() }
 {
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -291,26 +308,20 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Hair Rendering - WIP");
 
-	framework.GetRenderSystem().RegisterPSOLoader(
-		StrandRenderPSO,
-		[&](auto) { return CreateStrandRenderPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(
-		ApplyForcesPSO,
-		[&](auto) { return CreateApplyForcesPSO(); });
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyForcesPSO,				[&](auto) { return CreateApplyForcesPSO(); });
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyShapeConstraintsPSO,		[&](auto) { return CreateApplyShapeConstraintsPSO(); });
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyEdgeLengthConstraintPSO,	[&](auto) { return CreateApplyEdgeLengthConstraintPSO(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(
-		ApplyShapeConstraintsPSO, 
-		[&](auto) { return CreateApplyShapeConstraintsPSO(); });
+	framework.GetRenderSystem().RegisterPSOLoader(StrandRenderPSO,	[&](auto) { return CreateStrandRenderPSO(); });
+	framework.GetRenderSystem().RegisterPSOLoader(BlendStatePSO,	[&](auto) { return CreateBlendState(); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(
-		ApplyEdgeLengthConstraintPSO,
-		[&](auto) { return CreateApplyEdgeLengthConstraintPSO(); });
-
-	framework.GetRenderSystem().QueuePSOLoad(StrandRenderPSO);
 	framework.GetRenderSystem().QueuePSOLoad(ApplyForcesPSO);
 	framework.GetRenderSystem().QueuePSOLoad(ApplyShapeConstraintsPSO);
 	framework.GetRenderSystem().QueuePSOLoad(ApplyEdgeLengthConstraintPSO);
+
+	framework.GetRenderSystem().QueuePSOLoad(StrandRenderPSO);
+	framework.GetRenderSystem().QueuePSOLoad(BlendStatePSO);
 
 	camera		= cameras.CreateCamera();
 	cameraRig	= GetZeroedNode();
@@ -523,6 +534,7 @@ void HairRenderingTest::DrawStrands(
 	
 	struct RenderStrands
 	{
+		FlexKit::FrameResourceHandle			blendBuffer;
 		FlexKit::FrameResourceHandle			renderTarget;
 		FlexKit::FrameResourceHandle			strandBuffer;
 		FlexKit::FrameResourceHandle			depthBuffer;
@@ -539,15 +551,24 @@ void HairRenderingTest::DrawStrands(
 		{
 			builder.AddDataDependency(*update);
 
+			data.blendBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ 1920, 1080 }, DeviceFormat::R32G32B32A32_FLOAT), DASUAV, VirtualResourceScope::Frame);
 			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 			data.depthBuffer	= builder.DepthTarget(depthBuffer);
 		},
 		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
+			auto blendBuffer	= resources.GetResource(data.blendBuffer);
+			auto strandBuffer	= resources.GetResource(data.strandBuffer);
+
+			ctx.ClearUAVTextureFloat(blendBuffer);
+			ctx.AddUAVBarrier(blendBuffer, -1, DeviceLayout_UnorderedAccess);
+
 			ctx.SetScissorAndViewports({ backBuffer });
-			ctx.SetRenderTargets({ backBuffer }, true, resources.GetResource(data.depthBuffer));
 			ctx.SetGraphicsPipelineState(StrandRenderPSO);
+
+			DescriptorHeap table{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator };
+			table.SetUAVTexture(ctx, 0, blendBuffer);
 
 			const auto CameraValues = GetCameraConstants(camera);
 
@@ -559,10 +580,18 @@ void HairRenderingTest::DrawStrands(
 				.PV = CameraValues.PV,
 			};
 
-			ctx.SetGraphicsShaderResourceView(1, resources.GetResource(data.strandBuffer));
 			ctx.SetGraphicsConstantValue(0, 16, &shaderConstants);
+			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
+			ctx.SetGraphicsDescriptorTable(3, table);
 			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.Draw((style.strandLength - 1) * style.strandCount);
+
+			ctx.AddUAVBarrier(blendBuffer, -1, DeviceLayout_UnorderedAccess);
+
+			ctx.SetGraphicsPipelineState(BlendStatePSO);
+			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
+			ctx.SetRenderTargets({ backBuffer }, false);
+			ctx.Draw(3);
 		});
 }
 
@@ -603,7 +632,12 @@ void HairRenderingTest::DrawDebug(
 		{
 			ctx.SetScissorAndViewports({ backBuffer });
 			ctx.SetRenderTargets({ backBuffer }, false);
-			ctx.SetPipelineState(resources.GetPipelineState(StrandRenderPSO));
+			ctx.SetGraphicsPipelineState(StrandRenderPSO);
+
+			DescriptorHeap table{ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator };
+			table.SetUAVTexture(ctx, 0, resources.GetResource(data.renderTarget));
+
+			ctx.SetGraphicsDescriptorTable(3, table);
 
 			const auto CameraValues = GetCameraConstants(camera);
 
@@ -633,6 +667,7 @@ UpdateTask* HairRenderingTest::Draw(
 	double						dT,
 	FrameGraph&					frameGraph)
 {
+	frameGraph.AddMemoryPool(&gpuAllocator);
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
 	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -665,7 +700,7 @@ UpdateTask* HairRenderingTest::Draw(
 
 void HairRenderingTest::PostDrawUpdate(EngineCore& core, double dT)
 {
-	renderWindow.Present(0);
+	renderWindow.Present(1, 0);
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
