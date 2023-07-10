@@ -1,10 +1,7 @@
 #define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"						\
 			"RootConstants(num32BitConstants = 16, b0),"							\
 			"SRV(t0),"																\
-			"SRV(t1),"																\
-			"DescriptorTable("														\
-				"visibility = SHADER_VISIBILITY_PIXEL,"								\
-				"UAV(u0))"
+			"UAV(u0, visibility = SHADER_VISIBILITY_PIXEL)"
 
 
 /************************************************************************************************/
@@ -29,6 +26,7 @@ struct StrandVertex
 {
 	float3 color	: COLOR;
 	float4 position : SV_POSITION;
+	float  depth	: DEPTH;
 };
 
 
@@ -41,9 +39,13 @@ cbuffer constants : register(b0)
 };
 
 
-StructuredBuffer	<ControlPoint>	input			: register(t0);
-Texture2D			<float4>		blendBuffer		: register(t1);
-RasterizerOrderedTexture2D<float4>	renderTarget	: register(u0);
+struct MLAB_Samples
+{
+	half4 samples[8];
+};
+
+StructuredBuffer					<ControlPoint>	input			: register(t0);
+RasterizerOrderedStructuredBuffer	<MLAB_Samples>	renderTarget	: register(u0);
 
 
 /************************************************************************************************/
@@ -102,23 +104,29 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 
 	// Triangle 1
 	vertex.position = t1 - float4(sideVec * width, 0) - float4(t, 0) * width;
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 
 	vertex.position = t1 + float4(sideVec * width, 0) - float4(t, 0) * width;
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 
 	vertex.position = t2 - float4(sideVec * width, 0);;
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 	triangleStream.RestartStrip();
 
 	// Triangle 2
 	vertex.position = t2 - float4(sideVec * width, 0);
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 
 	vertex.position = t1 + float4(sideVec * width, 0) - float4(t, 0) * width;
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 
 	vertex.position = t2 + float4(sideVec * width, 0);
+	vertex.depth	= vertex.position.z;
 	triangleStream.Append(vertex);
 	triangleStream.RestartStrip();
 }
@@ -127,9 +135,28 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION)//: SV_TARGET
+void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)//: SV_TARGET
 {
-	renderTarget[xy.xy] += float4(color * 0.2f, 0.2f);
+	half4 newSample		= float4(color * 0.2f, depth);
+	half4 lastSample;
+	
+	for (uint i = 0; i < 8; i++)
+	{
+		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[i];
+
+		if (sample.w == 0.0f)
+		{
+			renderTarget[xy.x + xy.y * 1920].samples[i] = newSample;
+			return;
+		}
+		else if (sample.w < newSample.w)
+		{
+			renderTarget[xy.x + xy.y * 1920].samples[i] = sample;
+			newSample = sample;
+		}
+
+		lastSample = sample;
+	}
 }
 
 
@@ -138,7 +165,15 @@ void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION)//: SV_TA
 
 float4 PS_Blend(const float4 xy : SV_POSITION) : SV_TARGET
 {
-	return renderTarget[xy.xy];
+	float4 rgba = float4(0, 0, 0, 0);
+
+	for (uint i = 0; i < 8; i++)
+	{
+		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[i];
+		rgba += sample;
+	}
+	
+	return rgba;
 }
 
 /************************************************************************************************/

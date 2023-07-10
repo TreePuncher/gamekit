@@ -294,7 +294,7 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
 	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() },
-	gpuAllocator				{ IN_framework.GetRenderSystem(), 256 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures, IN_framework.core.GetBlockMemory() }
+	gpuAllocator				{ IN_framework.GetRenderSystem(), 512 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = std::move(res.value());
@@ -542,6 +542,11 @@ void HairRenderingTest::DrawStrands(
 		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
+	struct MLABSample
+	{
+		uint16_t sampleBuffer[8 * 4];
+	};
+
 	frameGraph.AddNode(
 		RenderStrands{
 			.reserveVB = reserveVB,
@@ -551,7 +556,7 @@ void HairRenderingTest::DrawStrands(
 		{
 			builder.AddDataDependency(*update);
 
-			data.blendBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ 1920, 1080 }, DeviceFormat::R32G32B32A32_FLOAT), DASUAV, VirtualResourceScope::Frame);
+			data.blendBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1920 * 1080 * sizeof(MLABSample)), DASUAV, VirtualResourceScope::Frame);
 			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 			data.depthBuffer	= builder.DepthTarget(depthBuffer);
@@ -561,14 +566,14 @@ void HairRenderingTest::DrawStrands(
 			auto blendBuffer	= resources.GetResource(data.blendBuffer);
 			auto strandBuffer	= resources.GetResource(data.strandBuffer);
 
-			ctx.ClearUAVTextureFloat(blendBuffer);
+			ctx.ClearUAVBuffer(blendBuffer);
 			ctx.AddUAVBarrier(blendBuffer, -1, DeviceLayout_UnorderedAccess);
 
 			ctx.SetScissorAndViewports({ backBuffer });
 			ctx.SetGraphicsPipelineState(StrandRenderPSO);
 
-			DescriptorHeap table{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator };
-			table.SetUAVTexture(ctx, 0, blendBuffer);
+			//DescriptorHeap table{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator };
+			//table.SetUAVBuffer(ctx, 0, blendBuffer);
 
 			const auto CameraValues = GetCameraConstants(camera);
 
@@ -582,7 +587,9 @@ void HairRenderingTest::DrawStrands(
 
 			ctx.SetGraphicsConstantValue(0, 16, &shaderConstants);
 			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
-			ctx.SetGraphicsDescriptorTable(3, table);
+			ctx.SetGraphicsUnorderedAccessView(2, blendBuffer);
+
+			//ctx.SetGraphicsDescriptorTable(2, table);
 			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.Draw((style.strandLength - 1) * style.strandCount);
 
@@ -631,7 +638,7 @@ void HairRenderingTest::DrawDebug(
 		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderDebug& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			ctx.SetScissorAndViewports({ backBuffer });
-			ctx.SetRenderTargets({ backBuffer }, false);
+			ctx.SetRenderTargets({ backBuffer });
 			ctx.SetGraphicsPipelineState(StrandRenderPSO);
 
 			DescriptorHeap table{ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator };
@@ -674,8 +681,8 @@ UpdateTask* HairRenderingTest::Draw(
 	ClearVertexBuffer(frameGraph, vertexBuffer);
 	ClearDepthBuffer(frameGraph, depthBuffer, 1.0f);
 
-	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
-	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
+	auto reserveVB = CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
+	auto reserveCB = CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
 
 	runOnceQueue.Process(dispatcher, frameGraph);
 
