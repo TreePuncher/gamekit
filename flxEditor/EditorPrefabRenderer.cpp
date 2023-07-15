@@ -16,7 +16,7 @@
 /************************************************************************************************/
 
 
-FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS)
+FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAllocator&)
 {
 	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
 	auto DrawRectPShader = RS->LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
@@ -88,7 +88,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS)
 /************************************************************************************************/
 
 
-FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS)
+FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
 {
 	auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
 	auto DrawRectPShader = RS->LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
@@ -573,7 +573,7 @@ void EditorPrefabPreview::RenderStatic(
 
 			if (poseState)
 			{
-				ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO));
+				ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO, allocator));
 				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
@@ -625,7 +625,7 @@ void EditorPrefabPreview::RenderStatic(
 			}
 			else
 			{
-				ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO));
+				ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO, allocator));
 				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });

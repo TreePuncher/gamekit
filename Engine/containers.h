@@ -2538,14 +2538,14 @@ namespace FlexKit
 		TypeErasedCallable() = default;
 
 
-		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable> && !std::is_pointer_v<TY_CALLABLE>)
 		TypeErasedCallable(const TY_CALLABLE& callable) noexcept
 		{
 			Assign(callable);
 		}
 
 
-		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable>)
+		template<typename TY_CALLABLE> requires(!std::is_same_v<std::decay_t<TY_CALLABLE>, TypeErasedCallable> && !std::is_pointer_v<TY_CALLABLE>)
 		TypeErasedCallable(TY_CALLABLE&& callable) noexcept
 		{
 			Assign(callable);
@@ -2561,6 +2561,7 @@ namespace FlexKit
 				});
 		}
 
+
 		template<typename TY_OBJ, typename TY_MEMBERFN>
 		TypeErasedCallable(TY_OBJ* object, TY_MEMBERFN function) noexcept
 		{
@@ -2569,6 +2570,7 @@ namespace FlexKit
 					return (object->*function)(args...);
 				});
 		}
+
 
 		TypeErasedCallable(FN_PTR* fn_ptr) noexcept
 		{
@@ -2942,7 +2944,7 @@ namespace FlexKit
 
 			if (used)
 			{
-				for (size_t itr = 0; itr < newSize; itr++)
+				for (size_t itr = 0; itr < max; itr++)
 				{
 					const auto key = keys[itr];
 

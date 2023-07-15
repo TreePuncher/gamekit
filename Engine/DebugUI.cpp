@@ -17,7 +17,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
+	LoadPipelineStateRes Create_DrawImGUI(FlexKit::RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		auto DrawRectVShader = renderSystem->LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
 		auto DrawRectPShader = renderSystem->LoadShader("ImGui_PS", "ps_6_0", "assets\\shaders\\imguiShaders.hlsl");
@@ -343,7 +343,7 @@ namespace FlexKit
 
 				auto SetupState = [&] {
 					ctx.SetRootSignature(rootSig);
-					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui));
+					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui, allocator));
 					ctx.SetScissorAndViewports({ renderTarget });
 					ctx.SetRenderTargets({ renderTarget }, false);
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);

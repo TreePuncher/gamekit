@@ -108,7 +108,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 						false);
 
 					context.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
-					context.SetPipelineState(frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO));
+					context.SetPipelineState(frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO, allocator));
 					context.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 					FlexKit::DescriptorHeap descHeap;

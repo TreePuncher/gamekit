@@ -1,11 +1,14 @@
-#define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"						\
-			"RootConstants(num32BitConstants = 16, b0),"							\
-			"SRV(t0),"																\
-			"UAV(u0, visibility = SHADER_VISIBILITY_PIXEL)"
+#define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"	\
+			"RootConstants(num32BitConstants = 17, b0),"		\
+			"SRV(t0),"											\
+			"UAV(u0, visibility = SHADER_VISIBILITY_PIXEL),"	\
+			"UAV(u1, visibility = SHADER_VISIBILITY_PIXEL)"	
 
 
 /************************************************************************************************/
 
+
+#define INFINITY ((float)(1e+300 * 1e+300))
 
 struct ControlPoint
 {
@@ -24,7 +27,7 @@ struct ControlPoint
 
 struct StrandVertex
 {
-	float3 color	: COLOR;
+	float4 color	: COLOR;
 	float4 position : SV_POSITION;
 	float  depth	: DEPTH;
 };
@@ -35,17 +38,24 @@ struct StrandVertex
 
 cbuffer constants : register(b0)
 {
-	float4x4 PV;
+	float4x4	PV;
+	uint		offset;
 };
 
 
 struct MLAB_Samples
 {
-	half4 samples[8];
+	half4 samples[4];
+};
+
+struct MLAB_Depth
+{
+	float samples[4];
 };
 
 StructuredBuffer					<ControlPoint>	input			: register(t0);
 RasterizerOrderedStructuredBuffer	<MLAB_Samples>	renderTarget	: register(u0);
+RasterizerOrderedStructuredBuffer	<MLAB_Depth>	depthValues		: register(u1);
 
 
 /************************************************************************************************/
@@ -100,7 +110,9 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 	const float  width		= 0.05f;
 
 	StrandVertex vertex;
-	vertex.color	= float3(controlPoints[0].pos / 10.0f) + 0.5f;
+	//vertex.color	= float3(controlPoints[0].pos / 10.0f) + 0.5f;
+	const float a = (id % 21) / 21.0f;
+	vertex.color = float4(a * a, a * a, a * a, a);
 
 	// Triangle 1
 	vertex.position = t1 - float4(sideVec * width, 0) - float4(t, 0) * width;
@@ -135,27 +147,50 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)//: SV_TARGET
+void PS_Draw(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)//: SV_TARGET
 {
-	half4 newSample		= float4(color * 0.2f, depth);
-	half4 lastSample;
-	
-	for (uint i = 0; i < 8; i++)
+	half4 tempSample	= color;
+	float tempDepth		= depth;
+
+	half4 samples[5];
+	float depthSamples[5];
+
+	[unroll(4)]
+	for (uint i = 0; i < 4; i++)
 	{
-		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[i];
+		samples[i]		= renderTarget[xy.x + xy.y * 1920].samples[i];
+		depthSamples[i]	= depthValues[xy.x + xy.y * 1920].samples[i];
+	}
 
-		if (sample.w == 0.0f)
+	[unroll(4)]
+	for (uint i = 0; i < 4; i++)
+	{
+		const float depthSample = depthSamples[i];
+		
+		if (depthSample > tempDepth)
 		{
-			renderTarget[xy.x + xy.y * 1920].samples[i] = newSample;
-			return;
-		}
-		else if (sample.w < newSample.w)
-		{
-			renderTarget[xy.x + xy.y * 1920].samples[i] = sample;
-			newSample = sample;
+			const half4 sample = samples[i];
+			
+			samples[i]		= tempSample;
+			depthSamples[i]	= tempDepth;
+			
+			tempSample	= sample;
+			tempDepth	= depthSample;
 		}
 
-		lastSample = sample;
+
+		// Compression
+		tempSample.xyz	= samples[3].rgb	+ samples[4].rgb * samples[3].a;
+		tempSample.a	= samples[3].a		* samples[4].a;
+
+		samples[3]		= tempSample;
+		depthSamples[3]	= tempDepth;
+	}
+
+	for (uint i = 0; i < 4; i++)
+	{
+		renderTarget[xy.x + xy.y * 1920].samples[i] = samples[i];
+		depthValues[xy.x + xy.y * 1920].samples[i]	= depthSamples[i];
 	}
 }
 
@@ -165,15 +200,20 @@ void PS_Draw(const float3 color : COLOR, const float4 xy : SV_POSITION, const fl
 
 float4 PS_Blend(const float4 xy : SV_POSITION) : SV_TARGET
 {
-	float4 rgba = float4(0, 0, 0, 0);
+	float4 rgba = 0;
 
-	for (uint i = 0; i < 8; i++)
+	if (isinf(depthValues[xy.x + xy.y * 1920].samples[0]))
+		discard;
+	
+	for (uint i = 0; i < 4; i++)
 	{
-		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[i];
-		rgba += sample;
+		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[offset];
+	
+		if (sample.w < 10000.0f)
+			rgba += float4(sample.rgb, 1.0f);
 	}
 	
-	return rgba;
+	return saturate(rgba);
 }
 
 /************************************************************************************************/
@@ -202,13 +242,13 @@ void GDebug(point uint primitiveID[1] : PRIMITIVEID, inout LineStream<DebugVert>
 
 float4 PDebug(float4 color : COLOR) : SV_TARGET
 {
-	return float4(1, 0, 1, 1);
+	return float4(1, 1, 1, 0);
 }
 
 
 /**********************************************************************
 
-Copyright (c) 2014-2022 Robert May
+Copyright (c) 2014-2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

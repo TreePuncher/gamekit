@@ -16,6 +16,10 @@ build-job:       # This job runs in the build stage, which runs first.
   artifacts:
     paths:
       - builds/Release/*
+    exclude:
+      - builds/Release/*.pdb
+      - builds/Release/*.exp
+      - builds/Release/*.ini
 
 test-job:
   stage: test

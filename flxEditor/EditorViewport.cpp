@@ -1534,7 +1534,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			descHeap.NullFill(ctx);
 
 			ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
+			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
 
 			ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);

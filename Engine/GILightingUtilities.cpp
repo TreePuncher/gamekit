@@ -264,7 +264,7 @@ namespace FlexKit
 			renderSystem.SetDebugName(hitShaderTable,	"hitShaderTable");
 			renderSystem.SetDebugName(ASpool.heap,		"Accelleration Structure Pool");
 
-			renderSystem.RegisterPSOLoader(InlineTest, [&](RenderSystem* renderSystem) { return CreateInlineTest(*renderSystem); });
+			renderSystem.RegisterPSOLoader(InlineTest, { this, &NOOBs_First_RTX_Technqiue::CreateInlineTest });
 
 			CreatePipelineLibrary(renderSystem, IN_allocator);
 		}
@@ -707,11 +707,11 @@ namespace FlexKit
 		}
 
 
-		LoadPipelineStateRes CreateInlineTest(RenderSystem& renderSystem)
+		LoadPipelineStateRes CreateInlineTest(RenderSystem* renderSystem, iAllocator& allocator)
 		{
 			const char file[] = R"(assets\shaders\RTX\InlineTracingTest.hlsl)";
 
-			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem.LoadShader("main", "cs_6_5", file);
+			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem->LoadShader("main", "cs_6_5", file);
 
 			D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 				*globalRootSig,
@@ -719,7 +719,7 @@ namespace FlexKit
 			};
 
 			ID3D12PipelineState* PSO = nullptr;
-			auto HR = renderSystem.pDevice10->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+			auto HR = renderSystem->pDevice10->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 			FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 

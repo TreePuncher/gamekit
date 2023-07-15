@@ -1691,6 +1691,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	PipelineBuilder::~PipelineBuilder()
+	{
+		allocator->free(inputElements);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
 	{
 		rootSig = IN_rootSig;
@@ -1704,7 +1713,7 @@ namespace FlexKit
 
 	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_2", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
@@ -1717,7 +1726,7 @@ namespace FlexKit
 
 	void PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_2", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
@@ -1730,7 +1739,7 @@ namespace FlexKit
 
 	void PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_2", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
@@ -1756,7 +1765,7 @@ namespace FlexKit
 
 	void PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_2", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
@@ -1795,7 +1804,7 @@ namespace FlexKit
 
 	void PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_2", file, options));
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
@@ -1808,10 +1817,13 @@ namespace FlexKit
 
 	void PipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
+		if (inputElements)
+			return;
+
 		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT layout;
 		memset(std::addressof(layout), 0, sizeof(layout));
 
-		auto inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC));
+		inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC));
 
 		for (auto&& [idx, input] : zip(iota(0u, state.count), state.inputs))
 		{
@@ -1992,7 +2004,10 @@ namespace FlexKit
 			if (pso && debugName)
 				SETDEBUGNAME(pso, debugName);
 
+			allocator->free(inputElements);
+			inputElements = nullptr;
 			blob.Clear();
+
 			return { pso, rootSig };
 		}
 		else
@@ -2014,15 +2029,6 @@ namespace FlexKit
 		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		return { pso, nullptr };
-	}
-
-
-	/************************************************************************************************/
-
-
-	FlexKit::LoadPipelineStateRes PipelineBuilder::BuildAndCache(RenderSystem& renderSystem)
-	{
-		return { nullptr, nullptr };
 	}
 
 
@@ -2087,22 +2093,6 @@ namespace FlexKit
 #endif
 
 		DeviceContext->Close();
-	}
-
-
-	void Context::AddRenderTargetBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState New)
-	{
-		FK_ASSERT(0);
-
-		/*
-		Barrier NewBarrier;
-		NewBarrier.OldState				= Before;
-		NewBarrier.NewState				= New;
-		NewBarrier.Type					= Barrier::Type::Resource;
-		NewBarrier.resourceHandle   	= Handle;
-
-		PendingBarriers.push_back(NewBarrier);
-		*/
 	}
 
 
@@ -2435,6 +2425,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::AddRenderTargetBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState New)
+	{
+		FK_ASSERT(0);
+
+		/*
+		Barrier NewBarrier;
+		NewBarrier.OldState				= Before;
+		NewBarrier.NewState				= New;
+		NewBarrier.Type					= Barrier::Type::Resource;
+		NewBarrier.resourceHandle   	= Handle;
+
+		PendingBarriers.push_back(NewBarrier);
+		*/
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before)
 	{
 		DebugBreak();
@@ -2668,9 +2677,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetComputePipelineState(const PSOHandle stateHandle)
+	void Context::SetComputePipelineState(const PSOHandle stateHandle, iAllocator& temp)
 	{
-		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle);
+		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
 
 		if (PSO == nullptr)
 			__debugbreak();
@@ -2692,9 +2701,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetGraphicsPipelineState(const PSOHandle stateHandle)
+	void Context::SetGraphicsPipelineState(const PSOHandle stateHandle, iAllocator& temp)
 	{
-		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle);
+		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
 
 		if (PSO == nullptr)
 			__debugbreak();
@@ -3925,7 +3934,7 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
-		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+		static auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory);
 		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
 		DeviceContext->SetPipelineState(PSO);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
@@ -3963,7 +3972,7 @@ namespace FlexKit
 		end = Min((uint32_t)renderSystem->GetResourceSize(UAV), end);
 		uint2 range{ begin / 16, end / 16};
 
-		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO);
+		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory);
 		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
 		DeviceContext->SetPipelineState(PSO);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
@@ -5323,7 +5332,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateClearBufferPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateClearBufferPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
@@ -5577,7 +5586,10 @@ namespace FlexKit
 			FK_LOG_ERROR("Failed to enable Dred!");
 #endif
 
-		Device->QueryInterface(__uuidof(ID3D12Device10), (void**)&pDevice10);
+		Device->QueryInterface(IID_PPV_ARGS(&pDevice10));
+
+		if(Debug)
+			Device->QueryInterface(IID_PPV_ARGS(&DebugDevice));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
 		pDevice10->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
@@ -5831,6 +5843,7 @@ namespace FlexKit
 		VertexBuffers.Release();
 		Textures.Release();
 		PipelineStates.ReleasePSOs();
+		rootSignatures.Release();
 		ReadBackTable.Release();
 		Queries.Release();
 		directUploadBuffer.Release();
@@ -5859,9 +5872,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* RenderSystem::GetPSO(PSOHandle StateID)
+	ID3D12PipelineState* RenderSystem::GetPSO(PSOHandle StateID, iAllocator& temp)
 	{
-		return PipelineStates.GetPSO(StateID);
+		return PipelineStates.GetPSO(StateID, temp);
 	}
 
 
@@ -5876,9 +5889,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	std::tuple<ID3D12PipelineState*, const RootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle) const
+	std::tuple<ID3D12PipelineState*, const RootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
 	{
 		auto object_ptr = PipelineStates.GetPSOObject(handle);
+		object_ptr->WaitForLoad(temp);
 
 		return { object_ptr->PSO, object_ptr->rootSignature };
 	}

@@ -55,14 +55,14 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(VXGI_DRAWVOLUMEVISUALIZATION,    CreateUpdateVolumeVisualizationPSO);
 		renderSystem.RegisterPSOLoader(VXGI_SAMPLEINJECTION,            CreateInjectVoxelSamplesPSO);
-		renderSystem.RegisterPSOLoader(VXGI_GATHERDISPATCHARGS,			[this](RenderSystem* rs) { return CreateVXGIGatherDispatchArgsPSO(rs); });
+		renderSystem.RegisterPSOLoader(VXGI_GATHERDISPATCHARGS,			[this](RenderSystem* rs, iAllocator& temp) { return CreateVXGIGatherDispatchArgsPSO(rs, temp); });
 		renderSystem.RegisterPSOLoader(VXGI_GATHERDRAWARGS,				CreateVXGIGatherDrawArgsPSO);
 		renderSystem.RegisterPSOLoader(VXGI_GATHERSUBDIVISIONREQUESTS,	CreateVXGIGatherSubDRequestsPSO);
 		renderSystem.RegisterPSOLoader(VXGI_PROCESSSUBDREQUESTS,		CreateVXGIProcessSubDRequestsPSO);
 		renderSystem.RegisterPSOLoader(VXGI_INITOCTREE,					CreateVXGI_InitOctree);
-		renderSystem.RegisterPSOLoader(VXGI_ALLOCATENODES,				[this](RenderSystem* rs){ return CreateAllocatePSO(rs); });
+		renderSystem.RegisterPSOLoader(VXGI_ALLOCATENODES,				[this](RenderSystem* rs, iAllocator& temp){ return CreateAllocatePSO(rs, temp); });
 
-		gatherDispatchArgs  = renderSystem.GetPSO(VXGI_GATHERDISPATCHARGS);
+		//gatherDispatchArgs  = renderSystem.GetPSO(VXGI_GATHERDISPATCHARGS);
 	}
 
 
@@ -96,7 +96,7 @@ namespace FlexKit
 			{
 				ctx.BeginEvent_DEBUG("Init Octree");
 
-				auto Init       = resources.GetPipelineState(VXGI_INITOCTREE);
+				auto Init       = resources.GetPipelineState(VXGI_INITOCTREE, allocator);
 				auto& rootSig   = resources.renderSystem().Library.RSDefault;
 
 				struct alignas(64) OctTreeNode
@@ -124,29 +124,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GILightingEngine::_GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx)
+	void GILightingEngine::_GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx, iAllocator& temp)
 	{
 		ctx.SetComputeRootSignature(gatherSignature);
 
 		ctx.SetComputeUnorderedAccessView(0, resources.UAV(source, ctx));
 		ctx.SetComputeUnorderedAccessView(1, resources.UAV(argsBuffer, ctx));
 
-		ctx.Dispatch(gatherDispatchArgs, { 1, 1, 1 });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GILightingEngine::_GatherArgs2(FrameResourceHandle freeList, FrameResourceHandle octree, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx)
-	{
-		ctx.SetComputeRootSignature(gatherSignature);
-
-		ctx.SetComputeUnorderedAccessView(0, resources.UAV(freeList, ctx));
-		ctx.SetComputeUnorderedAccessView(1, resources.UAV(octree, ctx));
-		ctx.SetComputeUnorderedAccessView(2, resources.UAV(argsBuffer, ctx));
-
-		ctx.Dispatch(gatherDispatchArgs2, { 1, 1, 1 });
+		ctx.Dispatch(
+			resources.GetPipelineState(VXGI_GATHERDISPATCHARGS, temp),
+			{ 1, 1, 1 });
 	}
 
 
@@ -251,10 +238,10 @@ namespace FlexKit
 
 	void GILightingEngine::CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 	{
-		auto sampleInjection        = resources.GetPipelineState(VXGI_SAMPLEINJECTION);
-		auto gatherDispatchArgs     = resources.GetPipelineState(VXGI_GATHERDISPATCHARGS);
-		auto gatherSubDRequests     = resources.GetPipelineState(VXGI_GATHERSUBDIVISIONREQUESTS);
-		auto processSubDRequests    = resources.GetPipelineState(VXGI_PROCESSSUBDREQUESTS);
+		auto sampleInjection        = resources.GetPipelineState(VXGI_SAMPLEINJECTION, allocator);
+		auto gatherDispatchArgs     = resources.GetPipelineState(VXGI_GATHERDISPATCHARGS, allocator);
+		auto gatherSubDRequests     = resources.GetPipelineState(VXGI_GATHERSUBDIVISIONREQUESTS, allocator);
+		auto processSubDRequests    = resources.GetPipelineState(VXGI_PROCESSSUBDREQUESTS, allocator);
 
 		auto& rootSig = resources.renderSystem().Library.RSDefault;
 		const auto WH = resources.GetTextureWH(data.depthTarget);
@@ -298,7 +285,7 @@ namespace FlexKit
 
 		for(uint32_t I = 0; I < 1; I++)
 		{
-			_GatherArgs(data.counters, data.indirectArgs, resources, ctx);
+			_GatherArgs(data.counters, data.indirectArgs, resources, ctx, allocator);
 
 			ctx.SetPipelineState(gatherSubDRequests);
 			ctx.SetComputeRootSignature(rootSig);
@@ -312,7 +299,7 @@ namespace FlexKit
 
 			ctx.AddUAVBarrier(resources.GetResource(data.octree));
 
-			_GatherArgs(data.octree, data.indirectArgs, resources, ctx);
+			_GatherArgs(data.octree, data.indirectArgs, resources, ctx, allocator);
 
 			ctx.SetComputeRootSignature(rootSig);
 			ctx.SetPipelineState(processSubDRequests);
@@ -414,7 +401,7 @@ namespace FlexKit
 			{
 				ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
 
-				auto debugVis               = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION);
+				auto debugVis               = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION, allocator);
 				auto& rootSig               = resources.renderSystem().Library.RSDefault;
 
 				struct debugConstants
@@ -470,7 +457,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateMarkErasePSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateMarkErasePSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("MarkEraseNodes", "cs_6_5", R"(assets\shaders\VXGI_Erase.hlsl)");
 
@@ -490,7 +477,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateAllocatePSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateAllocatePSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("ReleaseNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
@@ -511,7 +498,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateTransferPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateTransferPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("TransferNodes", "cs_6_5", R"(assets\shaders\VXGI_Remove.hlsl)");
 
@@ -532,7 +519,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateInjectVoxelSamplesPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateInjectVoxelSamplesPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("Injection", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -553,7 +540,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDispatchArgsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DispatchArgs.hlsl)");
 
@@ -574,7 +561,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIEraseDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIEraseDispatchArgsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("CreateRemoveArgs", "cs_6_5", R"(assets\shaders\VXGI_RemoveArgs.hlsl)");
 
@@ -595,7 +582,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIDecrementDispatchArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIDecrementDispatchArgsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("CreateIndirectArgs", "cs_6_5", R"(assets\shaders\VXGI_DecrementCounter.hlsl)");
 
@@ -616,7 +603,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDrawArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherDrawArgsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("CreateDrawArgs", "cs_6_5", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
 
@@ -637,7 +624,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIGatherSubDRequestsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("GatherSubdivionRequests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -658,7 +645,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGIProcessSubDRequestsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("ProcessSubdivionRquests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
@@ -679,7 +666,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateVXGI_InitOctree(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateVXGI_InitOctree(RenderSystem* RS, iAllocator& temp)
 	{
 		Shader computeShader = RS->LoadShader("Init", "cs_6_5", R"(assets\shaders\VXGI_InitOctree.hlsl)");
 
@@ -700,7 +687,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes GILightingEngine::CreateUpdateVolumeVisualizationPSO(RenderSystem* RS)
+	LoadPipelineStateRes GILightingEngine::CreateUpdateVolumeVisualizationPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto VShader = RS->LoadShader("FullScreenQuad_VS",  "vs_6_5", "assets\\shaders\\VoxelDebugVis.hlsl");
 		auto PShader = RS->LoadShader("VoxelDebug_PS",      "ps_6_5", "assets\\shaders\\VoxelDebugVis.hlsl");
@@ -752,7 +739,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateVoxelizerPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateVoxelizerPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto VShader = RS->LoadShader("voxelize_VS", "vs_6_5", "assets\\shaders\\Voxelizer.hlsl");
 		auto GShader = RS->LoadShader("voxelize_GS", "gs_6_5", "assets\\shaders\\Voxelizer.hlsl");
@@ -800,7 +787,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateGatherArgsPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("Main", "cs_6_5", R"(assets\shaders\SVO_VoxelGatherArgs.hlsl)"),
@@ -816,7 +803,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateMarkNodesPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("MarkNodes", "cs_6_5", R"(assets\shaders\Voxelizer_MarkNodes.hlsl)"),
@@ -832,7 +819,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateExpandNodesPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("ExpandNodes", "cs_6_5", R"(assets\shaders\Voxelizer_ExpandNodes.hlsl)"),
@@ -848,7 +835,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateFillAttributesPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("FillNodes", "cs_6_5", R"(assets\shaders\Voxelizer_BuildHighestMipLevel.hlsl)"),
@@ -864,7 +851,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS)
+	LoadPipelineStateRes StaticVoxelizer::CreateBuildMIPLevelPSO(RenderSystem* RS, iAllocator& temp)
 	{
 		auto pso = LoadComputeShader(
 			RS->LoadShader("BuildLevel", "cs_6_5", R"(assets\shaders\Voxelizer_BuildMIPLevel.hlsl)"),
@@ -908,46 +895,22 @@ namespace FlexKit
 		markSignature = builder.Build(renderSystem, allocator);
 
 		renderSystem.RegisterPSOLoader(
-			SVO_GatherArguments,
-			[&](RenderSystem* RS)
-			{
-				return CreateGatherArgsPSO(RS);
-			});
+			SVO_GatherArguments, { this, &StaticVoxelizer::CreateGatherArgsPSO });
 
 		renderSystem.RegisterPSOLoader(
-			SVO_Voxelize,
-			[&](RenderSystem* RS)
-			{
-				return CreateVoxelizerPSO(RS);
-			});
+			SVO_Voxelize,	{ this, &StaticVoxelizer::CreateVoxelizerPSO });
 
 		renderSystem.RegisterPSOLoader(
-			SVO_GATHERSUBDIVISIONREQUESTS,
-			[&](RenderSystem* RS)
-			{
-				return CreateMarkNodesPSO(RS);
-			});
+			SVO_GATHERSUBDIVISIONREQUESTS,	{ this, &StaticVoxelizer::CreateMarkNodesPSO });
 
 		renderSystem.RegisterPSOLoader(
-			SVO_EXPANDNODES,
-			[&](RenderSystem* RS)
-			{
-				return CreateExpandNodesPSO(RS);
-			});
+			SVO_EXPANDNODES, { this, &StaticVoxelizer::CreateExpandNodesPSO });
 
 		renderSystem.RegisterPSOLoader(
-			SVO_FILLNODES,
-			[&](RenderSystem* RS)
-			{
-				return CreateFillAttributesPSO(RS);
-			});
+			SVO_FILLNODES,	{ this, &StaticVoxelizer::CreateFillAttributesPSO });
 
 		renderSystem.RegisterPSOLoader(
-			SVO_BUILDMIPLEVEL,
-			[&](RenderSystem* RS)
-			{
-				return CreateBuildMIPLevelPSO(RS);
-			});
+			SVO_BUILDMIPLEVEL, { this, &StaticVoxelizer::CreateBuildMIPLevelPSO	});
 
 		dispatch = renderSystem.CreateIndirectLayout(
 			{   {   ILE_RootDescriptorUINT,
@@ -968,7 +931,7 @@ namespace FlexKit
 
 	void StaticVoxelizer::GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator, const size_t offset)
 	{
-		static const auto gatherArgs = resources.GetPipelineState(SVO_GatherArguments);
+		static const auto gatherArgs = resources.GetPipelineState(SVO_GatherArguments, TL_allocator);
 		ctx.SetComputeRootSignature(markSignature);
 		ctx.SetPipelineState(gatherArgs);
 
@@ -1047,7 +1010,7 @@ namespace FlexKit
 
 	void StaticVoxelizer::GatherSamples(CommonResources& resources, Scene& scene, ResourceHandler& resourcesHandler, Context& ctx, iAllocator& TL_allocator)
 	{
-		auto voxelize               = resourcesHandler.GetPipelineState(SVO_Voxelize);
+		auto voxelize               = resourcesHandler.GetPipelineState(SVO_Voxelize, TL_allocator);
 		auto& visabilityComponent   = SceneVisibilityComponent::GetComponent();
 		auto& brushComponent        = BrushComponent::GetComponent();
 
@@ -1139,9 +1102,9 @@ namespace FlexKit
 
 	void StaticVoxelizer::BuildTree(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
 	{
-		const auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS);
-		const auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES);
-		const auto fillNodes          = resourceHandler.GetPipelineState(SVO_FILLNODES);
+		const auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS, TL_allocator);
+		const auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES, TL_allocator);
+		const auto fillNodes          = resourceHandler.GetPipelineState(SVO_FILLNODES, TL_allocator);
 
 		ctx.BeginEvent_DEBUG("Build");
 
@@ -1222,7 +1185,7 @@ namespace FlexKit
 
 	void StaticVoxelizer::BuildMIPLevels(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
 	{
-		const auto buildLevel = resourceHandler.GetPipelineState(SVO_BUILDMIPLEVEL);
+		const auto buildLevel = resourceHandler.GetPipelineState(SVO_BUILDMIPLEVEL, TL_allocator);
 
 		FrameResourceHandle tempBuffers[2] = {
 			resources.tempBuffer,

@@ -136,11 +136,11 @@ namespace FlexKit
 
 		Vector<ResourceEntry>  resourcePool;
 
-		LoadPipelineStateRes CreateShadowMapPass(RenderSystem* RS);
-		LoadPipelineStateRes CreateShadowMapAnimatedPass(RenderSystem* RS);
+		LoadPipelineStateRes CreateShadowMapPass			(RenderSystem* RS, iAllocator&);
+		LoadPipelineStateRes CreateShadowMapAnimatedPass	(RenderSystem* RS, iAllocator&);
 
-		LoadPipelineStateRes CreateRowSums(RenderSystem* RS);
-		LoadPipelineStateRes CreateColumnSums(RenderSystem* RS);
+		LoadPipelineStateRes CreateRowSums					(RenderSystem* RS, iAllocator&);
+		LoadPipelineStateRes CreateColumnSums				(RenderSystem* RS, iAllocator&);
 
 		const FlexKit::RootSignature* rootSignature;
 	};

@@ -49,19 +49,19 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		InitiateBuffer,
-		[&](auto) { return CreateInitiateDataPSO(); });
+		[&](auto&& ...) { return CreateInitiateDataPSO(); });
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		LocalSort,
-		[&](auto) { return CreateLocalSortPSO(); });
+		[&](auto&& ...) { return CreateLocalSortPSO(); });
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		CreateMergePath,
-		[&](auto) { return CreateMergePathPSO(); });
+		[&](auto&& ...) { return CreateMergePathPSO(); });
 
 	framework.GetRenderSystem().RegisterPSOLoader(
 		GlobalMerge,
-		[&](auto) { return CreateGlobalMergePSO(); });
+		[&](auto&& ...) { return CreateGlobalMergePSO(); });
 }
 
 /************************************************************************************************/
@@ -171,13 +171,13 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				ctx.SetComputeRootSignature(sortingRootSignature);
 				ctx.SetComputeConstantValue(0, 1, &bufferSize, 0);
 				ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.sourceBuffer, ctx));
-				ctx.Dispatch(resources.GetPipelineState(InitiateBuffer), { bufferSize / 1024, 1, 1 });
+				ctx.Dispatch(resources.GetPipelineState(InitiateBuffer, threadLocalAllocator), { bufferSize / 1024, 1, 1 });
 				ctx.AddUAVBarrier(resources.GetResource(data.sourceBuffer));
 
 				ctx.BeginEvent_DEBUG("Merge Sort");
 				ctx.TimeStamp(timingQueries, 2 * J + 0);
 
-				ctx.Dispatch(resources.GetPipelineState(LocalSort), { blockCount, 1, 1 });
+				ctx.Dispatch(resources.GetPipelineState(LocalSort, threadLocalAllocator), { blockCount, 1, 1 });
 
 				struct
 				{
@@ -205,12 +205,12 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 					ctx.SetComputeConstantValue(0, 3, &constants, 0);
 					ctx.SetComputeShaderResourceView(1, resources.NonPixelShaderResource(input, ctx), 0  * 4);
 					ctx.SetComputeUnorderedAccessView(3, resources.UAV(data.mergePathBuffer, ctx));
-					ctx.Dispatch(resources.GetPipelineState(CreateMergePath), { blockCount * p / 16, 1, 1 });
+					ctx.Dispatch(resources.GetPipelineState(CreateMergePath, threadLocalAllocator), { blockCount * p / 16, 1, 1 });
 
 					ctx.SetComputeShaderResourceView(2, resources.NonPixelShaderResource(data.mergePathBuffer, ctx));
 					ctx.SetComputeUnorderedAccessView(3, resources.UAV(output, ctx));
 
-					ctx.Dispatch(resources.GetPipelineState(GlobalMerge), { mergeX, 1, 1 });
+					ctx.Dispatch(resources.GetPipelineState(GlobalMerge, threadLocalAllocator), { mergeX, 1, 1 });
 
 					constants.p				*= 2;
 					constants.blockSize		*= 2;

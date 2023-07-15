@@ -31,7 +31,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawTriStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawTriStatePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -77,7 +77,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	LoadPipelineStateRes CreateTexturedTriStatePSO(RenderSystem* RS)
+
+	LoadPipelineStateRes CreateTexturedTriStatePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -125,7 +126,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
 		auto DrawRectPShader = RS->LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
@@ -173,7 +174,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawLineStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawLineStatePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -228,7 +229,7 @@ namespace FlexKit
 		float2 UV
 	};
 	*/
-	LoadPipelineStateRes CreateDraw2StatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDraw2StatePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("V10Main",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawRect",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -278,7 +279,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawTri3DStatePSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateDrawTri3DStatePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("V11Main",	        "vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawFlatTriangle",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -326,7 +327,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes LoadOcclusionState(RenderSystem* RS)
+	LoadPipelineStateRes LoadOcclusionState(RenderSystem* RS, iAllocator&)
 	{
 		Shader VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
 
@@ -528,7 +529,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
+	LoadPipelineStateRes LoadClearRenderTarget_RG32(RenderSystem* renderSystem, iAllocator&)
 	{
 		auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
 		auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");

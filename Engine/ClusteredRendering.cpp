@@ -13,7 +13,7 @@ namespace FlexKit
 	using namespace std::views;
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -79,7 +79,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",       "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -151,7 +151,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
 		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
@@ -204,7 +204,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS, iAllocator&)
 	{
 		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
@@ -225,7 +225,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
@@ -248,7 +248,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -291,7 +291,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
@@ -313,7 +313,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
@@ -336,7 +336,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -379,7 +379,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
 
@@ -402,7 +402,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
 
@@ -425,7 +425,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
 
@@ -448,7 +448,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
@@ -470,7 +470,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
@@ -493,7 +493,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
@@ -515,7 +515,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -558,7 +558,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
 		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
@@ -606,7 +606,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
 
@@ -629,7 +629,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS)
+	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS, iAllocator&)
 	{
 		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
 
@@ -775,7 +775,7 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(GBUFFERPASS,				CreateGBufferPassPSO);
 		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,		CreateGBufferSkinnedPassPSO);
-		renderSystem.RegisterPSOLoader(SHADINGPASS,				[this](auto rs){ return CreateDeferredShadingPassPSO(rs);	});
+		renderSystem.RegisterPSOLoader(SHADINGPASS,				{ this, &ClusteredRender::CreateDeferredShadingPassPSO });
 		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,		CreateDeferredShadingPassComputePSO);
 
 		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,			CreateDEBUGBVHVIS);
@@ -869,7 +869,7 @@ namespace FlexKit
 						auto passConstants		= FlexKit::ConstantBufferDataSet{ constantValues, constantBuffer };
 						auto cameraConstants	= FlexKit::ConstantBufferDataSet{ cameraValues, constantBuffer };
 
-						const auto PSO		= resources.GetPipelineState(CREATECLUSTERBUFFER);
+						const auto PSO		= resources.GetPipelineState(CREATECLUSTERBUFFER, tempAllocator);
 						const auto& rootSig	= resources.renderSystem().Library.ComputeSignature;
 
 						DescriptorHeap heap;
@@ -1090,14 +1090,14 @@ namespace FlexKit
 
 				ctx.BeginEvent_DEBUG("Update Light Buffers");
 
-				auto		CreateClusters				= resources.GetPipelineState(CREATECLUSTERS);
-				auto		ClearCounters				= resources.GetPipelineState(CLEARCOUNTERSPSO);
-				auto		CreateBVH_Phase1			= resources.GetPipelineState(CREATELIGHTBVH_PHASE1);
-				auto		CreateBVH_Phase2			= resources.GetPipelineState(CREATELIGHTBVH_PHASE2);
-				auto		CreateLightLists			= resources.GetPipelineState(CREATECLUSTERLIGHTLISTS);
-				auto		CreateLightListArguments	= resources.GetPipelineState(CREATELIGHTLISTARGS_PSO);
-				auto		resolutionMatchShadowsMaps	= resources.GetPipelineState(RESOLUTIONMATCHSHADOWMAPS);
-				auto		clearShadowMapBuffer		= resources.GetPipelineState(CLEARSHADOWRESOLUTIONBUFFER);
+				auto		CreateClusters				= resources.GetPipelineState(CREATECLUSTERS, allocator);
+				auto		ClearCounters				= resources.GetPipelineState(CLEARCOUNTERSPSO, allocator);
+				auto		CreateBVH_Phase1			= resources.GetPipelineState(CREATELIGHTBVH_PHASE1, allocator);
+				auto		CreateBVH_Phase2			= resources.GetPipelineState(CREATELIGHTBVH_PHASE2, allocator);
+				auto		CreateLightLists			= resources.GetPipelineState(CREATECLUSTERLIGHTLISTS, allocator);
+				auto		CreateLightListArguments	= resources.GetPipelineState(CREATELIGHTLISTARGS_PSO, allocator);
+				auto		resolutionMatchShadowsMaps	= resources.GetPipelineState(RESOLUTIONMATCHSHADOWMAPS, allocator);
+				auto		clearShadowMapBuffer		= resources.GetPipelineState(CLEARSHADOWRESOLUTIONBUFFER, allocator);
 
 				const auto  cameraConstants		= GetCameraConstants(data.camera);
 				const auto  lightCount			= data.visableLights.size();
@@ -1470,7 +1470,7 @@ namespace FlexKit
 				const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
+				ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS, allocator));
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				// Setup pipeline resources
@@ -1596,7 +1596,7 @@ namespace FlexKit
 				{
 					auto& animatedBrushes = animatedPass->pvs;
 
-					ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
+					ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED, allocator));
 
 					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 					ctx.SetGraphicsConstantBufferView(3, passConstants);
@@ -1820,7 +1820,7 @@ namespace FlexKit
 #if 1
 
 				ctx.SetRootSignature(rootSignature);
-				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
+				ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS, allocator));
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
@@ -1909,10 +1909,10 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
-				auto debugBVHVISPSO			= resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO);
-				auto debugClusterVISPSO		= resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO);
-				auto debugClusterArgsVISPSO	= resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO);
-				auto debugLightVISPSO		= resources.GetPipelineState(CREATELIGHTDEBUGVIS_PSO);
+				auto debugBVHVISPSO			= resources.GetPipelineState(LIGHTBVH_DEBUGVIS_PSO, allocator);
+				auto debugClusterVISPSO		= resources.GetPipelineState(CLUSTER_DEBUGVIS_PSO, allocator);
+				auto debugClusterArgsVISPSO	= resources.GetPipelineState(CLUSTER_DEBUGARGSVIS_PSO, allocator);
+				auto debugLightVISPSO		= resources.GetPipelineState(CREATELIGHTDEBUGVIS_PSO, allocator);
 
 				const auto cameraConstants = GetCameraConstants(data.camera);
 
@@ -2055,7 +2055,7 @@ namespace FlexKit
 			},
 			[=, &bvh = bvh](DebugVisDesc& desc, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				auto drawElementsState  = resources.GetPipelineState(DEBUG_DrawBVH);
+				auto drawElementsState  = resources.GetPipelineState(DEBUG_DrawBVH, allocator);
 
 				const auto vertexCount      = bvh.elements.size() + bvh.nodes.size();
 				const auto vertexBufferSize = vertexCount * sizeof(Vertex);

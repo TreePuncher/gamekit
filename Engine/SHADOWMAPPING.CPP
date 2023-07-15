@@ -12,7 +12,7 @@ namespace FlexKit
 	using std::views::zip;
 
 
-	LoadPipelineStateRes ShadowMapper::CreateRowSums(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateRowSums(RenderSystem* RS, iAllocator&)
 	{
 		auto CShader = RS->LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
@@ -32,7 +32,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateColumnSums(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateColumnSums(RenderSystem* RS, iAllocator&)
 	{
 		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
@@ -52,7 +52,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -114,7 +114,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -307,10 +307,10 @@ namespace FlexKit
 		FK_ASSERT(rootSignature != nullptr, "Failed to create Root Signature!");
 
 
-		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			[&](RenderSystem* rs) { return CreateShadowMapPass(rs); });
-		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	[&](RenderSystem* rs) { return CreateShadowMapAnimatedPass(rs); });
-		renderSystem.RegisterPSOLoader(BUILDROWSUMS,			[&](RenderSystem* rs) { return CreateRowSums(rs); });
-		renderSystem.RegisterPSOLoader(BUILDCOLUMNSUMS,			[&](RenderSystem* rs) { return CreateColumnSums(rs); });
+		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			{ this, &ShadowMapper::CreateShadowMapPass });
+		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	{ this, &ShadowMapper::CreateShadowMapAnimatedPass });
+		renderSystem.RegisterPSOLoader(BUILDROWSUMS,			{ this, &ShadowMapper::CreateRowSums });
+		renderSystem.RegisterPSOLoader(BUILDCOLUMNSUMS,			{ this, &ShadowMapper::CreateColumnSums });
 	}
 
 
@@ -620,7 +620,7 @@ namespace FlexKit
 			GetFrustum(1.0f, (float)pi / 2.0f, 0.1f, light.R, lightPosition, Orientations[5]),
 		};
 
-		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
+		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS, allocator);
 
 		ctx.SetPipelineState(shadowMapPSO);
 		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
@@ -716,7 +716,7 @@ namespace FlexKit
 		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 		if(animatedBrushes.size())
 		{
-			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS, allocator);
 			ctx.SetPipelineState(PSOAnimated);
 			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
@@ -834,8 +834,8 @@ namespace FlexKit
 		}
 
 
-		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS);
-		auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS);
+		auto shadowMapPSO	= resources.GetPipelineState(SHADOWMAPPASS, allocator);
+		auto Build2DSATPSO	= resources.GetPipelineState(SHADOWMAPPASS, allocator);
 
 		ctx.SetPipelineState(shadowMapPSO);
 		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
@@ -905,7 +905,7 @@ namespace FlexKit
 		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 		if(animatedBrushes.size())
 		{
-			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS);
+			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS, allocator);
 			ctx.SetPipelineState(PSOAnimated);
 			ctx.SetScissorAndViewports({ passTarget });
 			ctx.SetRenderTargets({}, true, passTarget);

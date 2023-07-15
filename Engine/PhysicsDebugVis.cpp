@@ -8,7 +8,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateWireframeDebugVis(RenderSystem* RS)
+	LoadPipelineStateRes CreateWireframeDebugVis(RenderSystem* RS, iAllocator& temp)
 	{
 		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -58,7 +58,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateSolidDebugVis(RenderSystem* RS)
+	LoadPipelineStateRes CreateSolidDebugVis(RenderSystem* RS, iAllocator& temp)
 	{
 		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -165,7 +165,7 @@ namespace FlexKit
 					ConstantBufferDataSet	entityConstants	{ passConsants, CBuffer };
 
 					const auto rt	= frameResources.GetResource(pass.renderTarget);
-					static auto PSO = frameResources.GetPipelineState(Wireframe);
+					static auto PSO = frameResources.GetPipelineState(Wireframe, allocator);
 					ctx.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
 					ctx.SetScissorAndViewports({ rt });
 					ctx.SetRenderTargets({ rt }, true, frameResources.GetResource(pass.depthTarget));
@@ -174,7 +174,7 @@ namespace FlexKit
 					ctx.SetGraphicsConstantBufferView(2, entityConstants);
 
 					// Draw triangles
-					ctx.SetPipelineState(frameResources.GetPipelineState(Solid));
+					ctx.SetPipelineState(frameResources.GetPipelineState(Solid, allocator));
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 					ctx.Draw(layer_ref.debugTriCount);
 

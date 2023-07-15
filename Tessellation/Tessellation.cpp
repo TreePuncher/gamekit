@@ -54,10 +54,10 @@ public:
 
 		FK_ASSERT(rootSig != nullptr, "Failed to create root signature!");
 
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem); });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			[&](RenderSystem* renderSystem) { return LoadPSO(renderSystem, true); });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,	[&](RenderSystem* renderSystem) { return LoadPSO2(renderSystem); });
-		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,			[&](RenderSystem* renderSystem) { return LoadPSO3(renderSystem); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuad,					[&](RenderSystem* renderSystem, iAllocator&) { return LoadPSO(renderSystem); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCQuadWireframe,			[&](RenderSystem* renderSystem, iAllocator&) { return LoadPSO(renderSystem, true); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugControlpoints,	[&](RenderSystem* renderSystem, iAllocator&) { return LoadPSO2(renderSystem); });
+		framework.GetRenderSystem().RegisterPSOLoader(ACCDebugNormals,			[&](RenderSystem* renderSystem, iAllocator&) { return LoadPSO3(renderSystem); });
 
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify	= &FlexKit::EventsWrapper;
@@ -276,7 +276,7 @@ public:
 				ctx.AddUAVBarrier(resources.UAV(data.debug2Buffer, ctx));
 
 				ctx.SetRootSignature(rootSig);
-				ctx.SetPipelineState(resources.GetPipelineState(ACCQuad));
+				ctx.SetPipelineState(resources.GetPipelineState(ACCQuad, allocator));
 				ctx.SetInputPrimitive(INPUTPRIMITIVEPATCH_CP_32);
 				ctx.SetVertexBuffers({ VB });
 				ctx.SetIndexBuffer(IB);
@@ -298,7 +298,7 @@ public:
 
 				if (wireframe)
 				{
-					ctx.SetPipelineState(resources.GetPipelineState(ACCQuadWireframe));
+					ctx.SetPipelineState(resources.GetPipelineState(ACCQuadWireframe, allocator));
 					ctx.DrawIndexed(indices.size());
 				}
 
@@ -306,7 +306,7 @@ public:
 				if (markers)
 				{
 					const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));
-					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints));
+					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugControlpoints, allocator));
 					ctx.SetInputPrimitive(INPUTPRIMITIVEPATCH_CP_32);
 					ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer1, MEGABYTE, 24 } });
 
@@ -315,7 +315,7 @@ public:
 				if (normals)
 				{
 					const auto devicePointer2 = resources.GetDevicePointer(resources.VertexBuffer(data.debug1Buffer, ctx));
-					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals));
+					ctx.SetPipelineState(resources.GetPipelineState(ACCDebugNormals, allocator));
 					ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 					ctx.SetVertexBuffers2({ D3D12_VERTEX_BUFFER_VIEW{ devicePointer2 + 64, MEGABYTE - 64, 12 } });
 					ctx.Draw(maxExpansionRate * maxExpansionRate * 9 * 16);
