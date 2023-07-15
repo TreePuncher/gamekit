@@ -329,6 +329,7 @@ namespace FlexKit
 		core.Threads.SendShutdown();
 		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 
+		GetRenderSystem().SyncDirectTicket();
 		GetRenderSystem().WaitForGPU();
 
 		for (auto state : deferredFrees) {
@@ -346,12 +347,16 @@ namespace FlexKit
 
 		console.Release();
 		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
+		FlexKit::Release(DefaultAssets.Terrain);
 
 
 		FreeAllAssetFiles	();
 		FreeAllAssets		();
-	
-		ReleaseGameFramework(core, *this);
+
+		ClearLogCallbacks();
+
+		ReleaseGeometryTable();
+		ReleaseAssetTable();
 	}
 
 
@@ -548,37 +553,6 @@ namespace FlexKit
 				CursorSize,
 				{Grey(1.0f), 1.0f}));
 		 */
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseGameFramework(EngineCore& core, GameFramework& framework)
-	{
-		ClearLogCallbacks();
-
-		auto    RItr        = framework.subStates.rbegin();
-		auto    REnd        = framework.subStates.rend();
-		auto&   allocator   = core.GetBlockMemory();
-		while (RItr != REnd)
-		{
-			(*RItr)->~FrameworkState();
-			allocator.free(*RItr);
-
-			RItr++;
-		}
-
-
-		ReleaseGeometryTable();
-		ReleaseAssetTable();
-
-		//TODO
-		//Release(State->DefaultAssets.Font);
-		Release(framework.DefaultAssets.Terrain);
-
-		core.Threads.SendShutdown();
-		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 	}
 
 

@@ -129,12 +129,12 @@ namespace FlexKit
 		void BuildMIPLevels (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
 
 
-		LoadPipelineStateRes CreateVoxelizerPSO         (RenderSystem* RS);
-		LoadPipelineStateRes CreateGatherArgsPSO        (RenderSystem* RS);
-		LoadPipelineStateRes CreateMarkNodesPSO         (RenderSystem* RS);
-		LoadPipelineStateRes CreateExpandNodesPSO       (RenderSystem* RS);
-		LoadPipelineStateRes CreateFillAttributesPSO    (RenderSystem* RS);
-		LoadPipelineStateRes CreateBuildMIPLevelPSO     (RenderSystem* RS);
+		LoadPipelineStateRes CreateVoxelizerPSO         (RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateGatherArgsPSO        (RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateMarkNodesPSO         (RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateExpandNodesPSO       (RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateFillAttributesPSO    (RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateBuildMIPLevelPSO     (RenderSystem* RS, iAllocator& temp);
 
 
 		const RootSignature* voxelizeSignature;
@@ -205,8 +205,7 @@ namespace FlexKit
 		void CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
 		void CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
 
-		void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx);
-		void _GatherArgs2(FrameResourceHandle freeList, FrameResourceHandle octree, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx);
+		void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx, iAllocator& temp);
 
 		RenderSystem& renderSystem;
 
@@ -223,22 +222,22 @@ namespace FlexKit
 
 		StaticVoxelizer staticVoxelizer;
 
-		ID3D12PipelineState* gatherDispatchArgs;
-		ID3D12PipelineState* gatherDispatchArgs2;
+		//ID3D12PipelineState* gatherDispatchArgs;
+		//ID3D12PipelineState* gatherDispatchArgs2;
 
-		LoadPipelineStateRes CreateAllocatePSO                  (RenderSystem* RS);
-		LoadPipelineStateRes CreateTransferPSO                  (RenderSystem* RS);
-		LoadPipelineStateRes CreateVXGIGatherDispatchArgsPSO    (RenderSystem* RS);
-		LoadPipelineStateRes CreateVXGIEraseDispatchArgsPSO     (RenderSystem* RS);
-		LoadPipelineStateRes CreateVXGIDecrementDispatchArgsPSO (RenderSystem* RS);
+		LoadPipelineStateRes CreateAllocatePSO						(RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateTransferPSO						(RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateVXGIGatherDispatchArgsPSO		(RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateVXGIEraseDispatchArgsPSO			(RenderSystem* RS, iAllocator& temp);
+		LoadPipelineStateRes CreateVXGIDecrementDispatchArgsPSO		(RenderSystem* RS, iAllocator& temp);
 
-		static LoadPipelineStateRes CreateVXGI_InitOctree              (RenderSystem* RS);
-		static LoadPipelineStateRes CreateInjectVoxelSamplesPSO        (RenderSystem* RS);
-		static LoadPipelineStateRes CreateMarkErasePSO                  (RenderSystem* RS);
-		static LoadPipelineStateRes CreateUpdateVolumeVisualizationPSO (RenderSystem* RS);
-		static LoadPipelineStateRes CreateVXGIGatherDrawArgsPSO        (RenderSystem* RS);
-		static LoadPipelineStateRes CreateVXGIGatherSubDRequestsPSO    (RenderSystem* RS);
-		static LoadPipelineStateRes CreateVXGIProcessSubDRequestsPSO   (RenderSystem* RS);
+		static LoadPipelineStateRes CreateVXGI_InitOctree				(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateInjectVoxelSamplesPSO			(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateMarkErasePSO					(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateUpdateVolumeVisualizationPSO	(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateVXGIGatherDrawArgsPSO			(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateVXGIGatherSubDRequestsPSO		(RenderSystem* RS, iAllocator& temp);
+		static LoadPipelineStateRes CreateVXGIProcessSubDRequestsPSO	(RenderSystem* RS, iAllocator& temp);
 	};
 }
 

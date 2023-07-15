@@ -479,9 +479,9 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		ID3D12PipelineState* GetPipelineState(PSOHandle state)	const
+		ID3D12PipelineState* GetPipelineState(PSOHandle state, iAllocator& temp)	const
 		{
-			return renderSystem.GetPSO(state);
+			return renderSystem.GetPSO(state, temp);
 		}
 
 		const RootSignature* GetPipelineStateRootSig(PSOHandle state) const
@@ -684,13 +684,13 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		template<typename TY>
-		ID3D12Resource*			GetDeviceResource(TY handle) const						{ return globalResources.GetDeviceResource(handle); }
-		ID3D12Resource*			GetDeviceResource(FrameResourceHandle handle) const		{ return globalResources.GetDeviceResource(GetResource(handle)); }
+		ID3D12Resource*			GetDeviceResource(TY handle) const							{ return globalResources.GetDeviceResource(handle); }
+		ID3D12Resource*			GetDeviceResource(FrameResourceHandle handle) const			{ return globalResources.GetDeviceResource(GetResource(handle)); }
 
 		template<typename TY>
-		DevicePointer			GetDevicePointer(TY handle) const						{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+		DevicePointer			GetDevicePointer(TY handle) const							{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
 
-		ID3D12PipelineState*	GetPipelineState(PSOHandle state) const					{ return globalResources.GetPipelineState(state); }
+		ID3D12PipelineState*	GetPipelineState(PSOHandle state, iAllocator& temp) const	{ return globalResources.GetPipelineState(state, temp); }
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize)	{ return globalResources.GetVertexBufferOffset(handle, vertexSize); }
 		size_t					GetVertexBufferOffset(VertexBufferHandle handle)					{ return globalResources.GetVertexBufferOffset(handle); }
@@ -3012,7 +3012,7 @@ namespace FlexKit
 					false);
 
 				context.SetRootSignature	(frameResources.renderSystem().Library.RS6CBVs4SRVs);
-				context.SetPipelineState	(frameResources.GetPipelineState(data.state));
+				context.SetPipelineState	(frameResources.GetPipelineState(data.state, allocator));
 				context.SetInputPrimitive	(INPUTPRIMITIVETRIANGLELIST);
 
 				size_t TextureDrawCount = 0;
@@ -3319,7 +3319,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState(resources.GetPipelineState(Data.PSO));
+				ctx.SetPipelineState(resources.GetPipelineState(Data.PSO, allocator));
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
 				ctx.SetRenderTargets(
@@ -3468,7 +3468,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
+				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO, allocator));
 
 				ctx.SetScissorAndViewports({ resources.GetResource(Data.RenderTarget) });
 				ctx.SetRenderTargets(

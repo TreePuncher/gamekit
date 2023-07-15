@@ -156,7 +156,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
@@ -203,7 +203,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS, iAllocator&)
 	{
 		auto VShader = RS->LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
@@ -531,12 +531,10 @@ namespace FlexKit
 		FK_ASSERT(sortingRootSignature != nullptr, "Failed to create root signature!");
 
 		renderSystem.RegisterPSOLoader(
-			TEXTUREFEEDBACKPASS,
-			[&](auto rs) { return CreateTextureFeedbackPassPSO(rs); });
+			TEXTUREFEEDBACKPASS, { this, &TextureStreamingEngine::CreateTextureFeedbackPassPSO });
 
 		renderSystem.RegisterPSOLoader(
-			TEXTUREFEEDBACKANIMATEDPASS,
-			[&](auto rs) { return CreateTextureFeedbackAnimatedPassPSO(rs); });
+			TEXTUREFEEDBACKANIMATEDPASS, { this, &TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO });
 
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,
@@ -621,13 +619,13 @@ namespace FlexKit
 		double							dt,
 		iAllocator&						tempAllocator)
 	{
-		if (timeSinceLastUpdate < 1.0f / 10.0f)
-		{
-			timeSinceLastUpdate += (float)dt;
-			return;
-		}
-		else
-			timeSinceLastUpdate = 0;
+		//if (timeSinceLastUpdate < 1.0f / 10.0f)
+		//{
+		//	timeSinceLastUpdate += (float)dt;
+		//	return;
+		//}
+		//else
+		//	timeSinceLastUpdate = 0;
 
 		if (async)
 		{
@@ -784,7 +782,7 @@ namespace FlexKit
 			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 
-			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS, allocator));
 
 			TriMeshHandle	prevMesh	= InvalidHandle;
 			TriMesh*		triMesh		= nullptr;
@@ -941,7 +939,7 @@ namespace FlexKit
 			ctx.SetGraphicsUnorderedAccessView(3, resources.GetResource(data.feedbackBuffer));
 			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
-			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS));
+			ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKANIMATEDPASS, allocator));
 
 			TriMeshHandle	prevMesh	= InvalidHandle;
 			TriMesh*		triMesh		= nullptr;

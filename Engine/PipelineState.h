@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -56,7 +56,7 @@ namespace FlexKit
 		const RootSignature*	rootSignature;
 	};
 
-	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*), 16>;
+	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*, iAllocator&), 32>;
 
 	/************************************************************************************************/
 
@@ -79,6 +79,8 @@ namespace FlexKit
 
 		bool changeState(const PipelineStateObject::PSO_States newState);
 		void Release(iAllocator* allocator);
+
+		void WaitForLoad(iAllocator& temp);
 
 		ID3D12PipelineState*				PSO				= nullptr;
 		PSOHandle							id				= InvalidHandle;
@@ -122,16 +124,16 @@ namespace FlexKit
 		void							RegisterPSOLoader	(PSOHandle, LOADSTATE_FN);
 		bool							QueuePSOLoad		(PSOHandle, iAllocator*);
 
-		ID3D12PipelineState*			GetPSO			(PSOHandle);
+		ID3D12PipelineState*			GetPSO			(PSOHandle, iAllocator& temp);
 		RootSignature const * const 	GetPSORootSig	(PSOHandle) const;
-		const PipelineStateObject*		GetPSOObject	(PSOHandle) const;
+		PipelineStateObject*			GetPSOObject	(PSOHandle) const;
 
 
 	private:
 		PipelineStateObject*	_GetStateObject			(PSOHandle);
 		PipelineStateObject*	_GetNearestStateObject	(PSOHandle);
 
-		PipelineStateObject const*	_GetStateObject			(PSOHandle) const;
+		PipelineStateObject*		_GetStateObject			(PSOHandle) const;
 		PipelineStateObject const*	_GetNearestStateObject	(PSOHandle) const;
 
 		bool					_AddStateObject			(PipelineStateObject*	PSO);

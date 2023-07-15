@@ -250,7 +250,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature				(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
+				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO, allocator));
 
 				ctx.SetScissorAndViewports			({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets				({ resources.GetResource(data.renderTarget) }, false);

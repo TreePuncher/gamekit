@@ -67,6 +67,70 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void PipelineStateObject::WaitForLoad(iAllocator& temp)
+	{
+		switch (state)
+		{
+		case PipelineStateObject::PSO_States::LoadQueued:
+		case PipelineStateObject::PSO_States::LoadInProgress: 
+		{
+			std::mutex			M;
+			std::unique_lock	UL(M);
+
+			const_cast<condition_variable&>(CV).wait(UL, [&]{
+				return
+					!(state == PipelineStateObject::PSO_States::LoadInProgress); });
+		}	break;
+
+		case PipelineStateObject::PSO_States::ReLoadQueued:
+		case PipelineStateObject::PSO_States::Loaded:
+		{
+			return;
+		}	break;
+		case PipelineStateObject::PSO_States::Failed:
+		{
+			FK_LOG_ERROR("TRYING TO LOAD A UNLOADABLE PSO!");
+			// TODO: Handle Load Failures
+		}	return;
+		case PipelineStateObject::PSO_States::Unloaded:
+		{
+			while (true)
+			{
+				state		= PipelineStateObject::PSO_States::LoadInProgress;
+				auto res	= loader(RenderSystem::_GetInstance(), temp);
+				stale		= false;
+
+				if (!res.pipelineState) {
+					state = PipelineStateObject::PSO_States::Failed;
+					FK_LOG_ERROR("PSO Load FAILED!");
+					return;
+				}
+
+				if (stale && loader != loader)
+				{
+					FK_LOG_2("Stale PSO LOADED!");
+					continue;
+				}
+
+				FK_LOG_2("Finished PSO Load");
+
+				state			= PipelineStateObject::PSO_States::Loaded;
+				PSO				= res.pipelineState;
+				rootSignature	= res.rootSignature;
+				CV.notify_all();
+				return;
+			}
+		}
+
+		default: 
+			return;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, RenderSystem* IN_RS, ThreadManager* IN_Threads) :
 		Device		{ IN_RS->pDevice },
 		allocator	{ IN_allocator	 },
@@ -151,7 +215,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	ID3D12PipelineState*	PipelineStateTable::GetPSO(PSOHandle handle)
+	ID3D12PipelineState*	PipelineStateTable::GetPSO(PSOHandle handle, iAllocator& temp)
 	{
 		while (true)
 		{
@@ -190,7 +254,7 @@ namespace FlexKit
 					PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
 					auto& loader	= PSO->loader;
-					auto res		= loader(RS);
+					auto res		= loader(RS, temp);
 
 					PSO->stale = false;
 
@@ -239,7 +303,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const PipelineStateObject* PipelineStateTable::GetPSOObject(PSOHandle handle) const
+	PipelineStateObject* PipelineStateTable::GetPSOObject(PSOHandle handle) const
 	{
 		return _GetStateObject(handle);
 	}
@@ -333,9 +397,9 @@ namespace FlexKit
 	/************************************************************************************************/
 	// Less then Ideal
 
-	PipelineStateObject const*	PipelineStateTable::_GetStateObject(PSOHandle handle) const
+	PipelineStateObject*		PipelineStateTable::_GetStateObject(PSOHandle handle) const
 	{
-		PipelineStateObject const* PSO = States[handle.INDEX % States.size()];
+		PipelineStateObject* PSO = States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle; PSO = PSO->next);
 
 		return PSO;
@@ -409,8 +473,8 @@ namespace FlexKit
 			FK_LOG_1("Shader Load Time: %d milliseconds", Duration.count());
 		);
 		
-		const auto previousPSO = PSO->PSO;
-		const auto previousState = PSO->state.load();
+		const auto previousPSO		= PSO->PSO;
+		const auto previousState	= PSO->state.load();
 
 		if(previousState != PipelineStateObject::PSO_States::ReLoadQueued)
 			PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
@@ -428,7 +492,7 @@ namespace FlexKit
 				return;
 			}
 
-			auto res = loader(RS);
+			auto res = loader(RS, threadLocalAllocator);
 
 			if (!res.pipelineState) {
 				if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)

@@ -833,12 +833,18 @@ namespace FlexKit
 		template<typename TY>
 		void Delete(TY* _ptr)
 		{
+			if (!_ptr)
+				return;
+
 			_ptr->~TY();
 			free(_ptr);
 		}
 
 		void _aligned_free(void* _ptr)
 		{
+			if (!_ptr)
+				return;
+
 			std::unique_lock ul(mu);
 
 			if (InSmallRange((byte*)_ptr))

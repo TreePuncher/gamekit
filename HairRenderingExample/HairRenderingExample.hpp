@@ -72,14 +72,14 @@ public:
 	HairRenderingTest(FlexKit::GameFramework& IN_framework);
 	~HairRenderingTest() final;
 
-	FlexKit::LoadPipelineStateRes CreateApplyForcesPSO();
-	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO();
-	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO();
+	FlexKit::LoadPipelineStateRes CreateApplyForcesPSO					(FlexKit::iAllocator& tempMemory);
+	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO		(FlexKit::iAllocator& tempMemory);
+	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO	(FlexKit::iAllocator& tempMemory);
 
-	FlexKit::LoadPipelineStateRes CreateStrandRenderPSO();
-	FlexKit::LoadPipelineStateRes CreateBlendState();
+	FlexKit::LoadPipelineStateRes CreateStrandRenderPSO					(FlexKit::iAllocator& tempMemory);
+	FlexKit::LoadPipelineStateRes CreateBlendState						(FlexKit::iAllocator& tempMemory);
 
-	FlexKit::LoadPipelineStateRes CreateDebugRenderPSO();
+	FlexKit::LoadPipelineStateRes CreateDebugRenderPSO					(FlexKit::iAllocator& tempMemory);
 
 
 	void ClearStyleBuffers(HairStyle& style);
@@ -121,6 +121,7 @@ public:
 	bool							debugVis	= false;
 	size_t							fps			= 0;
 	size_t							counter		= 0;
+	uint32_t						debugOffset = 0;
 	double							T			= 0.0;
 
 	HairStyle						style;

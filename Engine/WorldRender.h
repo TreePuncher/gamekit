@@ -99,20 +99,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardDrawPSO			    (RenderSystem* RS);
-	LoadPipelineStateRes CreateForwardDrawInstancedPSO	    (RenderSystem* RS);
-	LoadPipelineStateRes CreateOcclusionDrawPSO			    (RenderSystem* RS);
-	LoadPipelineStateRes CreateDepthPrePassPSO              (RenderSystem* RS);
-	LoadPipelineStateRes CreateEnvironmentPassPSO           (RenderSystem* RS);
+	LoadPipelineStateRes CreateForwardDrawPSO			    (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateForwardDrawInstancedPSO	    (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateOcclusionDrawPSO			    (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateDepthPrePassPSO              (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateEnvironmentPassPSO           (RenderSystem* RS, iAllocator& allocator);
 
-	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS);
-	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO        (RenderSystem* RS);
+	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO        (RenderSystem* RS, iAllocator& allocator);
 
-	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
-	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
+	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO    (RenderSystem* RS, iAllocator& allocator);
 
-	LoadPipelineStateRes CreateBuildZLayer                  (RenderSystem* RS);
-	LoadPipelineStateRes CreateDepthBufferCopy              (RenderSystem* RS);
+	LoadPipelineStateRes CreateBuildZLayer                  (RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes CreateDepthBufferCopy              (RenderSystem* RS, iAllocator& allocator);
 
 
 	/************************************************************************************************/
@@ -443,9 +443,9 @@ namespace FlexKit
 		}
 
 	//private:
-		LoadPipelineStateRes CreateAverageLumanceLocal(RenderSystem* rs);
-		LoadPipelineStateRes CreateAverageLumanceGlobal(RenderSystem* rs);
-		LoadPipelineStateRes CreateToneMapping(RenderSystem* rs);
+		LoadPipelineStateRes CreateAverageLumanceLocal	(RenderSystem* rs, iAllocator&);
+		LoadPipelineStateRes CreateAverageLumanceGlobal	(RenderSystem* rs, iAllocator&);
+		LoadPipelineStateRes CreateToneMapping			(RenderSystem* rs, iAllocator&);
 
 
 		RenderSystem&			renderSystem;

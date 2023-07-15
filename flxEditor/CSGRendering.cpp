@@ -52,7 +52,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
 
             std::vector<Vertex> v;
 
-            ctx.SetPipelineState(resourceStates.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
+            ctx.SetPipelineState(resourceStates.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, threadLocal));
 
             for (auto& csgObject : csg)
             {

@@ -1239,7 +1239,7 @@ public:
 					descHeap.NullFill(ctx);
 
 					ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-					ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO));
+					ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO, allocator));
 
 					ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 					ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthBuffer));
@@ -1382,7 +1382,7 @@ public:
 
 					for (const auto& brush : brushes)
 					{
-						ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO));
+						ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
 						ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
 
 						Vertex v;

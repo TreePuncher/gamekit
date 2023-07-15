@@ -3639,9 +3639,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		size_t													GetCurrentCounter();
-		ID3D12PipelineState*									GetPSO(PSOHandle StateID);
+		ID3D12PipelineState*									GetPSO(PSOHandle StateID, iAllocator& temp);
 		const RootSignature* const								GetPSORootSignature(PSOHandle StateID) const;
-		std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature(PSOHandle StateID) const;
+		std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
@@ -4029,8 +4029,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeRootSignature	(RootSigHandle);
 		void SetComputeRootSignature	(const RootSignature*);
 		void SetPipelineState			(ID3D12PipelineState* PSO);
-		void SetComputePipelineState	(const PSOHandle);
-		void SetGraphicsPipelineState	(const PSOHandle);
+		void SetComputePipelineState	(const PSOHandle, iAllocator& temp);
+		void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp);
 
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
@@ -4553,6 +4553,7 @@ private:
 	struct PipelineBuilder
 	{
 		PipelineBuilder(iAllocator& allocator);
+		~PipelineBuilder();
 
 		void AddRootSignature	(const RootSignature* rootSig);
 
@@ -4580,7 +4581,6 @@ private:
 
 		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
 		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
-		FlexKit::LoadPipelineStateRes BuildAndCache(RenderSystem& renderSystem);
 
 
 		class PipelineBlob
@@ -4667,13 +4667,15 @@ private:
 			Vector<char> buffer;
 		};
 
-		const char*				debugName	= nullptr;
-		const RootSignature*	rootSig		= nullptr;
-		bool					built		= false;
-		uint64_t				hash		= 0xcbf29ce484222325;
-		PipelineBlob			blob;
-		Vector<Shader>			shaders;
-		iAllocator*				allocator	= nullptr;
+		const char*					debugName		= nullptr;
+		const RootSignature*		rootSig			= nullptr;
+		D3D12_INPUT_ELEMENT_DESC*	inputElements	= nullptr;
+		bool						built			= false;
+		uint64_t					hash			= 0xcbf29ce484222325;
+		iAllocator*					allocator		= nullptr;
+
+		PipelineBlob				blob;
+		Vector<Shader>				shaders;
 	};
 
 

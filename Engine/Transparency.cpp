@@ -47,18 +47,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes	CreateOITBlendPSO(RenderSystem* RS);
-	LoadPipelineStateRes	CreateOITDrawPSO(RenderSystem* RS);
-	LoadPipelineStateRes	CreateOITDrawAnimatedPSO(RenderSystem* RS);
+	LoadPipelineStateRes	CreateOITBlendPSO			(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawPSO			(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawAnimatedPSO	(RenderSystem* RS, iAllocator& allocator);
 
-	LoadPipelineStateRes	CreateMarkClustersPSO(RenderSystem* RS);
-	LoadPipelineStateRes	CreateMLABDrawPSO(RenderSystem* RS);
+	LoadPipelineStateRes	CreateMarkClustersPSO		(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateMLABDrawPSO			(RenderSystem* RS, iAllocator& allocator);
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITDrawPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOITDrawPSO(RenderSystem* RS, iAllocator& allocator)
 	{
 		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
 		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
@@ -129,7 +129,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITDrawAnimatedPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOITDrawAnimatedPSO(RenderSystem* RS, iAllocator& allocator)
 	{
 		return {};
 	}
@@ -138,7 +138,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS, iAllocator& allocator)
 	{
 		auto VShader = RS->LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
 		auto PShader = RS->LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
@@ -188,7 +188,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateMLABDrawPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateMLABDrawPSO(RenderSystem* RS, iAllocator& allocator)
 	{
 		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
 		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
@@ -345,7 +345,7 @@ namespace FlexKit
 
 
 				ctx.SetRootSignature(rootSig);
-				ctx.SetPipelineState(resources.GetPipelineState(OITDRAW));
+				ctx.SetPipelineState(resources.GetPipelineState(OITDRAW, tempAllocator));
 
 				CBPushBuffer constantBuffer{
 					data.reserveCB(
@@ -464,7 +464,7 @@ namespace FlexKit
 
 				ctx.BeginEvent_DEBUG("OIT - Blend");
 
-				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND));
+				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND, tempAllocator));
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				const RootSignature* rootSig = resources.renderSystem().Library.RSDefault;

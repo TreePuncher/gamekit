@@ -33,7 +33,7 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	LoadPipelineStateRes CreateCullTerrainComputePSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateCullTerrainComputePSO(RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		auto cullTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\cullterrain.hlsl");
 		auto cullTerrain_shader_GS = renderSystem->LoadShader("CullTerrain", "gs_6_0", "assets\\cullterrain.hlsl");
@@ -114,7 +114,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateForwardRenderTerrainPSO(RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain", "gs_6_0", "assets\\forwardRenderTerrain.hlsl");
@@ -167,7 +167,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
+	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS",		"vs_6_0", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain",		"gs_6_0", "assets\\forwardRenderTerrain.hlsl");
