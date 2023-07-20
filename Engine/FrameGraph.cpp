@@ -218,6 +218,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FrameGraphNodeBuilder::FrameGraphNodeBuilder(
+		std::span<FrameGraphNode>	IN_nodeTable,
+		FrameResources*				IN_Resources, 
+		FrameGraphNode&				IN_Node,
+		FrameGraphResourceContext&	IN_context,
+		iAllocator*					IN_allocator) :
+			context				{ IN_context	},
+			inputNodes			{ IN_allocator	},
+			node				{ IN_Node		},
+			nodeTable			{ IN_nodeTable	},
+			resources			{ IN_Resources	},
+			retiredObjects		{ IN_allocator	},
+			barriers			{ IN_allocator	},
+			temporaryObjects	{ IN_allocator	},
+			acquiredResources	{ IN_allocator	},
+			allocator			{ IN_allocator	} {}
+
+
+	/************************************************************************************************/
+
+
 	void FrameGraphNodeBuilder::BuildNode(FrameGraph* FrameGraph)
 	{	// Builds Nodes Linkages, Transitions
 		// Process Transitions
@@ -1071,6 +1092,27 @@ namespace FlexKit
 	{
 		auto rootSig = resources->renderSystem.GetPSORootSignature(State);
 		return rootSig->GetDescHeap(idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	RenderSystem& FrameGraphNodeBuilder::GetRenderSystem() { return resources->renderSystem; }
+
+	FrameGraphNodeBuilder::operator FrameResources& () const { return *resources; }
+	FrameGraphNodeBuilder::operator RenderSystem& () { return *resources->renderSystem; }
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraphNodeBuilder::Requires(PSOHandle handle)
+	{
+		auto obj = GetRenderSystem().PipelineStates.GetPSOObject(handle);
+
+		if (obj && obj->state != PipelineStateObject::PSO_States::Loaded)
+			GetRenderSystem().QueuePSOLoad(handle);
 	}
 
 

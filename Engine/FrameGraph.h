@@ -1294,17 +1294,7 @@ namespace FlexKit
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
-			iAllocator*					IN_allocator) :
-				context				{ IN_context	},
-				inputNodes			{ IN_allocator	},
-				node				{ IN_Node		},
-				nodeTable			{ IN_nodeTable	},
-				resources			{ IN_Resources	},
-				retiredObjects		{ IN_allocator	},
-				barriers			{ IN_allocator	},
-				temporaryObjects	{ IN_allocator	},
-				acquiredResources	{ IN_allocator	},
-				allocator			{ IN_allocator	} {}
+			iAllocator*					IN_allocator);
 
 
 		// No Copying
@@ -1366,10 +1356,12 @@ namespace FlexKit
 
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
-		RenderSystem& GetRenderSystem() { return resources->renderSystem; }
+		RenderSystem& GetRenderSystem();
 
-		operator FrameResources&	() const	{ return *resources; }
-		operator RenderSystem&		()			{ return *resources->renderSystem;}
+		operator FrameResources&	() const;
+		operator RenderSystem&		();
+
+		void Requires(PSOHandle handle);
 
 	private:
 

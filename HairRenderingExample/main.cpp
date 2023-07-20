@@ -15,12 +15,12 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{.GPUdebugMode = true });
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{.GPUdebugMode = false });
 		
 		auto& state = app->PushState<HairRenderingTest>();
 
 		app->GetCore().FPSLimit		= 144;
-		app->GetCore().FrameLock	= true;
+		app->GetCore().FrameLock	= false;
 		app->GetCore().vSync		= true;
 		app->Run();
 	}
