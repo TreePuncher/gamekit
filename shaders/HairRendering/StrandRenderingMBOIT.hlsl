@@ -9,6 +9,7 @@
 
 
 #define INFINITY ((float)(1e+300 * 1e+300))
+#define M 4
 
 struct ControlPoint
 {
@@ -45,12 +46,12 @@ cbuffer constants : register(b0)
 
 struct MLAB_Samples
 {
-	half4 samples[4];
+	half4 samples[M];
 };
 
 struct MLAB_Depth
 {
-	float samples[4];
+	float samples[M];
 };
 
 StructuredBuffer					<ControlPoint>	input			: register(t0);
@@ -110,9 +111,9 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 	const float  width		= 0.05f;
 
 	StrandVertex vertex;
-	//vertex.color	= float3(controlPoints[0].pos / 10.0f) + 0.5f;
-	const float a = (id % 21) / 21.0f;
-	vertex.color = float4(a * a, a * a, a * a, a);
+	vertex.color	= float4((controlPoints[0].pos) / 10.0 + 0.5f, 0.1);
+	//const float a = pow((id % 21) / 21.0f, 2.0f);
+	//vertex.color = float4(a * a, a * a, a * a, a);
 
 	// Triangle 1
 	vertex.position = t1 - float4(sideVec * width, 0) - float4(t, 0) * width;
@@ -147,74 +148,56 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-void PS_Draw(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)//: SV_TARGET
+void PS_Draw(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)
 {
-	half4 tempSample	= color;
+	float4 tempSample	= color;
 	float tempDepth		= depth;
 
-	half4 samples[5];
-	float depthSamples[5];
+	float4 samples[M + 1];
+	float depthSamples[M + 1];
 
-	[unroll(4)]
-	for (uint i = 0; i < 4; i++)
+	
+	[unroll(M)]
+	for (uint i = 0; i < M; i++)
 	{
 		samples[i]		= renderTarget[xy.x + xy.y * 1920].samples[i];
-		depthSamples[i]	= depthValues[xy.x + xy.y * 1920].samples[i];
+		depthSamples[i] = depthValues[xy.x + xy.y * 1920].samples[i];
 	}
 
-	[unroll(4)]
-	for (uint i = 0; i < 4; i++)
+	samples[M]		= 0;
+	depthSamples[M] = INFINITY;
+
+	
+	[unroll(M + 1)]
+	for (uint i = 0; i < 5; i++)
 	{
-		const float depthSample = depthSamples[i];
-		
-		if (depthSample > tempDepth)
+		if (tempDepth <= depthSamples[i])
 		{
-			const half4 sample = samples[i];
+			const float4 s	= samples[i];
+			const float4 d	= depthSamples[i];
 			
-			samples[i]		= tempSample;
-			depthSamples[i]	= tempDepth;
+			samples[i]			= tempSample;
+			depthSamples[i]		= tempDepth;
 			
-			tempSample	= sample;
-			tempDepth	= depthSample;
+			tempSample	= s;
+			tempDepth	= d;
 		}
-
-
-		// Compression
-		tempSample.xyz	= samples[3].rgb	+ samples[4].rgb * samples[3].a;
-		tempSample.a	= samples[3].a		* samples[4].a;
-
-		samples[3]		= tempSample;
-		depthSamples[3]	= tempDepth;
 	}
 
-	for (uint i = 0; i < 4; i++)
+	// Compression
+	tempSample =	half4(	samples[M - 1].rgb + (samples[M].rgb * samples[M - 1].w),
+							samples[M - 1].w * samples[M].w);
+	
+	samples[M - 1]		= tempSample;
+	depthSamples[M - 1]	= tempDepth;
+
+	for (uint i = 0; i < M - 1; i++)
 	{
-		renderTarget[xy.x + xy.y * 1920].samples[i] = samples[i];
+		renderTarget[xy.x + xy.y * 1920].samples[i]	= samples[i];
 		depthValues[xy.x + xy.y * 1920].samples[i]	= depthSamples[i];
 	}
 }
 
-
-/************************************************************************************************/
-
-
-float4 PS_Blend(const float4 xy : SV_POSITION) : SV_TARGET
-{
-	float4 rgba = 0;
-
-	if (isinf(depthValues[xy.x + xy.y * 1920].samples[0]))
-		discard;
-	
-	for (uint i = 0; i < 4; i++)
-	{
-		half4 sample = renderTarget[xy.x + xy.y * 1920].samples[offset];
-	
-		if (sample.w < 10000.0f)
-			rgba += float4(sample.rgb, 1.0f);
-	}
-	
-	return saturate(rgba);
-}
 
 /************************************************************************************************/
 
