@@ -76,11 +76,9 @@ public:
 	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO		(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO	(FlexKit::iAllocator& tempMemory);
 
-	FlexKit::LoadPipelineStateRes CreateStrandRenderPSO					(FlexKit::iAllocator& tempMemory);
+	FlexKit::LoadPipelineStateRes CreateStrandRender1PSO				(FlexKit::iAllocator& tempMemory);
+	FlexKit::LoadPipelineStateRes CreateStrandRender2PSO				(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateBlendState						(FlexKit::iAllocator& tempMemory);
-
-	FlexKit::LoadPipelineStateRes CreateDebugRenderPSO					(FlexKit::iAllocator& tempMemory);
-
 
 	void ClearStyleBuffers(HairStyle& style);
 
@@ -90,7 +88,7 @@ public:
 	void Simulate(		FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
-						double									dT,
+						const double							dT,
 						FlexKit::FrameGraph&					frameGraph,
 						FlexKit::ReserveVertexBufferFunction&	reserveVB,
 						FlexKit::ReserveConstantBufferFunction&	reserveCB);
@@ -98,15 +96,7 @@ public:
 	void DrawStrands(	FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
-						double									dT,
-						FlexKit::FrameGraph&					frameGraph,
-						FlexKit::ReserveVertexBufferFunction&	reserveVB,
-						FlexKit::ReserveConstantBufferFunction&	reserveCB);
-
-	void DrawDebug	(	FlexKit::UpdateTask*					update,
-						FlexKit::EngineCore&					core,
-						FlexKit::UpdateDispatcher&				dispatcher,
-						double									dT,
+						const double							dT,
 						FlexKit::FrameGraph&					frameGraph,
 						FlexKit::ReserveVertexBufferFunction&	reserveVB,
 						FlexKit::ReserveConstantBufferFunction&	reserveCB);
@@ -136,7 +126,8 @@ public:
 
 	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
-	FlexKit::MemoryPoolAllocator	gpuAllocator;
+	FlexKit::MemoryPoolAllocator	UAVPool;
+	FlexKit::MemoryPoolAllocator	RTPool;
 
 	FlexKit::RunOnceQueue<void (FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 };
