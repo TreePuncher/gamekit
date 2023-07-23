@@ -1654,37 +1654,35 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DescriptorHeap& Init2		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
 		DescriptorHeap& NullFill	(Context& ctx, const size_t end = -1);
 
-		bool SetCBV					(Context& ctx, size_t idx, const ConstantBufferDataSet& constants);
-		bool SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
-		bool SetCBV					(Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
+		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, const ConstantBufferDataSet& constants);
+		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
+		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
-		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle);
-		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		bool SetSRV					(Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
-		bool SetSRVArray			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		DescriptorHeap& SetSRVArray				(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		bool SetSRV3D				(Context& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetSRV3D				(Context& ctx, size_t idx, ResourceHandle);
 
-		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle		Handle);
-		//bool SetSRV					(Context& ctx, size_t idx, ResourceHandle	Handle);
-		bool SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle);
-		bool SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		DescriptorHeap& SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle);
+		DescriptorHeap& SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
-		bool SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+		DescriptorHeap& SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 
-		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
 
-		bool SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		bool SetUAVTexture			(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
-		bool SetUAVCubemap			(Context& ctx, size_t idx, ResourceHandle handle);
+		DescriptorHeap& SetUAVCubemap			(Context& ctx, size_t idx, ResourceHandle handle);
 
-		bool SetUAVTexture3D		(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture3D			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		bool SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
-		bool SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+		DescriptorHeap& SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		DescriptorHeap& SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
-		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
+		DescriptorHeap& SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
@@ -2637,7 +2635,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return desc;
 		}
 
-		static GPUResourceDesc UAVResource(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::UNKNOWN, bool renderTarget = false)
+		static GPUResourceDesc UAVResource(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::UNKNOWN, bool renderTarget = false, uint32_t bufferCount = 1)
 		{
 			return {
 				.type			= ResourceType::UnorderedAccess,
@@ -2648,12 +2646,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= 3,
+				.bufferCount	= (uint8_t)bufferCount,
 				.MipLevels		= 1,
 			};	
 		}
 
-		static GPUResourceDesc UAVResource2(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::R32_UINT, bool renderTarget = false)
+		static GPUResourceDesc UAVResource2(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::R32_UINT, bool renderTarget = false, uint32_t bufferCount = 1)
 		{
 			return {
 				.type			= ResourceType::UnorderedAccess,
@@ -2662,13 +2660,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.format			= IN_format,
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= 3,
+				.bufferCount	= (uint8_t)bufferCount,
 				.MipLevels		= 1,
 			};
 		}
 
 
-		static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
+		static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1, uint32_t bufferCount = 1)
 		{
 			return {
 				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
@@ -2677,7 +2675,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				.format			= IN_format,
 
 				.WH				= IN_WH,
-				.bufferCount	= 3,
+				.bufferCount	= (uint8_t)bufferCount,
 				.MipLevels		= (uint8_t)mipCount,
 
 				.clearValue		= renderTarget ? std::optional<D3D12_CLEAR_VALUE>{ D3D12_CLEAR_VALUE{
@@ -2688,7 +2686,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		static GPUResourceDesc UAVTexture3D(const uint3 IN_XYZ, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1)
+		static GPUResourceDesc UAVTexture3D(const uint3 IN_XYZ, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1, uint32_t bufferCount = 1)
 		{
 			return {
 				.type			= ResourceType::UnorderedAccess,
@@ -2698,7 +2696,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 				.WH				= { IN_XYZ[0], IN_XYZ[1] },
 				.arraySize		= (uint8_t)IN_XYZ[2],
-				.bufferCount	= 1,
+				.bufferCount	= (uint8_t)bufferCount,
 				.MipLevels		= (uint8_t)mipCount,
 			};
 		}
@@ -4342,7 +4340,7 @@ private:
 	};
 
 
-	enum class EComparison
+	enum class EComparison : uint32_t
 	{
 		NONE			= 0,
 		NEVER			= 1,
@@ -4362,14 +4360,14 @@ private:
 		PerInstance
 	};
 
-	enum class EDepthWriteMask
+	enum class EDepthWriteMask : uint32_t
 	{
 		Zero	= 0,
 		All		= 1
 	};
 
 
-	enum class EStencilOP
+	enum class EStencilOP : uint32_t
 	{
 		KEEP		= 1,
 		ZERO		= 2,
@@ -4382,7 +4380,7 @@ private:
 	};
 
 
-	enum class EBlend
+	enum class EBlend : uint32_t
 	{
 		ZERO				= 1,
 		ONE					= 2,
@@ -4406,7 +4404,7 @@ private:
 	};
 
 
-	enum class EBlendOP
+	enum class EBlendOP : uint32_t
 	{
 		ADD				= 1,
 		SUBTRACT		= 2,
@@ -4416,7 +4414,7 @@ private:
 	};
 
 
-	enum class ELogicOP
+	enum class ELogicOP : uint32_t
 	{
 		CLEAR			= 0,
 		SET				= 1,
@@ -4521,8 +4519,8 @@ private:
 
 	struct RenderTargetStateDesc
 	{
-		bool				blendEnable				= false;
-		bool				logicOpEnable			= false;
+		uint32_t			blendEnable				= false;
+		uint32_t			logicOpEnable			= false;
 		EBlend				srcBlend				= EBlend::ONE;
 		EBlend				dstBlend				= EBlend::ZERO;
 		EBlendOP			blendOp					= EBlendOP::ADD;

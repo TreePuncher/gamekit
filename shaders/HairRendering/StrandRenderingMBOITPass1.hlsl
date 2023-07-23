@@ -1,8 +1,10 @@
+#include "MBOIT.hlsl"
+
 #define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"	\
 			"RootConstants(num32BitConstants = 17, b0),"		\
 			"SRV(t0),"											\
-			"UAV(u0, visibility = SHADER_VISIBILITY_PIXEL),"	\
-			"UAV(u1, visibility = SHADER_VISIBILITY_PIXEL)"	
+			"DescriptorTable("									\
+				"UAV(u0, numDescriptors = 2))"
 
 
 /************************************************************************************************/
@@ -28,9 +30,9 @@ struct ControlPoint
 
 struct StrandVertex
 {
-	float4 color	: COLOR;
-	float4 position : SV_POSITION;
-	float  depth	: DEPTH;
+	float	alpha		: ALPHA;
+	float4	position	: SV_POSITION;
+	float	depth		: DEPTH;
 };
 
 
@@ -44,19 +46,9 @@ cbuffer constants : register(b0)
 };
 
 
-struct MLAB_Samples
-{
-	half4 samples[M];
-};
-
-struct MLAB_Depth
-{
-	float samples[M];
-};
-
-StructuredBuffer					<ControlPoint>	input			: register(t0);
-RasterizerOrderedStructuredBuffer	<MLAB_Samples>	renderTarget	: register(u0);
-RasterizerOrderedStructuredBuffer	<MLAB_Depth>	depthValues		: register(u1);
+StructuredBuffer			<ControlPoint>	Input	: register(t0);
+RasterizerOrderedTexture2D	<float>			B0		: register(u0);
+RasterizerOrderedTexture2D	<float4>		Moments	: register(u1);
 
 
 /************************************************************************************************/
@@ -95,8 +87,8 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 
 	const ControlPoint controlPoints[2] =
 	{
-		input[id + 0],
-		input[id + 1]
+		Input[id + 0],
+		Input[id + 1]
 	};
 
 	const float4 t1	= mul(PV, float4(controlPoints[0].pos, 1));
@@ -111,9 +103,7 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 	const float  width		= 0.05f;
 
 	StrandVertex vertex;
-	vertex.color	= float4((controlPoints[0].pos) / 10.0 + 0.5f, 0.1);
-	//const float a = pow((id % 21) / 21.0f, 2.0f);
-	//vertex.color = float4(a * a, a * a, a * a, a);
+	vertex.alpha	= 0.1f;
 
 	// Triangle 1
 	vertex.position = t1 - float4(sideVec * width, 0) - float4(t, 0) * width;
@@ -148,84 +138,24 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-void PS_Draw(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)
+void PS_Draw1(const float alpha : ALPHA, const float4 xy : SV_POSITION, const float depth : DEPTH)
 {
-	float4 tempSample	= color;
-	float tempDepth		= depth;
+	float4	m		= Moments[uint2(xy.xy)];
+	float	b0		= B0[uint2(xy.xy)];
+	float2	bEven	= m.xy;
+	float2	bOdd	= m.zw;
+	GeneratePowerMoments(b0, bEven, bOdd, depth, alpha);
 
-	float4 samples[M + 1];
-	float depthSamples[M + 1];
-
-	
-	[unroll(M)]
-	for (uint i = 0; i < M; i++)
-	{
-		samples[i]		= renderTarget[xy.x + xy.y * 1920].samples[i];
-		depthSamples[i] = depthValues[xy.x + xy.y * 1920].samples[i];
-	}
-
-	samples[M]		= 0;
-	depthSamples[M] = INFINITY;
-
-	
-	[unroll(M + 1)]
-	for (uint i = 0; i < 5; i++)
-	{
-		if (tempDepth <= depthSamples[i])
-		{
-			const float4 s	= samples[i];
-			const float4 d	= depthSamples[i];
-			
-			samples[i]			= tempSample;
-			depthSamples[i]		= tempDepth;
-			
-			tempSample	= s;
-			tempDepth	= d;
-		}
-	}
-
-	// Compression
-	tempSample =	half4(	samples[M - 1].rgb + (samples[M].rgb * samples[M - 1].w),
-							samples[M - 1].w * samples[M].w);
-	
-	samples[M - 1]		= tempSample;
-	depthSamples[M - 1]	= tempDepth;
-
-	for (uint i = 0; i < M - 1; i++)
-	{
-		renderTarget[xy.x + xy.y * 1920].samples[i]	= samples[i];
-		depthValues[xy.x + xy.y * 1920].samples[i]	= depthSamples[i];
-	}
+	B0[uint2(xy.xy)]		= b0;
+	Moments[uint2(xy.xy)]	= float4(bEven, bOdd);
 }
 
 
 /************************************************************************************************/
 
 
-struct DebugVert
+void PS_Draw2(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)
 {
-	float4 pos : SV_POSITION;
-	float4 color : COLOR;
-};
-
-[maxvertexcount(6)]
-void GDebug(point uint primitiveID[1] : PRIMITIVEID, inout LineStream<DebugVert> lineStream)
-{
-	const uint id = primitiveID[0] + primitiveID[0] / 6;
-
-	const ControlPoint controlPoint = input[id];
-
-	const float4 t1 = mul(PV, float4(input[0].pos, 1));
-	const float3 p1 = t1.xyz / t1.w;
-}
-
-
-/************************************************************************************************/
-
-
-float4 PDebug(float4 color : COLOR) : SV_TARGET
-{
-	return float4(1, 1, 1, 0);
 }
 
 

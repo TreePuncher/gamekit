@@ -766,11 +766,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle)
+	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
-
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -783,17 +787,22 @@ namespace FlexKit
 					ctx.renderSystem->DescriptorCBVSRVUAVSize,
 					idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
+	DescriptorHeap& DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -806,20 +815,22 @@ namespace FlexKit
 					idx),
 			ctx.renderSystem->GetTextureFormat(handle));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
-		if (handle == InvalidHandle || !CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+#if USING(DEBUGGRAPHICS)
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			DebugBreak();
-			return false;
+			FK_LOG_ERROR("DescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
 		}
+#endif
 
 		FillState[idx] = true;
 
@@ -832,7 +843,7 @@ namespace FlexKit
 					idx),
 			format);
 
-		return true;
+		return *this;
 	}
 
 
@@ -840,10 +851,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -858,17 +874,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -884,17 +905,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRVArray(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRVArray(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -909,22 +935,27 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle resource)
+	DescriptorHeap& DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle handle)
 	{
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || resource == InvalidHandle)
-			return false;
+#if USING(DEBUGGRAPHICS)
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
-		const uint32_t	mipCount	= ctx.renderSystem->GetTextureMipCount(resource);
-		const auto		format		= ctx.renderSystem->GetTextureFormat(resource);
+		const uint32_t	mipCount	= ctx.renderSystem->GetTextureMipCount(handle);
+		const auto		format		= ctx.renderSystem->GetTextureFormat(handle);
 		const auto		dxFormat	= TextureFormat2DXGIFormat(format);
 
 		PushTexture3DToDescHeap(
@@ -933,23 +964,28 @@ namespace FlexKit
 			mipCount,
 			0,
 			0,
-			resource,
+			handle,
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, const ConstantBufferDataSet& constants)
+	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, const ConstantBufferDataSet& constants)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -965,17 +1001,22 @@ namespace FlexKit
 			constants.Size(),
 			constants.Offset());
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle	handle, size_t offset, size_t bufferSize)
+	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -990,17 +1031,22 @@ namespace FlexKit
 			(bufferSize / 256) * 256 + 256,
 			offset);
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
+	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1015,20 +1061,25 @@ namespace FlexKit
 			(bufferSize / 256) * 256 + 256,
 			offset);
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
 	{
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
 
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1043,17 +1094,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 	
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1070,17 +1126,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1097,20 +1158,25 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
 	{
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
 
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1128,17 +1194,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
+	DescriptorHeap& DescriptorHeap::SetUAVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1151,17 +1222,22 @@ namespace FlexKit
 					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
 					idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1179,17 +1255,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1203,7 +1284,7 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
@@ -1211,7 +1292,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetUAVStructured(
+	DescriptorHeap& DescriptorHeap::SetUAVStructured(
 		Context&		ctx,
 		size_t			idx,
 		ResourceHandle	resource,
@@ -1223,8 +1304,13 @@ namespace FlexKit
 		FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
 
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || resource == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, resource.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1241,17 +1327,22 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx));
 
-		return true;
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
+#if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-			return false;
+		{
+			FK_LOG_ERROR("DescriptorHeap::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			return *this;
+		}
+#endif
 
 		FillState[idx] = true;
 
@@ -1268,7 +1359,7 @@ namespace FlexKit
 			D3D12_BUFFER_SRV_FLAG_NONE,
 			offset);
 
-		return true;
+		return *this;
 	}
 
 
@@ -1923,7 +2014,9 @@ namespace FlexKit
 		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
 		CD3DX12_BLEND_DESC& desc = blendState;
 
-		memcpy(&desc, &state, sizeof(state));
+		desc.AlphaToCoverageEnable	= state.alphaToCoverageEnable;
+		desc.IndependentBlendEnable	= state.independentBlendEnable;
+		memcpy(&desc.RenderTarget, &state.renderTarget, sizeof(state));
 
 		blob += blendState;
 	}
@@ -6066,7 +6159,9 @@ namespace FlexKit
 	const size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
 		const D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
-		return pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC).SizeInBytes;
+		auto res = pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC);
+
+		return res.SizeInBytes;
 	}
 
 
