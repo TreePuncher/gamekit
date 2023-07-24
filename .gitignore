@@ -52,3 +52,6 @@ vcpkg_installed
 /TextureStreamingTest/x64/Release/TextureStreamingTest.vcxproj.FileListAbsolute.txt
 /MergePathSortTest/x64/Release/MergePathSortTest.vcxproj.FileListAbsolute.txt
 /MergePathSortTest/x64/Debug/MergePathSortTest.vcxproj.FileListAbsolute.txt
+/GPUCache
+/DawnCache
+/HairRenderingExample/Intel® VTune™ Profiler Results/HairRenderingExample
