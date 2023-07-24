@@ -138,7 +138,7 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-void PS_Draw1(const float alpha : ALPHA, const float4 xy : SV_POSITION, const float depth : DEPTH)
+void PS_Draw(const float alpha : ALPHA, const float4 xy : SV_POSITION, const float depth : DEPTH)
 {
 	float4	m		= Moments[uint2(xy.xy)];
 	float	b0		= B0[uint2(xy.xy)];
@@ -148,14 +148,6 @@ void PS_Draw1(const float alpha : ALPHA, const float4 xy : SV_POSITION, const fl
 
 	B0[uint2(xy.xy)]		= b0;
 	Moments[uint2(xy.xy)]	= float4(bEven, bOdd);
-}
-
-
-/************************************************************************************************/
-
-
-void PS_Draw2(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH)
-{
 }
 
 

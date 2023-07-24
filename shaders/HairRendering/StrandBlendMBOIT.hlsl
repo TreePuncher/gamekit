@@ -1,7 +1,7 @@
 #include "MBOIT.hlsl"
 
 #define RS1 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"	\
-			"RootConstants(num32BitConstants = 17, b0),"		\
+			"RootConstants(num32BitConstants = 22, b0),"		\
 			"DescriptorTable("									\
 				"SRV(t0, numDescriptors = 3))"
 
@@ -19,7 +19,9 @@
 cbuffer constants : register(b0)
 {
 	float4x4	PV;
-	uint		offset;
+	float4		wrapping_zone_parameters;
+	float		overestimation;
+	float		moment_bias;
 };
 
 
@@ -63,7 +65,8 @@ float4 PS_Blend(const float4 xy : SV_POSITION) : SV_TARGET
 {
 	float4 rgba = 0;
 
-	return moments[uint2(xy.xy)];
+	return accumulation[uint2(xy.xy)];
+	//return rgba;
 }
 
 
