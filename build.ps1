@@ -12,10 +12,11 @@ Write-Output "PathSolutionFile = $PathSln"
 $Env:path += ";" + $PathMSBuild
 
 &"msbuild" $PathSln -t:restore -p:RestorePackagesConfig=true -maxcpucount:32
+
 &"msbuild" $PathSln -target:TextureStreamingTest -target:AnimationTest -target:MergePathSortTest -target:HairRenderingExample  "/p:BuildInParallel=true" "/p:Configuration=Release" "/p:CL_MPcount=36"  -maxcpucount:32
 if(!$?) { Exit $LASTEXITCODE }
 
-git clone https://monotonezombie.ddns.net/game-dev/scrap_assets.git assets
+git clone https://gitlab.monotonezombie.com/game-dev/scrap_assets.git assets
 if(!$?) { Exit $LASTEXITCODE }
 
 Copy-Item -Recurse -Path "assets\game_assets" "Builds\release\Assets"

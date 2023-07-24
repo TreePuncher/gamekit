@@ -4005,7 +4005,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after);
 		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All);
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before);
-		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceAccessState Before, DeviceAccessState State = DeviceAccessState::DASRenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State);
 		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State);
 
@@ -4514,7 +4513,7 @@ private:
 		GREEN	= 2,
 		BLUE	= 4,
 		ALPHA	= 8,
-		ALL		= (RED & GREEN & BLUE & ALPHA)
+		ALL		= (RED | GREEN | BLUE | ALPHA)
 	};
 
 	struct RenderTargetStateDesc

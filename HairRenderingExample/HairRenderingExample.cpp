@@ -209,9 +209,9 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRender1PSO(iAllocator& tempM
 {
 	PipelineBuilder builder{ tempMemory };
 
-	builder.AddVertexShader		("VMain",		R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
-	builder.AddGeometryShader	("GMain",		R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
-	builder.AddPixelShader		("PS_Draw1",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddVertexShader		("VMain",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddGeometryShader	("GMain",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddPixelShader		("PS_Draw",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass1.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
 
 	builder.AddInputTopology(ETopology::EIT_POINT);
 	builder.AddInputLayout({
@@ -233,9 +233,9 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRender2PSO(iAllocator& tempM
 {
 	PipelineBuilder builder{ tempMemory };
 
-	builder.AddVertexShader		("VMain",		R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
-	builder.AddGeometryShader	("GMain",		R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
-	builder.AddPixelShader		("PS_Draw2",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddVertexShader		("VMain",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddGeometryShader	("GMain",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddPixelShader		("PS_Draw",	R"(assets\shaders\HairRendering\StrandRenderingMBOITPass2.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
 
 	builder.AddInputTopology(ETopology::EIT_POINT);
 	builder.AddInputLayout({
@@ -246,6 +246,9 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRender2PSO(iAllocator& tempM
 	builder.AddBlendState({
 			.renderTarget = {{
 				.blendEnable	= true,
+				.srcBlend		= EBlend::ONE,
+				.blendOp		= EBlendOP::ADD,
+				.srcBlendAlpha	= EBlend::ONE,
 			}}
 		}
 	);
@@ -592,14 +595,16 @@ void HairRenderingTest::DrawStrands(
 			auto accumBuffer	= resources.GetResource(data.accumBuffer);
 			auto strandBuffer	= resources.GetResource(data.strandBuffer);
 
+
+			// Clear
 			ctx.ClearUAVTextureFloat(b0Buffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 			ctx.ClearUAVTextureFloat(momentBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 			ctx.ClearRenderTarget(accumBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 
-			ctx.AddUAVBarrier(b0Buffer, -1, DeviceLayout_UnorderedAccess, Sync_Compute, Sync_PixelShader);
-			ctx.AddUAVBarrier(accumBuffer,	-1, DeviceLayout_UnorderedAccess, Sync_Compute, Sync_PixelShader);
-			
-			ctx.SetScissorAndViewports({ backBuffer });
+			ctx.AddUAVBarrier(b0Buffer,		-1, DeviceLayout_UnorderedAccess,	Sync_Compute,	Sync_PixelShader);
+			ctx.AddTextureBarrier(accumBuffer,	DASRenderTarget, DASRenderTarget, DeviceLayout_RenderTarget, DeviceLayout_RenderTarget,	Sync_RenderTarget,	Sync_RenderTarget);
+
+			// Pass 1
 			ctx.SetGraphicsPipelineState(MBOITRender1, threadLocalAllocator);
 			
 			const auto CameraValues = GetCameraConstants(camera);
@@ -607,63 +612,54 @@ void HairRenderingTest::DrawStrands(
 			struct
 			{
 				float4x4	PV;
-				uint32_t	debugOffset;
+				float4		wrapping_zone_parameters	= { 0.0f, 0.0f, 0.0f, 0.0f };
+				float		overestimation				= 0.0f;
+				float		moment_bias					= 0.0f;
 			} shaderConstants0
 			{
 				.PV				= CameraValues.PV,
-				.debugOffset	= debugOffset
 			};
-			
+
+			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.SetGraphicsConstantValue(0, 17, &shaderConstants0);
 			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
 			ctx.SetGraphicsDescriptorTable(2,
 				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
 					.SetUAVTexture(ctx, 0, b0Buffer)
 					.SetUAVTexture(ctx, 1, momentBuffer));
-			
-			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
+
+			ctx.SetScissorAndViewports({ accumBuffer });
 			ctx.Draw((style.strandLength - 1) * style.strandCount);
-			
-#if 1
+
+			// Pass 2
 			ctx.SetGraphicsPipelineState(MBOITRender2, threadLocalAllocator);
 
-			ctx.SetGraphicsDescriptorTable(1,
+			ctx.SetGraphicsConstantValue(0, 22, &shaderConstants0);
+			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
+
+			ctx.SetGraphicsDescriptorTable(2,
 				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
 					.SetSRV(ctx, 0, resources.PixelShaderResource(data.b0Buffer,		ctx, Sync_PixelShader,	Sync_PixelShader))
 					.SetSRV(ctx, 1, resources.PixelShaderResource(data.momentBuffer,	ctx, Sync_PixelShader,	Sync_PixelShader))
-					.SetSRV(ctx, 2, resources.PixelShaderResource(data.accumBuffer,		ctx, Sync_RenderTarget,	Sync_PixelShader)));
+					.NullFill(ctx));
 
+			ctx.SetScissorAndViewports({ accumBuffer });
 			ctx.SetRenderTargets({ accumBuffer });
-			ctx.Draw((style.strandLength - 1)* style.strandCount);
-#endif		
+			ctx.Draw((style.strandLength - 1) * style.strandCount);
 
-
-#if 1
+			// Blend
 			ctx.SetGraphicsPipelineState(MBOITBlend, threadLocalAllocator);
 
-			struct
-			{
-				float4x4	PV;
-				float4		wrapping_zone_parameters	= { 0.0f, 0.0f, 0.0f, 0.0f };
-				float		overestimation				= 0.0f;
-				float		moment_bias					= 0.0f;
-			} shaderConstants1
-			{
-				.PV				= CameraValues.PV,
-			};
-
-			ctx.SetGraphicsConstantValue(0, 22, &shaderConstants1);
-
 			ctx.SetGraphicsDescriptorTable(1,
 				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
-					.SetSRV(ctx, 0, resources.PixelShaderResource(data.b0Buffer,		ctx, Sync_PixelShader,	Sync_PixelShader))
-					.SetSRV(ctx, 1, resources.PixelShaderResource(data.momentBuffer,	ctx, Sync_PixelShader,	Sync_PixelShader))
+					.SetSRV(ctx, 0, b0Buffer)
+					.SetSRV(ctx, 1, momentBuffer)
 					.SetSRV(ctx, 2, resources.PixelShaderResource(data.accumBuffer,		ctx, Sync_RenderTarget,	Sync_PixelShader)));
 
 			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-			ctx.SetRenderTargets({ backBuffer }, false);
+			ctx.SetRenderTargets({ backBuffer });
 			ctx.Draw(3);
-#endif
+
 			ctx.EndEvent_DEBUG();
 		});
 }

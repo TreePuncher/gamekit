@@ -48,7 +48,6 @@ cbuffer constants : register(b0)
 };
 
 
-
 StructuredBuffer	<ControlPoint>	Input	: register(t0);
 Texture2D			<float>			B0		: register(t1);
 Texture2D			<float4>		Moments	: register(t2);
@@ -62,22 +61,6 @@ uint VMain(const uint ID : SV_VertexID) : PRIMITIVEID
 {
 	return ID;
 }
-
-
-static const float4 fullScreenTriangle[] =
-{
-	float4(-1, -1, 1, 1),
-	float4(-1,  3, 1, 1),
-	float4( 3, -1, 1, 1),
-};
-
-
-[RootSignature(RS1)]
-float4 VS_FullScreen(const uint ID : SV_VertexID) : SV_POSITION
-{
-	return fullScreenTriangle[ID];
-}
-
 
 
 /************************************************************************************************/
@@ -143,13 +126,13 @@ void GMain(point uint primitiveID[1] : PRIMITIVEID, inout TriangleStream<StrandV
 /************************************************************************************************/
 
 
-float4 PS_Draw2(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH) : SV_Target
+float4 PS_Draw(const float4 color : COLOR, const float4 xy : SV_POSITION, const float depth : DEPTH) : SV_Target
 {
 	float b0		= B0[uint2(xy.xy)];
 	float4 m		= Moments[uint2(xy.xy)];
 	const float t	= ComputeTransmittanceAtDepthFrom4PowerMoments(b0, m.xy, m.zw, depth, moment_bias, overestimation, wrapping_zone_parameters);
 	
-	return float4(0, 0, 0, t);
+	return float4(t * color.xyz, color.a);
 }
 
 

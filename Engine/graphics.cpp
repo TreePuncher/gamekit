@@ -2518,25 +2518,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddRenderTargetBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState New)
-	{
-		FK_ASSERT(0);
-
-		/*
-		Barrier NewBarrier;
-		NewBarrier.OldState				= Before;
-		NewBarrier.NewState				= New;
-		NewBarrier.Type					= Barrier::Type::Resource;
-		NewBarrier.resourceHandle   	= Handle;
-
-		PendingBarriers.push_back(NewBarrier);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
 	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before)
 	{
 		DebugBreak();
