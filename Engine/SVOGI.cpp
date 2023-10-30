@@ -273,7 +273,7 @@ namespace FlexKit
 
 		ctx.SetComputeDescriptorTable(5, uavHeap2);
 
-		const auto XY = uint2{ float2{  WH[0] / 128.0f, WH[1] / 128.0f }.ceil() };
+		const uint2 XY{ float2{  WH[0] / 128.0f, WH[1] / 128.0f }.ceil() };
 		ctx.Dispatch(sampleInjection, { XY, 1 });
 
 		// Create Dispatch args

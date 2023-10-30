@@ -67,6 +67,7 @@ Global
 		{31215F1A-28AA-46AA-85B0-31343BC63786}.UnityBuild|x64.ActiveCfg = Debug|x64
 		{31215F1A-28AA-46AA-85B0-31343BC63786}.UnityBuild|x64.Build.0 = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x64.ActiveCfg = Debug|x64
+		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Debug|x64.Build.0 = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.ActiveCfg = Release|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.Release|x64.Build.0 = Release|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.ActiveCfg = Debug|x64
@@ -101,8 +102,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 		Qt5Version = qt5
+		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Engine\Engine.vcxitems*{233cc021-9348-439b-8d0f-3e714dbe39f8}*SharedItemsImports = 4

@@ -4,8 +4,6 @@
 // Includes
 #include "buildsettings.h"
 
-#include <cstddef>
-#include <concepts>
 #include <initializer_list>
 #include <limits>
 #include <math.h>
@@ -13,10 +11,9 @@
 #include <emmintrin.h>
 #include <smmintrin.h>
 #include <xmmintrin.h>
-#include <stdint.h>
-#include <string>
+#include <ranges>
+#include <tuple>
 #include <type_traits>
-#include <concepts>
 
 #ifdef max
 #undef max
@@ -29,8 +26,11 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
+	using std::views::iota;
+	using std::views::zip;
+
 	template<class T>
-	concept Scaler_t = std::is_integral_v<T> || std::is_floating_point_v<T>;
+	concept Scaler_t = std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_convertible_v<T, int> || std::is_convertible_v<T, float> || std::is_convertible_v<T, double>;
 
 	template<class T>
 	concept Vector_t = !Scaler_t<T> && requires(T t)
@@ -234,129 +234,138 @@ namespace FlexKit
 	FLEXKITAPI union float2
 	{
 	public:
-		float2() noexcept : x(0), y(0) {}
+		constexpr float2() noexcept : x(0), y(0) {}
 
 
-		float2( const float X, const float Y ) noexcept
+		constexpr float2( const float X, const float Y ) noexcept
 		{
 			x = X;
 			y = Y;
 		}
 
-		explicit float2(const float in_f) noexcept { x = in_f; y = in_f; }
+		constexpr explicit float2(const float in_f) noexcept { x = in_f; y = in_f; }
 
-		float2(const Vector_t auto& vect) noexcept
+		constexpr float2(const Vector_t auto& vect) noexcept
 		{
 			x = (float)vect[0];
 			y = (float)vect[1];
 		}
 
 
-		bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
+		constexpr bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
 
-		float&   operator[] (const size_t i) noexcept        { FK_ASSERT(i < 2); return i ? y : x; }
-		float    operator[] (const size_t i) const noexcept  { FK_ASSERT(i < 2); return i ? y : x; }
+		constexpr float&		operator[] (const size_t i) noexcept        
+		{ 
+			FK_ASSERT(i < 2); 
+			return i ? y : x; 
+		}
 
-		float2 operator + ( const float2& a ) const noexcept { return float2( x + a.x,	y + a.y );						}
-		float2 operator + ( const float   a ) const noexcept { return float2( x + a, y + a );							}
-		float2 operator - ( const float2& a ) const noexcept { return float2( x - a.x, y - a.y );						}
-		float2 operator - ( const float   a ) const noexcept { return float2( x - a,	y - a );						}
-		float2 operator * ( const float2& a ) const noexcept { return float2( x * a.x,	y * a.y );						}
-		float2 operator * ( const float   a ) const noexcept { return float2( x * a,	y * a );						}
-		float2 operator / ( const float2& a ) const noexcept { return float2( x / a.x,	y / a.y );						}
-		float2 operator / ( const float   a ) const noexcept { return float2( x / a,	y / a );						}
-		float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
+		constexpr const float&	operator[] (const size_t i) const noexcept  
+		{ 
+			FK_ASSERT(i < 2); 
+			return i ? y : x; 
+		}
 
-		float2& operator = (const float2& a) noexcept = default;// { x = a.x; y = a.y; return *this; }
+		constexpr float2 operator + ( const float2& a ) const noexcept { return float2( x + a.x,	y + a.y );						}
+		constexpr float2 operator + ( const float   a ) const noexcept { return float2( x + a, y + a );							}
+		constexpr float2 operator - ( const float2& a ) const noexcept { return float2( x - a.x, y - a.y );						}
+		constexpr float2 operator - ( const float   a ) const noexcept { return float2( x - a,	y - a );						}
+		constexpr float2 operator * ( const float2& a ) const noexcept { return float2( x * a.x,	y * a.y );						}
+		constexpr float2 operator * ( const float   a ) const noexcept { return float2( x * a,	y * a );						}
+		constexpr float2 operator / ( const float2& a ) const noexcept { return float2( x / a.x,	y / a.y );						}
+		constexpr float2 operator / ( const float   a ) const noexcept { return float2( x / a,	y / a );						}
+		constexpr float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
-		float2& operator *= (const float2& v) noexcept
+		constexpr float2& operator = (const float2& a) noexcept = default;// { x = a.x; y = a.y; return *this; }
+
+		constexpr float2& operator *= (const float2& v) noexcept
 		{ 
 			*this = *this * v;
 			return *this; 
 		}
 
-		float2& operator *= (const float s) noexcept
+		constexpr float2& operator *= (const float s) noexcept
 		{
 			*this = *this * s;
 			return *this;
 		}
 
-		float2& operator /= (const float2& v) noexcept
+		constexpr float2& operator /= (const float2& v) noexcept
 		{
 			*this = *this / v;
 			return *this;
 		}
 
-		float2& operator /= (const float s) noexcept
+		constexpr float2& operator /= (const float s) noexcept
 		{
 			*this = *this / s;
 			return *this;
 		}
 
-		float2&	operator -= (const float2& rhs) noexcept
+		constexpr float2&	operator -= (const float2& rhs) noexcept
 		{
 			*this = *this - rhs;
 			return *this;
 		}
 
-		float2& operator -= (const float rhs) noexcept
+		constexpr float2& operator -= (const float rhs) noexcept
 		{
 			*this = *this - rhs;
 			return *this;
 		}
 
 
-		float2&	operator += (const float2& rhs) noexcept
+		constexpr float2&	operator += (const float2& rhs) noexcept
 		{
 			*this = *this + rhs;
 			return *this;
 		}
 
 
-		float2& operator += (const float rhs) noexcept
+		constexpr float2& operator += (const float rhs) noexcept
 		{
 			*this = *this + rhs;
 			return *this;
 		}
 
 
-		bool operator > (const float2& rhs) const noexcept
+		constexpr bool operator > (const float2& rhs) const noexcept
 		{
 			return (x > rhs.x) && (y > rhs.y);
 		}
 
 
-		bool operator < (const float2& rhs) const noexcept
+		constexpr bool operator < (const float2& rhs) const noexcept
 		{
 			auto temp = !(*this > rhs);
 			return temp;
 		}
 
 
-		void Add( const float2& lhs, const float2& rhs ) noexcept
+		constexpr void Add( const float2& lhs, const float2& rhs ) noexcept
 		{
 			x = lhs.x + rhs.x;
 			y = lhs.y + rhs.y;
 		}
 
 
-		float2 floor() const noexcept
+		constexpr float2 floor() const noexcept
 		{
 			return { ::floorf(x), ::floorf(y) };
 		}
 
 
-		float2 ceil() const noexcept
+		constexpr float2 ceil() const noexcept
 		{
 			return { ::ceilf(x), ::ceilf(y) };
 		}
 
 
-		operator float* () noexcept { return XY; }
+		constexpr operator float* () noexcept { return XY; }
 
 
-		float Product() const noexcept { return x * y; }
-		float Sum()	    const noexcept { return x + y; }
+		constexpr float Product() const noexcept { return x * y; }
+		constexpr float Sum()	    const noexcept { return x + y; }
 
 
 		bool isNaN() const noexcept
@@ -365,13 +374,13 @@ namespace FlexKit
 		}
 
 
-		float2 abs() const noexcept
+		constexpr float2 abs() const noexcept
 		{
 			return  float2{ std::abs(x), std::abs(y) };
 		}
 
 
-		static bool Compare(float2 lhs, float2 rhs, float e) noexcept
+		constexpr static bool Compare(float2 lhs, float2 rhs, float e) noexcept
 		{
 			return (lhs - rhs).magnitudeSq() <= (e * e);
 		}
@@ -400,12 +409,12 @@ namespace FlexKit
 			return  sqrt(V_2.Sum());
 		}
 
-		float magnitudeSq() const noexcept
+		constexpr float magnitudeSq() const noexcept
 		{
 			return (*this * *this).Sum();
 		}
 
-		static float2 Zero() noexcept
+		constexpr static float2 Zero() noexcept
 		{
 			return { 0, 0 };
 		}
@@ -440,59 +449,74 @@ namespace FlexKit
 		typedef Vect<SIZE, TY> THISTYPE;
 
 		template<typename TY_tuple, int ... ints>
-		void helper(const TY_tuple& tuple, std::integer_sequence<int, ints...>) noexcept
+		constexpr void helper(const TY_tuple& tuple, const std::integer_sequence<int, ints...>&) noexcept
 		{
 			((Vector[ints] = static_cast<TY>(std::get<ints>(tuple))), ...);
 		}
 
-
 		template<typename TY_vect, int ... ints>
-		static decltype(auto) ExtractVect(const TY_vect& vect, const std::integer_sequence<int, ints...> x) noexcept
+		constexpr static decltype(auto) ExtractVect(const TY_vect& vect, const std::integer_sequence<int, ints...>&) noexcept
 		{
-			return std::make_tuple(vect[ints]...);
+			return std::forward_as_tuple(vect[ints]...);
 		}
 
-
-		template<typename TY_V>
-		static auto BuildTuple(const TY_V value) noexcept
+		template<typename T>
+		constexpr static auto BuildTuple(const T& value) noexcept
 		{
-			return std::tuple{ value };
+			if constexpr (Vector_t<T>)
+			{
+				auto extractElements =
+					[&]<size_t ... indices>(std::index_sequence<indices...>)
+				{
+					return std::forward_as_tuple(value[indices]...);
+				};
+
+				return extractElements(std::make_index_sequence<TY::size()>());
+			}
+			if constexpr (Scaler_t<TY>)
+				return std::forward_as_tuple(value);
 		}
 
-
-		static auto BuildTuple(const float2 f2) noexcept
+		constexpr static auto BuildTuple(const float2& f2) noexcept
 		{
-			return std::tuple{ f2.x, f2.y };
+			return std::forward_as_tuple(f2.x, f2.y);
 		}
-
 
 		template<size_t vectorSize>
-		static auto BuildTuple(const Vect<vectorSize, TY> vect)
+		constexpr static auto BuildTuple(const Vect<vectorSize, TY>& vect)
 		{
 			return ExtractVect(vect, std::make_integer_sequence<int, vectorSize>());
 		}
 
-
-		template<typename TY_Value, typename ... TY_args>
-		static auto BuildTuple(const TY_Value value, TY_args ... args) noexcept
+		template<typename ... TY_args>
+		constexpr static auto BuildTuple(const TY_args& ... args) noexcept
 		{
-			return std::tuple_cat(BuildTuple(value), BuildTuple(args...));
+			return std::tuple_cat(BuildTuple(args)...);
 		}
 
 
 	public:
-		Vect() noexcept = default;
+		using Type = TY;
+
+		constexpr Vect() noexcept = default;
 
 
-		Vect(TY n) noexcept
+		constexpr Vect(TY n) noexcept
 		{
-			for( auto& e : Vector )
+			for(auto& e : Vector )
 				e = n;
 		}
 
 
+		constexpr explicit Vect(const TY* const in) noexcept
+		{
+			for (size_t I = 0; I < SIZE; ++I)
+				Vector[I] = in[I];
+		}
+
+
 		template<typename TY_2>
-		Vect(Vect<SIZE, TY_2> in) noexcept
+		constexpr Vect(Vect<SIZE, TY_2> in) noexcept
 		{
 			for (size_t I=0; I<SIZE; ++I)
 				Vector[I] = static_cast<TY>(in[I]);
@@ -500,31 +524,32 @@ namespace FlexKit
 
 
 		template<typename ... TY_ARGS>
-		Vect(TY_ARGS ... args) noexcept
+		constexpr Vect(TY_ARGS ... args) noexcept requires(sizeof ... (TY_ARGS) > 0)
 		{
 			static_assert(sizeof ... (args) <= SIZE, "Input value count must be less than container size!");
 
 			const auto			tuple		= BuildTuple(args...);
 			constexpr size_t	valueCount	= std::tuple_size_v<decltype(tuple)>;
 			const auto			indexes		= std::make_integer_sequence<int, valueCount>{};
-
+			
 			helper(tuple, indexes);
 		}
 
-		TY* begin() noexcept
+
+		constexpr TY* begin() noexcept
 		{
 			return Vector;
 		}
 
 
-		TY* end() noexcept
+		constexpr TY* end() noexcept
 		{
 			return Vector + SIZE;
 		}
 
 
 		template<typename TY_i>
-		[[nodiscard]] Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
+		[[nodiscard]] constexpr Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
 		{
 			Vect<SIZE, TY> out;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -535,7 +560,7 @@ namespace FlexKit
 
 
 		template<typename TY_i>
-		[[nodiscard]] TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
+		[[nodiscard]] constexpr TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
 		{
 			TY dotproduct = 0;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -546,7 +571,7 @@ namespace FlexKit
 
 
 		template<typename TY_i>
-		[[nodiscard]] TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
+		[[nodiscard]] constexpr TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
 		{
 			auto& rhs = *rhs_ptr;
 			Vect<SIZE> products;
@@ -557,7 +582,7 @@ namespace FlexKit
 		}
 
 
-		[[nodiscard]] TY Norm(unsigned int exp = 2) noexcept
+		[[nodiscard]] constexpr TY Norm(unsigned int exp = 2) noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -572,7 +597,7 @@ namespace FlexKit
 		}
 
 
-		[[nodiscard]] TY Magnitude() noexcept
+		[[nodiscard]] constexpr TY Magnitude() noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -584,31 +609,31 @@ namespace FlexKit
 		}
 
 
-		TY& operator [](const int index) noexcept
+		constexpr		TY& operator [](const int index) noexcept
 		{
 			return Vector[index];
 		}
 
 
-		const TY& operator [](const int index) const noexcept
+		constexpr const TY& operator [](const int index) const noexcept
 		{
 			return Vector[index];
 		}
 
 
-		TY& operator [](const size_t index) noexcept
+		constexpr		TY& operator [](const size_t index) noexcept
 		{
 			return Vector[index];
 		}
 
 
-		const TY& operator [](const size_t index) const noexcept
+		constexpr const	TY& operator [](const size_t index) const noexcept
 		{
 			return Vector[index];
 		}
 
 
-		Vect operator & (this auto& self, const TY index) noexcept
+		constexpr		Vect operator & (this auto& self, const TY index) noexcept
 		{
 			Vect out;
 
@@ -683,7 +708,7 @@ namespace FlexKit
 
 
 		template<Scaler_t TY_2>
-		THISTYPE operator + (const Vect<SIZE, TY_2>& rhs) const noexcept
+		constexpr THISTYPE operator + (const Vect<SIZE, TY_2>& rhs) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -693,7 +718,7 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
-		THISTYPE operator + (const TY_2 rhs) const noexcept
+		constexpr THISTYPE operator + (const TY_2 rhs) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -703,7 +728,7 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
-		THISTYPE& operator += (const Vect<SIZE, TY_2>& in) noexcept
+		constexpr THISTYPE& operator += (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] += in[I];
@@ -713,7 +738,7 @@ namespace FlexKit
 
 
 		template<Scaler_t TY_2>
-		THISTYPE operator - (const Vect<SIZE, TY_2>& in) const noexcept
+		constexpr THISTYPE operator - (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -724,7 +749,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator - (const TY_2 rhs) const noexcept
+		constexpr THISTYPE operator - (const TY_2 rhs) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -735,7 +760,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in ) noexcept
+		constexpr THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in ) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] -= in[I];
@@ -745,7 +770,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator = (const Vect<SIZE, TY_2>& in) noexcept
+		constexpr THISTYPE& operator = (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] = in[I];
@@ -755,7 +780,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator / (TY_2 in) const noexcept
+		constexpr THISTYPE operator / (TY_2 in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -766,7 +791,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator % (TY_2 in) const noexcept
+		constexpr THISTYPE operator % (TY_2 in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -777,7 +802,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator /= (TY_2 in) noexcept
+		constexpr THISTYPE& operator /= (TY_2 in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] /= in;
@@ -787,7 +812,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator /= (const Vect<SIZE, TY_2> in) noexcept
+		constexpr THISTYPE operator /= (const Vect<SIZE, TY_2> in) noexcept
 		{
 			THISTYPE Out;
 			for (auto I = 0; I < SIZE; ++I)
@@ -798,7 +823,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		bool operator == (const Vect<SIZE, TY_2>& in) const noexcept
+		constexpr bool operator == (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			bool res = true;
 			for (auto I = 0; I < SIZE; ++I)
@@ -809,7 +834,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator = ( const std::initializer_list<TY_2>& il ) noexcept
+		constexpr THISTYPE& operator = ( const std::initializer_list<TY_2>& il ) noexcept
 		{
 			size_t itr = 0;
 			for( auto n : il )
@@ -822,7 +847,7 @@ namespace FlexKit
 		}
 
 
-		THISTYPE operator << (const auto sl) const noexcept
+		constexpr THISTYPE operator << (const auto sl) const noexcept
 		{
 			THISTYPE v = *this;
 
@@ -832,7 +857,7 @@ namespace FlexKit
 			return v;
 		}
 
-		THISTYPE operator >> (const auto sr) const noexcept
+		constexpr THISTYPE operator >> (const auto sr) const noexcept
 		{
 			THISTYPE v = *this;
 
@@ -842,7 +867,7 @@ namespace FlexKit
 			return v;
 		}
 
-		THISTYPE operator << (const THISTYPE sl) const noexcept
+		constexpr THISTYPE operator << (const THISTYPE sl) const noexcept
 		{
 			THISTYPE v = *this;
 
@@ -853,7 +878,7 @@ namespace FlexKit
 			return v;
 		}
 
-		THISTYPE operator >> (const THISTYPE sr) const noexcept
+		constexpr THISTYPE operator >> (const THISTYPE sr) const noexcept
 		{
 			THISTYPE v = *this;
 
@@ -865,18 +890,19 @@ namespace FlexKit
 		}
 
 		template<size_t ... TY_ARGS>
-		auto Swizzle(this auto& self)
+		constexpr auto Swizzle(this auto& self)
 		{
 			static_assert(sizeof ... (TY_ARGS) == size(), "Incorrect number of arguments");
 			return THISTYPE(self[TY_ARGS] ...);
 		}
 
 
-		static THISTYPE Zero() noexcept
+		constexpr static THISTYPE Zero() noexcept
 		{
 			THISTYPE zero;
-			for( auto element : zero.Vector )
-				element = 0;
+
+			for(auto& element : zero.Vector)
+				element = static_cast<TY>(0);
 
 			return zero;
 		}
@@ -1099,12 +1125,56 @@ namespace FlexKit
 	FLEXKITAPI union alignas(16)  float3
 	{
 	public:
-		float3() noexcept {}
+		constexpr float3() noexcept {}
 
-		float3(float val)						noexcept { pfloats = _mm_set_ps1(val); }
-		float3(float X, float Y, float Z)		noexcept { pfloats = _mm_set_ps(0.0f, Z, Y, X); }
-		float3(const float2 in, float Z = 0)	noexcept { pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); }
-		float3(const float3& a)					noexcept { pfloats = _mm_load_ps(a); }
+		constexpr float3(float val)						noexcept 
+		{
+			if (std::is_constant_evaluated())
+			{
+				x = val;
+				y = val;
+				z = val;
+			}
+			else
+				pfloats = _mm_set_ps1(val); 
+		}
+
+		constexpr float3(float X, float Y, float Z)		noexcept 
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				x = X;
+				y = Y;
+				z = Z;
+			}
+			else
+				pfloats = _mm_set_ps(0.0f, Z, Y, X); 
+		}
+
+		constexpr float3(const float2 in, float Z = 0)	noexcept 
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				x = in.x;
+				y = in.y;
+				z = Z;
+			}
+			else
+				pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); 
+		}
+
+		constexpr float3(const float3& a)				noexcept 
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				x = a.x;
+				y = a.y;
+				z = a.z;
+			}
+			else
+				pfloats = _mm_load_ps(a); 
+		}
+
 		float3(const __m128& in)				noexcept { pfloats = in; }
 
 		float2 xy() const noexcept { return { x, y }; }
@@ -1140,8 +1210,45 @@ namespace FlexKit
 		}
 
 
-		float& operator[] (const size_t index)			noexcept { return *GetElement_ptr(pfloats, index); }
-		float operator[]  (const size_t index)	const	noexcept { return GetElement(pfloats, index); }
+		constexpr float& operator[] (const size_t index)			noexcept 
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				switch (index)
+				{
+				case 0:
+					return x;
+				case 1:
+					return y;
+				case 2:
+					return z;
+				default:
+					std::unreachable();
+				}
+			}
+			else
+				return *GetElement_ptr(pfloats, index); 
+		}
+
+		constexpr const float& operator[]  (const size_t index)	const	noexcept
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				switch (index)
+				{
+				case 0:
+					return x;
+				case 1:
+					return y;
+				case 2:
+					return z;
+				default:
+					std::unreachable();
+				}
+			}
+			else
+				return GetElement(pfloats, index); 
+		}
 
 		// Operator Overloads
 		float3 operator - ()			noexcept				{ return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
@@ -1373,7 +1480,8 @@ namespace FlexKit
 			return _mm_div_ps(pfloats, _mm_sqrt_ps(m));
 		}
 
-		static float3 Zero() { return float3{ 0 }; }
+		static float3			Zero() { return float3{ 0 }; }
+		static constexpr size_t size() { return 3u; }
 
 		operator __m128 () const	 { return pfloats; }
 
@@ -1475,41 +1583,53 @@ namespace FlexKit
 	FLEXKITAPI union alignas(16) float4
 	{
 	public:
-		float4() {}
+		constexpr float4() {}
 
-		inline float4(float r) 
+		constexpr inline float4(float r)
 		{
-#if USING(FASTMATH)
-			pFloats = _mm_set1_ps(r);
-#else
-			x = r;
-			y = r;
-			z = r;
-			w = r;
-#endif
+			if (std::is_constant_evaluated())
+			{
+				x = r;
+				y = r;
+				z = r;
+				w = r;
+			}
+			else
+				pFloats = _mm_set1_ps(r);
 		}
 
-		inline float4(float X, float Y, float Z, float W) 
+		constexpr inline float4(float X, float Y, float Z, float W)
 		{
-#if USING(FASTMATH)
-			pFloats = _mm_set_ps(W, Z, Y, X);
-#else
-			x = X;
-			y = Y;
-			z = Z;
-			w = W;
-#endif
+			if (std::is_constant_evaluated())
+			{
+				x = X;
+				y = Y;
+				z = Z;
+				w = W;
+			}
+			else
+				pFloats = _mm_set_ps(W, Z, Y, X);
 		}
 
-		inline float4(const float3& V,  const float W = 0) noexcept
+		constexpr inline float4(const float3& V,  const float W = 0) noexcept
 		{
-			pFloats	= _mm_load_ps(V);
-			w		= W;
+			if (std::is_constant_evaluated())
+			{
+				x = V.x;
+				y = V.y;
+				z = V.z;
+				w = W;
+			}
+			else
+			{
+				pFloats = _mm_load_ps(V);
+				w		= W;
+			}
 		}
 
-		inline float4(__m128 in) noexcept : pFloats{ in } {}
+		constexpr inline float4(__m128 in) noexcept : pFloats{ in } {}
 
-		inline float4(const float2 V1, const float2 V2 ) noexcept
+		constexpr inline float4(const float2 V1, const float2 V2 ) noexcept
 		{
 			x = V1[0];
 			y = V1[1];
@@ -1520,8 +1640,51 @@ namespace FlexKit
 
 		inline operator float*				()					{ return (float*)&pFloats;} 
 		inline operator const float* const	()	const			{ return (float*)&pFloats;}
-		inline float& operator[] ( const size_t index )			{ return GetElement_ref( pFloats, index); }
-		inline float operator[]  ( const size_t index )	const	{ return GetElement( pFloats, index); }
+		
+		constexpr inline float& operator[]	(const size_t index)
+		{
+			if (std::is_constant_evaluated())
+			{
+				switch (index)
+				{
+				case 0:
+					return x;
+				case 1:
+					return y;
+				case 2:
+					return z;
+				case 3:
+					return w;
+				default:
+					throw;
+				}
+			}
+			else
+				return GetElement_ref( pFloats, index); 
+		}
+		
+		constexpr inline const float& operator[]	(const size_t index)	const
+		{ 
+			if (std::is_constant_evaluated())
+			{
+				switch (index)
+				{
+				case 0:
+					return x;
+				case 1:
+					return y;
+				case 2:
+					return z;
+				case 3:
+					return w;
+				default:
+					throw;
+				}
+			}
+			else
+				return GetElement( pFloats, index); 
+		}
+
 		inline operator __m128	 ()						const	{ return pFloats;} 
 
 		inline float4 operator+ (const float4 rhs) const noexcept
@@ -1603,7 +1766,6 @@ namespace FlexKit
 			return _mm_mul_ps(pFloats, a);
 		}
 
-
 		inline float4 operator* (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
@@ -1616,7 +1778,6 @@ namespace FlexKit
 #endif
 		}
 
-
 		inline float4 operator / (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
@@ -1628,7 +1789,6 @@ namespace FlexKit
 							w / rhs.w );
 #endif
 		}
-
 
 		inline float4& operator /= (const float rhs)
 		{
@@ -1644,13 +1804,11 @@ namespace FlexKit
 #endif
 		}
 
-
 		inline float4& operator*= (const float4 a) noexcept
 		{
 			pFloats = (*this) * a;
 			return *this;
 		}
-
 
 		inline float4 operator / (const float rhs) const noexcept
 		{
@@ -1664,13 +1822,11 @@ namespace FlexKit
 #endif
 		}
 
-
 		inline float4& operator /= (const float4 a) noexcept
 		{
 			pFloats = (*this) / a;
 			return *this;
 		}
-
 
 		inline float4 operator % (const float4 rhs) const noexcept
 		{
@@ -2067,108 +2223,177 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float Vect4FDot(const Vect4 lhs, const Vect4 rhs)
+	constexpr FLEXKITAPI inline float Vect4FDot(const Vect4 lhs, const Vect4 rhs)
 	{
-		auto temp1 = _mm_loadu_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
-		auto temp2 = _mm_loadu_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+		if (std::is_constant_evaluated())
+		{
+			Vect4::Type sum = static_cast<Vect4::Type>(0);
 
-		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+			for (size_t i = 0; i < 4; i++)
+				sum += lhs[i] * rhs[i];
+			
+			return sum;
+		}
+		else
+		{
+			auto temp1 = _mm_loadu_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+			auto temp2 = _mm_loadu_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
-		return GetFirst(res);
+			__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+
+			return GetFirst(res);
+		}
 	}
 
 
 	/************************************************************************************************/
 
+	template<typename TY, size_t size>
+	struct MatrixOptionalVectorData
+	{
+		static inline constexpr bool Enabled = false;
+	};
+
+	template<std::size_t Size>
+	struct MatrixOptionalVectorData<int, Size>
+	{
+		static inline constexpr bool Enabled = false;
+	};
+
+	template<size_t Size> requires (Size % 4 == 0 && Size % 8 != 0)
+	struct MatrixOptionalVectorData<float, Size>
+	{
+		static inline constexpr bool Enabled = true;
+
+		__m128 vectors[Size / 4];
+	};
 
 #pragma warning(push)
 #pragma warning(disable : 4324)
 	// Row Major
-	template< const int ROW, const int COL, typename Ty = float >
+	template<const int Width, const int Height, typename Ty = float>
 	union Matrix
 	{
 	private:
-		template<typename TY_tuple, int ... ints>
-		void helper(TY_tuple&& tuple, const std::integer_sequence<int, ints...> x) noexcept
+		template<typename TY_tuple, int ... seq>
+		constexpr void helper_S(const TY_tuple& tuple, const std::integer_sequence<int, seq...> x) noexcept
 		{
-			Ty* flatArray = &matrix[0][0];
-			((flatArray[ints] = static_cast<Ty>(std::get<ints>(tuple))), ...);
+			auto setScaler = [&](size_t idx, const auto s)
+				{
+					const size_t x = idx % Width;
+					const size_t y = idx / Height;
+
+					SetAt(x, y, s);
+				};
+
+			//(setScaler(seq, std::get<seq>(tuple)), ...);
+			(setScaler(seq, std::get<seq>(tuple)), ...);
 		}
 
+		template<typename TY_tuple, int ... ints>
+		constexpr void helper_V(TY_tuple&& tuple, const std::integer_sequence<int, ints...> x) noexcept
+		{
+			auto setVector = [&](size_t idx, const auto& v)
+			{
+				Row(idx) = v;
+			};
+
+			(setVector(ints, std::get<ints>(tuple)), ...);
+		}
 
 		template<typename TY_vect, int ... ints>
-		static auto extractVect(const TY_vect& vect, const std::integer_sequence<int, ints...> x) noexcept
+		constexpr static auto extractVect(const TY_vect& vect, const std::integer_sequence<int, ints...> x) noexcept
 		{
-			return std::make_tuple(vect[ints]...);
+			return std::forward_as_tuple(vect[ints]...);
 		}
 
 
 		template<typename TY>
-		static auto BuildTuple(const TY value) noexcept
+		constexpr static auto BuildTuple(const TY& value) noexcept
 		{
-			return std::tuple{ value };
+			return std::forward_as_tuple(value);
 		}
 
 
 		template<size_t vectorSize>
-		static auto BuildTuple(const Vect<vectorSize, Ty> vect)
+		constexpr static auto BuildTuple(const Vect<vectorSize, Ty>& vect)
 		{
 			return extractVect(vect, std::make_integer_sequence<int, vectorSize>());
 		}
 
 
-		static auto BuildTuple(const float2 vect) noexcept
+		constexpr static auto BuildTuple(const float2& vect) noexcept
 		{
-			return std::make_tuple(vect[0], vect[1]);
+			return std::forward_as_tuple(vect[0], vect[1]);
 		}
 
 
-		static auto BuildTuple(const float3 vect) noexcept
+		constexpr static auto BuildTuple(const float3& vect) noexcept
 		{
-			return std::make_tuple(vect[0], vect[1], vect[2]);
+			return std::forward_as_tuple(vect[0], vect[1], vect[2]);
 		}
 
 
-		static auto BuildTuple(const float4 vect) noexcept
+		constexpr static auto BuildTuple(const float4& vect) noexcept
 		{
-			return std::make_tuple(vect[0], vect[1], vect[2], vect[3]);
+			return std::forward_as_tuple(vect[0], vect[1], vect[2], vect[3]);
 		}
 
 
-		template<typename TY_Value, typename ... TY_args>
-		static auto BuildTuple(const TY_Value value, TY_args ... args) noexcept
+		template<typename ... TY_args>
+		constexpr static auto BuildTuple(const TY_args& ... args) noexcept
 		{
-			return std::tuple_cat(BuildTuple(value), BuildTuple(args...));
+			return std::tuple_cat(BuildTuple(args)...);
 		}
 
 
 	public:
-		using THIS_TYPE = const Matrix<ROW, COL, Ty>;
+		using THIS_TYPE		= const Matrix<Width, Height, Ty>;
+		using VectorView	= MatrixOptionalVectorData<Ty, Width* Height>;
 
-		Matrix()                                            = default;
-		Matrix(const THIS_TYPE& initial)                    = default;
+		constexpr Matrix()                                            = default;
+		constexpr Matrix(const THIS_TYPE& initial)                    = default;
 
 		template<typename ... TY_ARGS>
-		explicit Matrix(TY_ARGS ... args) noexcept
+		constexpr explicit Matrix(const TY_ARGS& ... args) noexcept
 		{
-			const std::tuple tuple      = BuildTuple(args...);
-
+			const std::tuple tuple		= BuildTuple(args...);
 			constexpr size_t valueCount = std::tuple_size_v<decltype(tuple)>;
-			const auto indexes          = std::make_integer_sequence<int, valueCount>{};
+			constexpr auto indexes		= std::make_integer_sequence<int, valueCount>{};
 
-			static_assert(valueCount <= ROW * COL, "Input value count must be less than container size!");
+			static_assert(valueCount <= Width * Height, "Input value count must be less than container size!");
 
-			helper(tuple, indexes);
+			helper_S(tuple, indexes);
 
-			Ty* flatArray = &matrix[0][0];
-
-			for (size_t I = valueCount; I < ROW * COL; I++)
-				flatArray[I] = 0.0f;
+			auto setValue = [&](size_t idx, auto v)
+			{
+				const size_t x = idx % Width;
+				const size_t y = idx / Height;
+			
+				SetAt(x, y, v);
+			};
+			
+			for (size_t I = valueCount; I < Width * Height; I++)
+				setValue(I, 0.0f);
 		}
 
-		Matrix<ROW, COL> operator * (const float rhs)
+		template<Scaler_t ... TY_ARGS>
+		constexpr explicit Matrix(TY_ARGS&& ... args) noexcept requires (sizeof ... (TY_ARGS) == Width * Height)
 		{
-			Matrix<ROW, COL> out = *this;
+			auto forwarded_args = std::forward_as_tuple(args...);
+			helper_S(forwarded_args, std::make_integer_sequence<int, sizeof ... (TY_ARGS)>());
+		}
+
+		template<Vector_t ... TY_ARGS>
+		constexpr explicit Matrix(TY_ARGS&& ... args) noexcept requires (sizeof ... (TY_ARGS) == Height)
+		{
+			auto forwarded_args = std::forward_as_tuple(args...);
+			helper_V(forwarded_args, std::make_integer_sequence<int, sizeof ... (TY_ARGS)>());
+		}
+
+		constexpr Matrix operator * (const float rhs)
+		{
+			Matrix out = *this;
 
 			for (auto& c : out.matrix)
 				for(auto& e : c)
@@ -2177,19 +2402,17 @@ namespace FlexKit
 			return out;
 		}
 
-
-
-		template< const int RHS_COL >
-		Matrix<ROW, RHS_COL> operator * ( const Matrix<ROW, RHS_COL>& rhs ) const noexcept
+		template< const int RHS_Height>
+		constexpr Matrix<Width, RHS_Height> operator * ( const Matrix<Width, RHS_Height>& rhs ) const noexcept
 		{
-			static_assert( ROW == RHS_COL, "ROW AND RHS COLS DO NOT MATCH" );
-			Matrix<ROW, RHS_COL> out;
+			static_assert(Width == RHS_Height, "ROW AND RHS COLS DO NOT MATCH" );
+			Matrix<Width, RHS_Height> out;
 			auto transposed = rhs.Transpose();
 
-			for( size_t i = 0; i < ROW; ++i )
+			for( size_t i = 0; i < Width; ++i )
 			{
 				const auto v = matrix[i];
-				for( size_t i2 = 0; i2 < COL; ++i2 )
+				for( size_t i2 = 0; i2 < Height; ++i2 )
 				{
 					const auto v2 = transposed[i2];
 					out[i][i2] = v.Dot(v2);
@@ -2200,16 +2423,16 @@ namespace FlexKit
 		}
 
 
-		Matrix<3, 3> operator * (const Matrix<3, 3>& rhs) const noexcept
+		constexpr Matrix<3, 3> operator * (const Matrix<3, 3>& rhs) const noexcept
 		{
 			Matrix<3, 3> out;
 			auto transposed = rhs.Transpose();
 
-			for (size_t i = 0; i < ROW; ++i)
+			for (size_t i = 0; i < Width; ++i)
 			{
 				const auto v = *((Vect<3>*)matrix[i]);
 
-				for (size_t i2 = 0; i2 < COL; ++i2)
+				for (size_t i2 = 0; i2 < Height; ++i2)
 				{
 					const auto v2 = transposed[i2];
 					out[i][i2] = Vect3FDot(v, v2);
@@ -2220,77 +2443,199 @@ namespace FlexKit
 		}
 
 
-		Matrix<4, 4> operator * ( const Matrix<4, 4>& rhs ) const noexcept
+		constexpr Matrix<4, 4> operator * (const Matrix<4, 4>& rhs) const noexcept
 		{
-			Matrix<4, 4> out;
-			auto transposed = rhs.Transpose();
-
-			for( size_t i = 0; i < ROW; ++i )
+			if (std::is_constant_evaluated())
 			{
-				const auto v = *((Vect<4>*)matrix[i]);
+				Matrix out;
+				auto transposed = rhs.Transpose();
 
-				for( size_t i2 = 0; i2 < COL; ++i2 )
+				for (size_t x = 0; x < Width; ++x)
 				{
-					const auto v2 = transposed[i2];
-					out[i][i2] = Vect4FDot(v, v2);
-				}
-			}
+					const auto&& ri = GetRow(x);
 
-			return out;
+					for (size_t y = 0; y < Height; ++y)
+					{
+						const auto cj = transposed.GetRow(y);
+						out.SetAt(y, x, Vect4FDot(ri, cj));
+					}
+				}
+
+				return out;
+			}
+			else
+			{
+				auto transposed = rhs.Transpose();
+				
+				auto CreateRow = [&](size_t y)
+				{
+					return[&] <int ... ints>(std::integer_sequence<size_t, ints...> sequence) -> Vect<Width, Ty>
+					{
+						auto v = 
+							Vect<Width, Ty> 
+								{ Vect4FDot(Row(y), transposed.Row(ints))... };
+
+						return v;
+					}(std::make_index_sequence<Width>());
+				};
+
+				return Matrix{
+					CreateRow(0),
+					CreateRow(1),
+					CreateRow(2),
+					CreateRow(3),
+				};
+			}
 		}
 
 
-		Matrix<4, 4>& operator = (const Matrix<4, 4>& rhs) noexcept
+		constexpr Matrix<4, 4> operator + (const Matrix<4, 4>& rhs) const noexcept
+		{
+			if (std::is_constant_evaluated())
+			{
+				Matrix out;
+
+				for (size_t x = 0; x < Width; ++x)
+					for (size_t y = 0; y < Height; ++y)
+						out.SetAt(x, y, At(x, y) + rhs(x, y));
+
+				return out;
+			}
+			else
+			{
+				auto addRow = [&](size_t y) { return Row(y) + rhs.Row(y); };
+
+				return Matrix{
+					addRow(0),
+					addRow(1),
+					addRow(2),
+					addRow(3),
+				};
+			}
+		}
+
+		constexpr Matrix<4, 4>& operator = (const Matrix<4, 4>& rhs) noexcept
 		{
 			memcpy(&matrix, &rhs.matrix, sizeof(Matrix<4, 4>));
 			return *this;
 		}
 
+		constexpr 		Ty& At(const size_t x, const size_t y)			noexcept { return matrix[y][x]; }
+		constexpr const	Ty& At(const size_t x, const size_t y) const	noexcept { return matrix[y][x]; }
 
-		Vect<ROW>& operator[] (const int i)         { return *((Vect<ROW>*)matrix[i]); }
-		Vect<ROW>& operator[] (const int i) const   { return *((Vect<ROW>*)matrix[i]); }
 
-		Vect<ROW>& operator[] (const size_t i)          { return *((Vect<ROW>*)matrix[i]); }
-		Vect<ROW>& operator[] (const size_t i) const    { return *((Vect<ROW>*)matrix[i]); }
+		constexpr void		SetAt(const size_t x, const size_t y, const Ty val)	noexcept { matrix[y][x] = val; }
 
-		operator        Ty* () noexcept { return (Ty*)matrix; }
-		operator const  Ty* () const noexcept { return (Ty*)matrix; }
+#ifdef __cpp_multidimensional_subscript
+		constexpr		Ty& operator[] (const size_t x, const size_t y)			noexcept { return At(x,y); }
+		constexpr const	Ty&	operator[] (const size_t x, const size_t y) const	noexcept { return At(x, y); }
+#endif
 
-		static inline Matrix<ROW, COL> Identity() noexcept requires (ROW == COL)
+		constexpr 		Ty& operator() (const size_t x, const size_t y)			noexcept { return At(x,y); }
+		constexpr const	Ty&	operator() (const size_t x, const size_t y) const	noexcept { return At(x,y); }
+
+
+		constexpr Vect<Width>&			operator[] (const int y)			{ return rows[y]; }
+		constexpr const Vect<Width>&	operator[] (const int y) const		{ return rows[y]; }
+
+		constexpr Vect<Width>&			operator[] (const size_t i)         { return rows[y]; }
+		constexpr const Vect<Width>&	operator[] (const size_t i) const	{ return rows[y]; }
+
+		operator        Ty* ()			noexcept { return (Ty*)matrix; }
+		operator const  Ty* () const	noexcept { return (Ty*)matrix; }
+
+		constexpr static inline Matrix Identity() noexcept requires (Width == Height)
 		{
-			Matrix<ROW, COL> m = Zero();
-
-			for( size_t i = 0; i < ROW; i++ )
-				m[i][i] = 1;
-
+			Matrix m = Zero();
+			
+			for(size_t i = 0u; i < Width; i++)
+				m(i,i) = static_cast<Ty>(1);
+			
 			return m;
 		}
 
 
-		static inline Matrix<ROW, COL> Zero() noexcept
+		consteval static inline Matrix Zero() noexcept
 		{
-			Matrix<ROW, COL> m;
-			for (size_t I = 0; I < ROW; ++I)
-				for (size_t II = 0; II < COL; II++)
-					m[I][II] = 0.0;
+			if (std::is_constant_evaluated())
+			{
+				Matrix m;
 
-			return m;
+				for (size_t y = 0; y < Height; y++)
+					for (size_t x = 0; x < Width; x++)
+						m(x, y) = static_cast<Ty>(0);
+
+				return m;
+			}
+			else
+			{
+				int zero_val = std::bit_cast<int, Ty>(static_cast<Ty>(0));
+				Matrix m;
+				memset(&m, zero_val, sizeof(m));
+
+				return m;
+			}
 		}
 
 
-		Matrix<ROW, COL> Transpose() const noexcept requires (ROW == COL)
+		Vect<Width, Ty>&			Row(const size_t columnIdx)	noexcept
 		{
-			Matrix<ROW, COL> m_transposed;
+			return rows[columnIdx];
+		}
 
-			for( size_t col = 0; col < COL; ++col )
-				for( size_t row = 0; row < ROW; ++row )
-					m_transposed[col][row] = matrix[row][col];
+		const Vect<Width, Ty>&		Row(const size_t rowIdx) const noexcept
+		{
+			return rows[rowIdx];
+		}
+
+		constexpr const Vect<Width, Ty>		GetRow(const size_t rowIdx)	const noexcept requires(std::is_constant_evaluated())
+		{	
+			Vect<Width, Ty> out;
+			for (auto [idx, s] : zip(iota(0), matrix[rowIdx]))
+				out[idx] = s;
+
+			return out;
+		}
+
+		constexpr void SetRow(const size_t rowIdx, auto&& v) noexcept
+		{
+			if (std::is_constant_evaluated())
+			{
+				for (auto [idx, s] : zip(iota(0), v))
+					matrix[rowIdx][idx] = s;
+			}
+			else
+				rows[rowIdx] = v;
+		}
+
+
+		constexpr Vect<Height, Ty> Column(const size_t columnIdx) noexcept
+		{
+			auto gatherVector = [&]<size_t ... Sequence>(std::integer_sequence<Sequence> sequence) -> Vect<Height>
+			{
+				return { Sequence ... };
+			};
+
+			return gatherVector(std::make_index_sequence(Height));
+		}
+
+
+		constexpr Matrix<Height, Width, Ty> Transpose() const noexcept
+		{
+			Matrix<Height, Width, Ty> m_transposed;
+
+			for (size_t y = 0; y < Height; ++y)
+				for (size_t x = 0; x < Width; ++x)
+					m_transposed(x, y) = At(y, x);
 
 			return m_transposed;
 		}
 
 
-		Ty matrix[COL][ROW];
+		// Row Major
+		Ty				matrix[Height][Width];	
+		Vect<Width, Ty>	rows[Height];
+		VectorView		vectorView;				// Optionally Exists, SIMD View
 	};
 
 #pragma warning(pop)
@@ -2299,25 +2644,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float2 Mulfloat2(Matrix<2, 2, float>& LHS, float2& RHS)
+	FLEXKITAPI inline float2 Mul(Matrix<2, 2, float>& LHS, float2& RHS)
 	{
 		float2 Out;
-		auto transposed = LHS.Transpose();
 
 		for (size_t I = 0; I < 2; ++I)
-			Out[I] = DotProduct2(transposed.matrix[I], RHS);
+			Out[I] = DotProduct2(LHS.matrix[I], RHS);
 
 		return Out;
 	}
 
 
-	FLEXKITAPI inline float3 Mulfloat3(Matrix<3, 3, float>& LHS, float3& RHS)
+	FLEXKITAPI inline float3 Mul(Matrix<3, 3, float>& LHS, float3& RHS)
 	{
 		float3 Out;
-		auto transposed = LHS.Transpose();
 		__m128 Temp;
+
 		for (size_t I = 0; I < 2; ++I) {
-			Temp = _mm_set_ps(0, transposed.matrix[I][2], transposed.matrix[I][1], transposed.matrix[I][0]);
+			Temp = _mm_set_ps(0, LHS.matrix[I][2], LHS.matrix[I][1], LHS.matrix[I][0]);
 			//Temp = _mm_loadu_ps(transposed.matrix[I]);
 			//Temp = _mm_shuffle_ps(Temp, Temp, 0x6c);
 			Out[I] = DotProduct3(Temp, RHS);
@@ -2394,29 +2738,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float4 operator * (const float4x4& LHS, const float4 rhs)
+	inline float4 operator * (const float4x4& lhs, const float4 rhs)
 	{// TODO: FAST PATH
 		const Vect4 temp    = rhs;
-		const auto T        = LHS.Transpose();
 
 		return Conversion::Vect4To<float4>(
-			{   T[0].Dot(temp),
-				T[1].Dot(temp),
-				T[2].Dot(temp),
-				T[3].Dot(temp),
+			{   lhs[0].Dot(temp),
+				lhs[1].Dot(temp),
+				lhs[2].Dot(temp),
+				lhs[3].Dot(temp),
 			});
 	}
 
 
-	inline float3 operator * (const float3x3& LHS, const float3 rhs)
+	inline float3 operator * (const float3x3& lhs, const float3 rhs)
 	{// TODO: FAST PATH
 		const Vect3   temp    = rhs;
-		const auto    T       = LHS.Transpose();
 
 		return Conversion::Vect3To<float3>(
-			{   T[0].Dot(temp),
-				T[1].Dot(temp),
-				T[2].Dot(temp),
+			{	lhs[0].Dot(temp),
+				lhs[1].Dot(temp),
+				lhs[2].Dot(temp),
 			});
 	}
 
@@ -2455,46 +2797,46 @@ namespace FlexKit
 		float4x4 m1, m2;
 
 		// Assign m1
-		m1[0][0] =  q[3];
-		m1[0][1] =  q[2];
-		m1[0][2] = -q[1];
-		m1[0][3] =  q[0];
+		m1(0,0) =  q[3];
+		m1(0,1) =  q[2];
+		m1(0,2) = -q[1];
+		m1(0,3) =  q[0];
 
-		m1[1][0] = -q[2];
-		m1[1][1] =  q[3];
-		m1[1][2] =  q[0];
-		m1[1][3] =  q[1];
+		m1(1,0) = -q[2];
+		m1(1,1) =  q[3];
+		m1(1,2) =  q[0];
+		m1(1,3) =  q[1];
 
-		m1[2][0] =  q[1];
-		m1[2][1] = -q[0];
-		m1[2][2] =  q[3];
-		m1[2][3] =  q[2];
+		m1(2,0) =  q[1];
+		m1(2,1) = -q[0];
+		m1(2,2) =  q[3];
+		m1(2,3) =  q[2];
 		
-		m1[3][0] = -q[0];
-		m1[3][1] = -q[1];
-		m1[3][2] = -q[2];
-		m1[3][3] =  q[3];
+		m1(3,0) = -q[0];
+		m1(3,1) = -q[1];
+		m1(3,2) = -q[2];
+		m1(3,3) =  q[3];
 
 		// Assign m2
-		m2[0][0] =  q[3];
-		m2[0][1] =  q[2];
-		m2[0][2] = -q[1];
-		m2[0][3] = -q[0];
+		m2(0,0) =  q[3];
+		m2(0,1) =  q[2];
+		m2(0,2) = -q[1];
+		m2(0,3) = -q[0];
 		
-		m2[1][0] = -q[2];
-		m2[1][1] =  q[3];
-		m2[1][2] =  q[0];
-		m2[1][3] = -q[1];
+		m2(1,0) = -q[2];
+		m2(1,1) =  q[3];
+		m2(1,2) =  q[0];
+		m2(1,3) = -q[1];
 		
-		m2[2][0] =  q[1];
-		m2[2][1] = -q[0];
-		m2[2][2] =  q[3];
-		m2[2][3] = -q[2];
+		m2(2,0) =  q[1];
+		m2(2,1) = -q[0];
+		m2(2,2) =  q[3];
+		m2(2,3) = -q[2];
 		
-		m2[3][0] =  q[0];
-		m2[3][1] =  q[1];
-		m2[3][2] =  q[2];
-		m2[3][3] =  q[3];
+		m2(3,0) =  q[0];
+		m2(3,1) =  q[1];
+		m2(3,2) =  q[2];
+		m2(3,3) =  q[3];
 
 		return m1 * m2;
 	}
@@ -2508,10 +2850,10 @@ namespace FlexKit
 #if USING(FASTMATH)
 		Quaternion Q
 		(
-			1.0f + M[0][0] - M[1][1] - M[2][2], 
-			1.0f - M[0][0] + M[1][1] - M[2][2], 
-			1.0f - M[0][0] - M[1][1] + M[2][2], 
-			1.0f + M[0][0] + M[1][1] + M[2][2]
+			1.0f + M(0,0) - M(1,1) - M(2,2), 
+			1.0f - M(0,0) + M(1,1) - M(2,2), 
+			1.0f - M(0,0) - M(1,1) + M(2,2), 
+			1.0f + M(0,0) + M(1,1) + M(2,2)
 		);
 
 		__m128 Temp1 = _mm_max_ps(Q, _mm_set1_ps(0.0f));
@@ -2519,8 +2861,8 @@ namespace FlexKit
 		Temp1 = _mm_mul_ps(Temp1, _mm_set1_ps(0.5f));
 
 		// Copy Sign
-		__m128 Temp3 = _mm_set_ps(GetFirst(Temp1),		M[0][1], M[2][0], M[1][2]);
-		__m128 Temp4 = _mm_set_ps(0.0f,					M[1][0], M[0][2], M[2][1]);
+		__m128 Temp3 = _mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
+		__m128 Temp4 = _mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
 		__m128 Temp5 = _mm_sub_ps(Temp3, Temp4);
 		__m128 res = SSE_CopySign(Temp5, Temp1);
 
@@ -2551,20 +2893,20 @@ namespace FlexKit
 	inline float4x4 Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3 &Right)
 	{
 		float4x4 Out = float4x4::Identity();
-		Out[0][0] = Forward.x;
-		Out[0][1] = Forward.y;
-		Out[0][2] = Forward.z;
-		Out[0][3] = 0;
+		Out(0,0) = Forward.x;
+		Out(0,1) = Forward.y;
+		Out(0,2) = Forward.z;
+		Out(0,3) = 0;
 
-		Out[1][0] = Up.x;
-		Out[1][1] = Up.y;
-		Out[1][2] = Up.z;
-		Out[1][3] = 0;
+		Out(1,0) = Up.x;
+		Out(1,1) = Up.y;
+		Out(1,2) = Up.z;
+		Out(1,3) = 0;
 
-		Out[2][0] = Right.x;
-		Out[2][1] = Right.y;
-		Out[2][2] = Right.z;
-		Out[2][3] = 0;
+		Out(2,0) = Right.x;
+		Out(2,1) = Right.y;
+		Out(2,2) = Right.z;
+		Out(2,3) = 0;
 
 		return Out;
 	}

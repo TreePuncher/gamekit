@@ -1,11 +1,8 @@
+#ifdef _FLEXKIT
 #include "buildsettings.h"
-#include "MathUtils.h"
-#include "static_vector.h"
-
-#if USING(FASTMATH)
-#include <smmintrin.h>
 #endif
 
+#include "MathUtils.h"
 
 namespace FlexKit
 {
