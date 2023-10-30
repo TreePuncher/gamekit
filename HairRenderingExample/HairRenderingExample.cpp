@@ -400,11 +400,11 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 
 	auto cameraNode = cameras.GetCamera(camera).Node;
-	FlexKit::Yaw(cameraRig, pi / 8.0f * dT);
-	FlexKit::SetCameraAspectRatio(camera, renderWindow.GetAspectRatio());
+	//Yaw(cameraRig, pi / 8.0f * dT);
+	SetCameraAspectRatio(camera, renderWindow.GetAspectRatio());
 	cameras.MarkDirty(camera);
 	
-	auto& transformUpdate	= FlexKit::QueueTransformUpdateTask(dispatcher);
+	auto& transformUpdate	= QueueTransformUpdateTask(dispatcher);
 	auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
 
 	cameraUpdate.AddInput(transformUpdate);
@@ -607,7 +607,7 @@ void HairRenderingTest::DrawStrands(
 			// Pass 1
 			ctx.SetGraphicsPipelineState(MBOITRender1, threadLocalAllocator);
 			
-			const auto CameraValues = GetCameraConstants(camera);
+			const auto cameraValues = GetCameraConstants(camera);
 			
 			struct
 			{
@@ -617,8 +617,11 @@ void HairRenderingTest::DrawStrands(
 				float		moment_bias					= 0.0f;
 			} shaderConstants0
 			{
-				.PV				= CameraValues.PV,
+				.PV	= cameraValues.PV.Transpose(),
 			};
+
+			const auto temp			= cameraValues.PV * float4{ 0, 0, 0, 1 };
+			const auto screenCord	= temp / temp.w;
 
 			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.SetGraphicsConstantValue(0, 17, &shaderConstants0);

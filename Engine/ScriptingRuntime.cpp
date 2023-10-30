@@ -605,15 +605,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float& ScalerIndexFloat4x4(const float4x4* m, int row, int col)
+	const float& ScalerIndexFloat4x4(const float4x4* m, int x, int y)
 	{
-		return (*m)[row][col];
+		return m->At(x, y);
 	}
 
 
-	Vect4& VectorIndexFloat4x4(const float4x4* m, int row)
+	const Vect4& VectorIndexFloat4x4(const float4x4* m, int row)
 	{
-		return (*m)[row];
+		return m->Row(row);
 	}
 
 
