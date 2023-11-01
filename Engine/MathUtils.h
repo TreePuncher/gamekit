@@ -2641,6 +2641,32 @@ namespace FlexKit
 #pragma warning(pop)
 
 
+	template<typename Internal_TY>
+	struct Matrix_GPU
+	{
+		Matrix_GPU& operator = (const Internal_TY& rhs) noexcept
+		{
+			m = rhs.Transpose();
+			return *this;
+		}
+
+		Internal_TY operator * (const Internal_TY& rhs) const noexcept
+		{
+			return m.Transpose() * rhs;
+		}
+
+		Internal_TY ToCPU() const noexcept
+		{
+			return m.Transpose();
+		}
+
+		operator Internal_TY () noexcept		{ return ToCPU(); }
+		operator Internal_TY () const noexcept	{ return ToCPU(); }
+
+		Internal_TY m;
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -2674,8 +2700,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef FlexKit::Matrix<4,4> float4x4;
-	typedef FlexKit::Matrix<3,3> float3x3;
+	using float3x3 = FlexKit::Matrix<3,3>;
+	using float4x4 = FlexKit::Matrix<4,4>;
+
+	using float3x3_GPU = Matrix_GPU<float3x3>;
+	using float4x4_GPU = Matrix_GPU<float4x4>;
 
 
 	FLEXKITAPI inline float4x4 TranslationMatrix(float3 POS)

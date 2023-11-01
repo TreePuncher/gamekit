@@ -44,16 +44,16 @@ namespace FlexKit
 	public:
 		struct alignas(256) ConstantBuffer
 		{
-			float4x4	View;
-			float4x4	ViewI;
-			float4x4	Proj;
-			float4x4	PV;			//  Projection x View
-			float4x4	PVI;		// (Projection x View)^-1
-			float4		WPOS;
-			float		MinZ;
-			float		MaxZ;
-			float		AspectRatio;
-			float		FOV;
+			float4x4_GPU	View;
+			float4x4_GPU	ViewI;
+			float4x4_GPU	Proj;
+			float4x4_GPU	PV;			//  Projection x View
+			float4x4_GPU	PVI;		// (Projection x View)^-1
+			float4			WPOS;
+			float			MinZ;
+			float			MaxZ;
+			float			AspectRatio;
+			float			FOV;
 
 			float3   TLCorner_VS;
 			float3   TRCorner_VS;
@@ -74,7 +74,7 @@ namespace FlexKit
 		FustrumPoints	GetFrustumPoints(float3 XYZ, Quaternion Q);
 		ConstantBuffer	GetConstants() const;
 		ConstantBuffer	GetCameraPreviousConstants() const;
-		float4x4		GetPV();
+		float4x4		GetPV() const noexcept;
 
 		NodeHandle	Node;
 
@@ -200,7 +200,7 @@ namespace FlexKit
 	typedef Vector<PVEntry> PVS;
 
 	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
-	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT, const float4x4& View);
+	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT);
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);

@@ -1112,7 +1112,7 @@ namespace FlexKit
 					uint32_t nodeCount;
 					uint32_t nodeOffset;
 				}constantsValues = {
-					XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
+					Inverse(cameraConstants.Proj),
 					cameraConstants.View,
 					{ 0, 0 },
 					(uint32_t)lightCount

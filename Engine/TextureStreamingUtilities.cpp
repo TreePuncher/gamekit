@@ -767,8 +767,7 @@ namespace FlexKit
 				cameraConstantValues.FOV,
 				cameraConstantValues.MinZ,
 				cameraConstantValues.MaxZ,
-				cameraConstantValues.ViewI.Transpose(),
-				cameraConstantValues.View.Transpose());
+				cameraConstantValues.ViewI);
 
 			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
 
@@ -925,8 +924,7 @@ namespace FlexKit
 				cameraConstantValues.FOV,
 				cameraConstantValues.MinZ,
 				cameraConstantValues.MaxZ,
-				cameraConstantValues.ViewI.Transpose(),
-				cameraConstantValues.View.Transpose());
+				cameraConstantValues.ViewI);
 
 			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
 
