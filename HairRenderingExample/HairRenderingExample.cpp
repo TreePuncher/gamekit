@@ -22,6 +22,8 @@ constexpr FlexKit::PSOHandle ApplyForces				= FlexKit::PSOHandle{ GetCRCGUID(App
 constexpr FlexKit::PSOHandle ApplyShapeConstraints		= FlexKit::PSOHandle{ GetCRCGUID(ApplyShapeConstraints) };
 constexpr FlexKit::PSOHandle ApplyEdgeLengthConstraint	= FlexKit::PSOHandle{ GetCRCGUID(ApplyEdgeLengthConstraint) };
 
+constexpr FlexKit::PSOHandle StrandRenderPSO			= FlexKit::PSOHandle{ GetCRCGUID(StrandRenderPSO) };
+
 
 /************************************************************************************************/
 
@@ -205,6 +207,32 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraint
 /************************************************************************************************/
 
 
+FlexKit::LoadPipelineStateRes HairRenderingTest::CreateStrandRenderOpaquePSO(FlexKit::iAllocator& tempMemory)
+{
+	PipelineBuilder builder{ tempMemory };
+
+	builder.AddVertexShader		("VMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddGeometryShader	("GMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+	builder.AddPixelShader		("PMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
+
+	builder.AddInputTopology(ETopology::EIT_POINT);
+	builder.AddRenderTargetState({
+			.targetCount = 1,
+			.targetFormats = {
+				DeviceFormat::R16G16B16A16_FLOAT
+			}
+		});
+	builder.AddInputLayout({
+		.inputs = { { "POSITION",	0, DeviceFormat::R32G32B32A32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 }, },
+		.count	= 1
+		});
+
+	builder.SetDebugName("DrawOpaque");
+
+	return builder.Build(framework.core.RenderSystem);
+}
+
+
 LoadPipelineStateRes HairRenderingTest::CreateStrandRender1PSO(iAllocator& tempMemory)
 {
 	PipelineBuilder builder{ tempMemory };
@@ -318,14 +346,15 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Hair Rendering - WIP");
 
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyForces,					[this](auto, auto& allocator) { return CreateApplyForcesPSO(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyShapeConstraints,		[this](auto, auto& allocator) { return CreateApplyShapeConstraintsPSO(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(ApplyEdgeLengthConstraint,	[this](auto, auto& allocator) { return CreateApplyEdgeLengthConstraintPSO(allocator); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyForces,					[&](auto renderSystem, auto& allocator) { return CreateApplyForcesPSO(allocator); });
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyShapeConstraints,		[&](auto renderSystem, auto& allocator) { return CreateApplyShapeConstraintsPSO(allocator); });
-	framework.GetRenderSystem().RegisterPSOLoader(ApplyEdgeLengthConstraint,	[&](auto renderSystem, auto& allocator) { return CreateApplyEdgeLengthConstraintPSO(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(StrandRenderPSO, [this](auto, auto& allocator) { return CreateStrandRenderOpaquePSO(allocator); });
 
-	framework.GetRenderSystem().RegisterPSOLoader(MBOITRender1, [&](auto renderSystem, auto& allocator) { return CreateStrandRender1PSO(allocator); });
-	framework.GetRenderSystem().RegisterPSOLoader(MBOITRender2,	[&](auto renderSystem, auto& allocator) { return CreateStrandRender2PSO(allocator); });
-	framework.GetRenderSystem().RegisterPSOLoader(MBOITBlend,	[&](auto renderSystem, auto& allocator) { return CreateBlendState(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(MBOITRender1, [this](auto, auto& allocator) { return CreateStrandRender1PSO(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(MBOITRender2,	[this](auto, auto& allocator) { return CreateStrandRender2PSO(allocator); });
+	framework.GetRenderSystem().RegisterPSOLoader(MBOITBlend,	[this](auto, auto& allocator) { return CreateBlendState(allocator); });
 
 	camera		= cameras.CreateCamera();
 	cameraRig	= GetZeroedNode();
@@ -538,6 +567,65 @@ void HairRenderingTest::DrawStrands(
 	FlexKit::UpdateTask*					update,
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
+	double									dT,
+	FlexKit::FrameGraph&					frameGraph,
+	FlexKit::ReserveVertexBufferFunction&	reserveVB,
+	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+{
+	
+	struct RenderStrands
+	{
+		FlexKit::FrameResourceHandle			renderTarget;
+		FlexKit::FrameResourceHandle			strandBuffer;
+		FlexKit::FrameResourceHandle			depthBuffer;
+		FlexKit::ReserveVertexBufferFunction	reserveVB;
+		FlexKit::ReserveConstantBufferFunction	reserveCB;
+	};
+
+	frameGraph.AddNode(
+		RenderStrands{
+			.reserveVB = reserveVB,
+			.reserveCB = reserveCB 
+		},
+		[&](FrameGraphNodeBuilder& builder, RenderStrands& data)
+		{
+			builder.AddDataDependency(*update);
+			builder.Requires(StrandRenderPSO);
+
+			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
+			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
+			data.depthBuffer	= builder.DepthTarget(depthBuffer);
+		},
+		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		{
+			ctx.SetScissorAndViewports({ backBuffer });
+			ctx.SetRenderTargets({ backBuffer }, true, resources.GetResource(data.depthBuffer));
+			ctx.SetGraphicsPipelineState(StrandRenderPSO, threadLocalAllocator);
+			ctx.SetPipelineState(resources.GetPipelineState(StrandRenderPSO, threadLocalAllocator));
+
+			const auto CameraValues = GetCameraConstants(camera);
+
+			struct Constants
+			{
+				float4x4_GPU PV;
+			} shaderConstants
+			{
+				.PV = CameraValues.PV,
+			};
+
+			ctx.SetGraphicsShaderResourceView(1, resources.GetResource(data.strandBuffer));
+			ctx.SetGraphicsConstantValue(0, 16, &shaderConstants);
+			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
+			ctx.Draw((style.strandLength - 1) * style.strandCount);
+		});
+}
+
+
+
+void HairRenderingTest::DrawStrandsOIT(
+	FlexKit::UpdateTask*					update,
+	FlexKit::EngineCore&					core,
+	FlexKit::UpdateDispatcher&				dispatcher,
 	const double							dT,
 	FlexKit::FrameGraph&					frameGraph,
 	FlexKit::ReserveVertexBufferFunction&	reserveVB,
@@ -611,17 +699,14 @@ void HairRenderingTest::DrawStrands(
 			
 			struct
 			{
-				float4x4	PV;
-				float4		wrapping_zone_parameters	= { 0.0f, 0.0f, 0.0f, 0.0f };
-				float		overestimation				= 0.0f;
-				float		moment_bias					= 0.0f;
+				float4x4_GPU	PV;
+				float4			wrapping_zone_parameters	= { 0.0f, 0.0f, 0.0f, 0.0f };
+				float			overestimation				= 0.0f;
+				float			moment_bias					= 0.0f;
 			} shaderConstants0
 			{
-				.PV	= cameraValues.PV.Transpose(),
+				.PV	= cameraValues.PV,
 			};
-
-			const auto temp			= cameraValues.PV * float4{ 0, 0, 0, 1 };
-			const auto screenCord	= temp / temp.w;
 
 			ctx.SetInputPrimitive(INPUTPRIMITIVEPOINTLIST);
 			ctx.SetGraphicsConstantValue(0, 17, &shaderConstants0);

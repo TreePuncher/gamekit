@@ -76,6 +76,8 @@ public:
 	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO		(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO	(FlexKit::iAllocator& tempMemory);
 
+	FlexKit::LoadPipelineStateRes CreateStrandRenderOpaquePSO			(FlexKit::iAllocator& tempMemory);
+
 	FlexKit::LoadPipelineStateRes CreateStrandRender1PSO				(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateStrandRender2PSO				(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateBlendState						(FlexKit::iAllocator& tempMemory);
@@ -94,6 +96,14 @@ public:
 						FlexKit::ReserveConstantBufferFunction&	reserveCB);
 
 	void DrawStrands(	FlexKit::UpdateTask*					update,
+						FlexKit::EngineCore&					core,
+						FlexKit::UpdateDispatcher&				dispatcher,
+						const double							dT,
+						FlexKit::FrameGraph&					frameGraph,
+						FlexKit::ReserveVertexBufferFunction&	reserveVB,
+						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+
+	void DrawStrandsOIT(FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
