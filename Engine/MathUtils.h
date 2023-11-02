@@ -2660,6 +2660,9 @@ namespace FlexKit
 			return m.Transpose();
 		}
 
+		operator float*				()			noexcept  { return m; }
+		operator const float*		()	const	noexcept  { return m; }
+
 		operator Internal_TY () noexcept		{ return ToCPU(); }
 		operator Internal_TY () const noexcept	{ return ToCPU(); }
 

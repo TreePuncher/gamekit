@@ -850,19 +850,18 @@ namespace FlexKit
 
 						struct
 						{
-							float4x4	iproj;
-							float4x4	pad;
-							uint2		WH;
-							uint2		Dim;
-							uint		rowPitch;
-							uint		slicePitch;
+							float4x4_GPU	iproj;
+							float4x4		pad;
+							uint2			WH;
+							uint2			Dim;
+							uint			rowPitch;
+							uint			slicePitch;
 						} constantValues = {
-								Inverse(cameraValues.Proj),
-								float4x4{},
-								WH,
-								XY,
-								XY[0],
-								XY.Product(),
+							.iproj		= Inverse(cameraValues.Proj),
+							.WH			= WH,
+							.Dim		= XY,
+							.rowPitch	= XY[0],
+							.slicePitch	= XY.Product(),
 						};
 
 						auto constantBuffer		= data.reserveCB(AlignedSize(sizeof(cameraValues)) + AlignedSize(sizeof(constantValues)));
@@ -1104,10 +1103,10 @@ namespace FlexKit
 
 				struct ConstantsLayout
 				{
-					float4x4 iproj;
-					float4x4 view;
-					uint2    LightMapWidthHeight;
-					uint32_t lightCount;
+					float4x4_GPU	iproj;
+					float4x4_GPU	view;
+					uint2			LightMapWidthHeight;
+					uint32_t		lightCount;
 
 					uint32_t nodeCount;
 					uint32_t nodeOffset;
@@ -1224,15 +1223,15 @@ namespace FlexKit
 					{
 						struct ConstantsLayout
 						{
-							float4x4 iproj;
-							float4x4 view;
-							uint2    LightMapWidthHeight;
-							uint32_t lightCount;
+							float4x4_GPU	iproj;
+							float4x4_GPU	view;
+							uint2			LightMapWidthHeight;
+							uint32_t		lightCount;
 
 							uint32_t nodeCount;
 							uint32_t nodeOffset;
 						}constantValues = {
-							XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
+							Inverse(cameraConstants.Proj),
 							cameraConstants.View,
 							{ 0, 0 },
 							(uint32_t)lightCount,
@@ -1288,8 +1287,8 @@ namespace FlexKit
 
 				struct LightListConstructionConstants
 				{
-					float4x4 View;
-					uint32_t rootNode;
+					float4x4_GPU	View;
+					uint32_t		rootNode;
 				} lightListConstants {
 					cameraConstants.View,
 					offset
@@ -1746,12 +1745,6 @@ namespace FlexKit
 
 				if (!lightCount)
 					return;
-
-				struct ShadowMap
-				{
-					float4x4 PV;
-					float4x4 View;
-				};
 
 				struct
 				{

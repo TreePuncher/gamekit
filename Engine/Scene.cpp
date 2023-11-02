@@ -1792,8 +1792,7 @@ namespace FlexKit
 
 	Brush::VConstantsLayout Brush::GetConstants() const
 	{
-		DirectX::XMMATRIX WT;
-		FlexKit::GetTransform(Node, &WT);
+		float4x4 WT = FlexKit::GetWT(Node);
 
 		Brush::VConstantsLayout	constants;
 
@@ -1801,10 +1800,10 @@ namespace FlexKit
 
 		if (material != InvalidHandle)
 		{
-			const auto albedo		= materials.GetProperty<float4>(material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 0.7f, 0.7f, 0.7f, 0.3f });
-			const auto specular		= materials.GetProperty<float4>(material, GetCRCGUID(PBR_SPECULAR)).value_or(float4{ 1.0f, 1.0f, 1.0f, 1.0f });
-			const auto roughness	= materials.GetProperty<float>(material,  GetCRCGUID(PBR_ROUGHNESS)).value_or(1.0f);
-			const auto metal		= materials.GetProperty<float>(material,  GetCRCGUID(PBR_METAL)).value_or(1.0f);
+			const auto albedo		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_ALBEDO),		{ 0.7f, 0.7f, 0.7f, 0.3f });
+			const auto specular		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_SPECULAR),	{ 1.0f, 1.0f, 1.0f, 1.0f });
+			const auto roughness	= materials.GetPropertyOr<float>(material,  GetCRCGUID(PBR_ROUGHNESS),	1.0f);
+			const auto metal		= materials.GetPropertyOr<float>(material,  GetCRCGUID(PBR_METAL),		1.0f);
 
 			constants.MP.albedo		= albedo.xyz();
 			constants.MP.roughness	= roughness;
@@ -1819,7 +1818,7 @@ namespace FlexKit
 			constants.MP.metallic	= 0.0f;
 		}
 
-		constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
+		constants.Transform = WT;
 
 		if (material != InvalidHandle)
 		{
