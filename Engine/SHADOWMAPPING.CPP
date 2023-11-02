@@ -181,28 +181,28 @@ namespace FlexKit
 
 	ShadowCubeMatrices CalculateShadowMapMatrices(const float3 pos, const float r)
 	{
-		static const XMMATRIX ViewOrientations[] = {
-			XMMATRIX{	0,  0, -1, 0,	// +X
+		static const float4x4 ViewOrientations[] = {
+			float4x4{	0,  0, -1, 0,	// +X
 						0, +1,  0, 0,
 					   -1,  0,  0, 0,
 					    0,  0,  0, 1 },
-			XMMATRIX{	0,  0, +1, 0,	// -X
+			float4x4{	0,  0, +1, 0,	// -X
 						0, +1,  0, 0,
 					   +1,  0,  0, 0,
 					    0,  0,  0, 1 },
-			XMMATRIX{  +1,  0,  0, 0,	// +Y
+			float4x4{  +1,  0,  0, 0,	// +Y
 						0,  0, -1, 0,
 					    0, -1,  0, 0,
 						0,  0,  0, 1 },
-			XMMATRIX{  +1,  0,  0, 0,	// -Y
+			float4x4{  +1,  0,  0, 0,	// -Y
 						0,  0, +1, 0,
 						0, +1,  0, 0,
 						0,  0,  0, 1 },
-			XMMATRIX{  +1,  0,  0, 0,	// +Z // forward
+			float4x4{  +1,  0,  0, 0,	// +Z // forward
 						0, +1,  0, 0,
 						0,  0, -1, 0,
 						0,  0,  0, 1 },
-			XMMATRIX{  -1,  0,  0, 0,	// -Z
+			float4x4{  -1,  0,  0, 0,	// -Z
 						0, +1,  0, 0,
 						0,  0, +1, 0,
 						0,  0,  0, 1 }
@@ -212,14 +212,14 @@ namespace FlexKit
 
 		for (size_t I = 0; I < 6; I++)
 		{
-			const XMMATRIX ViewI            = ViewOrientations[I] * DirectX::XMMatrixTranslationFromVector(pos);
-			const XMMATRIX View             = DirectX::XMMatrixInverse(nullptr, ViewI);
-			const XMMATRIX perspective      = DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r);
-			const XMMATRIX PV               = DirectX::XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
+			const float4x4 ViewI            = ViewOrientations[I] * XMMatrixToFloat4x4(DirectX::XMMatrixTranslationFromVector(pos));
+			const float4x4 View             = Inverse(ViewI);
+			const float4x4 perspective      = XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r));
+			const float4x4 PV               = perspective.Transpose() * View.Transpose();
 
-			out.PV[I]       = XMMatrixToFloat4x4(PV).Transpose();
-			out.ViewI[I]    = XMMatrixToFloat4x4(ViewI);
-			out.View[I]     = XMMatrixToFloat4x4(View);
+			out.PV[I]       = PV;
+			out.ViewI[I]    = ViewI;
+			out.View[I]     = View;
 		}
 
 		return out;
@@ -231,13 +231,13 @@ namespace FlexKit
 
 	ShadowMapMatrices CalculateSpotLightMatrices(const float3 pos, const Quaternion q, const float r, const float a)
 	{
-		const XMMATRIX viewOrientation	= DirectX::XMMatrixRotationQuaternion(q);
-		const XMMATRIX viewI			= DirectX::XMMatrixTranspose(viewOrientation) * DirectX::XMMatrixTranslationFromVector(pos);
-		const XMMATRIX view				= DirectX::XMMatrixInverse(nullptr, viewI);
-		const XMMATRIX perspective		= DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r);
-		const XMMATRIX pv				= DirectX::XMMatrixTranspose(perspective) * DirectX::XMMatrixTranspose(view);
+		const float4x4 viewOrientation	= XMMatrixToFloat4x4(DirectX::XMMatrixRotationQuaternion(q));
+		const float4x4 viewI			= viewOrientation * XMMatrixToFloat4x4(DirectX::XMMatrixTranslationFromVector(pos));
+		const float4x4 view				= Inverse(viewI);
+		const float4x4 perspective		= XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r));
+		const float4x4 pv				= perspective.Transpose() * view.Transpose();
 
-		return { XMMatrixToFloat4x4(pv).Transpose(), XMMatrixToFloat4x4(view) };
+		return { pv, view };
 	}
 
 
@@ -682,7 +682,7 @@ namespace FlexKit
 				if (intersections[0] || intersections[1] || intersections[2] ||
 					intersections[3] || intersections[4] || intersections[5])
 				{
-					ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+					ctx.SetGraphicsConstantValue(2, 16, float4x4_GPU{ WT });
 
 					for (uint32_t itr = 0; itr < 6; itr++)
 					{
@@ -690,10 +690,10 @@ namespace FlexKit
 						{
 							struct
 							{
-								float4x4 PV;
-								float4x4 View;
-								uint32_t Idx;
-								float	maxZ;
+								float4x4_GPU	PV;
+								float4x4_GPU	View;
+								uint32_t		Idx;
+								float			maxZ;
 							}tempConstants = {
 									.PV		= matrices.PV[itr],
 									.View	= matrices.View[itr],
@@ -710,7 +710,7 @@ namespace FlexKit
 
 		struct PoseConstants
 		{
-			float4x4 M[256];
+			float4x4_GPU M[256];
 		};
 
 		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
@@ -764,10 +764,10 @@ namespace FlexKit
 							{
 								struct 
 								{
-									float4x4	PV;
-									float4x4	View;
-									uint32_t	Idx;
-									float		maxZ;
+									float4x4_GPU	PV;
+									float4x4_GPU	View;
+									uint32_t		Idx;
+									float			maxZ;
 								}tempConstants = {
 										.PV		= matrices.PV[itr],
 										.View	= matrices.View[itr],
@@ -858,10 +858,10 @@ namespace FlexKit
 
 			struct
 			{
-				float4x4 PV;
-				float4x4 View;
-				uint32_t Idx;
-				float	maxZ;
+				float4x4_GPU	PV;
+				float4x4_GPU	View;
+				uint32_t		Idx;
+				float			maxZ;
 			}tempConstants = {
 					.PV		= pv,
 					.View	= v,
@@ -899,7 +899,7 @@ namespace FlexKit
 
 		struct PoseConstants
 		{
-			float4x4 M[256];
+			float4x4_GPU M[256];
 		};
 
 		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
@@ -932,10 +932,10 @@ namespace FlexKit
 
 						struct 
 						{
-							float4x4	PV;
-							float4x4	View;
-							uint32_t	Idx;
-							float		maxZ;
+							float4x4_GPU	PV;
+							float4x4_GPU	View;
+							uint32_t		Idx;
+							float			maxZ;
 						}tempConstants = {
 								.PV		= pv,
 								.View	= v,

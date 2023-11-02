@@ -34,7 +34,7 @@ namespace FlexKit
 
 	struct LocalShadowMapPassData
 	{
-		const Vector<LightHandle>&		pointLightShadows;
+		const Vector<LightHandle>&			pointLightShadows;
 		ShadowMapPassData&					sharedData;
 		ReserveConstantBufferFunction		reserveCB;
 		ReserveVertexBufferFunction			reserveVB;
@@ -45,15 +45,15 @@ namespace FlexKit
 
 	struct ShadowCubeMatrices
 	{
-		float4x4 View[6];
-		float4x4 ViewI[6];
-		float4x4 PV[6];
+		float4x4_GPU View[6];
+		float4x4_GPU ViewI[6];
+		float4x4_GPU PV[6];
 	};
 
 	struct ShadowMapMatrices
 	{
-		float4x4 PV;
-		float4x4 view;
+		float4x4_GPU PV;
+		float4x4_GPU view;
 	};
 
 	struct AnimationPoseUpload;

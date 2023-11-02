@@ -218,6 +218,28 @@ namespace FlexKit
 		}
 
 
+		template<MaterialValue TY>
+		TY GetPropertyOr(MaterialHandle handle, const uint32_t ID, const TY& orValue) const
+		{
+			auto& material		= materials[handles[handle]];
+			auto& properties	= material.properties;
+
+			if (auto res = std::ranges::find_if(
+				properties,
+				[&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
+			{
+				if (auto* property = std::get_if<TY>(&res->value))
+					return { *property };
+				else
+					return orValue;
+			}
+			else if (material.parent != InvalidHandle)
+				return GetPropertyOr<TY>(material.parent, ID, orValue);
+			else
+				return orValue;
+		}
+
+
 		RenderSystem&					renderSystem;
 		TextureStreamingEngine&			streamEngine;
 
