@@ -1,3 +1,4 @@
+#pragma once
 #include <containers.h>
 
 struct ObjectState

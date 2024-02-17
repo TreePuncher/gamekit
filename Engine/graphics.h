@@ -5525,9 +5525,9 @@ private:
 	{
 		struct CB_Proxy
 		{
-			CB_Proxy operator[](this auto& self, const size_t idx) noexcept
+			CB_Proxy operator[](const size_t idx) const noexcept
 			{
-				return { self.offset, idx, self.CB };
+				return { offset, idx, CB };
 			}
 
 			operator ConstantBufferDataSet () const		{ return { offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB, 0u }; }

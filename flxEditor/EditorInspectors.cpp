@@ -771,26 +771,28 @@ void SceneBrushEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 }
 
 
+/************************************************************************************************/
+
+
+struct PlayerAddBrushMessage : public FlexKit::Serializable<PlayerAddBrushMessage, MessageInterface, GetTypeGUID(AddBrushMessage)>
+{
+	void Do(EditorPlayerState& player) override
+	{
+		if (!player.gameObject->hasView(FlexKit::TransformComponentID))
+			player.gameObject->AddView<FlexKit::SceneNodeView>();
+
+		player.gameObject->AddView<FlexKit::BrushView>();
+	}
+
+	void Serialize(auto& archive) {}
+};
+
 FlexKit::ComponentViewBase* SceneBrushEditorComponent::Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 {
 	if (remote)
 	{
-		auto shared = viewport.GetRenderer().GetSharedMemory();
-
-		struct AddBrushMessage : public FlexKit::Serializable<AddBrushMessage, MessageInterface, GetTypeGUID(AddBrushMessage)>
-		{
-			void Do(EditorPlayerState& player) override
-			{
-				if (!player.gameObject->hasView(FlexKit::TransformComponentID))
-					player.gameObject->AddView<FlexKit::SceneNodeView>();
-
-				player.gameObject->AddView<FlexKit::BrushView>();
-			}
-
-			void Serialize(auto& archive) {}
-		};
-
-		auto addBrush = std::make_shared<AddBrushMessage>();
+		auto shared		= viewport.GetRenderer().GetSharedMemory();
+		auto addBrush	= std::make_shared<PlayerAddBrushMessage>();
 
 		viewport.GetRenderer().GetSharedMemory()->PushMessageToPlayer(addBrush);
 

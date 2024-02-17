@@ -51,11 +51,11 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAlloca
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	//Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+	Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= true;
+	Depth_Desc.DepthEnable	= false;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
@@ -116,11 +116,11 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	//Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+	Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= true;
+	Depth_Desc.DepthEnable	= false;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
@@ -254,7 +254,9 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 		, project		{ IN_project }
 		, previewCamera	{ FlexKit::CameraComponent::GetComponent().CreateCamera() }
 {
-	FlexKit::SetCameraNode(previewCamera, FlexKit::GetZeroedNode());
+	auto node = FlexKit::GetZeroedNode();
+	FlexKit::SetCameraNode(previewCamera, node);
+	FlexKit::TranslateWorld(node, { 0, 0, 10 });
 
 	auto& renderSystem = renderer.GetRenderSystem();
 	renderSystem.RegisterPSOLoader(FLATSKINNED_PSO,	&CreateFlatSkinnedPassPSO);
@@ -351,20 +353,20 @@ void EditorPrefabPreview::ProcessMessages()
 /************************************************************************************************/
 
 
+struct PlayerResetMessage : public FlexKit::Serializable<PlayerResetMessage, MessageInterface, GetTypeGUID(ResetMessage)>
+{
+	void Do(EditorPlayerState& player) override
+	{
+		player.Reset();
+	}
+
+	void Serialize(auto& archive) {}
+};
+
 void EditorPrefabPreview::Reset()
 {
 	return;
-	struct ResetMessage : public FlexKit::Serializable<ResetMessage, MessageInterface, GetTypeGUID(ResetMessage)>
-	{
-		void Do(EditorPlayerState& player) override
-		{
-			player.Reset();
-		}
-
-		void Serialize(auto& archive){}
-	};
-
-	auto resetMsg = std::make_shared<ResetMessage>();
+	auto resetMsg = std::make_shared<PlayerResetMessage>();
 	renderer.GetSharedMemory()->currentGameObject = nullptr;
 	playerContext->push_message(resetMsg);
 }
@@ -382,6 +384,26 @@ FlexKit::GameObject* EditorPrefabPreview::GetGameObject()
 /************************************************************************************************/
 
 
+struct EditorSetBrushMessage : public FlexKit::Serializable<EditorSetBrushMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
+{
+	void Do(EditorPlayerState& player) override
+	{
+		auto triMeshResource = FlexKit::FindMesh(meshHandle);
+
+		if (triMeshResource == FlexKit::InvalidHandle)
+			player.SendErrorMessage("Resource not found!");
+		else
+			player.gameObject->AddView<FlexKit::BrushView>(triMeshResource.value());
+	}
+
+	void Serialize(auto& archive)
+	{
+		archive& meshHandle;
+	}
+
+	FlexKit::AssetHandle	meshHandle;
+};
+
 void EditorPrefabPreview::SetBrush(FlexKit::AssetHandle handle)
 {
 	auto res = project.FindProjectResource(handle);
@@ -390,27 +412,7 @@ void EditorPrefabPreview::SetBrush(FlexKit::AssetHandle handle)
 
 	SendResource(*res->resource.get(), *playerContext->shared);
 
-	struct SetBrushMessage : public FlexKit::Serializable<SetBrushMessage, MessageInterface, GetTypeGUID(ResizeMessage)>
-	{
-		void Do(EditorPlayerState& player) override
-		{
-			auto triMeshResource = FlexKit::FindMesh(meshHandle);
-
-			if (triMeshResource == FlexKit::InvalidHandle)
-				player.SendErrorMessage("Resource not found!");
-			else
-				player.gameObject->AddView<FlexKit::BrushView>(triMeshResource.value());
-		}
-
-		void Serialize(auto& archive)
-		{
-			archive& meshHandle;
-		}
-
-		FlexKit::AssetHandle	meshHandle;
-	};
-
-	auto brushMsg = std::make_shared<SetBrushMessage>();
+	auto brushMsg			= std::make_shared<EditorSetBrushMessage>();
 	brushMsg->meshHandle	= handle;
 
 	playerContext->push_message(brushMsg);
@@ -525,19 +527,18 @@ void EditorPrefabPreview::RenderStatic(
 			if (!brush || brush->meshes.empty())
 				return;
 
-			auto materialHndl = brush->material;
-			auto constants = brush->GetConstants();
+			auto materialHndl	= brush->material;
+			auto constants		= brush->GetConstants();
+			auto WH				= frameResources.GetTextureWH(data.renderTarget);
 
-			//auto& materials			= MaterialComponent::GetComponent();
-			//const auto materialData	= MaterialComponent::GetComponent()[materialHndl];
-			auto skeleton = FlexKit::GetSkeleton(gameObject);
-			auto poseState = FlexKit::GetPoseState(gameObject);
+			auto skeleton	= FlexKit::GetSkeleton(gameObject);
+			auto poseState	= FlexKit::GetPoseState(gameObject);
 
 			struct ForwardDrawConstants
 			{
-				float LightCount;
-				float t;
-				uint2 WH;
+				uint32_t	LightCount;
+				float		t;
+				uint2		WH;
 			};
 
 			const size_t entityBufferSize =
@@ -549,7 +550,7 @@ void EditorPrefabPreview::RenderStatic(
 
 			struct EntityPoses
 			{
-				float4x4 transforms[768];
+				float4x4_GPU transforms[768];
 
 				auto& operator [](size_t idx) { return transforms[idx]; }
 			};
@@ -561,8 +562,8 @@ void EditorPrefabPreview::RenderStatic(
 			auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
 			auto poseBuffer				= data.reserveCB(poseBufferSize);
 
-			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer };
-			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer};
+			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ .LightCount = 1, .t = 1, .WH = WH }, passConstantBuffer };
 
 			auto& rootSignature = frameResources.renderSystem().Library.RS6CBVs4SRVs;
 			ctx.SetRootSignature(rootSignature);
@@ -581,16 +582,13 @@ void EditorPrefabPreview::RenderStatic(
 					{ frameResources.GetResource({ data.renderTarget }) },
 					true, frameResources.GetResource(data.depthTarget));
 
-				auto poseSize	= poseState->JointCount * sizeof(float4x4);
+				auto poseSize	= poseState->JointCount * sizeof(float4x4_GPU);
 				auto poseBuffer = ctx.ReserveDirectUploadSpace(poseSize);
 
 				FlexKit::UpdatePose(*poseState, allocator);
 
 				for (size_t I = 0; I < poseState->JointCount; I++)
-				{
-					auto pose = skeleton->IPose[I] * poseState->CurrentPose[I];
-					memcpy(((float4x4*)poseBuffer.buffer) + I, &pose, sizeof(float4x4));
-				}
+					reinterpret_cast<float4x4*>(poseBuffer.buffer)[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
 
 				ctx.CopyBufferRegion(frameResources.GetResource(data.poseBuffer), poseBuffer.resource, poseSize, 0, poseBuffer.offset);
 
@@ -852,7 +850,7 @@ void EditorPrefabPreview::RenderOverlays(
 	const auto constants	= GetCameraConstants(previewCamera);
 	const auto PV			= constants.PV;
 	const auto Q			= FlexKit::GetOrientation(object);
-	const auto WT			= FlexKit::GetWT(object).Transpose();
+	const auto WT			= FlexKit::GetWT(object);
 	const auto brush		= FlexKit::GetBrush(object);
 
 	if (!brush)
@@ -1019,6 +1017,8 @@ void EditorPrefabPreview::RenderOverlays(
 
 void EditorPrefabPreview::CenterCamera()
 {
+	return;
+
 	auto& gameObject	= selection->gameObject;
 	auto meshes			= FlexKit::GetTriMesh(gameObject);
 
@@ -1031,8 +1031,8 @@ void EditorPrefabPreview::CenterCamera()
 	const auto target			= aabb.MidPoint();
 	const auto desiredDistance	= 2.5f * aabb.Span().magnitude() / std::tan(c.FOV);
 
-	auto position_VS		= c.View.Transpose() * float4 { target, 1 };
-	auto updatedPosition_WS	= c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
+	auto position_VS		= c.View	* float4 { target, 1 };
+	auto updatedPosition_WS	= c.IV		* float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
 
 	const auto node		= FlexKit::GetCameraNode(previewCamera);
 	const Quaternion Q	= GetOrientation(node);

@@ -10,6 +10,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	float4x4 GetLT_Internal(uint32_t);
+
+
+	/************************************************************************************************/
+
+
 	size_t CalculateNodeBufferSize(size_t BufferSize)
 	{
 		size_t PerNodeFootPrint = sizeof(LT_Entry) + sizeof(WT_Entry) + sizeof(Node) + sizeof(uint16_t);
@@ -366,10 +372,77 @@ namespace FlexKit
 
 	float4x4 GetWT(NodeHandle node)
 	{
-		auto index  = _SNHandleToIndex(node);
-		auto WT     = XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+		if (node == InvalidHandle)
+			return float4x4::Identity();
+		else if (!GetFlag(node, SceneNodes::DIRTY))
+		{
+			auto index	= _SNHandleToIndex(node);
+			auto WT		= XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+			return WT;
+		}
+		else
+		{
+			auto parent		= GetParentNode(node);
+			auto parentWT	= GetWT(parent);
 
-		return WT;
+			auto idx		= _SNHandleToIndex(node);
+			auto WT			= parentWT * GetLT_Internal(idx);
+
+			SetWT(node, WT);
+			SetFlag(node, SceneNodes::UPDATED);
+
+			return WT;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 GetLT(NodeHandle node)
+	{
+		using DirectX::XMMatrixIdentity;
+		using DirectX::XMMatrixMultiply;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixRotationQuaternion;
+
+		auto idx = _SNHandleToIndex(node);
+
+		XMMatrixIdentity();
+		LT_Entry TRS = SceneNodeTable.LT[idx];
+
+		DirectX::XMMATRIX LT =
+				XMMatrixRotationQuaternion(TRS.R) *
+				XMMatrixScalingFromVector(TRS.S) *
+				XMMatrixTranslationFromVector(TRS.T);
+
+		return XMMatrixToFloat4x4(LT);
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 GetLT_Internal(uint32_t idx)
+	{
+		using DirectX::XMMatrixIdentity;
+		using DirectX::XMMatrixMultiply;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixRotationQuaternion;
+
+		const auto	index	= _SNHandleToIndex(idx);
+		LT_Entry	TRS		= SceneNodeTable.LT[idx];
+
+		auto LT =
+			XMMatrixRotationQuaternion(TRS.R) *
+			XMMatrixScalingFromVector(TRS.S) *
+			XMMatrixTranslationFromVector(TRS.T);
+
+		return XMMatrixToFloat4x4(XMMatrixTranspose(LT));
 	}
 
 
@@ -560,8 +633,7 @@ namespace FlexKit
 			const auto parentFlag   = SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)];
 			const auto scaleFlag    = flag & SceneNodes::SCALE;
 
-
-			if((flag & SceneNodes::DIRTY) || (parentFlag & SceneNodes::UPDATED))
+			if((flag & SceneNodes::DIRTY) && !(SceneNodes::UPDATED) || (parentFlag & SceneNodes::UPDATED) | flag )
 			{
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
@@ -761,6 +833,7 @@ namespace FlexKit
 			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, &r, GetTypeGUID(float));
 	}
 
+
 	void SceneNodeView::Scale(float3 xyz) noexcept
 	{
 		FlexKit::Scale(node, xyz);
@@ -799,15 +872,18 @@ namespace FlexKit
 		return FlexKit::GetPositionW(node);
 	}
 
+
 	float3	SceneNodeView::GetPositionL() const noexcept
 	{
 		return FlexKit::GetPositionL(node);
 	}
 
+
 	float3	SceneNodeView::GetScale() const noexcept
 	{
 		return GetLocalScale(node);
 	}
+
 
 	Quaternion SceneNodeView::GetOrientation() const noexcept
 	{
@@ -815,16 +891,19 @@ namespace FlexKit
 		return FlexKit::GetOrientation(node);
 	}
 
+
 	Quaternion SceneNodeView::GetOrientationL() const noexcept
 	{
 
 		return FlexKit::GetOrientationLocal(node);
 	}
 
+
 	float4x4 SceneNodeView::GetWT() const noexcept
 	{
 		return FlexKit::GetWT(node);
 	}
+
 
 	void SceneNodeView::SetScale(float3 scale) noexcept
 	{
@@ -834,6 +913,7 @@ namespace FlexKit
 			TriggerComponent::GetComponent()[triggers].Trigger(SetScaleSignalID);
 	}
 
+
 	void SceneNodeView::SetPosition(const float3 xyz) noexcept
 	{
 		FlexKit::SetPositionW(node, xyz);
@@ -841,6 +921,7 @@ namespace FlexKit
 		if (triggerEnable)
 			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID);
 	}
+
 
 	void SceneNodeView::SetPositionL(const float3 xyz) noexcept
 	{
@@ -850,6 +931,7 @@ namespace FlexKit
 			TriggerComponent::GetComponent()[triggers].Trigger(TranslationSignalID);
 	}
 
+
 	void SceneNodeView::SetOrientation(const Quaternion q) noexcept
 	{
 		FlexKit::SetOrientation(node, q);
@@ -858,6 +940,7 @@ namespace FlexKit
 			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, (void*)&q, GetTypeGUID(Quaternion));
 	}
 
+
 	void SceneNodeView::SetOrientationL(const Quaternion q) noexcept
 	{
 		FlexKit::SetOrientationL(node, q);
@@ -865,6 +948,7 @@ namespace FlexKit
 		if (triggerEnable)
 			TriggerComponent::GetComponent()[triggers].Trigger(SetOrientationmSignalID, (void*)&q, GetTypeGUID(Quaternion));
 	}
+
 
 	void SceneNodeView::SetWT(const float4x4& wt) noexcept
 	{
@@ -891,7 +975,7 @@ namespace FlexKit
 		FlexKit::SetWT(node, &WT);
 
 		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Scaleflag  = false;
-		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent     = NodeHandle(0);
+		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent     = InvalidHandle;
 
 		return node;
 	}

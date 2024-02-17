@@ -83,11 +83,12 @@ namespace FlexKit
 	{
 		enum StateFlags : char
 		{
-			CLEAR   = 0x00,
-			DIRTY   = 0x01,
-			FREE    = 0x02,
-			SCALE   = 0x04,
-			UPDATED = 0x08
+			CLEAR				= 0x00,
+			DIRTY				= 0x01,
+			FREE				= 0x02,
+			SCALE				= 0x04,
+			UPDATED				= 0x08,
+			UPDATEDIMMEDIATE	= 0x10,
 		};
 
 		Vector<Node>            Nodes;
@@ -148,6 +149,7 @@ namespace FlexKit
 	FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
 	FLEXKITAPI void			GetTransform				( NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
 	FLEXKITAPI float4x4		GetWT						( NodeHandle Node );
+	FLEXKITAPI float4x4		GetLT						( NodeHandle Node );
 	FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
 	FLEXKITAPI Quaternion	GetOrientation				( NodeHandle Node );
 	FLEXKITAPI Quaternion	GetOrientationLocal			( NodeHandle Node );

@@ -318,7 +318,7 @@ namespace FlexKit
 		else
 			updatedWT  = float4x4::Identity();
 
-		updatedView	= Inverse(WT);
+		updatedView	= Inverse(updatedWT);
 		updatedProj	= CreatePerspectiveRH(*this, invert);
 		updatedPV	= updatedProj * updatedView;
 		updatedIV	= Inverse(updatedProj * updatedView);

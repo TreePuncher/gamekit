@@ -272,15 +272,15 @@ void SparseMap::SetCell(const CellCoord XYZ, const CellState_t ID)
 	
 void SparseMap::RemoveBits(const CellCoord XYZ, const CellState_t ID)
 {
-	auto chunkID = (XYZ & (-1 + 15)) / 8;
-
+	auto chunkID = (XYZ * (-1 + 15)) / 8;
+	
 	if (auto res = chunks[chunkID]; res)
 	{
 		auto& chunk			= res.value().get();
 		auto currentState	= chunk[XYZ % 8];
 		auto newState		= currentState & ~ID;
 		chunk[XYZ % 8]		= newState;
-
+	
 		chunk.active = true;
 	}
 }
