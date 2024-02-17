@@ -216,15 +216,22 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateStrandRenderOpaquePSO(Fle
 	builder.AddPixelShader		("PMain",	R"(assets\shaders\HairRendering\StrandRendering.hlsl)", { .enable16BitTypes = true, .hlsl2021 = true  });
 
 	builder.AddInputTopology(ETopology::EIT_POINT);
-	builder.AddRenderTargetState({
-			.targetCount = 1,
-			.targetFormats = {
-				DeviceFormat::R16G16B16A16_FLOAT
-			}
-		});
 	builder.AddInputLayout({
 		.inputs = { { "POSITION",	0, DeviceFormat::R32G32B32A32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 }, },
 		.count	= 1
+		});
+
+	builder.AddRenderTargetState({
+			.targetCount	= 1,
+			.targetFormats	= {
+				DeviceFormat::R16G16B16A16_FLOAT
+			}
+		});
+
+	builder.AddDepthStencilState({
+			.depthEnable	= true,
+			.depthWriteMask	= EDepthWriteMask::All,
+			.depthFunc		= EComparison::LESS,
 		});
 
 	builder.SetDebugName("DrawOpaque");
@@ -429,7 +436,7 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 
 	auto cameraNode = cameras.GetCamera(camera).Node;
-	//Yaw(cameraRig, pi / 8.0f * dT);
+	Yaw(cameraRig, pi / 8.0f * dT);
 	SetCameraAspectRatio(camera, renderWindow.GetAspectRatio());
 	cameras.MarkDirty(camera);
 	

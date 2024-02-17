@@ -9,13 +9,13 @@ struct PointLight
 
 cbuffer LocalConstants : register(b1)
 {
+	float4x4 WT;
 	float4	 Albedo;
 	float    Ks;
 	float    IOR;
 	float    Roughness;
 	float    Anisotropic;
 	float    Metallic;
-	float4x4 WT;
 	uint     textureCount;
 	uint     textureChannels;
 }

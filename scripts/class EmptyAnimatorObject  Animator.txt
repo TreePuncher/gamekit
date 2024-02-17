@@ -1,0 +1,46 @@
+class EmptyAnimatorObject : AnimatorInterface
+{
+        EmptyAnimatorObject(GameObject@ gameObject)
+        {
+                @testAnimation = LoadAnimation("rigAction_game");
+                Animator@ animator = gameObject.GetAnimator();
+
+                //loopID = animator.Play(testAnimation, true);
+        }
+
+
+        void PreUpdate(GameObject@ gameObject, double dt)
+        {
+                PoseState@ poseState = gameObject.GetPoseState();
+                Pose@ pose = poseState.GetPose(0);
+
+                Quaternion q(0, t * 180, 0);
+
+                Animator@ animator = gameObject.GetAnimator();
+                float3 v3 = animator.GetFloat3(0);
+
+                Log("v3: " + v3.x + ", " + v3.y + ", " + v3.z );
+
+
+                //Log("t: " + t);
+                //Log("Q: " + q.x + ", " + q.y + ", " + q.z + ", " + q.w);
+
+                t += dt;
+        }
+
+        void PostUpdate(GameObject@ gameObject, double dt)
+        {
+        }
+
+        double t = 0;
+        Animation@      testAnimation;
+        PlayID                  loopID;
+};
+
+EmptyAnimatorObject@ object;
+
+EmptyAnimatorObject@ InitiateAnimator(GameObject@ gameObject)
+{
+        @object = EmptyAnimatorObject(gameObject);
+        return object;
+}

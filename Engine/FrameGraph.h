@@ -2495,9 +2495,9 @@ namespace FlexKit
 
 	struct alignas(256) Constants
 	{
-		float4		Albedo;
-		float4		Specular;
-		float4x4	WT;
+		float4			Albedo;
+		float4			Specular;
+		float4x4_GPU	WT;
 	};
 
 
@@ -3405,8 +3405,8 @@ namespace FlexKit
 
 
 				Brush::VConstantsLayout brushConstants{	
+					.Transform  = float4x4::Identity(),
 					.MP         = Brush::MaterialProperties{},
-					.Transform  = float4x4::Identity()
 				};
 
 				CBPushBuffer cbPushBuffer(

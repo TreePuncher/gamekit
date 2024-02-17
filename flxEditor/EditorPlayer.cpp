@@ -23,25 +23,25 @@ void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared)
 	SendResource(resource, shared, shared.idGenerator());
 }
 
+struct EditorSendResourceMessage : public FlexKit::Serializable<EditorSendResourceMessage, MessageInterface, GetTypeGUID(ResourceMessage)>
+{
+	void Do(EditorPlayerState& player) override
+	{
+		player.AddResource(std::move(blob));
+	}
+
+	void Serialize(auto& archive)
+	{
+		archive& blob;
+	}
+
+	FlexKit::Blob blob;
+};
+
 void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared, uint64_t uuid)
 {
-	struct ResourceMessage : public FlexKit::Serializable<ResourceMessage, MessageInterface, GetTypeGUID(ResourceMessage)>
-	{
-		void Do(EditorPlayerState& player) override
-		{
-			player.AddResource(std::move(blob));
-		}
-
-		void Serialize(auto& archive)
-		{
-			archive& blob;
-		}
-
-		FlexKit::Blob blob;
-	};
-
 	auto resourceBlob	= resource.CreateBlob();
-	auto resourceSend	= std::make_shared<ResourceMessage>();
+	auto resourceSend	= std::make_shared<EditorSendResourceMessage>();
 	resourceSend->blob	= Blob{ resourceBlob.buffer, resourceBlob.bufferSize };
 
 	shared.PushMessageToPlayer(resourceSend, uuid);
@@ -241,22 +241,24 @@ void EditorPlayerState::SendBlob(FlexKit::Blob& blob)
 /************************************************************************************************/
 
 
+struct ErrorMessage : public FlexKit::Serializable<ErrorMessage, EditorMessageInterface, GetTypeGUID(ResizeMessage)>
+{
+	void Do(EditorContext&) override
+	{
+		FK_LOG_ERROR(message.c_str());
+	}
+
+	void Serialize(auto& archive)
+	{
+		archive& message;
+	}
+
+	std::string message;
+};
+
 void EditorPlayerState::SendErrorMessage(const std::string& message)
 {
-	struct ErrorMessage : public FlexKit::Serializable<ErrorMessage, EditorMessageInterface, GetTypeGUID(ResizeMessage)>
-	{
-		void Do(EditorContext&) override
-		{
-			FK_LOG_ERROR(message.c_str());
-		}
 
-		void Serialize(auto& archive)
-		{
-			archive& message;
-		}
-
-		std::string message;
-	};
 
 	auto errorMessage = std::make_shared<ErrorMessage>();
 	errorMessage->message = message;
@@ -296,61 +298,61 @@ void EditorPlayerState::Shutdown()
 /************************************************************************************************/
 
 
+struct EditorRequestGUIDMessage : public FlexKit::Serializable<EditorRequestGUIDMessage, EditorMessageInterface, GetCRC32("RequestAsset::GUID")>
+{
+	EditorRequestGUIDMessage(FlexKit::GUID_t IN_guid = -1, uint64_t IN_uuid = -1) : guid{ IN_guid }, uuid{ IN_uuid } {}
+
+	FlexKit::GUID_t		guid;
+	uint64_t			uuid;
+
+	void Do(EditorContext& editor) override
+	{
+		auto asset = editor.project.FindProjectResource(guid);
+		SendResource(*asset->resource, editor.shared, uuid);
+	}
+
+	void Serialize(auto& archive)
+	{
+		archive& guid;
+		archive& uuid;
+	}
+};
+
 uint64_t EditorPlayerState::RequestAsset(FlexKit::GUID_t guid)
 {
-	struct RequestMessage : public FlexKit::Serializable<RequestMessage, EditorMessageInterface, GetCRC32("RequestAsset::GUID")>
-	{
-		RequestMessage(FlexKit::GUID_t IN_guid = -1, uint64_t IN_uuid = -1) : guid{ IN_guid }, uuid{ IN_uuid } {}
-
-		FlexKit::GUID_t		guid;
-		uint64_t			uuid;
-
-		void Do(EditorContext& editor) override
-		{
-			auto asset	= editor.project.FindProjectResource(guid);
-			SendResource(*asset->resource, editor.shared, uuid);
-		}
-
-		void Serialize(auto& archive)
-		{
-			archive& guid;
-			archive& uuid;
-		}
-	};
-
 	auto uuid = shared->idGenerator();
-	return shared->PushMessageToEditor(std::make_shared<RequestMessage>(guid, uuid), uuid);
+	return shared->PushMessageToEditor(std::make_shared<EditorRequestGUIDMessage>(guid, uuid), uuid);
 }
 
 
 /************************************************************************************************/
 
 
+struct EditorRequestStringMessage : public FlexKit::Serializable<EditorRequestStringMessage, EditorMessageInterface, GetCRC32("RequestAsset::STRING")>
+{
+	EditorRequestStringMessage(std::string IN_ID = "", uint64_t IN_uuid = -1) : resourceID{ IN_ID }, uuid{ IN_uuid } {}
+
+	std::string	resourceID;
+	uint64_t	uuid;
+
+	void Do(EditorContext& editor) override
+	{
+		auto asset = editor.project.FindProjectResource(resourceID);
+
+		SendResource(*asset->resource.get(), editor.shared, uuid);
+	}
+
+	void Serialize(auto& archive)
+	{
+		archive& resourceID;
+		archive& uuid;
+	}
+};
+
 uint64_t EditorPlayerState::RequestAsset(std::string_view ID)
 {
-	struct RequestMessage : public FlexKit::Serializable<RequestMessage, EditorMessageInterface, GetCRC32("RequestAsset::STRING")>
-	{
-		RequestMessage(std::string IN_ID = "", uint64_t IN_uuid = -1) : resourceID{ IN_ID }, uuid{ IN_uuid } {}
-
-		std::string	resourceID;
-		uint64_t	uuid;
-
-		void Do(EditorContext& editor) override
-		{
-			auto asset = editor.project.FindProjectResource(resourceID);
-
-			SendResource(*asset->resource.get(), editor.shared, uuid);
-		}
-
-		void Serialize(auto& archive)
-		{
-			archive& resourceID;
-			archive& uuid;
-		}
-	};
-
 	auto uuid = shared->idGenerator();
-	return shared->PushMessageToEditor(std::make_shared<RequestMessage>(std::string{ ID }, uuid));
+	return shared->PushMessageToEditor(std::make_shared<EditorRequestStringMessage>(std::string{ ID }, uuid));
 }
 
 
@@ -411,6 +413,13 @@ FlexKit::TriMeshHandle EditorPlayerState::LoadMesh(FlexKit::GUID_t guid)
 /************************************************************************************************/
 
 
+struct PlayerReadyMessage : public FlexKit::Serializable<PlayerReadyMessage, EditorMessageInterface, GetCRC32("Ready")>
+{
+	void Do(EditorContext& editor) override { }
+
+	void Serialize(auto& archive) {}
+};
+
 int PlayerMain(int argc, char* argv[])
 {
 	if (argc < 3)
@@ -452,16 +461,7 @@ int PlayerMain(int argc, char* argv[])
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
 		app->PushState<EditorPlayerState>(shared);
-
-
-		struct ReadyMessage : public FlexKit::Serializable<ReadyMessage, EditorMessageInterface, GetCRC32("Ready")>
-		{
-			void Do(EditorContext& editor) override { }
-
-			void Serialize(auto& archive) {}
-		};
-
-		shared->PushMessageToEditor(std::make_shared<ReadyMessage>());
+		shared->PushMessageToEditor(std::make_shared<PlayerReadyMessage>());
 
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;

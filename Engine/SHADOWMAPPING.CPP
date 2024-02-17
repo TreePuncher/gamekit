@@ -212,8 +212,8 @@ namespace FlexKit
 
 		for (size_t I = 0; I < 6; I++)
 		{
-			const float4x4 ViewI            = ViewOrientations[I] * XMMatrixToFloat4x4(DirectX::XMMatrixTranslationFromVector(pos));
-			const float4x4 View             = Inverse(ViewI);
+			const float4x4 ViewI            = ViewOrientations[I] * TranslationMatrix(pos);
+			const float4x4 View             = Inverse(ViewI).Transpose();
 			const float4x4 perspective      = XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r));
 			const float4x4 PV               = perspective.Transpose() * View.Transpose();
 
@@ -232,9 +232,9 @@ namespace FlexKit
 	ShadowMapMatrices CalculateSpotLightMatrices(const float3 pos, const Quaternion q, const float r, const float a)
 	{
 		const float4x4 viewOrientation	= XMMatrixToFloat4x4(DirectX::XMMatrixRotationQuaternion(q));
-		const float4x4 viewI			= viewOrientation * XMMatrixToFloat4x4(DirectX::XMMatrixTranslationFromVector(pos));
+		const float4x4 viewI			= viewOrientation * TranslationMatrix(pos);
 		const float4x4 view				= Inverse(viewI);
-		const float4x4 perspective		= XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r));
+		const float4x4 perspective		= XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r)).Transpose();
 		const float4x4 pv				= perspective.Transpose() * view.Transpose();
 
 		return { pv, view };

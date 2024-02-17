@@ -1733,13 +1733,13 @@ namespace FlexKit
 
 				ctx.BeginEvent_DEBUG("Clustered Shading");
 
-				LightComponent&	lightComponent	= LightComponent::GetComponent();
-				const auto&		visableLights	= *data.pointLightHandles;
+				LightComponent& lightComponent = LightComponent::GetComponent();
+				const auto& visableLights = *data.pointLightHandles;
 
-				auto& renderSystem			= resources.renderSystem();
-				const auto WH				= resources.renderSystem().GetTextureWH(renderTarget);
-				const auto cameraConstants	= GetCameraConstants(camera);
-				const auto lightCount		= (uint32_t)visableLights.size();
+				auto& renderSystem = resources.renderSystem();
+				const auto WH = resources.renderSystem().GetTextureWH(renderTarget);
+				const auto cameraConstants = GetCameraConstants(camera);
+				const auto lightCount = (uint32_t)visableLights.size();
 
 				ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
@@ -1786,11 +1786,11 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 8, resources.PixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
 				descHeap.SetStructuredResource(ctx, 9, resources.PixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
 
-				for (size_t shadowMapIdx = 0; shadowMapIdx < lightCount; shadowMapIdx++)
+				//for (size_t shadowMapIdx = 0; shadowMapIdx < lightCount; shadowMapIdx++)
+				for (const auto [shadowMapIdx, handle] : zip(iota(0), visableLights))
 				{
-					auto& light = lightComponent[visableLights[shadowMapIdx]];
-
-					auto shadowMap = resources.GetResource(shadowMaps[shadowMapIdx]);
+					const auto& light		= lightComponent[handle];
+					const auto	shadowMap	= resources.GetResource(shadowMaps[shadowMapIdx]);
 
 					if (shadowMap != InvalidHandle)
 					{

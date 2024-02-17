@@ -342,7 +342,7 @@ class EmptyAnimatorObject : AnimatorInterface
 	{
 	}
 
-	void HandleEvent(GameObject@ gameObject, AnimationEven& evt)
+	void HandleEvent(GameObject@ gameObject, AnimationEvent& evt)
 	{
 	}
 };

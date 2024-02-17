@@ -145,11 +145,11 @@ namespace FlexKit
 
 		struct alignas(256) VConstantsLayout
 		{
-			MaterialProperties	MP;
 			float4x4_GPU		Transform;
+			MaterialProperties	MP;
 			uint32_t			textureCount;
 			uint32_t			textureChannels;
-			uint32_t			padding[2];
+			uint32_t			padding1[2];
 			uint4				textureHandles[16];
 		};
 

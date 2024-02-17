@@ -4,16 +4,37 @@
 // Includes
 #include "buildsettings.h"
 
+#include <bit>
+#include <bitset>
+#include <cstring>
 #include <initializer_list>
 #include <limits>
 #include <math.h>
 #include <ostream>
-#include <emmintrin.h>
-#include <smmintrin.h>
-#include <xmmintrin.h>
 #include <ranges>
 #include <tuple>
 #include <type_traits>
+
+#include <simde/simde-common.h>
+#if defined(__x86_64__) || defined(_M_X64)
+#include <simde/x86/avx2.h>
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#include <simde/arm/neon.h>
+#endif
+
+#ifdef __clang__
+#include <range/v3/view/iota.hpp>
+#include <range/v3/view/zip.hpp>
+using ranges::zip_view;
+using ranges::iota_view;
+#else
+using std::views::iota;
+using std::views::zip;
+#endif
+
+#ifndef _MM_SHUFFLE
+#define _MM_SHUFFLE(A, B, C, D) 0x00
+#endif
 
 #ifdef max
 #undef max
@@ -26,8 +47,8 @@
 namespace FlexKit
 {   /************************************************************************************************/
 
-	using std::views::iota;
-	using std::views::zip;
+    //using std::views::iota;
+    //using std::views::zip;
 
 	template<class T>
 	concept Scaler_t = std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_convertible_v<T, int> || std::is_convertible_v<T, float> || std::is_convertible_v<T, double>;
@@ -174,14 +195,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline __m128 SSE_CopySign(__m128 sign, __m128 abs) noexcept
+    FLEXKITAPI inline simde__m128 SSE_CopySign(simde__m128 sign, simde__m128 abs) noexcept
 	{
 		const uint32_t M1 = (1u << 31);
 		const uint32_t M2 =~(1u << 31);
 
-		const __m128 Sgn = _mm_and_ps(sign, _mm_castsi128_ps(_mm_set1_epi32(M1)));
-		const __m128 Abs = _mm_and_ps(abs, _mm_castsi128_ps(_mm_set1_epi32(M2)));
-		const __m128 res = _mm_or_ps(Sgn, Abs);
+        const simde__m128 Sgn = simde_mm_and_ps(sign, simde_mm_castsi128_ps(simde_mm_set1_epi32(M1)));
+        const simde__m128 Abs = simde_mm_and_ps(abs, simde_mm_castsi128_ps(simde_mm_set1_epi32(M2)));
+        const simde__m128 res = simde_mm_or_ps(Sgn, Abs);
 
 		return res;
 	}
@@ -190,9 +211,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline __m128 SSE_ABS(__m128 abs) noexcept
+    FLEXKITAPI inline simde__m128 SSE_ABS(simde__m128 abs) noexcept
 	{
-		return SSE_CopySign(_mm_set_ps1(1), abs);
+		return SSE_CopySign(simde_mm_set_ps1(1), abs);
 	}
 
 
@@ -211,33 +232,33 @@ namespace FlexKit
 	bool VectorCompare(TY A, TY B, float E) noexcept { return (A - B).magnitudeSq() < E * E; }
 
 
-	FLEXKITAPI inline const	float* GetArray_ptr_const(const __m128& V)  noexcept { return reinterpret_cast<const float*>(&V); }
-	FLEXKITAPI inline		float* GetArray_ptr(__m128& V)              noexcept { return reinterpret_cast<float*>(&V); }
+    FLEXKITAPI inline const	float* GetArray_ptr_const(const simde__m128& V)  noexcept { return reinterpret_cast<const float*>(&V); }
+    FLEXKITAPI inline		float* GetArray_ptr(simde__m128& V)              noexcept { return reinterpret_cast<float*>(&V); }
 
-	FLEXKITAPI inline const float& GetElement(const __m128& V, const size_t idx) noexcept { return GetArray_ptr_const(V)[idx]; }
+    FLEXKITAPI inline const float& GetElement(const simde__m128& V, const size_t idx) noexcept { return GetArray_ptr_const(V)[idx]; }
 
-	FLEXKITAPI inline float* GetElement_ptr(__m128& V, const size_t idx ) noexcept { return GetArray_ptr(V) + idx; }
-	FLEXKITAPI inline float& GetElement_ref(__m128& V, const size_t idx)  noexcept { return GetArray_ptr(V)[idx]; }
+    FLEXKITAPI inline float* GetElement_ptr(simde__m128& V, const size_t idx ) noexcept { return GetArray_ptr(V) + idx; }
+    FLEXKITAPI inline float& GetElement_ref(simde__m128& V, const size_t idx)  noexcept { return GetArray_ptr(V)[idx]; }
 
-	FLEXKITAPI inline void SetElement	(__m128& V, float X, const size_t idx) noexcept { GetArray_ptr(V)[idx] = X;	}
+    FLEXKITAPI inline void SetElement	(simde__m128& V, float X, const size_t idx) noexcept { GetArray_ptr(V)[idx] = X;	}
 
-	FLEXKITAPI inline float GetFirst	(const __m128& V) noexcept { return GetElement(V, 0); } // Should Return the X Component
-	FLEXKITAPI inline float GetLast		(const __m128& V) noexcept { return GetElement(V, 2); } // SHould Return the W Component
+    FLEXKITAPI inline float GetFirst	(const simde__m128& V) noexcept { return GetElement(V, 0); } // Should Return the X Component
+    FLEXKITAPI inline float GetLast		(const simde__m128& V) noexcept { return GetElement(V, 2); } // SHould Return the W Component
 
-	FLEXKITAPI inline void SetFirst		(__m128& V, const float X) noexcept { return SetElement(V, X, 0); }
-	FLEXKITAPI inline void SetLast		(__m128& V, const float W) noexcept { return SetElement(V, W, 3); }
+    FLEXKITAPI inline void SetFirst		(simde__m128& V, const float X) noexcept { return SetElement(V, X, 0); }
+    FLEXKITAPI inline void SetLast		(simde__m128& V, const float W) noexcept { return SetElement(V, W, 3); }
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI union float2
+	FLEXKITAPI struct float2
 	{
 	public:
 		constexpr float2() noexcept : x(0), y(0) {}
 
 
-		constexpr float2( const float X, const float Y ) noexcept
+		constexpr float2(const float X, const float Y) noexcept
 		{
 			x = X;
 			y = Y;
@@ -254,25 +275,23 @@ namespace FlexKit
 
 		constexpr bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
 
-		constexpr float&		operator[] (const size_t i) noexcept        
+		float&		operator[] (const size_t i) noexcept        
 		{ 
-			FK_ASSERT(i < 2); 
 			return i ? y : x; 
 		}
 
-		constexpr const float&	operator[] (const size_t i) const noexcept  
-		{ 
-			FK_ASSERT(i < 2); 
-			return i ? y : x; 
+		constexpr const float operator[] (const size_t i) const noexcept
+		{
+			return i ? y : x;
 		}
 
-		constexpr float2 operator + ( const float2& a ) const noexcept { return float2( x + a.x,	y + a.y );						}
+		constexpr float2 operator + ( const float2& a ) const noexcept { return float2( x + a.x,	y + a.y );					}
 		constexpr float2 operator + ( const float   a ) const noexcept { return float2( x + a, y + a );							}
 		constexpr float2 operator - ( const float2& a ) const noexcept { return float2( x - a.x, y - a.y );						}
 		constexpr float2 operator - ( const float   a ) const noexcept { return float2( x - a,	y - a );						}
-		constexpr float2 operator * ( const float2& a ) const noexcept { return float2( x * a.x,	y * a.y );						}
+		constexpr float2 operator * ( const float2& a ) const noexcept { return float2( x * a.x,	y * a.y );					}
 		constexpr float2 operator * ( const float   a ) const noexcept { return float2( x * a,	y * a );						}
-		constexpr float2 operator / ( const float2& a ) const noexcept { return float2( x / a.x,	y / a.y );						}
+		constexpr float2 operator / ( const float2& a ) const noexcept { return float2( x / a.x,	y / a.y );					}
 		constexpr float2 operator / ( const float   a ) const noexcept { return float2( x / a,	y / a );						}
 		constexpr float2 operator % ( const float2& a ) const noexcept { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
@@ -361,10 +380,10 @@ namespace FlexKit
 		}
 
 
-		constexpr operator float* () noexcept { return XY; }
+		constexpr operator float* () noexcept { return &x; }
 
 
-		constexpr float Product() const noexcept { return x * y; }
+		constexpr float Product()	const noexcept { return x * y; }
 		constexpr float Sum()	    const noexcept { return x + y; }
 
 
@@ -419,15 +438,9 @@ namespace FlexKit
 			return { 0, 0 };
 		}
 
-		struct
-		{
-			float x, y;
-		};
+		float x, y;
 
 		constexpr static size_t Size() { return 2; }
-
-		float XY[2];
-
 	};
 
 
@@ -609,6 +622,12 @@ namespace FlexKit
 		}
 
 
+		constexpr		TY& at(const size_t index) noexcept
+		{
+			return Vector[index];
+		}
+
+
 		constexpr		TY& operator [](const int index) noexcept
 		{
 			return Vector[index];
@@ -633,12 +652,12 @@ namespace FlexKit
 		}
 
 
-		constexpr		Vect operator & (this auto& self, const TY index) noexcept
+		constexpr		Vect operator & (const TY index) noexcept
 		{
 			Vect out;
 
 			for (size_t I = 0; I < 3; I++)
-				out[I] = self[I] & index;
+				out[I] = at(I) & index;
 
 			return out;
 		}
@@ -890,10 +909,10 @@ namespace FlexKit
 		}
 
 		template<size_t ... TY_ARGS>
-		constexpr auto Swizzle(this auto& self)
+		constexpr auto Swizzle()
 		{
 			static_assert(sizeof ... (TY_ARGS) == size(), "Incorrect number of arguments");
-			return THISTYPE(self[TY_ARGS] ...);
+			return THISTYPE{ at(TY_ARGS) ... };
 		}
 
 
@@ -917,10 +936,10 @@ namespace FlexKit
 		operator TY* () noexcept { return Vector; }
 
 
-		operator __m128 ()  noexcept
+        operator simde__m128 ()  noexcept
 		{
-			auto temp = _mm_loadu_ps(Vector);
-			return _mm_loadr_ps((float*)&temp);
+            auto temp = simde_mm_loadu_ps(Vector);
+            return simde_mm_loadr_ps((float*)&temp);
 		}
 
 		TY Vector[SIZE];
@@ -1058,9 +1077,9 @@ namespace FlexKit
 	{
 #if USING(FASTMATH)
 		// Windows
-		__m128 l   = _mm_loadr_ps(lhs);
-		__m128 r   = _mm_loadr_ps(rhs);
-		__m128 res = _mm_dp_ps(l, r, 0x06);
+        simde__m128 l   = simde_mm_loadr_ps(lhs);
+        simde__m128 r   = simde_mm_loadr_ps(rhs);
+        simde__m128 res = simde_mm_dp_ps(l, r, 0x06);
 		return GetFirst(res);
 #else
 #if WIN32
@@ -1072,30 +1091,30 @@ namespace FlexKit
 #endif
 	}
 
-	FLEXKITAPI inline float DotProduct3(const __m128& lhs, const __m128& rhs) noexcept
+    FLEXKITAPI inline float DotProduct3(const simde__m128& lhs, const simde__m128& rhs) noexcept
 	{
 #if USING(FASTMATH)
-		__m128 res = _mm_dp_ps(lhs, rhs, 0x77);
-		return _mm_cvtss_f32(res);
+        simde__m128 res = simde_mm_dp_ps(lhs, rhs, 0x77);
+		return simde_mm_cvtss_f32(res);
 
 #else
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
 	}
 
-	FLEXKITAPI inline float DotProduct4(const __m128& lhs, const __m128& rhs) noexcept
+    FLEXKITAPI inline float DotProduct4(const simde__m128& lhs, const simde__m128& rhs) noexcept
 	{
 #if USING(FASTMATH)
-		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
+        simde__m128 res = simde_mm_dp_ps(lhs, rhs, 0xFF);
 		return GetFirst(res);
 #else
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
 	}
 
-	FLEXKITAPI inline __m128 CrossProductSlow(const __m128 lhs, const __m128 rhs) noexcept
+    FLEXKITAPI inline simde__m128 CrossProductSlow(const simde__m128 lhs, const simde__m128 rhs) noexcept
 	{
-		__m128 out = _mm_set1_ps(0);
+        simde__m128 out = simde_mm_set1_ps(0);
 		SetElement( out, (GetElement(lhs, 1) * GetElement(rhs, 2)) - (GetElement(lhs, 2) * GetElement(rhs, 1)), 0 );
 		SetElement( out, (GetElement(lhs, 2) * GetElement(rhs, 0)) - (GetElement(lhs, 0) * GetElement(rhs, 2)), 1 );
 		SetElement( out, (GetElement(lhs, 0) * GetElement(rhs, 1)) - (GetElement(lhs, 1) * GetElement(rhs, 0)), 2 );
@@ -1103,12 +1122,12 @@ namespace FlexKit
 	}
 	
 
-	FLEXKITAPI inline __m128 CrossProduct(const __m128 a, const __m128 b ) noexcept
+    FLEXKITAPI inline simde__m128 CrossProduct(const simde__m128 a, const simde__m128 b ) noexcept
 	{
 #if USING(FASTMATH)
-		__m128 temp1 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
-		__m128 temp2 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6));
-		__m128 res	 = _mm_sub_ps(temp1, temp2);
+        simde__m128 temp1 = simde_mm_mul_ps(simde_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), simde_mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
+        simde__m128 temp2 = simde_mm_mul_ps(simde_mm_shuffle_ps(a, a, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6), simde_mm_shuffle_ps(b, b, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6));
+        simde__m128 res	 = simde_mm_sub_ps(temp1, temp2);
 
 		return res;
 #else
@@ -1136,7 +1155,7 @@ namespace FlexKit
 				z = val;
 			}
 			else
-				pfloats = _mm_set_ps1(val); 
+				pfloats = simde_mm_set_ps1(val);
 		}
 
 		constexpr float3(float X, float Y, float Z)		noexcept 
@@ -1148,7 +1167,7 @@ namespace FlexKit
 				z = Z;
 			}
 			else
-				pfloats = _mm_set_ps(0.0f, Z, Y, X); 
+                pfloats = simde_mm_set_ps(0.0f, Z, Y, X);
 		}
 
 		constexpr float3(const float2 in, float Z = 0)	noexcept 
@@ -1160,7 +1179,7 @@ namespace FlexKit
 				z = Z;
 			}
 			else
-				pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f); 
+				pfloats = simde_mm_setr_ps(in.x, in.y, Z, 0.0f);
 		}
 
 		constexpr float3(const float3& a)				noexcept 
@@ -1172,10 +1191,10 @@ namespace FlexKit
 				z = a.z;
 			}
 			else
-				pfloats = _mm_load_ps(a); 
+				pfloats = simde_mm_load_ps(a);
 		}
 
-		float3(const __m128& in)				noexcept { pfloats = in; }
+		float3(const simde__m128& in)				noexcept { pfloats = in; }
 
 		float2 xy() const noexcept { return { x, y }; }
 		float2 yz() const noexcept { return { y, z }; }
@@ -1191,14 +1210,14 @@ namespace FlexKit
 
 		float3& operator = (const float* f) noexcept
 		{
-			pfloats = _mm_load_ps(f);
+			pfloats = simde_mm_load_ps(f);
 			return *this;
 		}
 
 
 		float3& operator = (float f) noexcept
 		{
-			pfloats = _mm_set_ps1(f);
+			pfloats = simde_mm_set_ps1(f);
 			return *this;
 		}
 
@@ -1222,8 +1241,10 @@ namespace FlexKit
 					return y;
 				case 2:
 					return z;
-				default:
-					std::unreachable();
+                default:
+#ifdef WIN32
+                    std::unreachable();
+#endif
 				}
 			}
 			else
@@ -1242,8 +1263,10 @@ namespace FlexKit
 					return y;
 				case 2:
 					return z;
-				default:
-					std::unreachable();
+                default:
+#ifdef WIN32
+                    std::unreachable();
+#endif
 				}
 			}
 			else
@@ -1251,42 +1274,42 @@ namespace FlexKit
 		}
 
 		// Operator Overloads
-		float3 operator - ()			noexcept				{ return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		float3 operator - ()	const	noexcept				{ return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		float3 operator + (const float rhs)		const noexcept	{ return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
-		float3 operator + (const float3 rhs)	const noexcept	{ return _mm_add_ps(pfloats, rhs); }
+		float3 operator - ()			noexcept				{ return simde_mm_mul_ps(pfloats, simde_mm_set_ps1(-1)); }
+		float3 operator - ()	const	noexcept				{ return simde_mm_mul_ps(pfloats, simde_mm_set_ps1(-1)); }
+		float3 operator + (const float rhs)		const noexcept	{ return simde_mm_add_ps(pfloats, simde_mm_set_ps1(rhs)); }
+		float3 operator + (const float3 rhs)	const noexcept	{ return simde_mm_add_ps(pfloats, rhs); }
 
 
 		float3& operator += (const float3 rhs) noexcept
 		{
-			pfloats = _mm_add_ps(pfloats, rhs);
+			pfloats = simde_mm_add_ps(pfloats, rhs);
 
 			return *this;
 		}
 
 		float3& operator += (const float rhs) noexcept
 		{
-			pfloats = _mm_add_ps(pfloats, _mm_set1_ps(rhs));
+			pfloats = simde_mm_add_ps(pfloats, simde_mm_set1_ps(rhs));
 
 			return *this;
 		}
 
 		float3 operator - (const float rhs) const noexcept
 		{
-			return _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
+			return simde_mm_sub_ps(pfloats, simde_mm_set1_ps(rhs));
 		}
 
 
 		float3& operator -= (const float3 rhs) noexcept
 		{
-			pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
+			pfloats = simde_mm_sub_ps(pfloats, rhs.pfloats);
 
 			return *this;
 		}
 
 		float3& operator -= (const float rhs) noexcept
 		{
-			pfloats = _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
+			pfloats = simde_mm_sub_ps(pfloats, simde_mm_set1_ps(rhs));
 
 			return *this;
 		}
@@ -1304,7 +1327,7 @@ namespace FlexKit
 
 		float3 operator - (const float3 a) const noexcept
 		{
-			return _mm_sub_ps(pfloats, a);
+			return simde_mm_sub_ps(pfloats, a);
 		}
 
 		static bool Compare(const float3 lhs, const float3 rhs, float ep = 0.001f) noexcept
@@ -1316,7 +1339,7 @@ namespace FlexKit
 		float3 operator *	(const float3 a) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_mul_ps(a.pfloats, pfloats);
+			return simde_mm_mul_ps(a.pfloats, pfloats);
 #else
 			return float3(x * a.x, y * a.y, z * a.z);
 #endif
@@ -1326,7 +1349,7 @@ namespace FlexKit
 		float3 operator *	(const float a) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_mul_ps(_mm_set1_ps(a), pfloats);
+			return simde_mm_mul_ps(simde_mm_set1_ps(a), pfloats);
 #else
 			return float3(x * a, y * a, z * a);
 #endif
@@ -1336,7 +1359,7 @@ namespace FlexKit
 
 		float3& operator *=	(const float3 a) noexcept
 		{
-			pfloats = _mm_mul_ps(pfloats, a);
+			pfloats = simde_mm_mul_ps(pfloats, a);
 
 			return *this;
 		}
@@ -1344,7 +1367,7 @@ namespace FlexKit
 
 		float3& operator *=	(float a) noexcept
 		{
-			pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(a));
+			pfloats = simde_mm_mul_ps(pfloats, simde_mm_set1_ps(a));
 
 			return *this;
 		}
@@ -1352,40 +1375,40 @@ namespace FlexKit
 
 		float3 operator / (const float a) const noexcept
 		{
-			return _mm_div_ps(pfloats, _mm_set1_ps(a));
+			return simde_mm_div_ps(pfloats, simde_mm_set1_ps(a));
 		}
 
 
 		float3 operator / (const float3 a) const noexcept
 		{
-			return _mm_div_ps(pfloats, a);
+			return simde_mm_div_ps(pfloats, a);
 		}
 
 
 		float3& operator /= (const float a) noexcept
 		{
-			pfloats = _mm_div_ps(pfloats, _mm_set1_ps(a));
+			pfloats = simde_mm_div_ps(pfloats, simde_mm_set1_ps(a));
 			return *this;
 		}
 
 
 		float3& operator /= (const float3 a) noexcept
 		{
-			pfloats = _mm_div_ps(pfloats, a);
+			pfloats = simde_mm_div_ps(pfloats, a);
 			return *this;
 		}
 
 
 		float3& Scale(float S) noexcept
 		{
-			pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(S));
+			pfloats = simde_mm_mul_ps(pfloats, simde_mm_set1_ps(S));
 			return *this;
 		}
 
 
 		const float3 inverse() const noexcept
 		{
-			return _mm_mul_ps(pfloats, _mm_set1_ps(-1));
+			return simde_mm_mul_ps(pfloats, simde_mm_set1_ps(-1));
 		}
 
 		// Identities
@@ -1403,9 +1426,9 @@ namespace FlexKit
 
 		float dot(const float3 b) const noexcept
 		{
-			__m128 res = _mm_dp_ps(pfloats, b.pfloats, 0b01110001);
+            simde__m128 res = simde_mm_dp_ps(pfloats, b.pfloats, 0b01110001);
 
-			return _mm_cvtss_f32(res);
+			return simde_mm_cvtss_f32(res);
 		}
 
 
@@ -1417,25 +1440,25 @@ namespace FlexKit
 
 		float magnitude() const noexcept
 		{
-			auto sq    = _mm_mul_ps(pfloats, pfloats);
-			auto temp1 = _mm_movehdup_ps(sq);
-			auto temp2 = _mm_add_ps(sq, temp1);
-			auto temp3 = _mm_movehl_ps(sq, sq);
-			auto temp4 = _mm_add_ps(temp2, temp3);
+			auto sq    = simde_mm_mul_ps(pfloats, pfloats);
+			auto temp1 = simde_mm_movehdup_ps(sq);
+			auto temp2 = simde_mm_add_ps(sq, temp1);
+			auto temp3 = simde_mm_movehl_ps(sq, sq);
+			auto temp4 = simde_mm_add_ps(temp2, temp3);
 
-			return _mm_cvtss_f32(_mm_sqrt_ps(temp4));
+			return simde_mm_cvtss_f32(simde_mm_sqrt_ps(temp4));
 		}
 
 
 		inline float magnitudeSq() const noexcept
 		{
-			auto sq    = _mm_mul_ps(pfloats, pfloats);
-			auto temp1 = _mm_movehdup_ps(sq);
-			auto temp2 = _mm_add_ps(sq, temp1);
-			auto temp3 = _mm_movehl_ps(sq, sq);
-			auto temp4 = _mm_add_ps(temp2, temp3);
+			auto sq    = simde_mm_mul_ps(pfloats, pfloats);
+			auto temp1 = simde_mm_movehdup_ps(sq);
+			auto temp2 = simde_mm_add_ps(sq, temp1);
+			auto temp3 = simde_mm_movehl_ps(sq, sq);
+			auto temp4 = simde_mm_add_ps(temp2, temp3);
 
-			return _mm_cvtss_f32(temp4);
+			return simde_mm_cvtss_f32(temp4);
 		}
 
 		bool isNaN() const noexcept
@@ -1450,40 +1473,46 @@ namespace FlexKit
 
 		float Max() const noexcept
 		{
-			auto temp1 = _mm_movehdup_ps(pfloats);
-			auto temp2 = _mm_max_ps(pfloats, temp1);
-			auto temp3 = _mm_movehl_ps(pfloats, pfloats);
-			auto temp4 = _mm_max_ps(temp2, temp3);
+			auto temp1 = simde_mm_movehdup_ps(pfloats);
+			auto temp2 = simde_mm_max_ps(pfloats, temp1);
+			auto temp3 = simde_mm_movehl_ps(pfloats, pfloats);
+			auto temp4 = simde_mm_max_ps(temp2, temp3);
 
-			return _mm_cvtss_f32(temp4);
+			return simde_mm_cvtss_f32(temp4);
 		}
 
 		float Min() const noexcept
 		{
-			auto temp1 = _mm_movehdup_ps(pfloats);
-			auto temp2 = _mm_min_ps(pfloats, temp1);
-			auto temp3 = _mm_movehl_ps(pfloats, pfloats);
-			auto temp4 = _mm_min_ps(temp2, temp3);
+			auto temp1 = simde_mm_movehdup_ps(pfloats);
+			auto temp2 = simde_mm_min_ps(pfloats, temp1);
+			auto temp3 = simde_mm_movehl_ps(pfloats, pfloats);
+			auto temp4 = simde_mm_min_ps(temp2, temp3);
 
-			return _mm_cvtss_f32(temp4);
+			return simde_mm_cvtss_f32(temp4);
 		}
 
 		float3 normal() const noexcept
 		{
-			auto sq     = _mm_mul_ps(pfloats, pfloats);
-			auto temp1  = _mm_movehdup_ps(sq);
-			auto temp2  = _mm_add_ps(sq, temp1);
-			auto temp3  = _mm_movehl_ps(sq, sq);
-			auto temp4  = _mm_add_ps(temp2, temp3);
-			auto m      = _mm_shuffle_ps(temp4, temp4, _MM_SHUFFLE(0, 0, 0, 0));
+			auto sq     = simde_mm_mul_ps(pfloats, pfloats);
+			auto temp1  = simde_mm_movehdup_ps(sq);
+			auto temp2  = simde_mm_add_ps(sq, temp1);
+			auto temp3  = simde_mm_movehl_ps(sq, sq);
+			auto temp4  = simde_mm_add_ps(temp2, temp3);
+			auto m      = simde_mm_shuffle_ps(temp4, temp4, _MM_SHUFFLE(0, 0, 0, 0));
 			
-			return _mm_div_ps(pfloats, _mm_sqrt_ps(m));
+			return simde_mm_div_ps(pfloats, simde_mm_sqrt_ps(m));
 		}
+
+		float* begin()	noexcept { return &x; }
+		float* end()	noexcept { return &PAD; }
+
+		const float* begin()	const noexcept { return &x; }
+		const float* end()		const noexcept { return &PAD; }
 
 		static float3			Zero() { return float3{ 0 }; }
 		static constexpr size_t size() { return 3u; }
 
-		operator __m128 () const	 { return pfloats; }
+		operator simde__m128 () const	 { return pfloats; }
 
 		inline float* toFloat3_ptr()		noexcept { return reinterpret_cast<float*>( &pfloats ); }
 		operator		float* ()			noexcept { return toFloat3_ptr(); }
@@ -1497,12 +1526,12 @@ namespace FlexKit
 			float x, y, z, PAD;
 		};
 
-		__m128	pfloats;
+		simde__m128	pfloats;
 
 		static float3 Load(float* a) noexcept
 		{
-			auto temp = _mm_loadu_ps(a);
-			return float3(_mm_loadr_ps((float*)&temp));
+			auto temp = simde_mm_loadu_ps(a);
+			return float3(simde_mm_loadr_ps((float*)&temp));
 		}
 
 		constexpr static size_t Size() { return 3; }
@@ -1517,7 +1546,7 @@ namespace FlexKit
 		private:
 		static float3 SetVector(float in)
 		{
-			return _mm_set1_ps(in);
+			return simde_mm_set1_ps(in);
 		}
 
 	};
@@ -1571,7 +1600,7 @@ namespace FlexKit
 	inline float3 operator* ( float s, float3 V )
 	{
 #if USING(FASTMATH)
-		return _mm_mul_ps(V, _mm_set1_ps(s));
+		return simde_mm_mul_ps(V, simde_mm_set1_ps(s));
 #else
 		return V*s;
 #endif
@@ -1595,7 +1624,7 @@ namespace FlexKit
 				w = r;
 			}
 			else
-				pFloats = _mm_set1_ps(r);
+                pFloats = simde_mm_set1_ps(r);
 		}
 
 		constexpr inline float4(float X, float Y, float Z, float W)
@@ -1608,7 +1637,7 @@ namespace FlexKit
 				w = W;
 			}
 			else
-				pFloats = _mm_set_ps(W, Z, Y, X);
+				pFloats = simde_mm_set_ps(W, Z, Y, X);
 		}
 
 		constexpr inline float4(const float3& V,  const float W = 0) noexcept
@@ -1622,12 +1651,12 @@ namespace FlexKit
 			}
 			else
 			{
-				pFloats = _mm_load_ps(V);
+				pFloats = simde_mm_load_ps(V);
 				w		= W;
 			}
 		}
 
-		constexpr inline float4(__m128 in) noexcept : pFloats{ in } {}
+        inline float4(simde__m128 in) noexcept : pFloats{ in } {}
 
 		constexpr inline float4(const float2 V1, const float2 V2 ) noexcept
 		{
@@ -1685,12 +1714,12 @@ namespace FlexKit
 				return GetElement( pFloats, index); 
 		}
 
-		inline operator __m128	 ()						const	{ return pFloats;} 
+        inline operator simde__m128	 ()						const	{ return pFloats;}
 
 		inline float4 operator+ (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_add_ps(pFloats, rhs.pFloats);
+			return simde_mm_add_ps(pFloats, rhs.pFloats);
 #else
 			return float4(	x + rhs.x,
 							y + rhs.y,
@@ -1702,7 +1731,7 @@ namespace FlexKit
 		inline float4 operator+ (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_add_ps(pFloats, _mm_set1_ps(rhs));
+			return simde_mm_add_ps(pFloats, simde_mm_set1_ps(rhs));
 #else
 			return float4(	x + rhs, 
 							y + rhs, 
@@ -1711,11 +1740,11 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4& operator+= (this float4& self, const float4 rhs) noexcept
+		inline float4& operator+= (const float4 rhs) noexcept
 		{
 #if USING(FASTMATH)
-			self = self + rhs;
-			return self;
+			(*this) = (*this) + rhs;
+			return (*this);
 #else
 			return float4(x - rhs.x,
 				y - rhs.y,
@@ -1727,7 +1756,7 @@ namespace FlexKit
 		inline float4 operator- (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_sub_ps(pFloats, rhs);
+			return simde_mm_sub_ps(pFloats, rhs);
 #else
 			return float4(	x - rhs.x, 
 							y - rhs.y, 
@@ -1736,11 +1765,11 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4& operator-= (this float4& self, const float4 rhs) noexcept
+		inline float4& operator-= (const float4 rhs) noexcept
 		{
 #if USING(FASTMATH)
-			self = self - rhs;
-			return self;
+			(*this) = (*this) - rhs;
+			return (*this);
 #else
 			return float4(x - rhs.x,
 				y - rhs.y,
@@ -1752,7 +1781,7 @@ namespace FlexKit
 		inline float4 operator- ( const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_sub_ps(pFloats, _mm_set1_ps(rhs));
+			return simde_mm_sub_ps(pFloats, simde_mm_set1_ps(rhs));
 #else
 			return float4(	x - rhs, 
 							y - rhs, 
@@ -1763,13 +1792,13 @@ namespace FlexKit
 
 		inline float4 operator* (const float4 a) const noexcept
 		{
-			return _mm_mul_ps(pFloats, a);
+			return simde_mm_mul_ps(pFloats, a);
 		}
 
 		inline float4 operator* (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_mul_ps(pFloats, _mm_set1_ps(rhs));
+			return simde_mm_mul_ps(pFloats, simde_mm_set1_ps(rhs));
 #else
 			return float4(	x * rhs, 
 							y * rhs, 
@@ -1781,7 +1810,7 @@ namespace FlexKit
 		inline float4 operator / (const float4 rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_div_ps(pFloats, rhs);
+			return simde_mm_div_ps(pFloats, rhs);
 #else
 			return float4(	x / rhs.x, 
 							y / rhs.y, 
@@ -1793,7 +1822,7 @@ namespace FlexKit
 		inline float4& operator /= (const float rhs)
 		{
 #if USING(FASTMATH)
-			pFloats = _mm_div_ps(pFloats, _mm_set1_ps(rhs));
+			pFloats = simde_mm_div_ps(pFloats, simde_mm_set1_ps(rhs));
 
 			return *this;
 #else
@@ -1813,7 +1842,7 @@ namespace FlexKit
 		inline float4 operator / (const float rhs) const noexcept
 		{
 #if USING(FASTMATH)
-			return _mm_div_ps(pFloats, _mm_set1_ps(rhs));
+			return simde_mm_div_ps(pFloats, simde_mm_set1_ps(rhs));
 #else
 			return float4(	x / rhs, 
 							y / rhs, 
@@ -1866,7 +1895,6 @@ namespace FlexKit
 
 		constexpr static size_t Size() { return 4; }
 
-		/*
 		void Serialize(auto& ar)
 		{
 			ar& x;
@@ -1874,13 +1902,12 @@ namespace FlexKit
 			ar& z;
 			ar& w;
 		}
-		*/
 
-		__m128 pFloats;
+		simde__m128 pFloats;
 	};
 
 	inline float  F4Dot		(float4 rhs, float4 lhs)				{ return DotProduct4(lhs, rhs); }
-	inline float4 F4MUL		(const float4 lhs, const float4 rhs)	{ return _mm_mul_ps(lhs, rhs); }
+	inline float4 F4MUL		(const float4 lhs, const float4 rhs)	{ return simde_mm_mul_ps(lhs, rhs); }
 
 
 	/************************************************************************************************/
@@ -1889,13 +1916,13 @@ namespace FlexKit
 	{
 	public:
 		inline Quaternion() {}
-		inline Quaternion(__m128 in) { floats = in; }
+        inline Quaternion(simde__m128 in) { floats = in; }
 
 
 		inline explicit Quaternion(const float3& vector, float scaler)
 		{
 #if USING(FASTMATH)
-			floats = _mm_set_ps(scaler, vector[2], vector[1],vector[0]);
+			floats = simde_mm_set_ps(scaler, vector[2], vector[1],vector[0]);
 #else
 			x = vector[0];
 			y = vector[1];
@@ -1908,7 +1935,7 @@ namespace FlexKit
 		inline Quaternion(float X, float Y, float Z, float W)
 		{
 #if USING(FASTMATH)
-			floats = _mm_set_ps(W, Z, Y, X);
+			floats = simde_mm_set_ps(W, Z, Y, X);
 #else
 			x = X;
 			y = Y;
@@ -1920,7 +1947,7 @@ namespace FlexKit
 
 		inline explicit Quaternion(float* in)
 		{
-			_mm_store_ps( in, floats );
+			simde_mm_store_ps( in, floats );
 		}
 
 
@@ -1964,7 +1991,7 @@ namespace FlexKit
 		}
 
 
-		inline Quaternion& operator = (const  __m128 rhs ) noexcept
+        inline Quaternion& operator = (const  simde__m128 rhs ) noexcept
 		{
 			floats = rhs;
 			return (*this);
@@ -1986,8 +2013,8 @@ namespace FlexKit
 
 		inline operator		  float* ()			{ return (float*)&floats; }
 		inline operator const float* () const	{ return (float*)&floats; }
-		inline operator		  __m128 ()			{ return floats; }
-		inline operator const __m128 () const	{ return floats; }
+        inline operator		  simde__m128 ()			{ return floats; }
+        inline operator const simde__m128 () const	{ return floats; }
 
 
 		template< typename Ty_2 >
@@ -2006,7 +2033,7 @@ namespace FlexKit
 		{
 			Quaternion Conjugate;
 #if USING(FASTMATH)
-			Conjugate = _mm_mul_ps(_mm_set_ps(1, -1, -1, -1), floats);
+			Conjugate = simde_mm_mul_ps(simde_mm_set_ps(1, -1, -1, -1), floats);
 #else
 			Conjugate.x = -x;
 			Conjugate.y = -y;
@@ -2035,9 +2062,9 @@ namespace FlexKit
 		inline float Magnitude() const noexcept
 		{
 #if USING( FASTMATH )
-			__m128 q2 = _mm_mul_ps(floats, floats);
-			q2 = _mm_hadd_ps(q2, q2);
-			q2 = _mm_hadd_ps(q2, q2);
+            simde__m128 q2 = simde_mm_mul_ps(floats, floats);
+			q2 = simde_mm_hadd_ps(q2, q2);
+			q2 = simde_mm_hadd_ps(q2, q2);
 			return GetLast(q2);
 #else
 			return x * x + y * y + z * z + w * w;
@@ -2052,8 +2079,8 @@ namespace FlexKit
 			{
 #if USING(FASTMATH)
 
-				__m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
-				floats = _mm_mul_ps(rsq, floats);
+                simde__m128 rsq = simde_mm_rsqrt_ps(simde_mm_set1_ps(mag2));
+				floats = simde_mm_mul_ps(rsq, floats);
 #else
 				float mag  = sqrt( mag2 );
 				w = w / mag;
@@ -2069,13 +2096,13 @@ namespace FlexKit
 		inline Quaternion normal() const noexcept
 		{
 			float mag2 = Magnitude();
-			__m128 Res;
+            simde__m128 Res;
 			if (mag2 != 0 && (fabs(mag2 - 1.0f) > .00001f))
 			{
 #if USING(FASTMATH)
 
-				__m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
-				Res = _mm_mul_ps(rsq, floats);
+                simde__m128 rsq = simde_mm_rsqrt_ps(simde_mm_set1_ps(mag2));
+				Res = simde_mm_mul_ps(rsq, floats);
 #else
 				float mag = sqrt(mag2);
 				w = w / mag;
@@ -2094,7 +2121,7 @@ namespace FlexKit
 		inline void Zero() 
 		{
 #if USING(FASTMATH)
-			floats = _mm_set1_ps(0);
+			floats = simde_mm_set1_ps(0);
 #else
 			x = 0;
 			y = 0;
@@ -2121,7 +2148,7 @@ namespace FlexKit
 			float x, y, z, w;
 		};
 
-		 __m128	floats;
+         simde__m128	floats;
 	};
 
 
@@ -2140,9 +2167,9 @@ namespace FlexKit
 
 	FLEXKITAPI inline Quaternion operator * (const Quaternion Q, const float scaler) noexcept
 	{
-		__m128 r = Q;
-		__m128 s = _mm_set1_ps(scaler);
-		return _mm_mul_ps(r, s);
+        simde__m128 r = Q;
+        simde__m128 s = simde_mm_set1_ps(scaler);
+		return simde_mm_mul_ps(r, s);
 	}
 
 
@@ -2211,10 +2238,10 @@ namespace FlexKit
 
 	FLEXKITAPI inline float Vect3FDot(const Vect3& lhs, const Vect3& rhs) noexcept
 	{
-		auto temp1 = _mm_set_ps(0, lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
-		auto temp2 = _mm_set_ps(0, rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+		auto temp1 = simde_mm_set_ps(0, lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+		auto temp2 = simde_mm_set_ps(0, rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
-		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+        simde__m128 res = simde_mm_dp_ps(temp1, temp2, 0xFF);
 
 		return GetFirst(res);
 	}
@@ -2236,10 +2263,10 @@ namespace FlexKit
 		}
 		else
 		{
-			auto temp1 = _mm_loadu_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
-			auto temp2 = _mm_loadu_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+			auto temp1 = simde_mm_loadu_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+			auto temp2 = simde_mm_loadu_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
-			__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+            simde__m128 res = simde_mm_dp_ps(temp1, temp2, 0xFF);
 
 			return GetFirst(res);
 		}
@@ -2265,14 +2292,14 @@ namespace FlexKit
 	{
 		static inline constexpr bool Enabled = true;
 
-		__m128 vectors[Size / 4];
+        simde__m128 vectors[Size / 4];
 	};
 
 #pragma warning(push)
 #pragma warning(disable : 4324)
 	// Row Major
 	template<const int Width, const int Height, typename Ty = float>
-	union Matrix
+	union alignas (16) Matrix
 	{
 	private:
 		template<typename TY_tuple, int ... seq>
@@ -2415,27 +2442,7 @@ namespace FlexKit
 				for( size_t i2 = 0; i2 < Height; ++i2 )
 				{
 					const auto v2 = transposed[i2];
-					out[i][i2] = v.Dot(v2);
-				}
-			}
-
-			return out;
-		}
-
-
-		constexpr Matrix<3, 3> operator * (const Matrix<3, 3>& rhs) const noexcept
-		{
-			Matrix<3, 3> out;
-			auto transposed = rhs.Transpose();
-
-			for (size_t i = 0; i < Width; ++i)
-			{
-				const auto v = *((Vect<3>*)matrix[i]);
-
-				for (size_t i2 = 0; i2 < Height; ++i2)
-				{
-					const auto v2 = transposed[i2];
-					out[i][i2] = Vect3FDot(v, v2);
+					out[i2][i] = v.Dot(v2);
 				}
 			}
 
@@ -2448,7 +2455,7 @@ namespace FlexKit
 			if (std::is_constant_evaluated())
 			{
 				Matrix out;
-				auto transposed = rhs.Transpose();
+				const auto transposed = rhs.Transpose();
 
 				for (size_t x = 0; x < Width; ++x)
 				{
@@ -2469,7 +2476,7 @@ namespace FlexKit
 				
 				auto CreateRow = [&](size_t y)
 				{
-					return[&] <int ... ints>(std::integer_sequence<size_t, ints...> sequence) -> Vect<Width, Ty>
+					return[&] <size_t ... ints>(std::integer_sequence<size_t, ints...> sequence) -> Vect<Width, Ty>
 					{
 						auto v = 
 							Vect<Width, Ty> 
@@ -2538,13 +2545,13 @@ namespace FlexKit
 		constexpr Vect<Width>&			operator[] (const int y)			{ return rows[y]; }
 		constexpr const Vect<Width>&	operator[] (const int y) const		{ return rows[y]; }
 
-		constexpr Vect<Width>&			operator[] (const size_t i)         { return rows[y]; }
-		constexpr const Vect<Width>&	operator[] (const size_t i) const	{ return rows[y]; }
+		constexpr Vect<Width>&			operator[] (const size_t i)         { return rows[i]; }
+		constexpr const Vect<Width>&	operator[] (const size_t i) const	{ return rows[i]; }
 
 		operator        Ty* ()			noexcept { return (Ty*)matrix; }
 		operator const  Ty* () const	noexcept { return (Ty*)matrix; }
 
-		constexpr static inline Matrix Identity() noexcept requires (Width == Height)
+		constexpr static Matrix Identity() noexcept requires (Width == Height)
 		{
 			Matrix m = Zero();
 			
@@ -2555,7 +2562,7 @@ namespace FlexKit
 		}
 
 
-		consteval static inline Matrix Zero() noexcept
+		consteval static Matrix Zero() noexcept
 		{
 			if (std::is_constant_evaluated())
 			{
@@ -2563,7 +2570,7 @@ namespace FlexKit
 
 				for (size_t y = 0; y < Height; y++)
 					for (size_t x = 0; x < Width; x++)
-						m(x, y) = static_cast<Ty>(0);
+						m.SetAt(y, x, static_cast<Ty>(0));
 
 				return m;
 			}
@@ -2588,7 +2595,7 @@ namespace FlexKit
 			return rows[rowIdx];
 		}
 
-		constexpr const Vect<Width, Ty>		GetRow(const size_t rowIdx)	const noexcept requires(std::is_constant_evaluated())
+		constexpr const Vect<Width, Ty>		GetRow(const size_t rowIdx)	const noexcept
 		{	
 			Vect<Width, Ty> out;
 			for (auto [idx, s] : zip(iota(0), matrix[rowIdx]))
@@ -2597,7 +2604,7 @@ namespace FlexKit
 			return out;
 		}
 
-		constexpr void SetRow(const size_t rowIdx, auto&& v) noexcept
+        constexpr void SetRow(const size_t rowIdx, Vector_t auto&& v) noexcept
 		{
 			if (std::is_constant_evaluated())
 			{
@@ -2611,12 +2618,12 @@ namespace FlexKit
 
 		constexpr Vect<Height, Ty> Column(const size_t columnIdx) noexcept
 		{
-			auto gatherVector = [&]<size_t ... Sequence>(std::integer_sequence<Sequence> sequence) -> Vect<Height>
+			auto gatherVector = [&]<size_t ... Sequence>(std::integer_sequence<size_t, Sequence...> sequence) -> Vect<Height>
 			{
 				return { Sequence ... };
 			};
 
-			return gatherVector(std::make_index_sequence(Height));
+			return gatherVector(std::make_index_sequence<Height>{});
 		}
 
 
@@ -2644,6 +2651,11 @@ namespace FlexKit
 	template<typename Internal_TY>
 	struct Matrix_GPU
 	{
+		Matrix_GPU() = default;
+		Matrix_GPU(const Internal_TY& rhs) :
+			m{ rhs.Transpose() } {}
+
+
 		Matrix_GPU& operator = (const Internal_TY& rhs) noexcept
 		{
 			m = rhs.Transpose();
@@ -2658,6 +2670,14 @@ namespace FlexKit
 		Internal_TY ToCPU() const noexcept
 		{
 			return m.Transpose();
+		}
+
+		Matrix_GPU Transpose() const noexcept
+		{
+			Matrix_GPU out{};
+			out.m = m.Transpose();
+
+			return out;
 		}
 
 		operator float*				()			noexcept  { return m; }
@@ -2687,12 +2707,10 @@ namespace FlexKit
 	FLEXKITAPI inline float3 Mul(Matrix<3, 3, float>& LHS, float3& RHS)
 	{
 		float3 Out;
-		__m128 Temp;
+        simde__m128 Temp;
 
 		for (size_t I = 0; I < 2; ++I) {
-			Temp = _mm_set_ps(0, LHS.matrix[I][2], LHS.matrix[I][1], LHS.matrix[I][0]);
-			//Temp = _mm_loadu_ps(transposed.matrix[I]);
-			//Temp = _mm_shuffle_ps(Temp, Temp, 0x6c);
+			Temp = simde_mm_set_ps(0, LHS.matrix[I][2], LHS.matrix[I][1], LHS.matrix[I][0]);
 			Out[I] = DotProduct3(Temp, RHS);
 		}
 
@@ -2713,8 +2731,9 @@ namespace FlexKit
 	FLEXKITAPI inline float4x4 TranslationMatrix(float3 POS)
 	{
 		float4x4 Out = float4x4::Identity();
-		
-		Out[3] = Float4ToVect4(float4(POS, 1));
+
+		for (const auto [i, v] : zip(iota(0), POS))
+			Out(i, 3) = v;
 
 		return Out;
 	}
@@ -2888,15 +2907,15 @@ namespace FlexKit
 			1.0f + M(0,0) + M(1,1) + M(2,2)
 		);
 
-		__m128 Temp1 = _mm_max_ps(Q, _mm_set1_ps(0.0f));
-		Temp1 = _mm_sqrt_ps(Temp1);
-		Temp1 = _mm_mul_ps(Temp1, _mm_set1_ps(0.5f));
+		simde__m128 Temp1 = simde_mm_max_ps(Q, simde_mm_set1_ps(0.0f));
+		Temp1 = simde_mm_sqrt_ps(Temp1);
+		Temp1 = simde_mm_mul_ps(Temp1, simde_mm_set1_ps(0.5f));
 
 		// Copy Sign
-		__m128 Temp3 = _mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
-		__m128 Temp4 = _mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
-		__m128 Temp5 = _mm_sub_ps(Temp3, Temp4);
-		__m128 res = SSE_CopySign(Temp5, Temp1);
+		simde__m128 Temp3 = simde_mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
+		simde__m128 Temp4 = simde_mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
+		simde__m128 Temp5 = simde_mm_sub_ps(Temp3, Temp4);
+		simde__m128 res = SSE_CopySign(Temp5, Temp1);
 
 		return Quaternion{ res }.normalize();
 #else 

@@ -388,6 +388,11 @@ namespace FlexKit
 							MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, tangentAdjusted.xyz(), meshTokens);
 						}
 					}
+					else if (normals.size() && !tangents.size())
+					{
+						for (auto&& normal : normals)
+							MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, meshTokens);
+					}
 
 					for (auto&& [idx, uvs] : zip(iota(0), UVChannels))
 						for(auto uv : uvs)
