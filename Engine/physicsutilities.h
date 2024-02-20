@@ -35,13 +35,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "threadUtilities.h"
 #include "ResourceHandles.h"
 
-#include <PxPhysicsAPI.h>
-#include <characterkinematic/PxController.h>
-#include <extensions/PxDefaultAllocator.h>
-#include <pvd/PxPvd.h>
-#include <pvd/PxPvdTransport.h>
-#include <characterkinematic/PxControllerManager.h>
-#include <PxQueryReport.h>
+#include <physx/PxPhysicsAPI.h>
+#include <physx/characterkinematic/PxController.h>
+#include <physx/extensions/PxDefaultAllocator.h>
+#include <physx/pvd/PxPvd.h>
+#include <physx/pvd/PxPvdTransport.h>
+#include <physx/characterkinematic/PxControllerManager.h>
+#include <physx/PxQueryReport.h>
 
 #ifdef _DEBUG
 #pragma comment(lib,	"LowLevel_static_64.lib"				)
@@ -443,7 +443,6 @@ namespace FlexKit
 		PhysicsLayer&					GetLayer_ref(LayerHandle handle);
 		physx::PxMaterial*				GetDefaultMaterial() const { return defaultMaterial;}
 
-		physx::PxCooking*				GetCooker	();
 		Shape							CookMesh	(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount);
 		Blob							CookMesh2	(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount);
 
@@ -465,7 +464,6 @@ namespace FlexKit
 
 		double							acc = 0.0;
 
-		physx::PxCooking*				cooker				= nullptr;
 		physx::PxCudaContextManager*	cudaContextmanager	= nullptr;
 
 		bool							updateColliders;

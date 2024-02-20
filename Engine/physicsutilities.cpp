@@ -7,10 +7,9 @@
 #include "TriggerSlotIDs.hpp"
 
 #include <any>
-#include <PxFoundation.h>
-#include <PxPhysics.h>
-#include <extensions/PxExtensionsAPI.h>
-#include <cooking/PxCooking.h>
+#include <physx/PxPhysicsAPI.h>
+#include <physx/extensions/PxExtensionsAPI.h>
+#include <physx/cooking/PxCooking.h>
 #include <fmt/printf.h>
 
 
@@ -189,9 +188,6 @@ namespace FlexKit
 		desc.cpuDispatcher		= &dispatcher;
 		desc.cudaContextManager	= cudaContextmanager;
 
-		desc.gpuDynamicsConfig.forceStreamCapacity		*= 4;
-		desc.gpuDynamicsConfig.patchStreamSize			= 8096 * sizeof(PxContactPatch);
-
 		if(cudaContextmanager != nullptr)
 			desc.flags	|= PxSceneFlag::eENABLE_GPU_DYNAMICS;
 
@@ -297,25 +293,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	physx::PxCooking* PhysXComponent::GetCooker()
-	{
-		if (!cooker)
-		{
-			physx::PxCookingParams params{ physx::PxTolerancesScale() };
-
-			params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
-			params.meshPreprocessParams |= PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
-
-			cooker = PxCreateCooking(PX_PHYSICS_VERSION, *foundation, params);
-		}
-
-		return cooker;
-	}
-
-
-	/************************************************************************************************/
-
-
 	Shape PhysXComponent::CookMesh(float3* geometry, size_t geometrySize, uint32_t* indices, size_t indexCount)
 	{
 		physx::PxTriangleMeshDesc meshDesc;
@@ -327,9 +304,9 @@ namespace FlexKit
 		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
 		meshDesc.triangles.data		= indices;
 
-		auto res = GetCooker()->validateTriangleMesh(meshDesc);
-
-		auto triangleMesh   = cooker->createTriangleMesh(meshDesc, physxAPI->getPhysicsInsertionCallback());
+		PxCookingParams params{ PxTolerancesScale{} };
+		auto res			= PxValidateTriangleMesh(params, meshDesc);
+		auto triangleMesh   = PxCreateTriangleMesh(params, meshDesc, physxAPI->getPhysicsInsertionCallback());
 
 		if (!triangleMesh)
 			return {};
@@ -379,10 +356,11 @@ namespace FlexKit
 		meshDesc.triangles.stride	= 3 * sizeof(uint32_t);
 		meshDesc.triangles.data		= reversedIndices.data();
 
-		auto oven = GetCooker()->validateTriangleMesh(meshDesc);
+		PxCookingParams params(PxTolerancesScale{});
+		auto oven = PxValidateTriangleMesh(params, meshDesc);
 
 		BlobStream ouputStream;
-		auto res = cooker->cookTriangleMesh(meshDesc, ouputStream);
+		auto res = PxCookTriangleMesh(params, meshDesc, ouputStream);
 
 		if(res)
 			return ouputStream.blob;
@@ -1557,22 +1535,21 @@ namespace FlexKit
 
 				if (shape)
 				{
-					auto geometry   = shape->getGeometry();
+					PxGeometryHolder geometry{ shape->getGeometry() };
 					auto& mesh  = geometry.triangleMesh();
 
 					if (!shape->isExclusive())
 					{
 						mesh.meshFlags;
 						mesh.scale = scale;
-
+					
 						actor->detachShape(*shape);
 						shape = PhysXComponent::GetComponent().GetAPI()->createShape(geometry.any(), *PhysXComponent::GetComponent().GetDefaultMaterial(), true);
 						actor->attachShape(*shape);
 					}
-
 					else
 						mesh.scale = scale;
-
+					
 					FK_ASSERT(mesh.isValid());
 				}
 
