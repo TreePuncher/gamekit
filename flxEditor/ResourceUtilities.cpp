@@ -14,7 +14,7 @@
 #include <Windows.h>
 #include <shobjidl.h> 
 
-#include <PxPhysicsAPI.h>
+#include <physx/PxPhysicsAPI.h>
 
 using namespace FlexKit;
 

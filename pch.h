@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <utility>
 
 #include <d3d12.h>
-#include <d3dx12.h>
+//#include <d3dx12.h>
 #include <d3d12sdklayers.h>
 #include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
@@ -56,10 +56,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <Windows.h>
 #include "MathUtils.h"
 
-#include <PxPhysicsAPI.h>
-#include <characterkinematic/PxController.h>
-#include <extensions/PxDefaultAllocator.h>
-#include <pvd/PxPvd.h>
-#include <pvd/PxPvdTransport.h>
-#include <characterkinematic/PxControllerManager.h>
-#include <PxQueryReport.h>
+#include <physx\PxPhysicsAPI.h>
+#include <physx\characterkinematic\PxController.h>
+#include <physx\extensions\PxDefaultAllocator.h>
+#include <physx\pvd\PxPvd.h>
+#include <physx\pvd\PxPvdTransport.h>
+#include <physx\characterkinematic\PxControllerManager.h>
+#include <physx\PxQueryReport.h>
