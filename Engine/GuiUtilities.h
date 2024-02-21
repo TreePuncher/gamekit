@@ -122,8 +122,8 @@ namespace FlexKit
 		bool				Entered				= false;
 
 		float2				WH					= {};
-		float4				ActiveColor			= {WHITE, 1.0f};
-		float4				InActiveColor		= {WHITE, 1.0f};
+		float4				ActiveColor			= { WHITE, 1.0f};
+		float4				InActiveColor		= { WHITE, 1.0f};
 		Texture2D*			Texture_InActive	= nullptr;
 		Texture2D*			Texture_Active		= nullptr;
 

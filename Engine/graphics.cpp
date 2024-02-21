@@ -22,10 +22,12 @@
 #include <ranges>
 #include <Windows.h>
 
+#include <stacktrace>
+
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 610; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 611; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -1551,6 +1553,18 @@ namespace FlexKit
 			ID3D12VersionedRootSignatureDeserializer* deserializer;
 			auto res  = D3D12CreateVersionedRootSignatureDeserializer(rootSignature.buffer, rootSignature.bufferSize, IID_PPV_ARGS(&deserializer));
 
+			if (!deserializer)
+			{
+				std::string trace;
+
+				for (const auto& frame : std::stacktrace::current())
+					trace += "\t" + frame.description() + "\n";
+
+				FK_LOG_ERROR("Failed to deserialize root signature!\nStack trace:\n%s", trace.c_str());
+
+				return nullptr;
+			}
+
 			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* versioned_desc;
 			deserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_0, &versioned_desc);
 			auto desc = &versioned_desc->Desc_1_1;
@@ -1638,7 +1652,9 @@ namespace FlexKit
 
 			return signature;
 		}
-		else		
+		else
+			FK_LOG_ERROR("LoadSignatureFromFile failed to load signature. Reason: %s", result.error().c_str());
+
 			return nullptr;
 	}
 
@@ -7740,7 +7756,9 @@ namespace FlexKit
 				result->GetErrorBuffer(&errors);
 
 				auto errorString = (const char*)errors->GetBufferPointer();
-				FK_LOG_ERROR("%s\nFailed to Compile Shader\nEntryPoint: %s\nFile: %s\nPress Enter to try again\n", errorString, entryPoint, file);
+
+				std::string traceMessage = GetCallStackString();
+				FK_LOG_ERROR("%s\nFailed to Compile Shader\nEntryPoint: %s\nFile: %s\nStack Trace:\n%s\nPress Enter to try again\n", errorString, entryPoint, file, traceMessage.c_str());
 
 				errors->Release();
 
@@ -7801,7 +7819,7 @@ namespace FlexKit
 
 			LocalFree(string);
 
-			return {};
+			return std::unexpected{ "File Not Found!" };
 		}
 
 		IncludeHandler includeHandler;

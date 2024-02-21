@@ -41,9 +41,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #endif
 
+#include <string>
 
 namespace FlexKit
 {
+	std::string GetCallStackString();
+
 	using Verbosity = int;
 
 	enum NamedVerbosity: int

@@ -128,7 +128,7 @@ namespace FlexKit
             auto& jointLinkage = joints[jointIdx];
 
                 
-            jointOut.IPose     = FlexKit::XMMatrixToFloat4x4(&IPoses[jointIdx]);
+            jointOut.IPose     = IPoses[jointIdx];
             jointOut.Parent    = jointLinkage.mParent;
             jointOut.Pose      = jointPoses[jointIdx];
             strncpy_s(jointOut.ID, jointLinkage.mID.c_str(), jointLinkage.mID.size());
@@ -179,10 +179,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void SkeletonResource::AddJoint(const SkeletonJoint joint, const XMMATRIX IPose)
+    void SkeletonResource::AddJoint(const SkeletonJoint joint, const float4x4& IPose)
     {
-        const auto parentIPose  = joint.mParent != InvalidHandle ? IPoses[joint.mParent] : DirectX::XMMatrixIdentity();
-        const auto pose         = DirectX::XMMatrixInverse(nullptr, IPose);
+        const auto parentIPose  = joint.mParent != InvalidHandle ? IPoses[joint.mParent] : float4x4::Identity();
+        const auto pose         = Inverse(IPose);
 
         IPoses.push_back(IPose);
         jointPoses.push_back(GetPose(pose * parentIPose));

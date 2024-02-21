@@ -217,7 +217,7 @@ namespace FlexKit {
 
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
-
+#define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 
 #define NOMINMAX
 #include <winsock2.h>

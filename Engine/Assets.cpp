@@ -837,7 +837,7 @@ namespace FlexKit
 		triMesh->assetHandle	= Blob.header.GUID;
 		triMesh->triMeshID		= Blob.header.GUID;
 
-		triMesh->BS     = { { Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
+		triMesh->BS     = float4{ float3{ Blob.header.BS[0], Blob.header.BS[1], Blob.header.BS[2] }, Blob.header.BS[3] };
 		triMesh->AABB   =
 		{ 
 			{ Blob.header.AABB[0], Blob.header.AABB[1], Blob.header.AABB[2] },

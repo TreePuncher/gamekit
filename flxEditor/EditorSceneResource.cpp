@@ -843,8 +843,10 @@ namespace FlexKit
 			// Fetch Bind Pose
 			for (size_t I = 0; I < parentLinkage.size(); I++)
 			{
-				auto parent			= JointHandle(parentLinkage[I]);
-				auto inversePose	= Float4x4ToXMMATIRX(inverseMatrices[I]);
+				auto parent				= JointHandle(parentLinkage[I]);
+				float4x4 inversePose;
+
+				memcpy(&inversePose, inverseMatrices + I, sizeof(float4x4));
 
 				SkeletonJoint joint;
 				joint.mParent	= parent;

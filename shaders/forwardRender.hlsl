@@ -263,7 +263,7 @@ float4 VirtualTextureDebug(Texture2D source, in sampler textureSampler, in float
 
 float2 OctWrap(float2 v)
 {
-	return (1.0 - abs(v.yx)) * (v.xy >= 0.0 ? 1.0 : -1.0);
+	return (1.0 - abs(v.yx)) * select(v, float2(1.0f, 1.0f), float2(-1.0f, -1.0f)); //(v.xy >= 0.0 ? 1.0 : -1.0);
 }
 
 float2 Encode(float3 n)
