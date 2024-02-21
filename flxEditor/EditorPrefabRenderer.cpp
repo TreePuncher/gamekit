@@ -51,11 +51,11 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAlloca
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+	//Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= false;
+	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
@@ -116,11 +116,11 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
 
 	D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	//Rast_Desc.FillMode = D3D12_FILL_MODE_WIREFRAME;
-	Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+	//Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
 
 	D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-	Depth_Desc.DepthEnable	= false;
+	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;

@@ -3,6 +3,8 @@
 #define LOGURU_IMPLEMENTATION 1
 #include "..\ThirdParty\loguru\loguru.hpp"
 #include <string>
+#include <ranges>
+#include <stacktrace>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -16,103 +18,128 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	void AddLogCallback(LogCallback* CB_Data, int Verbosity)
-	{
-		auto CallbackWrapper = [](void* user_data, const loguru::Message& message)
+
+void AddLogCallback(LogCallback* CB_Data, int Verbosity)
+{
+	auto CallbackWrapper = [](void* user_data, const loguru::Message& message)
 		{
 			LogCallback* Data = reinterpret_cast<LogCallback*>(user_data);
 
 			Data->Callback(Data->User, message.message, strnlen_s(message.message, 1024));
 		};
 
-		loguru::add_callback(CB_Data->ID, CallbackWrapper, CB_Data, Verbosity);
-	}
+	loguru::add_callback(CB_Data->ID, CallbackWrapper, CB_Data, Verbosity);
+}
 
 
-	/************************************************************************************************/
+/************************************************************************************************/
 
 
-	void ClearLogCallbacks()
+void ClearLogCallbacks()
+{
+	loguru::remove_all_callbacks();
+}
+
+
+/************************************************************************************************/
+
+
+void SetShellVerbocity(Verbosity verbosity)
+{
+	loguru::g_stderr_verbosity = verbosity;
+}
+
+
+/************************************************************************************************/
+
+
+void AddLogFile(const char* file, Verbosity verbosity, bool Append)
+{
+	loguru::add_file(file, Append ? loguru::Append : loguru::Truncate, verbosity);
+}
+
+
+/************************************************************************************************/
+
+
+void LogEvent(Verbosity verbosity, const char* file, unsigned line, const char* format, ...)
+{
+	va_list vlist;
+	va_start(vlist, format);
+	auto buff = loguru::vtextprintf(format, vlist);
+	loguru::log_to_everywhere(1, verbosity, file, line, "", buff.c_str());
+	va_end(vlist);
+}
+
+
+/************************************************************************************************/
+
+
+void LogEventAndAbort(const char* file, unsigned line, const char* test, const char* format, ...)
+{
+	va_list vlist;
+	va_start(vlist, format);
+	auto buff = loguru::vtextprintf(format, vlist);
+	std::string message = "CHECK \"";
+	message += test;
+	message += "\" FAILED: ";
+	message += buff.c_str();
+
+	loguru::log_to_everywhere(1, loguru::Verbosity_FATAL, file, line, "", message.c_str());
+	va_end(vlist);
+
+	// Redundant
+	abort();
+}
+
+
+/************************************************************************************************/
+
+
+void LogEventAndAbort(const char* file, unsigned line, const char* test)
+{
+	std::string message = "CHECK \"";
+	message += test;
+	message += "\" FAILED";
+
+	loguru::log_to_everywhere(1, loguru::Verbosity_FATAL, file, line, "", message.c_str());
+
+	// Redundant
+	abort();
+}
+
+
+/************************************************************************************************/
+
+
+Verbosity VerbosityCutof() {
+	return loguru::current_verbosity_cutoff();
+}
+
+
+std::string GetCallStackString()
+{
+	std::string traceMessage;
+	auto stackTrace = std::stacktrace::current();
+
+	for (const auto& frame : std::ranges::subrange(stackTrace.begin() + 1, stackTrace.end()))
 	{
-		loguru::remove_all_callbacks();
+		auto description = frame.description();
+
+		const size_t strackDescriptionMaxLength = 128;
+		if (description.size() <= strackDescriptionMaxLength)
+		{
+			traceMessage += " \t" + description + "\n";
+		}
+		else if (description.size() >= strackDescriptionMaxLength)
+		{
+			traceMessage += " \t" + description.substr(0, strackDescriptionMaxLength / 2) + " ... " + description.substr(description.length() - strackDescriptionMaxLength / 2, strackDescriptionMaxLength / 2) + "\n";
+		}
+		else if (description.size() <= strackDescriptionMaxLength)
+			traceMessage += " \t..." + description.substr(description.size() - strackDescriptionMaxLength, strackDescriptionMaxLength) + "\n ";
 	}
 
-
-	/************************************************************************************************/
-
-
-	void SetShellVerbocity(Verbosity verbosity)
-	{
-		loguru::g_stderr_verbosity = verbosity;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddLogFile(const char * file, Verbosity verbosity, bool Append )
-	{
-		loguru::add_file(file, Append ? loguru::Append : loguru::Truncate, verbosity);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void LogEvent(Verbosity verbosity, const char * file, unsigned line, const char *format, ...)
-	{
-		va_list vlist;
-		va_start(vlist, format);
-		auto buff = loguru::vtextprintf(format, vlist);
-		loguru::log_to_everywhere(1, verbosity, file, line, "", buff.c_str());
-		va_end(vlist);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void LogEventAndAbort(const char * file, unsigned line, const char * test, const char * format, ...)
-	{
-		va_list vlist;
-		va_start(vlist, format);
-		auto buff				= loguru::vtextprintf(format, vlist);
-		std::string message		= "CHECK \"";
-		message					+= test;
-		message					+= "\" FAILED: ";
-		message					+= buff.c_str();
-
-		loguru::log_to_everywhere(1, loguru::Verbosity_FATAL, file, line, "", message.c_str());
-		va_end(vlist);
-
-		// Redundant
-		abort();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void LogEventAndAbort(const char * file, unsigned line, const char * test)
-	{
-		std::string message		= "CHECK \"";
-		message					+= test;
-		message					+= "\" FAILED";
-
-		loguru::log_to_everywhere(1, loguru::Verbosity_FATAL, file, line, "", message.c_str());
-
-		// Redundant
-		abort();
-	}
-
-
-	/************************************************************************************************/
-
-
-	Verbosity VerbosityCutof() {
-		return loguru::current_verbosity_cutoff();
-	}
-
+	return traceMessage;
+}
 
 }	/************************************************************************************************/

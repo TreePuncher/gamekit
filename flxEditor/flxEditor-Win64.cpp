@@ -43,7 +43,7 @@ enum class ApplicationMode
 int main(int argc, char* argv[])
 {
 	ApplicationMode mode = ApplicationMode::Editor;
-
+	 
 	for (int i = 0; i < argc; i++)
 	{
 		std::string_view arg{ argv[i] };

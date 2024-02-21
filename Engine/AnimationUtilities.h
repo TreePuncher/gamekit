@@ -69,7 +69,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI float4x4		GetPoseTransform(JointPose P);
-	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
+	FLEXKITAPI JointPose	GetPose(const float4x4& M);
 
 
 	/************************************************************************************************/
@@ -79,11 +79,11 @@ namespace FlexKit
 	{
 		struct JointEntry
 		{
-			FlexKit::float4x4		IPose;
-			FlexKit::JointPose		Pose;
-			FlexKit::JointHandle	Parent;
-			uint16_t				Pad;
-			char					ID[64];
+			float4x4		IPose;
+			JointPose		Pose;
+			JointHandle		Parent;
+			uint16_t		Pad;
+			char			ID[64];
 		};
 
 		struct Header

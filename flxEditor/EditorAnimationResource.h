@@ -190,7 +190,7 @@ namespace FlexKit
 
 		JointHandle	FindJoint(const std::string& id) const noexcept;
 
-		void AddJoint(const SkeletonJoint joint, const XMMATRIX IPose);
+		void AddJoint(const SkeletonJoint joint, const float4x4& IPose);
 		void SetJointID(JointHandle joint, std::string& ID);
 
 		const	std::string&  GetResourceID()     const noexcept override { return ID; }
@@ -204,11 +204,11 @@ namespace FlexKit
 		GUID_t								guid;
 		std::string							ID;
 
-		std::vector<DirectX::XMMATRIX>		IPoses; // Global Inverse Space Pose
-		std::vector<SkeletonJoint>			joints;
-		std::vector<std::string>			jointIDs;
-		std::vector<JointPose>				jointPoses;
-		MetaDataList						metaData;
+		std::vector<float4x4>		IPoses; // Global Inverse Space Pose
+		std::vector<SkeletonJoint>	joints;
+		std::vector<std::string>	jointIDs;
+		std::vector<JointPose>		jointPoses;
+		MetaDataList				metaData;
 	};
 
 

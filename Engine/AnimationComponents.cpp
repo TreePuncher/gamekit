@@ -1100,7 +1100,7 @@ namespace FlexKit
 
 
 						const float4x4  WT              = GetWT(*IKController.gameObject);
-						const float4x4  IT              = FastInverse(WT);
+						const float4x4  IT              = InverseFast(WT);
 						const float3    targetPosition  = (IT * float4{ GetPositionW(IKController.targets.front().target), 1 }).xyz();
 						const float3    rootPosition    = GetRootPosition();
 						const size_t    jointCount      = poseState->JointCount;

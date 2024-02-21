@@ -16,24 +16,15 @@ namespace FlexKit
 	}
 
 
-	JointPose GetPose(DirectX::XMMATRIX M)
+	JointPose GetPose(const float4x4& M)
 	{
-		auto Q = DirectX::XMQuaternionRotationMatrix(M);
-		auto P = M.r[3];
+		auto Q = FlexKit::MatrixToQuat(M);
+		//auto Q = DirectX::XMQuaternionRotationMatrix(Float4x4ToXMMATIRX(M));
+		auto P = M[3];
 
-		return{ Q, float4(P, 1.0f) };
+		return{ Q, float4(P.Slice<0, 3>(), 1.0f)};
 	}
 
-	JointPose GetPose(const float4x4 M)
-	{
-		const auto Q = DirectX::XMQuaternionRotationMatrix(Float4x4ToXMMATIRX(M));
-		const auto P = M[3];
-
-		return JointPose{
-					Quaternion  { Q },
-					float4      { P[0], P[1], P[2], 1.0f }
-		};
-	}
 
 
 	/************************************************************************************************/

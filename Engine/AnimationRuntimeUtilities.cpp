@@ -302,18 +302,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LineSegments DEBUG_DrawPoseState(PoseState& poseState, NodeHandle Node, iAllocator* allocator)
+	LineSegments DEBUG_DrawPoseState(PoseState& poseState, NodeHandle node, iAllocator* allocator)
 	{
 		LineSegments lines{ allocator };
 
 		Skeleton* S = poseState.Sk;
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
-		float4x4 WT; GetTransform(Node, &WT);
+		float4x4 WT = GetWT(node);
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
 			const float4x4 PT   = (S->Joints[I].mParent != 0XFFFF) ?
-									poseState.CurrentPose[S->Joints[I].mParent]:
+									poseState.CurrentPose[S->Joints[I].mParent] :
 									float4x4::Identity();
 
 			const auto JT   = poseState.CurrentPose[I];

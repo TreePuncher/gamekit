@@ -589,6 +589,12 @@ namespace FlexKit
 		}
 
 
+		void SerializeBuffer(const char* _ptr, size_t bufferSize)
+		{
+			dataBuffer.back() += Blob{ _ptr, bufferSize };
+		}
+
+
 		template<typename TY>
 		void operator & (TY& rhs)
 		{
@@ -1049,6 +1055,13 @@ namespace FlexKit
 			}
 		}
 
+
+		void SerializeBuffer(char* _ptr, size_t bufferSize)
+		{
+			Read(_ptr, bufferSize);
+		}
+
+
 	private:
 		struct PointerMapping
 		{
@@ -1356,6 +1369,11 @@ namespace FlexKit
 
 				Read(rhs._ptr, rhs.size);
 			}
+		}
+
+		void SerializeBuffer(char* _ptr, size_t bufferSize)
+		{
+			Read(_ptr, bufferSize);
 		}
 
 	private:
