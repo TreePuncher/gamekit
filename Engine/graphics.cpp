@@ -27,7 +27,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 611; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 613; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -3908,7 +3908,7 @@ namespace FlexKit
 
 		if (res != renderTargetViews.end())
 		{
-			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V2 };
+			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.GetByType<CPUDescriptorHandle>() };
 		}
 		else
 		{

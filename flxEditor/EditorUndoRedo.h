@@ -13,6 +13,7 @@ struct ObjectState
 void PushState(ObjectState&& objectState);
 void Undo();
 void Redo();
+void ReleaseUndoStack();
 
 ObjectState&	GetCurrentState();
 uint64_t		GetCurrentID();

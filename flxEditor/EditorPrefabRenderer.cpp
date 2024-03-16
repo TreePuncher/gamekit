@@ -709,8 +709,8 @@ void EditorPrefabPreview::RenderAnimated(
 				}
 				else
 				{
-					line.A = tempA.xyz() / tempA.w;
-					line.B = tempB.xyz() / tempB.w;
+					//line.A = tempA.xyz() / tempA.w;
+					//line.B = tempB.xyz() / tempB.w;
 				}
 			}
 

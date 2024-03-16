@@ -771,6 +771,17 @@ namespace FlexKit
 		}
 
 
+		std::span<const char> ByteSpan() const noexcept
+		{
+			return { (const char*)A, ByteSize() };
+		}
+
+		operator std::span<const char>() const noexcept
+		{
+			return  ByteSpan();
+		}
+
+
 		/************************************************************************************************/
 
 
@@ -847,7 +858,6 @@ namespace FlexKit
 	};	/************************************************************************************************/
 
 
-	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in) { return in.GetByType<Ty_Get>(); }
 
 	template<typename Ty_1, typename Ty_2>
 	struct Pair
@@ -857,17 +867,18 @@ namespace FlexKit
 		template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_Get, Ty_V>& in) { return in.V1; }
 		template<typename Ty_Get, typename Ty_V>	static  inline const auto& _GetByType(const Pair<Ty_V, Ty_Get>& in) { return in.V2; }
 
-		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_V>&     in)   { return in.V1; }
-		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_V, Ty_Get>&     in)   { return in.V2; }
-		template<typename Ty_Get>					static  inline auto&   _GetByType(Pair<Ty_Get, Ty_Get>&	in)     { static_assert(!std::is_same_v<Ty_1, Ty_2>, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
+		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_V>&		in)   { return in.V1; }
+		template<typename Ty_Get, typename Ty_V>	static  inline Ty_Get& _GetByType(Pair<Ty_V, Ty_Get>&		in)   { return in.V2; }
+		template<typename Ty_Get>					static  inline auto&   _GetByType(Pair<Ty_Get, Ty_Get>&		in)     { static_assert(!std::is_same_v<Ty_1, Ty_2>, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
 
 		template<typename Ty_Get>							inline auto&  GetByType() const { return _GetByType<Ty_Get>(*this); }
 
 		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in) { Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this; }
 
-		explicit operator bool() { return GetByType<bool>(); }
-		template<typename Ty_1>	operator Ty_1() const	{ return GetByType<Ty_1>(); }
-		template<typename Ty_1>	operator Ty_1()			{ return GetByType<Ty_1>(); }
+		explicit operator bool() requires (std::is_same_v<Ty_1, bool> || std::is_same_v<Ty_2, bool>) { return GetByType<bool>(); }
+
+		template<typename Ty>	operator Ty() const	{ return GetByType<Ty>(); }
+		template<typename Ty>	operator Ty()		{ return GetByType<Ty>(); }
 
 		template<size_t index>	auto& Get() noexcept { static_assert(index >= 2, "Invalid Index"); }
 		template<>	constexpr auto& Get<0>() noexcept { return V1; }
@@ -880,6 +891,9 @@ namespace FlexKit
 		Ty_1 V1;
 		Ty_2 V2;
 	};
+
+
+	template<typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in) { return in.GetByType<Ty_Get>(); }
 
 
 	/************************************************************************************************/

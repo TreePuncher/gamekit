@@ -59,6 +59,15 @@ void Redo()
 /************************************************************************************************/
 
 
+void ReleaseUndoStack()
+{
+	globalUndoStack.clear();
+}
+
+
+/************************************************************************************************/
+
+
 ObjectState& GetCurrentState()
 {
 	return *(globalUndoStack.begin() + currentPosition);

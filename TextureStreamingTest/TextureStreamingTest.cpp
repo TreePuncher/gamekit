@@ -69,8 +69,21 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	LoadScene(framework.core, loadCtx, 1234);
+	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	AddAssetFile(R"(assets\ShadowTest.gameres)");
+	if (!LoadScene(framework.core, loadCtx, "Scene"))
+		throw std::runtime_error("Failed to load scene!");
+
+	if(1)
+	scene.QueryFor(
+		[&](GameObject& gameObject, LightView& light)
+		{
+			light.SetType(FlexKit::LightType::SpotLightBasicShadows);
+			light.SetOuterAngle((float)pi / 1.3f);
+			light.SetIntensity(1024);
+			light.SetRadius(30.0f);
+		},
+		LightQuery{});
 
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();
@@ -114,6 +127,13 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 	renderWindow.UpdateCapturedMouseInput(dT);
 
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
+
+	scene.QueryFor(
+		[&](GameObject& gameObject, auto&& light, auto&& node)
+		{
+			node.Pitch(dT * pi * 0.25f);
+		},
+		LightQuery{}, SceneNodeReq{});
 
 	if(rotate)
 		OrbitCameraYaw(orbitCamera, pi * dT / 3.0f);

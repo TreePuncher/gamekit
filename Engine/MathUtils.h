@@ -31,6 +31,7 @@ using ranges::iota_view;
 #else
 using std::views::iota;
 using std::views::zip;
+using std::views::enumerate;
 #endif
 
 #ifndef _MM_SHUFFLE
@@ -2538,26 +2539,32 @@ namespace FlexKit
 			}
 			else
 			{
-				auto transposed = rhs.Transpose();
-				
-				auto CreateRow = [&](size_t y)
-				{
-					return[&] <size_t ... ints>(std::integer_sequence<size_t, ints...> sequence) -> Vect<Width, Ty>
-					{
-						auto v = 
-							Vect<Width, Ty> 
-								{ Vect4FDot(Row(y), transposed.Row(ints))... };
+				Matrix<4, 4, Ty> out;
+				out[0] =
+					Vect4(Row(0)[0]) * rhs.Row(0) +
+					Vect4(Row(0)[1]) * rhs.Row(1) +
+					Vect4(Row(0)[2]) * rhs.Row(2) +
+					Vect4(Row(0)[3]) * rhs.Row(3);
 
-						return v;
-					}(std::make_index_sequence<Width>());
-				};
+				out[1] =
+					Vect4(Row(1)[0]) * rhs.Row(0) +
+					Vect4(Row(1)[1]) * rhs.Row(1) +
+					Vect4(Row(1)[2]) * rhs.Row(2) +
+					Vect4(Row(1)[3]) * rhs.Row(3);
 
-				return Matrix{
-					CreateRow(0),
-					CreateRow(1),
-					CreateRow(2),
-					CreateRow(3),
-				};
+				out[2] =
+					Vect4(Row(2)[0]) * rhs.Row(0) +
+					Vect4(Row(2)[1]) * rhs.Row(1) +
+					Vect4(Row(2)[2]) * rhs.Row(2) +
+					Vect4(Row(2)[3]) * rhs.Row(3);
+
+				out[3] =
+					Vect4(Row(3)[0]) * rhs.Row(0) +
+					Vect4(Row(3)[1]) * rhs.Row(1) +
+					Vect4(Row(3)[2]) * rhs.Row(2) +
+					Vect4(Row(3)[3]) * rhs.Row(3);
+
+				return out;
 			}
 		}
 
@@ -2868,13 +2875,14 @@ namespace FlexKit
 
 	inline float4 operator * (const float4x4& lhs, const float4 rhs)
 	{// TODO: FAST PATH
-		const Vect4 temp    = rhs;
+		const Vect4 temp = rhs;
+		const auto lhs_t = lhs.Transpose();
 
 		return Conversion::Vect4To<float4>(
-			{   lhs[0].Dot(temp),
-				lhs[1].Dot(temp),
-				lhs[2].Dot(temp),
-				lhs[3].Dot(temp),
+			{	lhs_t[0].Dot(temp),
+				lhs_t[1].Dot(temp),
+				lhs_t[2].Dot(temp),
+				lhs_t[3].Dot(temp),
 			});
 	}
 
@@ -2882,11 +2890,12 @@ namespace FlexKit
 	inline float3 operator * (const float3x3& lhs, const float3 rhs)
 	{// TODO: FAST PATH
 		const Vect3   temp    = rhs;
+		const auto	lhs_t = lhs.Transpose();
 
 		return Conversion::Vect3To<float3>(
-			{	lhs[0].Dot(temp),
-				lhs[1].Dot(temp),
-				lhs[2].Dot(temp),
+			{	lhs_t[0].Dot(temp),
+				lhs_t[1].Dot(temp),
+				lhs_t[2].Dot(temp),
 			});
 	}
 
@@ -2920,149 +2929,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline FlexKit::float4x4 Quaternion2Matrix(Quaternion q)
-	{
-		float4x4 m1, m2;
-
-		// Assign m1
-		m1(0,0) =  q[3];
-		m1(0,1) =  q[2];
-		m1(0,2) = -q[1];
-		m1(0,3) =  q[0];
-
-		m1(1,0) = -q[2];
-		m1(1,1) =  q[3];
-		m1(1,2) =  q[0];
-		m1(1,3) =  q[1];
-
-		m1(2,0) =  q[1];
-		m1(2,1) = -q[0];
-		m1(2,2) =  q[3];
-		m1(2,3) =  q[2];
-		
-		m1(3,0) = -q[0];
-		m1(3,1) = -q[1];
-		m1(3,2) = -q[2];
-		m1(3,3) =  q[3];
-
-		// Assign m2
-		m2(0,0) =  q[3];
-		m2(0,1) =  q[2];
-		m2(0,2) = -q[1];
-		m2(0,3) = -q[0];
-		
-		m2(1,0) = -q[2];
-		m2(1,1) =  q[3];
-		m2(1,2) =  q[0];
-		m2(1,3) = -q[1];
-		
-		m2(2,0) =  q[1];
-		m2(2,1) = -q[0];
-		m2(2,2) =  q[3];
-		m2(2,3) = -q[2];
-		
-		m2(3,0) =  q[0];
-		m2(3,1) =  q[1];
-		m2(3,2) =  q[2];
-		m2(3,3) =  q[3];
-
-		return m1 * m2;
-	}
-
-
-	/************************************************************************************************/
-	
-
-	inline Quaternion Matrix2Quat(const float4x4& M)
-	{
-#if USING(FASTMATH)
-		Quaternion Q
-		(
-			1.0f + M(0,0) - M(1,1) - M(2,2), 
-			1.0f - M(0,0) + M(1,1) - M(2,2), 
-			1.0f - M(0,0) - M(1,1) + M(2,2), 
-			1.0f + M(0,0) + M(1,1) + M(2,2)
-		);
-
-		simde__m128 Temp1 = simde_mm_max_ps(Q, simde_mm_set1_ps(0.0f));
-		Temp1 = simde_mm_sqrt_ps(Temp1);
-		Temp1 = simde_mm_mul_ps(Temp1, simde_mm_set1_ps(0.5f));
-
-		// Copy Sign
-		simde__m128 Temp3 = simde_mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
-		simde__m128 Temp4 = simde_mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
-		simde__m128 Temp5 = simde_mm_sub_ps(Temp3, Temp4);
-		simde__m128 res = SSE_CopySign(Temp5, Temp1);
-
-		return Quaternion{ res }.normalize();
-#else 
-
-		Quaternion Q
-		{
-			sqrtf( Max(1.0f + M[0][0] - M[1][1] - M[2][2], 0.0f))/2, 
-			sqrtf( Max(1.0f - M[0][0] + M[1][1] - M[2][2], 0.0f))/2, 
-			sqrtf( Max(1.0f - M[0][0] - M[1][1] + M[2][2], 0.0f))/2, 
-			sqrtf( Max(1.0f + M[0][0] + M[1][1] + M[2][2], 0.0f))/2
-		};
-		return Quaternion
-		{
-			_copysignf(Q.x, M[1][2] - M[2][1]),
-			_copysignf(Q.y, M[2][0] - M[0][2]),
-			_copysignf(Q.z, M[0][1] - M[1][0]),
-			Q.w
-		};
-#endif
-	}
+	FLEXKITAPI float4x4		CreatePerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio);
 
 
 	/************************************************************************************************/
 
 
-	inline float4x4 Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3 &Right)
-	{
-		float4x4 Out = float4x4::Identity();
-		Out(0,0) = Forward.x;
-		Out(0,1) = Forward.y;
-		Out(0,2) = Forward.z;
-		Out(0,3) = 0;
-
-		Out(1,0) = Up.x;
-		Out(1,1) = Up.y;
-		Out(1,2) = Up.z;
-		Out(1,3) = 0;
-
-		Out(2,0) = Right.x;
-		Out(2,1) = Right.y;
-		Out(2,2) = Right.z;
-		Out(2,3) = 0;
-
-		return Out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline Quaternion Vector2Quaternion(const float3& Forward, const float3& Up, const float3& Right)
-	{
-		return Matrix2Quat(Vector2RotationMatrix(Forward, Up, Right));
-	}
-
-
-	/************************************************************************************************/
-
-
-	// NEED TO OPTIMIZE THIS SOMEDAY
-	inline float4x4 Q2M(Quaternion Q)
-	{
-		float4x4 out;
-		out[0] = Float4ToVect4(float4{ 1 - Q.y*Q.y - 2 * Q.z*Q.z, 2 * Q.x*Q.y + 2 * Q.z*Q.w, 2 * Q.x * Q.z - 2 * Q.y * Q.w, 0  });
-		out[1] = Float4ToVect4(float4{ 2 * Q.x*Q.y - 2 * Q.z*Q.w, 1 - Q.x*Q.x - 2 * Q.z*Q.z, 2 * Q.y * Q.z - 2 * Q.x * Q.w, 0  });
-		out[2] = Float4ToVect4(float4{ 2*Q.x*Q.z + 2*Q.y*Q.w, 2*Q.y*Q.z - 2*Q.x*Q.w, 1 - 2 * Q.x * Q.x - 2 * Q.y*Q.y,		 0 });
-		out[3] = Float4ToVect4(float4{ 0,						0,						0,								1	   });
-
-		return out;
-	}
+	FLEXKITAPI float4x4		Quaternion2Matrix		(const Quaternion q);
+	FLEXKITAPI Quaternion	Matrix2Quat				(const float4x4& M);
+	FLEXKITAPI float4x4		Vector2RotationMatrix	(const float3& Forward, const float3& Up, const float3& Right);
+	FLEXKITAPI Quaternion	Vector2Quaternion		(const float3& Forward, const float3& Up, const float3& Right);
 
 
 	/************************************************************************************************/

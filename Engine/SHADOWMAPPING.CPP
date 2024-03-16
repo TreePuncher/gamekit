@@ -213,9 +213,9 @@ namespace FlexKit
 		for (size_t I = 0; I < 6; I++)
 		{
 			const float4x4 ViewI            = ViewOrientations[I] * TranslationMatrix(pos);
-			const float4x4 View             = Inverse(ViewI).Transpose();
-			const float4x4 perspective      = XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(DegreetoRad(90.0f), 1, 0.01f, r));
-			const float4x4 PV               = perspective.Transpose() * View.Transpose();
+			const float4x4 View             = Inverse(ViewI);
+			const float4x4 perspective      = CreatePerspectiveRH(DegreetoRad(90.0f), 1, 0.01f, r);
+			const float4x4 PV               = perspective * View;
 
 			out.PV[I]       = PV;
 			out.ViewI[I]    = ViewI;
@@ -231,11 +231,12 @@ namespace FlexKit
 
 	ShadowMapMatrices CalculateSpotLightMatrices(const float3 pos, const Quaternion q, const float r, const float a)
 	{
-		const float4x4 viewOrientation	= XMMatrixToFloat4x4(DirectX::XMMatrixRotationQuaternion(q));
-		const float4x4 viewI			= viewOrientation * TranslationMatrix(pos);
+		const float4x4 viewOrientation	= Quaternion2Matrix(q);
+		const float4x4 viewTranslation	= TranslationMatrix(pos);
+		const float4x4 viewI			= viewTranslation.Transpose() * viewOrientation;
 		const float4x4 view				= Inverse(viewI);
-		const float4x4 perspective		= XMMatrixToFloat4x4(DirectX::XMMatrixPerspectiveFovRH(a, 1, 0.01f, r)).Transpose();
-		const float4x4 pv				= perspective.Transpose() * view.Transpose();
+		const float4x4 perspective		= CreatePerspectiveRH(a, 0.01f, r, 1.0f);
+		const float4x4 pv				= perspective * view;
 
 		return { pv, view };
 	}
@@ -757,7 +758,7 @@ namespace FlexKit
 							const float4x4 WT			= nodeView.GetWT();
 							const float4 brushPOS_WT	= WT * float4(triMesh->BS.xyz(), 1);
 
-							ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
+							ctx.SetGraphicsConstantValue(2, 16, float4x4{ WT });
 							ctx.SetGraphicsConstantBufferView(3, poseConstants);
 
 							for (uint32_t itr = 0; itr < 6; itr++)
@@ -862,14 +863,14 @@ namespace FlexKit
 				float4x4_GPU	View;
 				uint32_t		Idx;
 				float			maxZ;
-			}tempConstants = {
+			}drawConstants = {
 					.PV		= pv,
 					.View	= v,
 					.Idx	= 0,
 					.maxZ	= light.R };
 
-			ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-			ctx.SetGraphicsConstantValue(0, 34, &tempConstants);
+			ctx.SetGraphicsConstantValue(2, 16, float4x4_GPU{ WT });
+			ctx.SetGraphicsConstantValue(0, 34, &drawConstants);
 
 			const size_t meshCount = meshes.size();
 			for(size_t I = 0; I < meshCount; I++)
@@ -936,15 +937,15 @@ namespace FlexKit
 							float4x4_GPU	View;
 							uint32_t		Idx;
 							float			maxZ;
-						}tempConstants = {
+						}drawConstants = {
 								.PV		= pv,
 								.View	= v,
 								.Idx	= 0,
 								.maxZ	= light.R
 						};
 
-						ctx.SetGraphicsConstantValue(2, 16, WT.Transpose());
-						ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
+						ctx.SetGraphicsConstantValue(2, 16, float4x4_GPU{ WT });
+						ctx.SetGraphicsConstantValue(0, 40, &drawConstants);
 						ctx.SetGraphicsConstantBufferView(3, ConstantBufferDataSet{ poseTemp, animatedConstantBuffer });
 
 						for(auto mesh : draw.meshes)

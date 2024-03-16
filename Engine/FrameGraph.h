@@ -2040,6 +2040,40 @@ namespace FlexKit
 					return { resourceHandle, overlap };
 				}
 
+				AcquireResult CreateResource(FrameResourceHandle dstResource, std::span<const char> byteView)
+				{
+					nodeData->pendingCopies.emplace_back((void*)byteView.data(), byteView.size_bytes(), dstResource);
+
+					std::atomic_ref ref{ frameResources.virtualResourceCount };
+					ref++;
+
+
+					auto GetMemoryPool = [&]
+					{
+						if (!nodeData->pool)
+						{
+							const auto& desc	= GPUResourceDesc::StructuredResource((uint32_t)byteView.size_bytes());
+							const auto	flags	= GetNeededFlags(desc);
+							return frameResources.FindMemoryPool(flags);
+						}
+						else
+							return nodeData->pool;
+					};
+
+					PoolAllocatorInterface* pool = GetMemoryPool();
+					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource((uint32_t)byteView.size_bytes()));
+
+
+					auto frameObject				= frameResources.GetResourceObject(dstResource);
+					frameObject->shaderResource		= resourceHandle;
+					frameObject->pool				= pool;
+					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
+
+					nodeData->uploadSize += byteView.size_bytes();
+
+					return { resourceHandle, overlap };
+				}
+
 				AcquireResult AcquireTemporary(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
 				{
 					std::atomic_ref ref{ frameResources.virtualResourceCount };

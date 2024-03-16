@@ -683,7 +683,14 @@ namespace FlexKit
 			{
 				auto& gameObject = *visables[entity].entity;
 				if (auto res = FlexKit::Query(gameObject, queries...); res)
-					FN(gameObject, res);
+				{
+					std::apply(
+						[&](auto&& ... results)
+							{
+								FN(gameObject, std::forward<decltype(results)>(results)...);
+							},
+							res.value());
+				}
 			}
 		}
 
