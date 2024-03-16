@@ -166,24 +166,24 @@ namespace FlexKit
 
 		// Far Field
 		{
-			float4 TopRight		(1, 1, 0.0f, 1);
-			float4 TopLeft		(-1, 1, 0.0f, 1);
-			float4 BottomRight	(1, -1, 0.0f, 1);
-			float4 BottomLeft	(-1, -1, 0.0f, 1);
+			const float4 TopRight		{  1.0f,  1.0f, 0.0f, 1.0f };
+			const float4 TopLeft		{ -1.0f,  1.0f, 0.0f, 1.0f };
+			const float4 BottomRight	{  1.0f, -1.0f, 0.0f, 1.0f };
+			const float4 BottomLeft	{ -1.0f, -1.0f, 0.0f, 1.0f };
 			{
-				float4 V1 = DirectX::XMVector4Transform(TopRight,	Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(TopLeft,	Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
+				const float4 V1 = DirectX::XMVector4Transform(TopRight,		Float4x4ToXMMATIRX(&InverseView));
+				const float4 V2 = DirectX::XMVector4Transform(TopLeft,		Float4x4ToXMMATIRX(&InverseView));
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
 
 				Out.FTL	= V4;
 				Out.FTR = V3;
 			}
 			{
-				float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(BottomLeft, Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
+				const float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
+				const float4 V2 = DirectX::XMVector4Transform(BottomLeft,		Float4x4ToXMMATIRX(&InverseView));
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
 
 				Out.FBL = V4;
 				Out.FBR = V3;
@@ -191,25 +191,25 @@ namespace FlexKit
 		}
 		// Near Field
 		{
-			float4 TopRight		{  1.0f,  1.0f, 0.1f, 1.0f };
-			float4 TopLeft		{ -1.0f,  1.0f, 0.1f, 1.0f };
-			float4 BottomRight	{  1.0f, -1.0f, 0.1f, 1.0f };
-			float4 BottomLeft	{ -1.0f, -1.0f, 0.1f, 1.0f };
+			const float4 TopRight		{  1.0f,  1.0f, 0.1f, 1.0f };
+			const float4 TopLeft		{ -1.0f,  1.0f, 0.1f, 1.0f };
+			const float4 BottomRight	{  1.0f, -1.0f, 0.1f, 1.0f };
+			const float4 BottomLeft		{ -1.0f, -1.0f, 0.1f, 1.0f };
 
 			{
-				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(TopLeft, Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
+				const float4 V1 = DirectX::XMVector4Transform(TopRight,		Float4x4ToXMMATIRX(&InverseView));
+				const float4 V2 = DirectX::XMVector4Transform(TopLeft,		Float4x4ToXMMATIRX(&InverseView));
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
 
 				Out.NTL = V4;
 				Out.NTR = V3;
 			}
 			{
-				float4 V1 = DirectX::XMVector4Transform(BottomRight, Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(BottomLeft, Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
+				const float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
+				const float4 V2 = DirectX::XMVector4Transform(BottomLeft,	Float4x4ToXMMATIRX(&InverseView));
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
 
 				Out.NBL = V4;
 				Out.NBR = V3;
@@ -249,58 +249,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DirectX::XMMATRIX CreatePerspectiveXM(const Camera& camera, bool Invert = false)
+	float4x4 CreatePerspectiveRH(const Camera& camera, bool invert = false)
 	{
 		if (camera.FOV == 0.0f || camera.AspectRatio == 0.0f || camera.Near == 0.0f || camera.Far == 0.0f)
-			return DirectX::XMMatrixIdentity();
-
-		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
-
-		if (Invert)
-		{
-			InvertPersepective.r[2].m128_f32[2] = -1;
-			InvertPersepective.r[2].m128_f32[3] = 1;
-			InvertPersepective.r[3].m128_f32[2] = 1;
-		}
-
-		DirectX::XMMATRIX proj = InvertPersepective * DirectX::XMMatrixPerspectiveFovRH(camera.FOV, camera.AspectRatio, camera.Near, camera.Far);
-
-		return proj;
-	}
-
-	float4x4 CreatePerspectiveRH(const Camera& camera, bool Invert = false)
-	{
-		if (camera.FOV == 0.0f || camera.AspectRatio == 0.0f || camera.Near == 0.0f || camera.Far == 0.0f)
-			return float4x4::Identity();
-
-		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
-
-		if (Invert)
-		{
-			InvertPersepective.r[2].m128_f32[2] = -1;
-			InvertPersepective.r[2].m128_f32[3] = 1;
-			InvertPersepective.r[3].m128_f32[2] = 1;
-		}
-
-		DirectX::XMMATRIX proj = InvertPersepective * XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovRH(camera.FOV, camera.AspectRatio, camera.Near, camera.Far));
-
-		auto temp = XMMatrixToFloat4x4(proj);
-		return temp;
-	}
-
-	float4x4 CreatePerspectiveRH(const float FOV, const float aspectRatio, const float minZ, const float maxZ)
-	{
-		if (FOV == 0.0f || aspectRatio == 0.0f || minZ == 0.0f || maxZ == 0.0f)
 		{
 			FK_LOG_WARNING("Invalid Args passed to CreatePerspectiveRH!");
 			return float4x4::Identity();
 		}
 
-		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
-		DirectX::XMMATRIX proj = InvertPersepective * XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovRH(FOV, aspectRatio, minZ, maxZ));
+		float4x4 projection = CreatePerspectiveRH(camera.FOV, camera.Near, camera.Far, camera.AspectRatio);
+		if (invert)
+		{
+			float4x4 invertPersepective = float4x4::Identity();
 
-		return XMMatrixToFloat4x4(proj);
+			invertPersepective(2, 2) = -1;
+			invertPersepective(2, 3) = 1;
+			invertPersepective(3, 2) = 1;
+			projection = invertPersepective * projection;
+		}
+
+		return projection;
 	}
+
 
 	/************************************************************************************************/
 
@@ -378,7 +348,7 @@ namespace FlexKit
 
 	Camera::ConstantBuffer Camera::GetConstants() const
 	{
-		const float4x4 view = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(WT)));
+		const float4x4 view = Inverse(WT);
 
 		Camera::ConstantBuffer constants;
 		constants.Proj		= Proj;

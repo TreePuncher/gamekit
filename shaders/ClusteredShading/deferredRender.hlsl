@@ -416,7 +416,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 specular	= float3(0, 0, 0);
 		#endif
 
-		switch (light.TypeExtra[0])
+		//switch (light.TypeExtra[0])
+		switch (1)
 		{
 		case 0:	// Point Light
 		{
@@ -540,8 +541,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3	N_DC		= SC.xyz / SC.w;
 			const float2	shadowMapUV = float2(0.5f + N_DC.x / 2.0f, 0.5f - N_DC.y / 2.0f);
 
-			if (shadowMapUV.x < 0.0f || shadowMapUV.x > 1.0f |
-				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f)
+			if (shadowMapUV.x < 0.0f || shadowMapUV.x > 1.0f ||
+				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f ||
+				SC.w <= 0)
 				continue;
 
 			float		shadowing		= 0;
@@ -578,7 +580,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 	const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-	//if (px.x > WH.x / 2)
+	if (px.x > WH.x / 1.5f)
 		//return pow(float4(0, UV.y, 0, 1), 2);
 	
 		//return float4(positionWS * float3(0, 0, -0.01), 1);
@@ -598,9 +600,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//
 		//return pow(-positionVS.z / 128, 10.0f);
 		//return depth;
-		//return float4(N / 2.0f + 0.5f);
+		return float4(N / 2.0f + 0.5f, 0);
 	//return float4(0, 0, 0, 0);
-	return Albedo * Albedo;
+	//return Albedo * Albedo;
 	//return float4(positionWS, 0);
 	//return pow(roughness, 2.2f);
 	//return pow(MRIA, 2.2f);

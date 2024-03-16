@@ -318,17 +318,20 @@ namespace FlexKit
 
 			const auto JT   = poseState.CurrentPose[I];
 
-			const float3 A = (WT * (JT * Zero)).xyz();
-			const float3 B = (WT * (PT * Zero)).xyz();
+			const float4 A = (WT * (JT * Zero));
+			const float4 B = (WT * (PT * Zero));
 
-			const float3 X = (WT * (PT * float4{ 0.3f, 0.0f, 0.0f, 1.0f })).xyz();
-			const float3 Y = (WT * (PT * float4{ 0.0f, 0.3f, 0.0f, 1.0f })).xyz();
-			const float3 Z = (WT * (PT * float4{ 0.0f, 0.0f, 0.3f, 1.0f })).xyz();
+			//const float4 A = DirectX::XMVector4Transform(Zero, Float4x4ToXMMATIRX(JT * WT));
+			//const float4 B = DirectX::XMVector4Transform(Zero, Float4x4ToXMMATIRX(PT * WT));
 
-			lines.push_back({ A, WHITE,	B, PURPLE	});
-			lines.push_back({ B, RED,	X, RED		});
-			lines.push_back({ B, GREEN,	Y, GREEN	});
-			lines.push_back({ B, BLUE,	Z, BLUE		});
+			const float4 X = (WT * (PT * float4{ 0.3f, 0.0f, 0.0f, 1.0f }));
+			const float4 Y = (WT * (PT * float4{ 0.0f, 0.3f, 0.0f, 1.0f }));
+			const float4 Z = (WT * (PT * float4{ 0.0f, 0.0f, 0.3f, 1.0f }));
+
+			lines.push_back({ A.xyz(), WHITE,	B.xyz(), PURPLE	});
+			//lines.push_back({ B.xyz(), RED,		X.xyz(), RED		});
+			//lines.push_back({ B.xyz(), GREEN,	Y.xyz(), GREEN	});
+			//lines.push_back({ B.xyz(), BLUE,	Z.xyz(), BLUE		});
 		}
 
 		return lines;

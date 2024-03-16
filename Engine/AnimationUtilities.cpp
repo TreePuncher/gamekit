@@ -19,12 +19,10 @@ namespace FlexKit
 	JointPose GetPose(const float4x4& M)
 	{
 		auto Q = FlexKit::MatrixToQuat(M);
-		//auto Q = DirectX::XMQuaternionRotationMatrix(Float4x4ToXMMATIRX(M));
 		auto P = M[3];
 
 		return{ Q, float4(P.Slice<0, 3>(), 1.0f)};
 	}
-
 
 
 	/************************************************************************************************/
@@ -43,12 +41,12 @@ namespace FlexKit
 
 		const auto parentI = GetInversePose(J.mParent);
 
-		const auto localTransform   = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(I))) * parentI;
+		const auto localTransform   = FlexKit::Inverse(I) * parentI;
 		const auto jointPose        = GetPose(localTransform);
 
 		JointPoses[JointCount] = jointPose;
 
-		return (JointHandle)JointCount++;
+		return JointHandle{ JointCount++ };
 	}
 	
 

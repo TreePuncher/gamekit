@@ -17,8 +17,13 @@
 #include <QKeySequence>
 
 
+/************************************************************************************************/
+// Forward Declarations
 
 using namespace std::chrono_literals;
+
+
+void ReleaseUndoStack();
 
 
 /************************************************************************************************/
@@ -292,6 +297,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 EditorApplication::~EditorApplication()
 {
+	ReleaseUndoStack();
 	mainWindow.Release();
 	fkApplication.Release();
 }

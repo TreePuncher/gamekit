@@ -136,6 +136,173 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FlexKit::float4x4 Quaternion2Matrix(const Quaternion q)
+	{
+		float4x4 m;
+		auto [x, y, z, w] = q.floats.m128_f32;
+
+		const float xx = x * x;
+		const float yy = y * y;
+		const float zz = z * z;
+		
+		const float xy = x * y;
+		const float xz = x * z;
+		const float yz = y * z;
+		const float wx = w * x;
+		const float wy = w * y;
+		const float wz = w * z;
+
+		// Assign m1
+		m(0,0) = 1 - 2 * yy - 2 * zz;
+		m(0,1) = 2 * xy + 2 * wz;
+		m(0,2) = 2 * xz + 2 * wy;
+
+		m(0,3) = 0;
+
+		m(1,0) = 2.0f * xy + 2.0f * wz;
+		m(1,1) = 1.0f - 2.0f * xx - 2.0f * zz;
+		m(1,2) = 2.0f * yz - 2 * wx;
+
+		m(1,3) =  0;
+
+		m(2,0) = 2 * xz - 2 * wy;
+		m(2,1) = 2 * yz + 2 * wx;
+		m(2,2) = 1 - 2 * xx - 2 * yy;
+
+		m(2,3) = 0;
+		
+		m(3,0) = 0;
+		m(3,1) = 0;
+		m(3,2) = 0;
+		m(3,3) = 1;
+
+		return m;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Quaternion Matrix2Quat(const float4x4& M)
+	{
+#if USING(FASTMATH)
+		Quaternion Q
+		(
+			1.0f + M(0,0) - M(1,1) - M(2,2), 
+			1.0f - M(0,0) + M(1,1) - M(2,2), 
+			1.0f - M(0,0) - M(1,1) + M(2,2), 
+			1.0f + M(0,0) + M(1,1) + M(2,2)
+		);
+
+		simde__m128 Temp1 = simde_mm_max_ps(Q, simde_mm_set1_ps(0.0f));
+		Temp1 = simde_mm_sqrt_ps(Temp1);
+		Temp1 = simde_mm_mul_ps(Temp1, simde_mm_set1_ps(0.5f));
+
+		// Copy Sign
+		simde__m128 Temp3 = simde_mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
+		simde__m128 Temp4 = simde_mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
+		simde__m128 Temp5 = simde_mm_sub_ps(Temp3, Temp4);
+		simde__m128 res = SSE_CopySign(Temp5, Temp1);
+
+		return Quaternion{ res }.normalize();
+#else 
+
+		Quaternion Q
+		{
+			sqrtf( Max(1.0f + M[0][0] - M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f - M[0][0] + M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f - M[0][0] - M[1][1] + M[2][2], 0.0f))/2, 
+			sqrtf( Max(1.0f + M[0][0] + M[1][1] + M[2][2], 0.0f))/2
+		};
+		return Quaternion
+		{
+			_copysignf(Q.x, M[1][2] - M[2][1]),
+			_copysignf(Q.y, M[2][0] - M[0][2]),
+			_copysignf(Q.z, M[0][1] - M[1][0]),
+			Q.w
+		};
+#endif
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3& Right)
+	{
+		float4x4 Out = float4x4::Identity();
+		Out(0, 0) = Forward.x;
+		Out(0, 1) = Forward.y;
+		Out(0, 2) = Forward.z;
+		Out(0, 3) = 0;
+
+		Out(1, 0) = Up.x;
+		Out(1, 1) = Up.y;
+		Out(1, 2) = Up.z;
+		Out(1, 3) = 0;
+
+		Out(2, 0) = Right.x;
+		Out(2, 1) = Right.y;
+		Out(2, 2) = Right.z;
+		Out(2, 3) = 0;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Quaternion Vector2Quaternion(const float3& Forward, const float3& Up, const float3& Right)
+	{
+		return Matrix2Quat(Vector2RotationMatrix(Forward, Up, Right));
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 CreatePerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio)
+	{
+		float TwoNearZ	= minZ + minZ;
+		float fRange	= maxZ / (minZ - maxZ);
+
+
+		float sinFOV = std::sin(0.5f * FOV);
+		float cosFOV = std::cos(0.5f * FOV);
+
+		float height	= cosFOV / sinFOV;
+		float width		= height / aspectRatio;
+		float range		= maxZ / (minZ - maxZ);
+
+		float4x4 m = float4x4::Identity();
+		m(0, 0) = width;
+		m(0, 1) = 0.0f;
+		m(0, 2) = 0.0f;
+		m(0, 3) = 0.0f;
+
+		m(1, 0) = 0.0f;
+		m(1, 1) = height;
+		m(1, 2) = 0.0f;
+		m(1, 3) = 0.0f;
+
+		m(2, 0) = 0.0f;
+		m(2, 1) = 0.0f;
+		m(2, 2) = fRange;
+		m(2, 3) = -1.0f;
+
+		m(3, 0) = 0.0f;
+		m(3, 1) = 0.0f;
+		m(3, 2) = range * minZ;
+		m(3, 3) = 0.0f;
+
+		return m;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void NumberToString( int32_t n, std::string& _Dest )
 	{
 		std::string Tmp;

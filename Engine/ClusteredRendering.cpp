@@ -991,12 +991,12 @@ namespace FlexKit
 			},
 			.initializeResources	= [](std::span<const LightHandle> visibleLights, std::span<const FrameResourceHandle> resourceHandles, auto& transferCtx, iAllocator& allocator)
 			{
-				Vector<float4x4> shadowMaps{ allocator };
+				Vector<float4x4_GPU> shadowMaps{ allocator };
 				shadowMaps.resize(visibleLights.size());
 
 				auto& lights = LightComponent::GetComponent();
 
-				for (auto [idx, lightHandle] : zip(iota(0), visibleLights))
+				for (auto [idx, lightHandle] : enumerate(visibleLights))
 				{
 					auto& light = lights[lightHandle];
 					switch (light.type)
@@ -1017,7 +1017,7 @@ namespace FlexKit
 					}
 				}
 
-				transferCtx.CreateResource(resourceHandles[0], shadowMaps.ByteSize(),	shadowMaps.data());
+				transferCtx.CreateResource(resourceHandles[0], shadowMaps);
 			},
 
 			.layout		= DeviceLayout::DeviceLayout_Common,
@@ -1744,7 +1744,10 @@ namespace FlexKit
 				ctx.ClearRenderTarget(resources.GetResource({ data.renderTargetObject }));
 
 				if (!lightCount)
+				{
+					ctx.EndEvent_DEBUG();
 					return;
+				}
 
 				struct
 				{
@@ -1787,7 +1790,7 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 9, resources.PixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
 
 				//for (size_t shadowMapIdx = 0; shadowMapIdx < lightCount; shadowMapIdx++)
-				for (const auto [shadowMapIdx, handle] : zip(iota(0), visableLights))
+				for (const auto [shadowMapIdx, handle] : enumerate(visableLights))
 				{
 					const auto& light		= lightComponent[handle];
 					const auto	shadowMap	= resources.GetResource(shadowMaps[shadowMapIdx]);

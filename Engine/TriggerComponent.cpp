@@ -210,11 +210,10 @@ namespace FlexKit
 				ctx->pendingActions.emplace_back(
 					[connection, &view, &gameObject](Scene& scene)
 					{
-						using results_ty = QueryResultObject<StringHashQuery>;
-						static_vector<results_ty> results;
+						static_vector<StringIDView> results;
 
 						scene.QueryFor(
-							[&](GameObject& slotObject, results_ty& results)
+							[&](GameObject& slotObject, const StringIDView& _0)
 							{
 								ConnectTrigger(gameObject, connection.triggerID, slotObject, connection.slotID);
 							},
