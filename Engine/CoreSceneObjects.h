@@ -135,20 +135,20 @@ namespace FlexKit
 
 		struct MaterialProperties
 		{
-			float3	albedo		= float3{1.0f, 1.0f, 1.0f};
-			float	kS			= 0.5f;
-			float	IOR			= 0.45f;
-			float	roughness	= 0.5f;
-			float	anisotropic	= 0.0f;
-			float	metallic	= 0.0f;
+			float3		albedo		= float3{ 1.0f, 1.0f, 1.0f };
+			float		kS			= 0.5f;
+			float		IOR			= 0.45f;
+			float		roughness	= 0.5f;
+			float		anisotropic	= 0.0f;
+			float		metallic	= 0.0f;
+			uint32_t	textureCount = 0;
+			uint32_t	textureChannels = 0;
 		};	// 32 
 
 		struct alignas(256) VConstantsLayout
 		{
 			float4x4_GPU		Transform;
 			MaterialProperties	MP;
-			uint32_t			textureCount;
-			uint32_t			textureChannels;
 			uint32_t			padding1[2];
 			uint4				textureHandles[16];
 		};

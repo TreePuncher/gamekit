@@ -1,44 +1,50 @@
 {
-    "name": "flexkit",
-    "version-string": "0.0.1",
-    "supports": "(!x86 & windows)",
-    "dependencies": [
-        {
-            "name": "angelscript",
-            "features": [ "addons" ]
-        },
-        {
-            "name": "directxtex",
-            "features": [ "dx12", "openexr" ]
-        },
-        "boost-interprocess",
-        "boost-process",
-        "cppcoro",
-		"cpptoml",
-        "directx-dxc",
-		"directx-headers",
-		"directxmesh",
-        "directxtk12",
-        "fmt",
-        "fp16",
-        "imgui",
-        "implot",
-        "imguizmo",
-        "ois",
-        "physx",
-        "range-v3",
-        "scnlib",
-        "simde",
-        "slikenet",
-        "stb",
-        "tinygltf",
-        "zlib-ng"
-    ], 
-    "builtin-baseline": "13bde2ff13192e1b2fdd37bd9b475c7665ae6ae5",
-    "overrides": [
-        { 
-            "name": "physx",
-            "version": "5.3.0"
-        }
-    ]
+  "name": "flexkit",
+  "version-string": "0.0.1",
+  "supports": "(!x86 & windows)",
+  "dependencies": [
+    {
+      "name": "angelscript",
+      "features": [
+        "addons"
+      ]
+    },
+    {
+      "name": "directxtex",
+      "features": [
+        "dx12",
+        "openexr"
+      ]
+    },
+    "boost-interprocess",
+    "boost-process",
+    "cppcoro",
+    "cpptoml",
+    "directx-dxc",
+    "directx-headers",
+    "directxmesh",
+    "directxtk12",
+    "fmt",
+    "fp16",
+    "imgui",
+    "implot",
+    "imguizmo",
+    "ois",
+    "physx",
+    "rmlui",
+    "range-v3",
+    "scnlib",
+    "simde",
+    "slikenet",
+    "stb",
+    "tinygltf",
+    "zlib-ng"
+  ],
+  "builtin-baseline": "a34c873a9717a888f58dc05268dea15592c2f0ff",
+  "overrides": [
+    {
+      "name": "physx",
+      "version": "5.2.1"
+    }
+  ]
 }
