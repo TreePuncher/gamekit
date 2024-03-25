@@ -213,8 +213,8 @@ namespace FlexKit
 		for (size_t I = 0; I < 6; I++)
 		{
 			const float4x4 ViewI            = ViewOrientations[I] * TranslationMatrix(pos);
-			const float4x4 View             = Inverse(ViewI);
-			const float4x4 perspective      = CreatePerspectiveRH(DegreetoRad(90.0f), 1, 0.01f, r);
+			const float4x4 View             = (TranslationMatrix(-pos) * ViewOrientations[I].Transpose()).Transpose();
+			const float4x4 perspective      = CreatePerspectiveRH(DegreetoRad(90.0f), 0.01f, r, 1.0f);
 			const float4x4 PV               = perspective * View;
 
 			out.PV[I]       = PV;

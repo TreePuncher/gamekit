@@ -55,6 +55,7 @@ struct Skinned_Vertex
 	uint4  Indices  : BLENDINDICES;
 };
 
+
 Vertex VS_Skinned_Main(Skinned_Vertex IN)
 {
 	float3 V = float3(0, 0, 0);

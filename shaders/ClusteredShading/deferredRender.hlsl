@@ -416,8 +416,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 specular	= float3(0, 0, 0);
 		#endif
 
-		//switch (light.TypeExtra[0])
-		switch (1)
+		switch (light.TypeExtra[0])
 		{
 		case 0:	// Point Light
 		{
@@ -425,7 +424,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const	float	depth		= length(Lp - positionVS) / Lr;
 
 			float t = 0;
-			static const int sampleCount = 16;
+			static const int sampleCount = 4;
 			for (int i = 0; i < sampleCount; i++)
 			{
 				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.000125f);

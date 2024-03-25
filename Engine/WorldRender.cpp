@@ -1024,16 +1024,16 @@ namespace FlexKit
 
 					if (subMaterials.size())
 					{
-						for (auto& sm : subMaterials)
+						for (const auto& sm : subMaterials)
 						{
 							const auto& subMaterial = materials[sm];
 
-							constants.textureChannels =
+							constants.MP.textureChannels =
 								subMaterial.HasTexture(GetTypeGUID(ALBEDO)) << 0 |
 								subMaterial.HasTexture(GetTypeGUID(NORMAL)) << 1 |
 								subMaterial.HasTexture(GetTypeGUID(METALLICROUGHNESS)) << 2;
 
-							constants.textureCount = mainMaterial.textures.size();
+							constants.MP.textureCount = mainMaterial.textures.size();
 
 							auto& textures			= subMaterial.textures;
 
@@ -1046,12 +1046,12 @@ namespace FlexKit
 					}
 					else
 					{
-						constants.textureChannels =
+						constants.MP.textureChannels =
 							mainMaterial.HasTexture(GetTypeGUID(ALBEDO)) << 0 |
 							mainMaterial.HasTexture(GetTypeGUID(NORMAL)) << 1 |
 							mainMaterial.HasTexture(GetTypeGUID(METALLICROUGHNESS)) << 2;
 
-						constants.textureCount = mainMaterial.textures.size();
+						constants.MP.textureCount = mainMaterial.textures.size();
 
 						constantBuffer.Push(constants);
 					}

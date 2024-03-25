@@ -78,9 +78,10 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light)
 		{
-			light.SetType(FlexKit::LightType::SpotLightBasicShadows);
+			//light.SetType(FlexKit::LightType::SpotLight);
+			light.SetType(FlexKit::LightType::PointLight);
 			light.SetOuterAngle((float)pi / 1.3f);
-			light.SetIntensity(1024);
+			light.SetIntensity(2048);
 			light.SetRadius(30.0f);
 		},
 		LightQuery{});
