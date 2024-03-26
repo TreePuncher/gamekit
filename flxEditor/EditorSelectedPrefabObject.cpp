@@ -9,7 +9,7 @@
 #include "ResourceIDs.h"
 
 #include <fmt/format.h>
-#include <scn/scn.h>
+#include <scn/scan.h>
 
 
 /************************************************************************************************/
@@ -50,35 +50,69 @@ void StringToValue(const std::string& in, FlexKit::AnimatorComponent::InputValue
 	{
 	case FlexKit::AnimatorInputType::Float:
 	{
-		auto res = scn::scan(in, "{}", input.x);
+		auto res = scn::scan<float>(in, "{}");
+		if(res)
+			input.x = res->value();
 	}   break;
 	case FlexKit::AnimatorInputType::Float2:
 	{
-		auto res = scn::scan(in, "{}, {}", input.xy.x, input.xy.y);
+		auto res = scn::scan<float, float>(in, "{}, {}");
+		if (res)
+		{
+			auto& [x, y] = res->values();
+			input.xy = { x,  y };
+		}
 	}   break;
 	case FlexKit::AnimatorInputType::Float3:
 	{
-		auto res = scn::scan(in, "{}, {}, {}", input.xyz.x, input.xyz.y, input.xyz.z);
+		auto res = scn::scan<float, float, float>(in, "{}, {}, {}");
+		if (res)
+		{
+			auto& [x, y, z] = res->values();
+			input.xyz = { x, y, z };
+		}
 	}   break;
 	case FlexKit::AnimatorInputType::Float4:
 	{
-		auto res = scn::scan(in, "{}, {}, {}, {}", input.xyzw.x, input.xyzw.y, input.xyzw.z, input.xyzw.w);
+		auto res = scn::scan<float, float, float, float>(in, "{}, {}, {}, {}");
+		if (res)
+		{
+			auto& [x, y, z, w] = res->values();
+			input.xyzw = { x, y, z, w };
+		}
 	}   break;
 	case FlexKit::AnimatorInputType::Uint:
 	{
-		auto res = scn::scan(in, "{}", input.a);
+		auto res = scn::scan<uint32_t>(in, "{}");
+		if (res)
+			input.a = res->value();
 	}   break;
 	case FlexKit::AnimatorInputType::Uint2:
 	{
-		auto res = scn::scan(in, "{}, {}", input.ab[0], input.ab[1]);
+		auto res = scn::scan<uint32_t, uint32_t>(in, "{}, {}");
+		if (res)
+		{
+			auto& [a, b] = res->values();
+			input.ab = { a, b };
+		}
 	}   break;
 	case FlexKit::AnimatorInputType::Uint3:
 	{
-		auto res = scn::scan(in, "{}, {}, {}", input.abc[0], input.abc[1], input.abc[2]);
+		auto res = scn::scan<uint32_t, uint32_t, uint32_t>(in, "{}, {}, {}");
+		if (res)
+		{
+			auto& [a, b, c] = res->values();
+			input.ab = { a, b, c };
+		}
 	}   break;
 	case FlexKit::AnimatorInputType::Uint4:
 	{
-		auto res = scn::scan(in, "{}, {}, {}, {}", input.abcd[0], input.abcd[1], input.abcd[2], input.abcd[3]);
+		auto res = scn::scan<uint32_t, uint32_t, uint32_t, uint32_t>(in, "{}, {}, {}, {}");
+		if (res)
+		{
+			auto& [a, b, c, d] = res->values();
+			input.ab = { a, b, c, d };
+		}
 	}   break;
 	default:
 		return;
@@ -206,7 +240,6 @@ uint32_t EditorSelectedPrefabObject::AddInputValue(const std::string& name, uint
 			return animator->inputs.size() - 1;
 		},
 		[]() -> uint32_t { return -1; });
-
 }
 
 
@@ -297,60 +330,51 @@ void EditorSelectedPrefabObject::UpdateDefaultValue(uint32_t idx, const std::str
 	{
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float:
 	{
-		float x;
-		auto res = scn::scan(str, "{}", x);
+		auto res = scn::scan<float>(str, "{}");
 		if (res)
-			memcpy(value.defaultValue, &x, sizeof(x));
+			memcpy(value.defaultValue, &res->value(), sizeof(float));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float2:
 	{
-		FlexKit::float2 xy;
-		auto res = scn::scan(str, "{}, {}", xy.x, xy.y);
-		if(res)
-			memcpy(value.defaultValue, &xy, sizeof(xy));
-
+		auto res = scn::scan<float, float>(str, "{}, {}");
+		if (res)
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::float2));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float3:
 	{
-		FlexKit::float3 xyz;
-		auto res = scn::scan(str, "{}, {}, {}", xyz.x, xyz.y, xyz.z);
+		auto res = scn::scan <float, float, float> (str, "{}, {}, {}");
 		if (res)
-			memcpy(value.defaultValue, &xyz, sizeof(xyz));
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::float3));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float4:
 	{
-		FlexKit::float4 xyzw;
-		auto res = scn::scan(str, "{}, {}, {}, {}", xyzw.x, xyzw.y, xyzw.z, xyzw.w);
+		auto res = scn::scan<float, float, float, float>(str, "{}, {}, {}, {}");
 		if (res)
-			memcpy(value.defaultValue, &xyzw, sizeof(xyzw));
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::float4));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint:
 	{
-		uint32_t x;
-		auto res = scn::scan(str, "{}", x);
+		auto res = scn::scan<uint32_t>(str, "{}");
 		if (res)
-			memcpy(value.defaultValue, &x, sizeof(x));
+			memcpy(value.defaultValue, &res->value(), sizeof(uint32_t));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint2:
 	{
-		FlexKit::uint2 xy;
-		auto res = scn::scan(str, "{}, {}", xy[0], xy[1]);
+		auto res = scn::scan<uint32_t, uint32_t>(str, "{}, {}");
 		if (res)
-			memcpy(value.defaultValue, &xy, sizeof(xy));
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::uint2));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint3:
 	{
-		FlexKit::uint3 xyz;
-		auto res = scn::scan(str, "{}, {}, {}", xyz[0], xyz[1], xyz[2]);
+		auto res = scn::scan<uint32_t, uint32_t, uint32_t>(str, "{}, {}, {}");
 		if (res)
-			memcpy(value.defaultValue, &xyz, sizeof(xyz));
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::uint3));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Uint4:
 	{
-		FlexKit::uint4 xyzw;
-		auto res = scn::scan(str, "{}, {}, {}, {}", xyzw[0], xyzw[1], xyzw[2]);
+		auto res = scn::scan<uint32_t, uint32_t, uint32_t, uint32_t>(str, "{}, {}, {}, {}");
 		if (res)
-			memcpy(value.defaultValue, &xyzw, sizeof(xyzw));
+			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::uint4));
 	}   return;
 	default:
 		return;
@@ -364,8 +388,7 @@ void EditorSelectedPrefabObject::UpdateDefaultValue(uint32_t idx, const std::str
 void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& valueString)
 {
 	FlexKit::Apply(
-		gameObject,
-		[&](FlexKit::AnimatorView& animator)
+		gameObject, [&](FlexKit::AnimatorView& animator)
 		{
 			auto value		= animator.GetInputValue(idx).value_or(nullptr);
 			auto valueType	= animator.GetInputType(idx).value_or(FlexKit::AnimatorInputType::Unknown);
@@ -376,6 +399,10 @@ void EditorSelectedPrefabObject::UpdateValue(uint32_t idx, const std::string& va
 				(FlexKit::AnimatorInputType)valueType);
 		});
 }
+
+
+/************************************************************************************************/
+
 
 void EditorSelectedPrefabObject::Release()
 {

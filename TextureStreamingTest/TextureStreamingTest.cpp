@@ -70,16 +70,15 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	};
 
 	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
+
 	AddAssetFile(R"(assets\ShadowTest.gameres)");
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
 
-	if(1)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light)
 		{
-			//light.SetType(FlexKit::LightType::SpotLight);
-			light.SetType(FlexKit::LightType::PointLight);
+			light.SetType(FlexKit::LightType::SpotLight);
 			light.SetOuterAngle((float)pi / 1.3f);
 			light.SetIntensity(2048);
 			light.SetRadius(30.0f);

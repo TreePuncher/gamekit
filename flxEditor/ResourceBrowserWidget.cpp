@@ -1,6 +1,6 @@
 #include "PCH.h"
 
-#include <scn/scn.h>
+#include <scn/scan.h>
 #include <QtWidgets/QTableWidget>
 #include <QtWidgets/qdockwidget>
 #include <QtWidgets/qmenubar.h>
@@ -175,10 +175,9 @@ void ResourceBrowserWidget::OnCellChange(int row, int column)
 	}   break;
 	case 1:
 	{
-		uint64_t GUID;
 		auto text = item->text().toStdString();
-		if(scn::scan(text, "{}", GUID))
-			project.resources[row]->resource->SetResourceGUID(GUID);
+		if(auto res = scn::scan<uint64_t>(text, "{}"); res.has_value())
+			project.resources[row]->resource->SetResourceGUID(res->value());
 
 	}   break;
 	case 2:
