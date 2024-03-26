@@ -635,9 +635,9 @@ namespace FlexKit
 		template<typename ... TY_Queries>
 		[[nodiscard]] auto Query(iAllocator& allocator, TY_Queries ... queries)
 		{
+			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
 			auto& visables = SceneVisibilityComponent::GetComponent();
 
-			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
 			Vector<Optional_ty> results{ &allocator };
 
 			for (auto entity : sceneEntities)
@@ -653,10 +653,10 @@ namespace FlexKit
 		template<typename ... TY_Queries>
 		void Query(auto& outVector, uint32_t max, TY_Queries ... queries)
 		{
+			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
+
 			auto& visables = SceneVisibilityComponent::GetComponent();
 
-			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
-			Vector<Optional_ty> results{ &allocator };
 
 			uint32_t count = 0;
 

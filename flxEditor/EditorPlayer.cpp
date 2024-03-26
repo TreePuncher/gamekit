@@ -3,7 +3,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <SharedEngineMemory.hpp>
 
-#include <scn/scn.h>
+#include <scn/all.h>
 #include <string_view>
 
 #include "Win32Graphics.h"
@@ -436,11 +436,14 @@ int PlayerMain(int argc, char* argv[])
 		for (int I = 0; I + 1 < argc; I++)
 		{
 			std::string_view arg{ argv[I] };
+
 			if (arg == "--player")
 			{
-				auto res = scn::scan(std::string_view{ argv[I + 1] }, "{}", offset);
-				if (res)
+				auto res = scn::scan<size_t>(std::string_view{ argv[I + 1] }, "{}");
+				if (!res)
 					break;
+
+				offset = res->value();
 			}
 		}
 
