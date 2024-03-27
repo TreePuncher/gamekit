@@ -92,7 +92,7 @@ namespace FlexKit
 						const auto skeleton		= poseState->Sk;
 
 						const size_t jointCount	= poseState->JointCount;
-						const size_t poseSize	= sizeof(float4x4_GPU) * poseCount;
+						const size_t poseSize	= sizeof(float4x4_GPU) * jointCount;
 						float4x4_GPU* pose = (float4x4_GPU*)allocator.malloc(poseSize);
 
 						for (size_t I = 0; I < jointCount; I++)
