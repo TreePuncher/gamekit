@@ -466,7 +466,13 @@ namespace FlexKit
 		template<typename TY_tuple, int ... ints>
 		constexpr void helper(const TY_tuple& tuple, const std::integer_sequence<int, ints...>&) noexcept
 		{
-			((Vector[ints] = static_cast<TY>(std::get<ints>(tuple))), ...);
+			auto halp =
+				[&]<int i = 0>
+				{
+					Vector[i] = static_cast<TY>(std::get<i>(tuple));
+				};
+
+			(halp.operator()<ints>(), ...);
 		}
 
 		template<typename TY_vect, int ... ints>
@@ -482,9 +488,9 @@ namespace FlexKit
 			{
 				auto extractElements =
 					[&]<size_t ... indices>(std::index_sequence<indices...>)
-				{
-					return std::forward_as_tuple(value[indices]...);
-				};
+					{
+						return std::forward_as_tuple(value[indices]...);
+					};
 
 				return extractElements(std::make_index_sequence<TY::size()>());
 			}
@@ -2012,28 +2018,28 @@ namespace FlexKit
 		}
 
 
-		inline Quaternion& operator *= (const Quaternion rhs ) noexcept
+		inline Quaternion& operator *= (const Quaternion& rhs ) noexcept
 		{
 			(*this) = GrassManProduct(*this, rhs);
 			return (*this);
 		}
 
 
-		inline Quaternion& operator = (const Quaternion rhs) noexcept
+		inline Quaternion& operator = (const Quaternion& rhs) noexcept
 		{
 			floats = rhs.floats;
 			return (*this);
 		}
 
 
-		inline Quaternion& operator = (const  simde__m128 rhs ) noexcept
+		inline Quaternion& operator = (const  simde__m128& rhs ) noexcept
 		{
 			floats = rhs;
 			return (*this);
 		}
 
 
-		inline Quaternion operator * (const Quaternion q) const noexcept
+		inline Quaternion operator * (const Quaternion& q) const noexcept
 		{
 			return GrassManProduct(q, *this);
 		}
@@ -2816,11 +2822,36 @@ namespace FlexKit
 	{
 		float4x4 Out = float4x4::Identity();
 
-		for (const auto [i, v] : zip(iota(0), POS))
-			Out(i, 3) = v;
+		for (const auto [i, v] : enumerate(POS))
+			Out(3, i) = v;
 
 		return Out;
 	}
+
+
+	FLEXKITAPI inline float4x4 ScaleMatrix(float3 POS)
+	{
+		float4x4 Out = float4x4::Identity();
+		Out(0, 0) = POS.x;
+		Out(1, 1) = POS.y;
+		Out(2, 2) = POS.z;
+
+		return Out;
+	}
+
+
+	FLEXKITAPI inline float3 ExtractTranslationVector(const float4x4& m)
+	{
+		float3 out;
+		out.x = m[0][3];
+		out.y = m[1][3];
+		out.z = m[2][3];
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
 
 
 	FLEXKITAPI inline float CalcMatrixTrace( float in[Matrix_Size] )
@@ -2878,11 +2909,11 @@ namespace FlexKit
 		const Vect4 temp = rhs;
 		const auto lhs_t = lhs.Transpose();
 
-		return Conversion::Vect4To<float4>(
-			{	lhs_t[0].Dot(temp),
-				lhs_t[1].Dot(temp),
-				lhs_t[2].Dot(temp),
-				lhs_t[3].Dot(temp),
+		return Conversion::Vect4To<float4>({
+				lhs[0].Dot(temp),
+				lhs[1].Dot(temp),
+				lhs[2].Dot(temp),
+				lhs[3].Dot(temp),
 			});
 	}
 
@@ -2890,12 +2921,11 @@ namespace FlexKit
 	inline float3 operator * (const float3x3& lhs, const float3 rhs)
 	{// TODO: FAST PATH
 		const Vect3   temp    = rhs;
-		const auto	lhs_t = lhs.Transpose();
 
-		return Conversion::Vect3To<float3>(
-			{	lhs_t[0].Dot(temp),
-				lhs_t[1].Dot(temp),
-				lhs_t[2].Dot(temp),
+		return Conversion::Vect3To<float3>({
+				lhs[0].Dot(temp),
+				lhs[1].Dot(temp),
+				lhs[2].Dot(temp),
 			});
 	}
 

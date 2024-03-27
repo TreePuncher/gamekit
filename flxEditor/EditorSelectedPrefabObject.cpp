@@ -344,7 +344,7 @@ void EditorSelectedPrefabObject::UpdateDefaultValue(uint32_t idx, const std::str
 	{
 		auto res = scn::scan <float, float, float> (str, "{}, {}, {}");
 		if (res)
-			memcpy(value.defaultValue, &res->values(), sizeof(FlexKit::float3));
+			memcpy(value.defaultValue, &res->values(), sizeof(float[3]));
 	}   return;
 	case (AnimationInput::InputType)FlexKit::AnimatorInputType::Float4:
 	{

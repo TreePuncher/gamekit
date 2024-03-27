@@ -40,14 +40,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	using DirectX::XMMatrixRotationQuaternion;
-	using DirectX::XMMatrixScalingFromVector;
-	using DirectX::XMMatrixTranslationFromVector;
-
-
-	/************************************************************************************************/
-
-
 	AnimationStateMachine::AnimationState SetDefaultState()
 	{
 		AnimationStateMachine::AnimationState State;
@@ -271,7 +263,7 @@ namespace FlexKit
 			
 
 			const float4x4 IT   = S->GetInversePose(JointHandle(I));
-			const float4x4 P_T  = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(IT)));
+			const float4x4 P_T  = Inverse(IT);
 			const float4x4 JT   = P_T;
 
 			const float4 VA = (WT * (JT * Zero));
@@ -305,10 +297,10 @@ namespace FlexKit
 	LineSegments DEBUG_DrawPoseState(PoseState& poseState, NodeHandle node, iAllocator* allocator)
 	{
 		LineSegments lines{ allocator };
+		constexpr float4 Zero{ 0.0f, 0.0f, 0.0f, 1.0f };
 
-		Skeleton* S = poseState.Sk;
-		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
-		float4x4 WT = GetWT(node);
+		const Skeleton* S = poseState.Sk;
+		const float4x4 WT = GetWT(node);
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
@@ -321,17 +313,14 @@ namespace FlexKit
 			const float4 A = (WT * (JT * Zero));
 			const float4 B = (WT * (PT * Zero));
 
-			//const float4 A = DirectX::XMVector4Transform(Zero, Float4x4ToXMMATIRX(JT * WT));
-			//const float4 B = DirectX::XMVector4Transform(Zero, Float4x4ToXMMATIRX(PT * WT));
-
 			const float4 X = (WT * (PT * float4{ 0.3f, 0.0f, 0.0f, 1.0f }));
 			const float4 Y = (WT * (PT * float4{ 0.0f, 0.3f, 0.0f, 1.0f }));
 			const float4 Z = (WT * (PT * float4{ 0.0f, 0.0f, 0.3f, 1.0f }));
 
 			lines.push_back({ A.xyz(), WHITE,	B.xyz(), PURPLE	});
-			//lines.push_back({ B.xyz(), RED,		X.xyz(), RED		});
-			//lines.push_back({ B.xyz(), GREEN,	Y.xyz(), GREEN	});
-			//lines.push_back({ B.xyz(), BLUE,	Z.xyz(), BLUE		});
+			lines.push_back({ B.xyz(), RED,		X.xyz(), RED		});
+			lines.push_back({ B.xyz(), GREEN,	Y.xyz(), GREEN	});
+			lines.push_back({ B.xyz(), BLUE,	Z.xyz(), BLUE		});
 		}
 
 		return lines;

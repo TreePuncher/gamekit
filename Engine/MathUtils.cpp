@@ -152,29 +152,25 @@ namespace FlexKit
 		const float wy = w * y;
 		const float wz = w * z;
 
-		// Assign m1
-		m(0,0) = 1 - 2 * yy - 2 * zz;
-		m(0,1) = 2 * xy + 2 * wz;
-		m(0,2) = 2 * xz + 2 * wy;
-
-		m(0,3) = 0;
-
+		m(0,0) = 1.0f - 2.0f * yy - 2.0f * zz;
 		m(1,0) = 2.0f * xy + 2.0f * wz;
+		m(2,0) = 2.0f * xz - 2.0f * wy;
+		m(3,0) = 0.0f;
+
+		m(0,1) = 2.0f * xy - 2.0f * wz;
 		m(1,1) = 1.0f - 2.0f * xx - 2.0f * zz;
-		m(1,2) = 2.0f * yz - 2 * wx;
+		m(2,1) = 2.0f * yz + 2.0f * wx;
+		m(3,1) = 0.0f;
 
-		m(1,3) =  0;
-
-		m(2,0) = 2 * xz - 2 * wy;
-		m(2,1) = 2 * yz + 2 * wx;
-		m(2,2) = 1 - 2 * xx - 2 * yy;
-
-		m(2,3) = 0;
+		m(0,2) = 2.0f * xz + 2.0f * wy;
+		m(1,2) = 2.0f * yz - 2.0f * wx;
+		m(2,2) = 1.0f - 2.0f * xx - 2.0f * yy;
+		m(3,2) = 0.0f;
 		
-		m(3,0) = 0;
-		m(3,1) = 0;
-		m(3,2) = 0;
-		m(3,3) = 1;
+		m(0,3) = 0.0f;
+		m(1,3) = 0.0f;
+		m(2,3) = 0.0f;
+		m(3,3) = 1.0f;
 
 		return m;
 	}
@@ -199,10 +195,10 @@ namespace FlexKit
 		Temp1 = simde_mm_mul_ps(Temp1, simde_mm_set1_ps(0.5f));
 
 		// Copy Sign
-		simde__m128 Temp3 = simde_mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
-		simde__m128 Temp4 = simde_mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
-		simde__m128 Temp5 = simde_mm_sub_ps(Temp3, Temp4);
-		simde__m128 res = SSE_CopySign(Temp5, Temp1);
+		simde__m128 Temp3	= simde_mm_set_ps(GetFirst(Temp1),		M(0,1), M(2,0), M(1, 2));
+		simde__m128 Temp4	= simde_mm_set_ps(0.0f,					M(1,0), M(0,2), M(2, 1));
+		simde__m128 Temp5	= simde_mm_sub_ps(Temp3, Temp4);
+		simde__m128 res		= SSE_CopySign(Temp5, Temp1);
 
 		return Quaternion{ res }.normalize();
 #else 

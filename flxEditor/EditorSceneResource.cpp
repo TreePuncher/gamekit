@@ -843,15 +843,15 @@ namespace FlexKit
 			// Fetch Bind Pose
 			for (size_t I = 0; I < parentLinkage.size(); I++)
 			{
-				auto parent				= JointHandle(parentLinkage[I]);
-				float4x4 inversePose;
+				const auto parent	= JointHandle(parentLinkage[I]);
 
+				float4x4 inversePose;
 				memcpy(&inversePose, inverseMatrices + I, sizeof(float4x4));
 
 				SkeletonJoint joint;
 				joint.mParent	= parent;
 				joint.mID		= model.nodes[skin.joints[I]].name;
-				skeleton->AddJoint(joint, inversePose);
+				skeleton->AddJoint(joint, inversePose.Transpose());
 			}
 
 			resources.push_back(skeleton);
