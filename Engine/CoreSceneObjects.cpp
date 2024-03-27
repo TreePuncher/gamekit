@@ -291,7 +291,7 @@ namespace FlexKit
 		updatedView	= Inverse(updatedWT);
 		updatedProj	= CreatePerspectiveRH(*this, invert);
 		updatedPV	= updatedProj * updatedView;
-		updatedIV	= Inverse(updatedProj * updatedView);
+		updatedIV	= updatedWT;
 
 		previous.WT     = WT;
 		previous.View   = View;
@@ -349,13 +349,15 @@ namespace FlexKit
 	Camera::ConstantBuffer Camera::GetConstants() const
 	{
 		const float4x4 view = Inverse(WT);
+		const float4x4 PV	= Proj * view;
+		const float4x4 PVI	= Inverse(PV);
 
 		Camera::ConstantBuffer constants;
 		constants.Proj		= Proj;
 		constants.View		= View;
 		constants.ViewI		= WT;
-		constants.PV		= constants.Proj * view;
-		constants.PVI		= Inverse(constants.PV);
+		constants.PV		= PV;
+		constants.PVI		= PVI;
 		constants.MinZ		= Near;
 		constants.MaxZ		= Far;
 

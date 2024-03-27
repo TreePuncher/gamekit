@@ -588,7 +588,7 @@ void EditorPrefabPreview::RenderStatic(
 				FlexKit::UpdatePose(*poseState, allocator);
 
 				for (size_t I = 0; I < poseState->JointCount; I++)
-					reinterpret_cast<float4x4*>(poseBuffer.buffer)[I] = skeleton->IPose[I] * poseState->CurrentPose[I];
+					reinterpret_cast<float4x4_GPU*>(poseBuffer.buffer)[I] = poseState->CurrentPose[I] * skeleton->IPose[I];
 
 				ctx.CopyBufferRegion(frameResources.GetResource(data.poseBuffer), poseBuffer.resource, poseSize, 0, poseBuffer.offset);
 
@@ -693,7 +693,7 @@ void EditorPrefabPreview::RenderAnimated(
 		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
 		{
 			const auto		node	= FlexKit::GetSceneNode(object.gameObject);
-			const float4x4	PV		= GetCameraConstants(previewCamera).PV;
+			const float4x4	PV		= FlexKit::GetCameraPV(previewCamera);
 
 			FlexKit::LineSegments lines = FlexKit::DEBUG_DrawPoseState(*pose, node, allocator);
 
@@ -709,8 +709,8 @@ void EditorPrefabPreview::RenderAnimated(
 				}
 				else
 				{
-					//line.A = tempA.xyz() / tempA.w;
-					//line.B = tempB.xyz() / tempB.w;
+					line.A = tempA.xyz() / tempA.w;
+					line.B = tempB.xyz() / tempB.w;
 				}
 			}
 
@@ -1017,8 +1017,6 @@ void EditorPrefabPreview::RenderOverlays(
 
 void EditorPrefabPreview::CenterCamera()
 {
-	return;
-
 	auto& gameObject	= selection->gameObject;
 	auto meshes			= FlexKit::GetTriMesh(gameObject);
 

@@ -854,11 +854,11 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float, float)",	asFUNCTION(ConstructQuaternion_3),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectBehaviour("Quaternion", asBEHAVE_CONSTRUCT, "void ConstructQuat(float, float, float)",		asFUNCTION(ConstructQuaternion_2),	asCALL_CDECL_OBJFIRST);		FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion	opMul(Quaternion)",		asMETHODPR(Quaternion, operator *, (const Quaternion) const	noexcept,	Quaternion),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "float3		opMul(float3)",			asFUNCTIONPR(operator *, (const Quaternion, const float3)	noexcept,	float3),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion	opMul(Quaternion& in)",			asMETHODPR(Quaternion, operator *, (const Quaternion&) const	noexcept,	Quaternion),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "float3		opMul(float3)",					asFUNCTIONPR(operator *, (const Quaternion, const float3)	noexcept,	float3),		asCALL_CDECL_OBJFIRST);	FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opAssign(Quaternion)",			asMETHODPR(Quaternion, operator =,	(const Quaternion) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opMulAssign(Quaternion)",		asMETHODPR(Quaternion, operator *=,	(const Quaternion) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opAssign(Quaternion& in)",		asMETHODPR(Quaternion, operator =,	(const Quaternion&) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion& opMulAssign(Quaternion& in)",	asMETHODPR(Quaternion, operator *=,	(const Quaternion&) noexcept, Quaternion&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterObjectMethod("Quaternion", "Quaternion  Conjugate()",		asMETHOD(Quaternion, Conjugate),	asCALL_THISCALL);													FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("Quaternion", "float Dot(Quaternion& in)",		asMETHOD(Quaternion, dot),			asCALL_THISCALL);													FK_ASSERT(res > 0);

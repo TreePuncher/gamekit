@@ -13,7 +13,7 @@ $Env:path += ";" + $PathMSBuild
 
 &"msbuild" $PathSln -t:restore -p:RestorePackagesConfig=true -maxcpucount:32
 
-&"msbuild" $PathSln -target:TextureStreamingTest -target:AnimationTest -target:MergePathSortTest -target:HairRenderingExample  "/p:BuildInParallel=true" "/p:Configuration=Release" "/p:CL_MPcount=36"  -maxcpucount:32
+&"msbuild" $PathSln -target:TextureStreamingTest "/p:BuildInParallel=true" "/p:Configuration=Release" "/p:CL_MPcount=36"  -maxcpucount:32
 if(!$?) { Exit $LASTEXITCODE }
 
 ./copy_assets.ps1

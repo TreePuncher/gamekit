@@ -8,20 +8,20 @@ namespace FlexKit
 
 	float4x4 GetPoseTransform(JointPose P)
 	{
-		const auto Rotation		= DirectX::XMMatrixRotationQuaternion(DirectX::XMQuaternionNormalize(P.r));
-		const auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
-		const auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P.ts[0], P.ts[1], P.ts[2], 1.0f));
+		const auto rotation		= Quaternion2Matrix(P.r);
+		const auto scaling		= ScaleMatrix({ P.ts[3], P.ts[3], P.ts[3] });
+		const auto translation	= TranslationMatrix(P.ts.xyz());
 
-		return XMMatrixToFloat4x4((Scaling * Rotation) * Translation);
+		return translation * (scaling * rotation);
 	}
 
 
 	JointPose GetPose(const float4x4& M)
 	{
-		auto Q = FlexKit::MatrixToQuat(M);
-		auto P = M[3];
+		auto q = FlexKit::MatrixToQuat(M);
+		auto t = FlexKit::ExtractTranslationVector(M);
 
-		return{ Q, float4(P.Slice<0, 3>(), 1.0f)};
+		return { q, float4(t, 1.0f) };
 	}
 
 
@@ -72,7 +72,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float4x4 Skeleton::GetInversePose(const JointHandle H)
+	float4x4 Skeleton::GetInversePose(const JointHandle H) const
 	{
 		return H != InvalidHandle ? IPose[H] : float4x4::Identity();
 	}
@@ -168,7 +168,7 @@ namespace FlexKit
 			const auto parent       = skeleton.Joints[I].mParent;
 			const auto P            = (parent != InvalidHandle) ? pose.CurrentPose[parent] : float4x4::Identity();
 
-			pose.CurrentPose[I]     = skeletonT * P;
+			pose.CurrentPose[I]     = P * skeletonT;
 		}
 
 		return pose;

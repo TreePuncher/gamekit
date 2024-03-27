@@ -233,7 +233,7 @@ namespace FlexKit
 
 		PoseState       CreatePoseState(iAllocator& allocator);
 
-		float4x4		GetInversePose		(const JointHandle H);
+		float4x4		GetInversePose		(const JointHandle H) const;
 		JointHandle		FindJoint			(const char*);
 
 		float4x4*	    IPose		= nullptr; // Global Inverse Space Pose
