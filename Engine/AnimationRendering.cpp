@@ -88,14 +88,15 @@ namespace FlexKit
 					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
 					{
 
-						auto poseState	= GetPoseState(*gameObject);
-						auto skeleton	= poseState->Sk;
+						const auto poseState	= GetPoseState(*gameObject);
+						const auto skeleton		= poseState->Sk;
 
-						const size_t poseSize = sizeof(float4x4) * poseState->JointCount;
-						float4x4* pose = (float4x4*)allocator.malloc(poseSize);
+						const size_t jointCount	= poseState->JointCount;
+						const size_t poseSize	= sizeof(float4x4_GPU) * poseCount;
+						float4x4_GPU* pose = (float4x4_GPU*)allocator.malloc(poseSize);
 
-						for (size_t I = 0; I < poseState->JointCount; I++)
-							pose[I] = (skeleton->IPose[I] * poseState->CurrentPose[I]);
+						for (size_t I = 0; I < jointCount; I++)
+							pose[I] = poseState->CurrentPose[I] * skeleton->IPose[I];
 
 						transferContext.CreateResource(*(itr++), poseSize, pose);
 					}
