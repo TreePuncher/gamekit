@@ -393,7 +393,7 @@ namespace FlexKit
 				}
 			};
 
-			if (FAILED(renderSystem.pDevice10->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
+			if (FAILED(renderSystem.pDevice14->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
 				FK_LOG_ERROR("Failed to create State Object");
 		}
 
@@ -719,7 +719,7 @@ namespace FlexKit
 			};
 
 			ID3D12PipelineState* PSO = nullptr;
-			auto HR = renderSystem->pDevice10->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+			auto HR = renderSystem->pDevice14->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 			FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 

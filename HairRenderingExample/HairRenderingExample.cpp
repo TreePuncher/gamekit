@@ -385,6 +385,8 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 		style = CreateStyle(framework.GetRenderSystem(), controlPoints.strandLength, controlPoints.strandCount);
 		UploadHairStyle(style, controlPoints, framework.GetRenderSystem());
 	}
+
+	CreateWorkGraphObjects();
 }
 
 
@@ -398,6 +400,85 @@ HairRenderingTest::~HairRenderingTest()
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseResource(depthBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
+}
+
+
+/************************************************************************************************/
+
+
+void HairRenderingTest::CreateWorkGraphObjects()
+{
+	FlexKit::RootSignatureBuilder signatureBuilder{ framework.core.GetBlockMemory() };
+	auto rootSig = signatureBuilder.Build(GetRenderSystem(), framework.core.GetTempMemory());
+
+
+	D3D12_GLOBAL_ROOT_SIGNATURE signature =
+	{
+		.pGlobalRootSignature = *rootSig
+	};
+
+
+	auto shaderLibrary = GetRenderSystem()->LoadShader(nullptr, "lib_6_8", R"(assets\shaders\HairRendering\workgraphs\TestWorkGroup.hlsl)");
+
+	D3D12_EXPORT_DESC exports[] = {
+		{
+			L"Main",
+			L"Main",
+			D3D12_EXPORT_FLAGS::D3D12_EXPORT_FLAG_NONE
+		},
+	};
+
+	D3D12_DXIL_LIBRARY_DESC dxil_desc[] = {
+		{
+			.DXILLibrary = {
+				.pShaderBytecode	= shaderLibrary.buffer,
+				.BytecodeLength		= shaderLibrary.bufferSize,
+			},
+			.NumExports		= sizeof(exports) / sizeof(*exports),
+			.pExports		= exports,
+		}
+	};
+
+	D3D12_WORK_GRAPH_DESC workGroupDesk[] = {
+		{
+			.ProgramName				= L"Main",
+			.Flags						= D3D12_WORK_GRAPH_FLAGS::D3D12_WORK_GRAPH_FLAG_NONE,
+			.NumEntrypoints				= 0,
+			.pEntrypoints				= 0,
+			.NumExplicitlyDefinedNodes	= 0,
+			.pExplicitlyDefinedNodes	= nullptr,
+		}
+	};
+
+	D3D12_STATE_SUBOBJECT subObjects[] = {
+		{
+			.Type	= D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE,
+			.pDesc	= &signature,
+		},
+		{
+			.Type	= D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY,
+			.pDesc	= dxil_desc,
+		},
+		{
+			.Type	= D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH,
+			.pDesc	= workGroupDesk,
+		},
+	};
+
+	D3D12_STATE_OBJECT_DESC descs[] = {	{
+			.Type = D3D12_STATE_OBJECT_TYPE_EXECUTABLE,
+			.NumSubobjects = sizeof(subObjects) / sizeof(subObjects[0]),
+			.pSubobjects = subObjects,
+		}
+	};
+
+	ID3D12StateObject* stateObject = nullptr;
+	if (FAILED(GetRenderSystem()->pDevice14->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
+		FK_LOG_ERROR("Failed to create State Object");
+	else
+	{
+		workGraphObjects.stateObject = stateObject;
+	}
 }
 
 
@@ -768,6 +849,31 @@ void HairRenderingTest::DrawStrandsOIT(
 }
 
 
+void WorkGraph(
+	FlexKit::UpdateTask*					update,
+	FlexKit::EngineCore&					core,
+	FlexKit::UpdateDispatcher&				dispatcher,
+	const double							dT,
+	FlexKit::FrameGraph&					frameGraph,
+	FlexKit::ReserveVertexBufferFunction&	reserveVB,
+	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+{
+	struct DataStruct
+	{
+
+	};
+	frameGraph.AddNode(
+		DataStruct{
+		},
+		[&](FrameGraphNodeBuilder& builder, DataStruct& data)
+		{
+		},
+		[=, this](DataStruct& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		{
+		});
+}
+
+
 /************************************************************************************************/
 
 
@@ -786,20 +892,29 @@ UpdateTask* HairRenderingTest::Draw(
 	ClearVertexBuffer(frameGraph, vertexBuffer);
 	ClearDepthBuffer(frameGraph, depthBuffer, 1.0f);
 
-	auto reserveVB = CreateVertexBufferReserveObject(	vertexBuffer,	framework.GetRenderSystem(), framework.core.GetTempMemory());
-	auto reserveCB = CreateConstantBufferReserveObject(	constantBuffer,	framework.GetRenderSystem(), framework.core.GetTempMemory());
+	auto reserveVB = CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
+	auto reserveCB = CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
 
 	runOnceQueue.Process(dispatcher, frameGraph);
 
-	if(!pause)
-		Simulate(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+	switch(mode)
+	{
+	case Mode::Default:
+	{
+		if (!pause)
+			Simulate(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
 
-	DrawStrands(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+		DrawStrands(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+	}	break;
+	case Mode::WorkGraph:
+	{
+		WorkGraph(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+	}	break;
+	}
 
 	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
 
 	PresentBackBuffer(frameGraph, renderWindow);
-
 	return nullptr;
 }
 

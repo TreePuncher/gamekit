@@ -311,7 +311,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateInitiateDataPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return { PSO, sortingRootSignature };
 }
@@ -342,7 +342,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateLocalSortPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return { PSO, sortingRootSignature };
 }
@@ -373,7 +373,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateMergePathPSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return { PSO, sortingRootSignature };
 }
@@ -404,7 +404,7 @@ FlexKit::LoadPipelineStateRes SortTest::CreateGlobalMergePSO()
 	};
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
+	auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&PSO));
 
 	return { PSO, sortingRootSignature };
 }

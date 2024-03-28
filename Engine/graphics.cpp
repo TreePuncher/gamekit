@@ -1676,7 +1676,7 @@ namespace FlexKit
 			return nullptr;
 
 		ID3D12RootSignature* dxRootSig = nullptr;
-		HR = renderSystem.pDevice10->CreateRootSignature(0, buffer, bufferSize, IID_PPV_ARGS(&dxRootSig));
+		HR = renderSystem.pDevice14->CreateRootSignature(0, buffer, bufferSize, IID_PPV_ARGS(&dxRootSig));
 
 		if (FAILED(HR))
 			return nullptr;
@@ -1818,6 +1818,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	{
+		/*
+		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
+		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
+
+		struct
+		{
+			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
+
+		} DXILObject;
+		blob += DXILObject;
+
+		//D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH
+		*/
+	}
+
+
+	/************************************************************************************************/
+
+
 	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
@@ -1825,6 +1846,29 @@ namespace FlexKit
 
 		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& work_desc)
+	{
+		struct {
+			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH;
+			D3D12_WORK_GRAPH_DESC workGraph;
+		} subObject = {
+			.workGraph {
+				.ProgramName				= nullptr,
+				.Flags						= (D3D12_WORK_GRAPH_FLAGS)work_desc.flags,
+				.NumEntrypoints				= 0,
+				.pEntrypoints				= nullptr,
+				.NumExplicitlyDefinedNodes	= work_desc.nodeCount,
+				.pExplicitlyDefinedNodes	= nullptr,
+			}
+		};
+
+		blob += subObject;
 	}
 
 
@@ -2078,7 +2122,7 @@ namespace FlexKit
 		};
 
 		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		if (SUCCEEDED(HR))
 		{
@@ -2087,7 +2131,7 @@ namespace FlexKit
 				for (auto& shader : shaders)
 				{
 					ID3D12RootSignature* dxRootSig = nullptr;
-					HR = renderSystem.pDevice10->CreateRootSignature(0,shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
+					HR = renderSystem.pDevice14->CreateRootSignature(0,shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
 
 					if (SUCCEEDED(HR))
 					{
@@ -2135,7 +2179,7 @@ namespace FlexKit
 		};
 
 		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice10->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		return { pso, nullptr };
 	}
@@ -5676,46 +5720,74 @@ namespace FlexKit
 			FK_LOG_ERROR("Failed to enable Dred!");
 #endif
 
-		Device->QueryInterface(IID_PPV_ARGS(&pDevice10));
+		if(auto HR = Device->QueryInterface(IID_PPV_ARGS(&pDevice14)); FAILED(HR))
+			FK_LOG_ERROR("Device fails feature request!");
 
 		if(Debug)
 			Device->QueryInterface(IID_PPV_ARGS(&DebugDevice));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS9 options9 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
-		pDevice10->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS15, &options15, sizeof(options15));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS16, &options16, sizeof(options16));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS17 options17;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS18 options18;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS19 options19;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS19, &options19, sizeof(options19));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS20 options20;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS20, &options20, sizeof(options20));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21;
+		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
 
 		if (!options12.EnhancedBarriersSupported)
 			FK_LOG_ERROR("Required Feature: 'Enhanced Barriers' not available.");
@@ -5753,6 +5825,25 @@ namespace FlexKit
 		default:
 			break;
 		}
+
+		switch (options21.ExecuteIndirectTier)
+		{
+			case D3D12_EXECUTE_INDIRECT_TIER_1_0:
+				break;
+			case D3D12_EXECUTE_INDIRECT_TIER_1_1:
+				features.indirectLevel = AvailableFeatures::IndirectLevel_1_1;
+				break;
+		}
+
+		switch (options21.WorkGraphsTier)
+		{
+			case D3D12_WORK_GRAPHS_TIER_NOT_SUPPORTED:
+				break;
+			case D3D12_WORK_GRAPHS_TIER_1_0:
+				features.workGraph = AvailableFeatures::WorkGraphs_AVAILABLE;
+				break;
+		}
+
 
 #if USING(AFTERMATH)
 		auto res2 = GFSDK_Aftermath_EnableGpuCrashDumps(
@@ -6346,7 +6437,7 @@ namespace FlexKit
 		inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-		pDevice10->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+		pDevice14->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 		return {
 			.BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
@@ -6484,7 +6575,7 @@ namespace FlexKit
 					D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-					HRESULT HR = pDevice10->CreateReservedResource2(
+					HRESULT HR = pDevice14->CreateReservedResource2(
 									&Resource_DESC,
 									initialLayout,
 									clearValue,
@@ -6510,7 +6601,7 @@ namespace FlexKit
 					ProfileFunctionLabeled(Committed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
 
-					auto HR = pDevice10->CreateCommittedResource3(
+					auto HR = pDevice14->CreateCommittedResource3(
 						&heapProperties,
 						flags,
 						&Resource_DESC,
@@ -6529,7 +6620,7 @@ namespace FlexKit
 					ProfileFunctionLabeled(Placed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
 
-					HRESULT HR = pDevice10->CreatePlacedResource2(
+					HRESULT HR = pDevice14->CreatePlacedResource2(
 						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
@@ -6633,7 +6724,7 @@ namespace FlexKit
 			{
 				ProfileFunctionLabeled(Placed);
 
-				HRESULT HR = pDevice10->CreatePlacedResource2(
+				HRESULT HR = pDevice14->CreatePlacedResource2(
 					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 					desc.placed.offset,
 					&Resource_DESC,
@@ -7679,7 +7770,7 @@ namespace FlexKit
 		wchar_t profileW[64];
 
 		size_t fileWLength = 0;
-		if(entryPoint != nullptr)
+		if (entryPoint != nullptr)
 			mbstowcs(entryPointW, entryPoint, 64);
 
 		mbstowcs(profileW, profile, 64);
@@ -10333,7 +10424,7 @@ namespace FlexKit
 		}
 
 		ID3D12RootSignature* rootSignature = nullptr;
-		auto CreateHR = pDevice10->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
+		auto CreateHR = pDevice14->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
 
 		if (FAILED(CreateHR))
 		{

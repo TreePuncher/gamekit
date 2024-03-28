@@ -3521,19 +3521,31 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RT_FeatureLevel_NOTAVAILABLE,
 			RT_FeatureLevel_1,
 			RT_FeatureLevel_1_1,
-		} RT_Level;
+		} RT_Level = Raytracing::RT_FeatureLevel_NOTAVAILABLE;
 
 		enum ConservativeRasterization
 		{
 			ConservativeRast_AVAILABLE,
 			ConservativeRast_NOTAVAILABLE,
-		} conservativeRast;
+		} conservativeRast = ConservativeRast_NOTAVAILABLE;
 
 		enum struct HLSLCompiler
 		{
 			HLSL_CompilerEnabled,
 			HLSL_CompilerDisabled
-		} Compiler;
+		} Compiler = HLSLCompiler::HLSL_CompilerDisabled;
+
+		enum WorkGraphs
+		{
+			WorkGraphs_NOTAVAILABLE,
+			WorkGraphs_AVAILABLE,
+		} workGraph = WorkGraphs_AVAILABLE;
+
+		enum IndirectLevel
+		{
+			IndirectLevel_1,
+			IndirectLevel_1_1,
+		} indirectLevel = IndirectLevel_1;
 
 		ResourceHeapTier resourceHeapTier;
 	};
@@ -3715,6 +3727,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState);
 
 		Shader								LoadShader			(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
+		Shader								LoadShaderLibrary	(const char* file, const ShaderOptions& options = {});
 		std::expected<Shader, std::string>	LoadRootSignature	(const char* file, const char* entry);
 
 		PipelineStateLibraryDesc    CreatePipelibrary();
@@ -3855,7 +3868,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator RenderSystem* () { return this; }
 
 		ID3D12Device1*		pDevice			= nullptr;
-		ID3D12Device10*		pDevice10		= nullptr;
+		ID3D12Device14*		pDevice14		= nullptr;
 		ID3D12CommandQueue*	GraphicsQueue	= nullptr;
 		ID3D12CommandQueue*	ComputeQueue	= nullptr;
 
@@ -4547,6 +4560,13 @@ private:
 	};
 
 
+	struct WorkGraph_Desc
+	{
+		const char* programName = nullptr;
+		uint32_t	nodeCount	= 0;
+		uint32_t	flags		= 0;
+	};
+
 	struct PipelineBuilder
 	{
 		PipelineBuilder(iAllocator& allocator);
@@ -4554,7 +4574,9 @@ private:
 
 		void AddRootSignature	(const RootSignature* rootSig);
 
+		void AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
 		void AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		void AddWorkGraph		(const WorkGraph_Desc& desc = {});
 
 		void AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		void AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
@@ -4565,6 +4587,8 @@ private:
 		void AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
 		void AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+
+
 
 		void SetDebugName			(const char* name) { debugName = name; }
 
