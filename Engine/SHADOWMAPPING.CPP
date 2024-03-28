@@ -233,8 +233,8 @@ namespace FlexKit
 	{
 		const float4x4 viewOrientation	= Quaternion2Matrix(q);
 		const float4x4 viewTranslation	= TranslationMatrix(pos);
-		const float4x4 viewI			= viewTranslation.Transpose() * viewOrientation;
-		const float4x4 view				= Inverse(viewI);
+		const float4x4 viewI			= viewOrientation * viewTranslation;
+		const float4x4 view				= viewOrientation.Transpose() * TranslationMatrix(-pos);
 		const float4x4 perspective		= CreatePerspectiveRH(a, 0.01f, r, 1.0f);
 		const float4x4 pv				= perspective * view;
 
@@ -794,7 +794,7 @@ namespace FlexKit
 
 	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
-		PVS						brushes			{ allocator, (size_t)std::distance(begin, end) };
+		PVS						visibleSet		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
 
 		auto&					lights				= LightComponent::GetComponent();
@@ -821,7 +821,7 @@ namespace FlexKit
 							return pass == SHADOWMAPPASS;
 						}); res != passes.end())
 					{
-						PushPV(entity, view.GetBrush(), brushes, lightPosition);
+						PushPV(entity, view.GetBrush(), visibleSet, lightPosition);
 					}
 					else if (auto res = std::find_if(passes.begin(), passes.end(),
 							[](auto& pass)
@@ -847,14 +847,14 @@ namespace FlexKit
 
 		const auto [pv, v] = CalculateSpotLightMatrices(lightPosition, lightOrientation, light.R, light.outerAngle);
 
-		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
+		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)visibleSet.size(); brushIdx++)
 		{
-			auto& PV			= brushes[brushIdx];
-			const auto lodLevel	= PV.LODlevel;
-			auto& meshes		= PV.brush->meshes;
+			auto& visible		= visibleSet[brushIdx];
+			const auto lodLevel	= visible.LODlevel;
+			auto& meshes		= visible.brush->meshes;
 
-			const float4x4	WT		= GetWT(PV.brush->Node);
-			const float3	POS		= GetPositionW(PV.brush->Node);
+			const float4x4	WT		= GetWT(visible.brush->Node);
+			const float3	POS		= GetPositionW(visible.brush->Node);
 			const float		scale	= Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
 			struct

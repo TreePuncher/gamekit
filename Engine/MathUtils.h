@@ -581,7 +581,7 @@ namespace FlexKit
 
 
 		template<typename TY_i>
-		[[nodiscard]] constexpr TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
+		[[nodiscard]] constexpr TY Dot(const Vect<SIZE, TY_i>& rhs ) const noexcept
 		{
 			TY dotproduct = 0;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -592,9 +592,9 @@ namespace FlexKit
 
 
 		template<typename TY_i>
-		[[nodiscard]] constexpr TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
+		[[nodiscard]] constexpr TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) const noexcept
 		{
-			auto& rhs = *rhs_ptr;
+			const auto& rhs = *rhs_ptr;
 			Vect<SIZE> products;
 			for( size_t i = 0; i < SIZE; ++i )
 				products[i] += rhs[i] * Vector[i];
@@ -2511,11 +2511,11 @@ namespace FlexKit
 
 			for( size_t i = 0; i < Width; ++i )
 			{
-				const auto v = matrix[i];
+				const auto& v = Row(i);
 				for( size_t i2 = 0; i2 < Height; ++i2 )
 				{
 					const auto v2 = transposed[i2];
-					out[i2][i] = v.Dot(v2);
+					out(i2, i) = v.Dot(v2);
 				}
 			}
 
