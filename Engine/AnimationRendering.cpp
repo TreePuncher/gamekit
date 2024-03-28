@@ -28,9 +28,7 @@ namespace FlexKit
 				passes,
 				allocator
 			},
-			[&](FrameGraphNodeBuilder& builder, AnimationPoseUpload& data)
-			{
-			},
+			[&](FrameGraphNodeBuilder& builder, AnimationPoseUpload& data){},
 			[&](AnimationPoseUpload& data, ResourceHandler& resources, Context& ctx, iAllocator& localAllocator)
 			{
 				auto& pass  = passes.GetData().passes;

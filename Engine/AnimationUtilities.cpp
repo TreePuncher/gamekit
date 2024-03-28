@@ -12,7 +12,7 @@ namespace FlexKit
 		const auto scaling		= ScaleMatrix({ P.ts[3], P.ts[3], P.ts[3] });
 		const auto translation	= TranslationMatrix(P.ts.xyz());
 
-		return translation * (scaling * rotation);
+		return translation * (rotation * scaling);
 	}
 
 
