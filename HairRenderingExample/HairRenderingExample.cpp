@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 #include <cstdio>
 #include <fp16.h>
-#include <scn/scn.h>
+#include <scn/scan.h>
 #include <ranges>
 #include <imgui.h>
 
@@ -103,6 +103,7 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 	bool resetColumn = true;
 	for (const auto line : std::ranges::split_view(buffer, endLineDelim))
 	{
+		auto temp = line.size();
 		if (line.size())
 		{
 			lineCount++;
@@ -110,7 +111,7 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 			resetColumn = true;
 			uint32_t columnCount = 0;
 
-			for (const auto stringView : std::ranges::split_view(line, commaSeperator) | std::views::transform([&](auto a)
+			auto trimWhiteSpace = [&](const auto a)
 				{
 					if (a.begin() < buffer.end() && a.end() < buffer.end() && *a.end() != '\0')
 					{
@@ -119,28 +120,35 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 						bool endline = false;
 						bool fileEnd = false;
 
-						while (b < buffer.end() && (std::isspace(*b) || *b == ','))
+						while (b < a.end() && (std::isspace(*b) || *b == ','))
 						{
 							if (*b == '\n') endline = true;
 							if (*b == '\0') fileEnd = true;
 							b++;
 						}
-						while (e < buffer.end() && std::isspace(*e)) e--;
+						while (e > b && std::isspace(*e)) e--;
 
-						return std::string_view{ b, e };
+						auto temp = std::string_view{ b, e };
+						if (temp.size() > 1024)
+							DebugBreak();
+
+						return temp;
 					}
 					else return std::string_view{};
-				}))
-			{
-				float x, y, z;
+				};
 
-				if (scn::scan(stringView, "({} {} {})", x, y, z))
+			for (const auto stringView : std::ranges::split_view(line, commaSeperator) | std::views::transform(trimWhiteSpace))
+			{
+				std::string line{ stringView };
+
+				if (auto res = scn::scan<float, float, float>(stringView, "({} {} {})"); res.has_value())
 				{
+
 					const auto d	= resetColumn ? FlexKit::float3(0, 0, 0) : (float3{ floats.back().position[0], floats.back().position[1], floats.back().position[2] });
-					const float l	= resetColumn ? 0.0f : (d - float3{ x, y, z }).magnitude();
+					const float l	= resetColumn ? 0.0f : (d - float3{ std::get<0>(res->values()), std::get<1>(res->values()), std::get<2>(res->values()) }).magnitude();
 
 					ControlPoint controlPoint{
-						.position	= { x, y, z },
+						.position	= { std::get<0>(res->values()), std::get<1>(res->values()), std::get<2>(res->values()) },
 						.w			= fp16_ieee_from_fp32_value(resetColumn ? 0.2f : 1.0f),
 						.l			= fp16_ieee_from_fp32_value(l)
 					};
