@@ -21,8 +21,13 @@ int main()
 #else
 		const bool debugGPU = false;
 #endif
+		FlexKit::CoreOptions options{
+			.GPUdebugMode = true,
+			.GPUValidation = true,
+			.GPUSyncQueues = true,
+		};
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{.GPUdebugMode = debugGPU, .GPUSyncQueues = debugGPU });
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
 		
 		auto& state = app->PushState<HairRenderingTest>();
 

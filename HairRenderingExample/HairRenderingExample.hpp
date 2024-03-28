@@ -72,6 +72,8 @@ public:
 	HairRenderingTest(FlexKit::GameFramework& IN_framework);
 	~HairRenderingTest() final;
 
+	void CreateWorkGraphObjects();
+
 	FlexKit::LoadPipelineStateRes CreateApplyForcesPSO					(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateApplyShapeConstraintsPSO		(FlexKit::iAllocator& tempMemory);
 	FlexKit::LoadPipelineStateRes CreateApplyEdgeLengthConstraintPSO	(FlexKit::iAllocator& tempMemory);
@@ -83,6 +85,7 @@ public:
 	FlexKit::LoadPipelineStateRes CreateBlendState						(FlexKit::iAllocator& tempMemory);
 
 	void ClearStyleBuffers(HairStyle& style);
+
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) final;
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph) final;
@@ -104,6 +107,14 @@ public:
 						FlexKit::ReserveConstantBufferFunction&	reserveCB);
 
 	void DrawStrandsOIT(FlexKit::UpdateTask*					update,
+						FlexKit::EngineCore&					core,
+						FlexKit::UpdateDispatcher&				dispatcher,
+						const double							dT,
+						FlexKit::FrameGraph&					frameGraph,
+						FlexKit::ReserveVertexBufferFunction&	reserveVB,
+						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+
+	void WorkGraph(		FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
@@ -140,6 +151,17 @@ public:
 	FlexKit::MemoryPoolAllocator	RTPool;
 
 	FlexKit::RunOnceQueue<void (FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
+
+	enum class Mode
+	{
+		Default,
+		WorkGraph
+	}	mode = Mode::Default;
+
+	struct WorkGraphObjects
+	{
+		ID3D12StateObject* stateObject = nullptr;
+	}	workGraphObjects;
 };
 
 
