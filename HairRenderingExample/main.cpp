@@ -22,9 +22,9 @@ int main()
 		const bool debugGPU = false;
 #endif
 		FlexKit::CoreOptions options{
-			.GPUdebugMode = true,
-			.GPUValidation = true,
-			.GPUSyncQueues = true,
+			.GPUdebugMode	= true,
+			.GPUValidation	= true,
+			.GPUSyncQueues	= true,
 		};
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);

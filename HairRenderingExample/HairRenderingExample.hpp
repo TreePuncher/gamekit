@@ -160,7 +160,26 @@ public:
 
 	struct WorkGraphObjects
 	{
-		ID3D12StateObject* stateObject = nullptr;
+		~WorkGraphObjects()
+		{
+			if (stateObject)
+			{
+				stateObject->Release();
+				properties->Release();
+
+				stateObject = nullptr;
+				properties	= nullptr;
+			}
+		}
+
+		FlexKit::RootSignature*			globalRootSignature	= nullptr;
+
+		ID3D12StateObject*				stateObject			= nullptr;
+		ID3D12StateObjectProperties1*	properties			= nullptr;
+		ID3D12WorkGraphProperties*		workGraphProperties	= nullptr;
+
+		D3D12_PROGRAM_IDENTIFIER		main;
+		uint32_t						mainID;
 	}	workGraphObjects;
 };
 

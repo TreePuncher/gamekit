@@ -687,8 +687,33 @@ namespace FlexKit
 		ID3D12Resource*			GetDeviceResource(TY handle) const							{ return globalResources.GetDeviceResource(handle); }
 		ID3D12Resource*			GetDeviceResource(FrameResourceHandle handle) const			{ return globalResources.GetDeviceResource(GetResource(handle)); }
 
-		template<typename TY>
-		DevicePointer			GetDevicePointer(TY handle) const							{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+		DevicePointer			GetDevicePointer		(auto handle) const	{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+
+		DeviceAddressRange		GetDevicePointerRange	(FrameResourceHandle handle) const
+		{
+				auto	device_ptr	= GetDeviceResource(handle);
+				size_t	size		= globalResources.renderSystem.GetResourceSize(GetResource(handle));
+
+				return { .range{ device_ptr->GetGPUVirtualAddress(), size }};
+		}
+
+		DeviceAddressRange		GetDevicePointerRange(ResourceHandle handle) const
+		{
+			auto device_ptr = GetDeviceResource(handle);
+			globalResources.renderSystem.GetResourceSize(handle);
+
+			return { };
+		}
+
+		DeviceAddressRange		GetDevicePointerRange(const ConstantBufferDataSet& dataSet) const
+		{
+			ID3D12Resource* resource = globalResources.renderSystem.GetDeviceResource(dataSet.Handle());
+			D3D12_GPU_VIRTUAL_ADDRESS ptr = resource->GetGPUVirtualAddress();
+
+			ptr += dataSet.Offset();
+			return { { ptr, dataSet.Size() }};
+		}
+
 
 		ID3D12PipelineState*	GetPipelineState(PSOHandle state, iAllocator& temp) const	{ return globalResources.GetPipelineState(state, temp); }
 
