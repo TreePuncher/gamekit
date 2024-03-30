@@ -1774,9 +1774,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Clear();
 
-		[[nodiscard]]	const RootSignature* Build(RenderSystem* RS, iAllocator& TempMemory);
-		[[nodiscard]]	const RootSignature* LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
-		[[nodiscard]]	const RootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, RenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	RootSignature* Build(RenderSystem* RS, iAllocator& TempMemory);
+		[[nodiscard]]	RootSignature* LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	RootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, RenderSystem& renderSystem, iAllocator& temp);
 
 		bool AllowIA	= true;
 		bool AllowSO	= false;
@@ -3804,9 +3804,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ResourceHandle			_CreateDefaultTexture();
 		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
-		const RootSignature*	_CreateRootSignature(ID3D12RootSignature* rootsig, RootSignatureBuilder& builder);
-		const RootSignature*	_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);
-		const RootSignature*	_GetRootSignature(uint64_t hashID) const;
+		RootSignature*			_CreateRootSignature(ID3D12RootSignature* rootsig, RootSignatureBuilder& builder);
+		RootSignature*			_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);
+		RootSignature*			_GetRootSignature(uint64_t hashID) const;
 		void					_ReleaseRootSignature(uint64_t hashID);
 
 		enum class DescriptorRangeAllocationError
@@ -4264,7 +4264,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void UpdateResourceStates();
 
 		ID3D12CommandAllocator*			commandAllocator		= nullptr;
-		ID3D12GraphicsCommandList7*		DeviceContext			= nullptr;
+		ID3D12GraphicsCommandList10*	DeviceContext			= nullptr;
 
 #if USING(DEBUGGRAPHICS)
 		ID3D12DebugCommandList*			debugCommandList		= nullptr;

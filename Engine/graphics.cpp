@@ -1528,7 +1528,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RootSignatureBuilder::Build(RenderSystem* RS, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::Build(RenderSystem* RS, iAllocator& temp)
 	{
 		auto result = RenderSystem::_GetInstance()._CreateRootSignature(*this, temp);
 
@@ -1542,7 +1542,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
 	{
 		auto result = renderSystem.LoadRootSignature(dir, entry);
 		
@@ -1662,7 +1662,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* buffer, const size_t bufferSize, RenderSystem& renderSystem, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* buffer, const size_t bufferSize, RenderSystem& renderSystem, iAllocator& temp)
 	{
 		ID3D12VersionedRootSignatureDeserializer* deserializer;
 		auto HR  = D3D12CreateVersionedRootSignatureDeserializer(buffer, bufferSize, IID_PPV_ARGS(&deserializer));
@@ -10260,7 +10260,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
+	RootSignature* RenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
 	{
 		std::shared_lock lock{ rootSignatureLock };
 
@@ -10282,7 +10282,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
+	RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps{ temp };
 		DesciptorHeaps.reserve(12);
@@ -10456,7 +10456,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const RootSignature* RenderSystem::_GetRootSignature(uint64_t hashID) const
+	RootSignature* RenderSystem::_GetRootSignature(uint64_t hashID) const
 	{
 		std::shared_lock lock{ const_cast<std::shared_mutex&>(rootSignatureLock) };
 		auto sig = rootSignatures[hashID];

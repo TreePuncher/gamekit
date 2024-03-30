@@ -9,6 +9,7 @@
 #include <ranges>
 #include <imgui.h>
 
+
 /************************************************************************************************/
 
 
@@ -268,7 +269,6 @@ LoadPipelineStateRes HairRenderingTest::CreateStrandRender1PSO(iAllocator& tempM
 }
 
 
-
 /************************************************************************************************/
 
 
@@ -408,8 +408,11 @@ HairRenderingTest::~HairRenderingTest()
 
 void HairRenderingTest::CreateWorkGraphObjects()
 {
-	FlexKit::RootSignatureBuilder signatureBuilder{ framework.core.GetBlockMemory() };
-	auto rootSig = signatureBuilder.Build(GetRenderSystem(), framework.core.GetTempMemory());
+	if (GetRenderSystem()->features.workGraph != FlexKit::AvailableFeatures::WorkGraphs_AVAILABLE)
+		return;
+
+	FlexKit::RootSignatureBuilder	signatureBuilder{ framework.core.GetBlockMemory() };
+	FlexKit::RootSignature*			rootSig = signatureBuilder.Build(GetRenderSystem(), framework.core.GetTempMemory());
 
 
 	D3D12_GLOBAL_ROOT_SIGNATURE signature =
@@ -420,36 +423,28 @@ void HairRenderingTest::CreateWorkGraphObjects()
 
 	auto shaderLibrary = GetRenderSystem()->LoadShader(nullptr, "lib_6_8", R"(assets\shaders\HairRendering\workgraphs\TestWorkGroup.hlsl)");
 
-	D3D12_EXPORT_DESC exports[] = {
-		{
-			L"Main",
-			L"Main",
-			D3D12_EXPORT_FLAGS::D3D12_EXPORT_FLAG_NONE
-		},
-	};
-
 	D3D12_DXIL_LIBRARY_DESC dxil_desc[] = {
 		{
 			.DXILLibrary = {
 				.pShaderBytecode	= shaderLibrary.buffer,
 				.BytecodeLength		= shaderLibrary.bufferSize,
 			},
-			.NumExports		= sizeof(exports) / sizeof(*exports),
-			.pExports		= exports,
+			.NumExports		= 0,
+			.pExports		= nullptr,
 		}
 	};
 
 	D3D12_WORK_GRAPH_DESC workGroupDesk[] = {
 		{
 			.ProgramName				= L"Main",
-			.Flags						= D3D12_WORK_GRAPH_FLAGS::D3D12_WORK_GRAPH_FLAG_NONE,
+			.Flags						= D3D12_WORK_GRAPH_FLAGS::D3D12_WORK_GRAPH_FLAG_INCLUDE_ALL_AVAILABLE_NODES,
 			.NumEntrypoints				= 0,
 			.pEntrypoints				= 0,
 			.NumExplicitlyDefinedNodes	= 0,
 			.pExplicitlyDefinedNodes	= nullptr,
 		}
 	};
-
+	
 	D3D12_STATE_SUBOBJECT subObjects[] = {
 		{
 			.Type	= D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE,
@@ -464,20 +459,47 @@ void HairRenderingTest::CreateWorkGraphObjects()
 			.pDesc	= workGroupDesk,
 		},
 	};
-
-	D3D12_STATE_OBJECT_DESC descs[] = {	{
-			.Type = D3D12_STATE_OBJECT_TYPE_EXECUTABLE,
-			.NumSubobjects = sizeof(subObjects) / sizeof(subObjects[0]),
-			.pSubobjects = subObjects,
-		}
+	
+	D3D12_STATE_OBJECT_DESC descs = {
+		.Type			= D3D12_STATE_OBJECT_TYPE_EXECUTABLE,
+		.NumSubobjects	= sizeof(subObjects) / sizeof(subObjects[0]),
+		.pSubobjects	= subObjects,
 	};
 
 	ID3D12StateObject* stateObject = nullptr;
-	if (FAILED(GetRenderSystem()->pDevice14->CreateStateObject(descs, IID_PPV_ARGS(&stateObject))))
+	if (FAILED(GetRenderSystem()->pDevice14->CreateStateObject(&descs, IID_PPV_ARGS(&stateObject))))
 		FK_LOG_ERROR("Failed to create State Object");
 	else
 	{
-		workGraphObjects.stateObject = stateObject;
+		ID3D12StateObjectProperties1*	properties			= nullptr;
+		ID3D12WorkGraphProperties*		workGraphProperties = nullptr;
+		auto HR1 = stateObject->QueryInterface<ID3D12StateObjectProperties1>(&properties);
+		auto HR2 = stateObject->QueryInterface<ID3D12WorkGraphProperties>(&workGraphProperties);
+
+		if (FAILED(HR1) || FAILED(HR2))
+		{
+			if(stateObject)
+				stateObject->Release();
+			if(properties)
+				properties->Release();
+			if (workGraphProperties)
+				workGraphProperties->Release();
+
+			rootSig->Release();
+
+			mode = Mode::Default;
+		}
+		else
+		{
+			workGraphObjects.globalRootSignature	= rootSig;
+			workGraphObjects.stateObject			= stateObject;
+			workGraphObjects.properties				= properties;
+			workGraphObjects.workGraphProperties	= workGraphProperties;
+
+			workGraphObjects.main	= properties->GetProgramIdentifier(L"Main");
+			workGraphObjects.mainID = workGraphProperties->GetWorkGraphIndex(L"Main");
+			mode					= Mode::WorkGraph;
+		}
 	}
 }
 
@@ -849,7 +871,10 @@ void HairRenderingTest::DrawStrandsOIT(
 }
 
 
-void WorkGraph(
+/************************************************************************************************/
+
+
+void HairRenderingTest::WorkGraph(
 	FlexKit::UpdateTask*					update,
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
@@ -860,16 +885,59 @@ void WorkGraph(
 {
 	struct DataStruct
 	{
+		FlexKit::ReserveConstantBufferFunction	reserveCB;
 
+		FlexKit::FrameResourceHandle workGroupStorage;
+		FlexKit::FrameResourceHandle renderTarget;
 	};
+
 	frameGraph.AddNode(
 		DataStruct{
+			.reserveCB = reserveCB,
 		},
 		[&](FrameGraphNodeBuilder& builder, DataStruct& data)
 		{
+			D3D12_WORK_GRAPH_MEMORY_REQUIREMENTS memoryRequirements{};
+			workGraphObjects.workGraphProperties->GetWorkGraphMemoryRequirements(workGraphObjects.mainID, &memoryRequirements);
+			
+			data.workGroupStorage	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(memoryRequirements.MaxSizeInBytes), FlexKit::DeviceAccessState::DASUAV);
+			data.renderTarget		= builder.RenderTarget(renderWindow.GetBackBuffer());
 		},
 		[=, this](DataStruct& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
+			auto CBBuffer = data.reserveCB(1024);
+			
+			struct TestData
+			{
+				uint4 XYXW;
+			} test;
+			
+			ConstantBufferDataSet constants{test, CBBuffer};
+			
+			auto range = resources.GetDevicePointerRange(constants);
+
+			D3D12_SET_PROGRAM_DESC programDesc;
+			programDesc.Type									= D3D12_PROGRAM_TYPE_WORK_GRAPH;
+			programDesc.WorkGraph.BackingMemory					= resources.GetDevicePointerRange(data.workGroupStorage);
+			programDesc.WorkGraph.Flags							= D3D12_SET_WORK_GRAPH_FLAG_INITIALIZE;
+			programDesc.WorkGraph.ProgramIdentifier				= workGraphObjects.main;
+			programDesc.WorkGraph.NodeLocalRootArgumentsTable	= { 0 };
+
+			//programDesc.WorkGraph.NodeLocalRootArgumentsTable	= { range.range.StartAddress, sizeof(TestData), sizeof(TestData) };
+
+			D3D12_DISPATCH_GRAPH_DESC graph;
+			graph.Mode							= D3D12_DISPATCH_MODE::D3D12_DISPATCH_MODE_NODE_CPU_INPUT;
+			graph.NodeCPUInput					= { };
+			graph.NodeCPUInput.EntrypointIndex	= workGraphObjects.mainID;
+			graph.NodeCPUInput.NumRecords		= 1;
+
+			ctx.FlushBarriers();
+			ctx.SetComputeRootSignature(workGraphObjects.globalRootSignature);
+			ctx.DeviceContext->SetProgram(&programDesc);
+			ctx.DeviceContext->DispatchGraph(&graph);
+
+			programDesc.WorkGraph.Flags = D3D12_SET_WORK_GRAPH_FLAG_NONE;
+			ctx.DeviceContext->DispatchGraph(&graph);
 		});
 }
 
