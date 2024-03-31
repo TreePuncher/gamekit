@@ -69,12 +69,13 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
-	AddAssetFile(R"(assets\ShadowTest.gameres)");
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
 
+	if(0)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light)
 		{
@@ -121,6 +122,7 @@ TextureStreamingTest::~TextureStreamingTest()
 FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FK_LOG_9("Frame Begin");
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 
 	UpdateInput();
 
@@ -128,6 +130,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
 
+	if(0)
 	scene.QueryFor(
 		[&](GameObject& gameObject, auto&& light, auto&& node)
 		{
@@ -279,8 +282,6 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	renderWindow.Present(vsync ? 1 : 0, 0);
 
 	depthBuffer.Increment();
-
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

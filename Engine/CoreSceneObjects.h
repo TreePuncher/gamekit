@@ -149,7 +149,6 @@ namespace FlexKit
 		{
 			float4x4_GPU		Transform;
 			MaterialProperties	MP;
-			uint32_t			padding1[2];
 			uint4				textureHandles[16];
 		};
 

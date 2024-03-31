@@ -761,13 +761,13 @@ namespace FlexKit
 			auto cameraConstantValues	= GetCameraConstants(data.camera);
 
 			// Widen FOV to avoid some pop in when rotating camera
-			cameraConstantValues.FOV *= 1.2f;
-			cameraConstantValues = CalculateCameraConstants(
-				cameraConstantValues.AspectRatio,
-				cameraConstantValues.FOV,
-				cameraConstantValues.MinZ,
-				cameraConstantValues.MaxZ,
-				cameraConstantValues.ViewI);
+			//cameraConstantValues.FOV *= 1.2f;
+			//cameraConstantValues = CalculateCameraConstants(
+			//	cameraConstantValues.AspectRatio,
+			//	cameraConstantValues.FOV,
+			//	cameraConstantValues.MinZ,
+			//	cameraConstantValues.MaxZ,
+			//	cameraConstantValues.ViewI);
 
 			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
 
@@ -829,7 +829,7 @@ namespace FlexKit
 						{
 							FeedbackPassConstants passConstants{ .bias = bias };
 
-							for (auto [idx, texture] : zip(iota(0), material.textures))
+							for (auto [idx, texture] : enumerate(material.textures))
 							{
 								uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -1491,7 +1491,8 @@ namespace FlexKit
 		auto erased = std::ranges::unique(updatedTextures);
 		updatedTextures.resize(updatedTextures.size() - erased.size());
 
-		renderSystem.SyncUploadTo(renderSystem.SyncDirectTicket());
+		renderSystem.SyncUploadTo(renderSystem.SyncSubmittedDirectPoint());
+		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
 		renderSystem.SubmitTileMappings(updatedTextures, &threadLocalAllocator);
 		renderSystem.SubmitUploadQueues(&ctxHandle, 1);
 		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
