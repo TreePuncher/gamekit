@@ -382,9 +382,7 @@ namespace FlexKit
 		constexpr size_t bufferCount = 3;
 		ID3D12Resource*  resources[3];
 
-		D3D12_RESOURCE_STATES InitialState = GPUResident ? 
-			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON :
-			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_GENERIC_READ;
+		D3D12_RESOURCE_STATES InitialState = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
 		for(size_t I = 0; I < bufferCount; ++I)
 		{
@@ -3261,7 +3259,7 @@ namespace FlexKit
 		auto resource = renderSystem->GetDeviceResource(CB);
 
 		if (debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
@@ -3277,7 +3275,7 @@ namespace FlexKit
 		auto resource = renderSystem->GetDeviceResource(CB.Handle());
 
 		if(debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
+			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());

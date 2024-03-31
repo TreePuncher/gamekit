@@ -69,7 +69,7 @@ std::expected<ImportedStyleBuffer, int> ImportCSV(const std::filesystem::path& p
 class HairRenderingTest : public FlexKit::FrameworkState
 {
 public:
-	HairRenderingTest(FlexKit::GameFramework& IN_framework);
+	HairRenderingTest(FlexKit::GameFramework& IN_framework, bool enableWorkGraph = false);
 	~HairRenderingTest() final;
 
 	void CreateWorkGraphObjects();

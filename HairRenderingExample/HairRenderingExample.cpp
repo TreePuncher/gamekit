@@ -338,7 +338,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateBlendState(iAllocator& te
 /************************************************************************************************/
 
 
-HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
+HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWorkGraph) :
 	FrameworkState				{ IN_framework },
 	vertexBuffer				{ IN_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	constantBuffer				{ IN_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
@@ -386,7 +386,8 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework) :
 		UploadHairStyle(style, controlPoints, framework.GetRenderSystem());
 	}
 
-	CreateWorkGraphObjects();
+	if(enableWorkGraph)
+		CreateWorkGraphObjects();
 }
 
 

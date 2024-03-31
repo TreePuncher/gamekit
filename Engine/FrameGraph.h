@@ -2034,16 +2034,12 @@ namespace FlexKit
 				{
 					nodeData->pendingCopies.emplace_back(initialData, resourceSize, dstResource);
 
-					std::atomic_ref ref{ frameResources.virtualResourceCount };
-					ref++;
-
-
 					auto GetMemoryPool = [&]
 					{
 						if (!nodeData->pool)
 						{
-							const auto& desc = GPUResourceDesc::StructuredResource((uint32_t)resourceSize);
-							const auto	flags = GetNeededFlags(desc);
+							const auto& desc	= GPUResourceDesc::StructuredResource((uint32_t)resourceSize);
+							const auto	flags	= GetNeededFlags(desc);
 							return frameResources.FindMemoryPool(flags);
 						}
 						else
@@ -2051,8 +2047,13 @@ namespace FlexKit
 					};
 
 					PoolAllocatorInterface* pool = GetMemoryPool();
-					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource((uint32_t)resourceSize));
+					if (!pool)
+						return { InvalidHandle };
 
+					std::atomic_ref arc_ref{ frameResources.virtualResourceCount };
+					arc_ref++;
+
+					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource((uint32_t)resourceSize));
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
 					frameObject->shaderResource		= resourceHandle;
@@ -2068,10 +2069,6 @@ namespace FlexKit
 				{
 					nodeData->pendingCopies.emplace_back((void*)byteView.data(), byteView.size_bytes(), dstResource);
 
-					std::atomic_ref ref{ frameResources.virtualResourceCount };
-					ref++;
-
-
 					auto GetMemoryPool = [&]
 					{
 						if (!nodeData->pool)
@@ -2085,8 +2082,13 @@ namespace FlexKit
 					};
 
 					PoolAllocatorInterface* pool = GetMemoryPool();
+					if (!pool)
+						return { InvalidHandle };
+
 					auto [resourceHandle, overlap] = pool->Acquire(GPUResourceDesc::StructuredResource((uint32_t)byteView.size_bytes()));
 
+					std::atomic_ref arc_ref{ frameResources.virtualResourceCount };
+					arc_ref++;
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
 					frameObject->shaderResource		= resourceHandle;
@@ -2100,8 +2102,7 @@ namespace FlexKit
 
 				AcquireResult AcquireTemporary(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
 				{
-					std::atomic_ref ref{ frameResources.virtualResourceCount };
-					ref++;
+
 
 					auto GetMemoryPool = [&]
 					{
@@ -2115,6 +2116,12 @@ namespace FlexKit
 					};
 
 					PoolAllocatorInterface* pool = GetMemoryPool();
+					if (!pool)
+						return { FlexKit::InvalidHandle };
+
+					std::atomic_ref arc_ref{ frameResources.virtualResourceCount };
+					arc_ref++;
+
 					auto [resourceHandle, overlap] = pool->Acquire(desc);
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
@@ -2122,7 +2129,7 @@ namespace FlexKit
 					frameObject->pool				= pool;
 					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
 
-					return {resourceHandle, overlap};
+					return { resourceHandle, overlap };
 				}
 
 				AcquireResult AllocateResource(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
@@ -2139,6 +2146,9 @@ namespace FlexKit
 					};
 
 					PoolAllocatorInterface* pool = GetMemoryPool();
+					if (!pool)
+						return { InvalidHandle };
+
 					auto [resourceHandle, overlap] = pool->Acquire(desc);
 
 					auto frameObject				= frameResources.GetResourceObject(dstResource);
@@ -2155,6 +2165,12 @@ namespace FlexKit
 					const auto desc			= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
 
 					auto [handle, _] = AllocateResource(resource, desc);
+
+					if (handle == InvalidHandle)
+					{
+						FK_LOG_ERROR("Failed to Allocate BLAS!");
+						return;
+					}
 
 					nodeData->scratchPadSize = Max(nodeData->scratchPadSize, prebuildInfo.BLAS_byteSize);
 					nodeData->BVHBuilds.emplace_back(handle, &src_lod);
