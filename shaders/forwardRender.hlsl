@@ -276,7 +276,6 @@ float2 Encode(float3 n)
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
-
 	Deferred_OUT gbuffer;
 
 	uint textureIdx = 0;
@@ -294,10 +293,6 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 	else
 		roughMetal = float4(IOR, Roughness, Metallic, Anisotropic);
 
-	gbuffer.Albedo	= float4(albedo.xyz, Ks);
-	gbuffer.MRIA	= float4(Metallic, Roughness, IOR, Anisotropic); //roughMetal.zyxw * 
-	gbuffer.Depth	= IN.depth;
-
 	if((textureChannels & NORMAL) != 0x00)
 	{
 		const float3 normalSample		= SampleVirtualTexture(textures[NonUniformResourceIndex(textureIdx++)], BiLinear, IN.UV).xyz;
@@ -311,6 +306,9 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 	else
 		gbuffer.Normal = Encode(normalize(IN.Normal));
 
+	gbuffer.Albedo	= float4(albedo.xyz, Ks);
+	gbuffer.MRIA	= float4(Metallic, Roughness, IOR, Anisotropic);
+	gbuffer.Depth	= IN.depth;
 
 	return gbuffer;
 }

@@ -11,9 +11,9 @@ int main()
 
 		FlexKit::CoreOptions options{
 			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1,
-			.GPUdebugMode	= false,
-			.GPUValidation	= false,
-			.GPUSyncQueues	= false,
+			.GPUdebugMode	= true,
+			.GPUValidation	= true,
+			.GPUSyncQueues	= true,
 		};
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);

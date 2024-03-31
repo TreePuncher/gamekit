@@ -996,8 +996,8 @@ namespace FlexKit
 			},
 			[](BrushConstants& data, FrameResources& resources, iAllocator& localAllocator) // before submission task sections begin
 			{
-				auto& materials = MaterialComponent::GetComponent();
-				auto& brushes	= data.passes.GetData().solid;
+				const auto& materials	= MaterialComponent::GetComponent();
+				const auto& brushes		= data.passes.GetData().solid;
 				
 				data.entityTable.reserve(brushes.size());
 
@@ -1012,15 +1012,15 @@ namespace FlexKit
 			},
 			[](BrushConstants& data, iAllocator& localAllocator) // in parallel with all other tasks
 			{
-				auto& brushes			= data.passes.GetData().solid;
-				auto& constantBuffer	= data.GetConstantBuffer();
-				auto& materials			= MaterialComponent::GetComponent();
+				const	auto& brushes			= data.passes.GetData().solid;
+				const	auto& materials			= MaterialComponent::GetComponent();
+						auto& constantBuffer	= data.GetConstantBuffer();
 
 				for (auto& brush : brushes)
 				{
-					const auto& mainMaterial	= materials[brush.brush->material];
-					const auto& subMaterials	= mainMaterial.subMaterials;
-					auto constants				= brush->GetConstants();
+					const	auto&	mainMaterial	= materials[brush.brush->material];
+					const	auto&	subMaterials	= mainMaterial.subMaterials;
+							auto	constants		= brush->GetConstants();
 
 					if (subMaterials.size())
 					{
@@ -1033,13 +1033,10 @@ namespace FlexKit
 								subMaterial.HasTexture(GetTypeGUID(NORMAL)) << 1 |
 								subMaterial.HasTexture(GetTypeGUID(METALLICROUGHNESS)) << 2;
 
-							constants.MP.textureCount = mainMaterial.textures.size();
+							constants.MP.textureCount = subMaterial.textures.size();
 
-							auto& textures			= subMaterial.textures;
-
-							size_t idx = 0;
-							for (auto& texture : textures)
-								constants.textureHandles[idx++] = uint4{ 256, 256, texture.to_uint() };
+							for (auto&& [idx, texture] : enumerate(subMaterial.textures))
+								constants.textureHandles[idx] = uint4{ 256, 256, texture.to_uint() };
 
 							constantBuffer.Push(constants);
 						}
