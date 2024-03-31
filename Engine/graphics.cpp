@@ -6156,17 +6156,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::WaitFor(uint64_t counter)
+	void RenderSystem::WaitFor(const uint64_t counter)
 	{
-		const size_t completedValue	= directFence->GetCompletedValue();
-		if (completedValue < counter)
+		uint32_t stallCounter = 0;
+		while (true)
 		{
-			GraphicsQueue->Signal(directFence, counter);
+#ifdef _DEBUG
+			if (stallCounter == 100)
+			{
+				FK_LOG_ERROR("Stuck waiting for: %z\n", counter);
+				DebugBreak();
+			}
+#endif
 
-			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
-			directFence->SetEventOnCompletion(counter, eventHandle);
-			WaitForSingleObject(eventHandle, INFINITE);
-			CloseHandle(eventHandle);
+			const size_t completedValue = directFence->GetCompletedValue();
+			if (completedValue < counter)
+			{
+				GraphicsQueue->Signal(directFence, counter);
+
+				const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+				directFence->SetEventOnCompletion(counter, eventHandle);
+				WaitForSingleObject(eventHandle, 1);
+				CloseHandle(eventHandle);
+			}
+			else
+				return;
+
+			stallCounter++;
 		}
 	}
 
@@ -10522,6 +10538,8 @@ namespace FlexKit
 
 	void RenderSystem::SyncUploadTo(SyncPoint sp)
 	{
+		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
+
 		copyEngine.copyQueue->Wait(sp.fence, sp.syncCounter);
 	}
 
@@ -10532,14 +10550,19 @@ namespace FlexKit
 
 	SyncPoint RenderSystem::SyncUploadTicket()
 	{
+
 		const uint64_t counter = ++copyEngine.counter;
 		copyEngine.copyQueue->Signal(copyEngine.fence, counter);
+
+		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", copyEngine.fence, counter);
 
 		return { counter, copyEngine.fence };
 	}
 
 	void RenderSystem::SyncDirectTo(SyncPoint sp)
 	{
+		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
+
 		GraphicsQueue->Wait(sp.fence, sp.syncCounter);
 	}
 
@@ -10548,16 +10571,28 @@ namespace FlexKit
 		return { directSubmissionCounter, directFence };
 	}
 
+	SyncPoint RenderSystem::SyncSubmittedDirectPoint()
+	{
+		return { directSubmittedCounter, directFence };
+	}
+
 	SyncPoint RenderSystem::SyncDirectTicket()
 	{
 		auto counter = ++directSubmissionCounter;
 		GraphicsQueue->Signal(directFence, counter);
+
+		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", directFence, counter);
 
 		return { counter, directFence };
 	}
 
 	void RenderSystem::SignalDirect(uint64_t value)
 	{
+		if (value > directSubmissionCounter)
+			DebugBreak();
+
+		FK_LOG_9("QUEUE:DIRECT signaling: %I64\n", value);
+
 		GraphicsQueue->Signal(directFence, value);
 		directSubmittedCounter = Max(value, directSubmittedCounter);
 	}
@@ -10613,6 +10648,7 @@ namespace FlexKit
 
 		directUploadBuffer.Last = directUploadBuffer.Position;
 
+		FK_LOG_9("QUEUE:DIRECT Submitting. Signaling: %I64 : $I64 \n", directFence, dispatchIdx);
 
 		return { dispatchIdx, directFence };
 	}

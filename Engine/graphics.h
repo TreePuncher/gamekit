@@ -3667,6 +3667,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void		SyncDirectTo(SyncPoint);
 		SyncPoint	SyncDirectPoint();
+		SyncPoint	SyncSubmittedDirectPoint();
 		SyncPoint	SyncDirectTicket();
 
 		void		SignalDirect(uint64_t);
@@ -3681,7 +3682,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitForGPU();
-		void WaitFor(uint64_t);
+		void WaitFor(const uint64_t);
 
 
 		void SetDebugName(ResourceHandle, const char*);

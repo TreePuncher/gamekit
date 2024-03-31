@@ -1196,7 +1196,7 @@ namespace FlexKit
 
 		const auto tickets = renderSystem.GetSubmissionTicket((uint32_t)submissions.size());
 
-		for(const auto&& [pass, idx] : zip(submissions, iota(0)))
+		for(const auto&& [idx, pass] : enumerate(submissions))
 		{
 			switch (pass.queue)
 			{
@@ -1282,7 +1282,7 @@ namespace FlexKit
 					submissionBarrier.AddWork(*previousBarrier);
 
 				SyncPoint submissionTicket {
-					.syncCounter	= tickets.syncCounter + idx + 1,
+					.syncCounter	= tickets.syncCounter + idx + 1 - submissions.size(),
 					.fence			= tickets.fence };
 
 				for (auto& workerTask : workerTaskList)
@@ -1351,7 +1351,6 @@ namespace FlexKit
 						FK_LOG_9("Submitting %u", a.sync.syncCounter);
 
 						renderSystem.Submit(a.contexts);
-						renderSystem.SignalDirect(tickets.syncCounter);
 					}
 				});
 		}

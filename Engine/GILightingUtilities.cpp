@@ -42,7 +42,25 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
+
+	struct RayGenFunction
+	{
+		uint8_t		rayGen[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
+	};
+
+	struct HitFunction
+	{
+		uint8_t		anyhit_main[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
+	};
+
+	struct MissFunction
+	{
+		uint8_t		miss[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
+	};
+
+
+	/************************************************************************************************/
+
 	struct ShaderTableHandle
 	{
 		DevicePointer   devicePointer;

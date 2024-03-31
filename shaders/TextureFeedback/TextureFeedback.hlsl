@@ -2,13 +2,13 @@
 
 cbuffer EntityConstants : register(b1)
 {
+	float4x4	WT;
 	float4		Albedo;
 	float		Ks;
 	float		IOR;
 	float		Roughness;
 	float		Anisotropic;
 	float		Metallic;
-	float4x4	WT;
 	uint		textureCount;
 	uint		textureChannels;
 	uint4		texturesInfo[16]; // XY - SIZE, ID, Padding
@@ -93,12 +93,17 @@ void TextureFeedback_PS(Forward_VS_OUT IN)
 
 	for(uint I = 0; I < countbits(textureChannels); I++)
 	{
+		if (textureChannels & (0x01 << I) == 0)
+			continue;
+
 		uint2 WH = uint2(0, 0);
 		uint MIPCount = 0;
 		textures[NonUniformResourceIndex(I)].GetDimensions(0.0f, WH.x, WH.y, MIPCount);
 
 		const float mip_temp		= textures[NonUniformResourceIndex(I)].CalculateLevelOfDetail(defaultSampler, UV);
 		const float desiredLod		= clamp(mip_temp + feedbackBias, 0.0f, MIPCount - 1.0f);
+
+		textures[NonUniformResourceIndex(I)].GetDimensions(desiredLod, WH.x, WH.y, MIPCount);
 
 		const uint2 tileSize		= texturesInfo[I].xy;
 		const uint2 tileArea		= WH / tileSize;
@@ -107,7 +112,9 @@ void TextureFeedback_PS(Forward_VS_OUT IN)
 		for (int lod = desiredLod; lod < MIPCount; ++lod)
 		{
 			const uint2 tile = uint2(tileArea * UV) >> lod;
-			InterlockedOr(texturesFeedback[(tile.x + tile.y * tileArea.x) + textureOffset], 0x01 << lod);
+			const uint idx = (tile.x + tile.y * tileArea.x) + textureOffset;
+
+			InterlockedOr(texturesFeedback[idx], 0x01 << lod);
 		}
 	}
 }

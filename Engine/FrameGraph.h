@@ -1620,7 +1620,6 @@ namespace FlexKit
 			pendingAcquire		{ Temp }
 		{
 			nodes.reserve(64);
-			beginIdx = RS.directSubmissionCounter.fetch_add(1) + 1;
 		}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
@@ -2372,8 +2371,6 @@ namespace FlexKit
 		Vector<FrameGraphNode*>		pendingDirectNodes;
 		Vector<FrameGraphNode*>		pendingComputeNodes;
 		Vector<Submission>			submissions;
-
-		uint64_t					beginIdx = -1;
 
 		void ReleaseVirtualObjects(std::span<FrameGraphNode*> workList);
 		void UpdateResourceFinalState();
