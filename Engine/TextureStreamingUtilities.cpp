@@ -671,6 +671,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void TextureStreamingEngine::_FeedbackPass(
 			UpdateDispatcher&				dispatcher,
 			FrameGraph&						frameGraph,
@@ -748,8 +751,7 @@ namespace FlexKit
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
-			const float bias		 = std::log2f(128.0f / renderTargetWH[0]);
-
+			const float bias		= std::floorf(std::log2f(128.0f / renderTargetWH[0])) - 3.0f;
 			auto& materials			= MaterialComponent::GetComponent();
 			auto& constantBuffer	= brushConstants.GetConstantBuffer();
 			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
@@ -758,18 +760,10 @@ namespace FlexKit
 
 			CBPushBuffer passConstantBuffer{ data.reserveCB(bufferSize) };
 
-			auto cameraConstantValues	= GetCameraConstants(data.camera);
+			auto camera					= CameraComponent::GetComponent().GetCamera(data.camera);
+			camera.FOV *= 1.2f;
 
-			// Widen FOV to avoid some pop in when rotating camera
-			//cameraConstantValues.FOV *= 1.2f;
-			//cameraConstantValues = CalculateCameraConstants(
-			//	cameraConstantValues.AspectRatio,
-			//	cameraConstantValues.FOV,
-			//	cameraConstantValues.MinZ,
-			//	cameraConstantValues.MaxZ,
-			//	cameraConstantValues.ViewI);
-
-			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ camera.GetConstants(), passConstantBuffer };
 
 			ctx.SetRootSignature(feedbackPassRootSignature);
 
@@ -906,8 +900,7 @@ namespace FlexKit
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
-			const float bias = std::log2f(512.0f / renderTargetWH[0]);
-
+			const float bias		= std::floorf(std::log2f(128.0f / renderTargetWH[0])) - 3.0f;
 			auto& materials			= MaterialComponent::GetComponent();
 			auto& constantBuffer	= brushConstants.GetConstantBuffer();
 			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
@@ -915,18 +908,10 @@ namespace FlexKit
 
 			CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
 
-			auto cameraConstantValues	= GetCameraConstants(data.camera);
+			auto camera					= CameraComponent::GetComponent().GetCamera(data.camera);
+			camera.FOV *= 1.2f;
 
-			// Widen FOV to avoid some pop in when rotating camera
-			cameraConstantValues.FOV *= 1.2f;
-			cameraConstantValues = CalculateCameraConstants(
-				cameraConstantValues.AspectRatio,
-				cameraConstantValues.FOV,
-				cameraConstantValues.MinZ,
-				cameraConstantValues.MaxZ,
-				cameraConstantValues.ViewI);
-
-			const auto cameraConstants	= ConstantBufferDataSet{ cameraConstantValues, passConstantBuffer };
+			const auto cameraConstants	= ConstantBufferDataSet{ camera.GetConstants(), passConstantBuffer };
 
 			ctx.SetRootSignature(feedbackPassRootSignature);
 
@@ -990,7 +975,7 @@ namespace FlexKit
 						{
 							FeedbackPassConstants passConstants{ .bias = bias };
 
-							for (auto [idx, texture] : zip(iota(0), material.textures))
+							for (auto [idx, texture] : enumerate(material.textures))
 							{
 								uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -1021,7 +1006,7 @@ namespace FlexKit
 							{
 								FeedbackPassConstants passConstants{ .bias = bias };
 
-								for (auto [idx, texture] : zip(iota(0), subMaterial.textures))
+								for (auto [idx, texture] : enumerate(subMaterial.textures))
 								{
 									uint32_t offset = feedbackTable.table.GetTextureOffset(texture);
 
@@ -1123,9 +1108,10 @@ namespace FlexKit
 
 		EXITSCOPE(
 			auto After = Clock.now();
-		auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
+			auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(After - Before);
 
-		textureStreamEngine.updateTime = float(Duration.count()) / 1000.0f; );
+			textureStreamEngine.updateTime = float(Duration.count()) / 1000.0f;
+			FK_LOG_9("Tile update time: %f", textureStreamEngine.updateTime););
 
 		if (!buffer)
 			return;

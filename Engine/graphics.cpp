@@ -17,6 +17,7 @@
 #include <fmt\format.h>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <iostream>
 #include <ranges>
@@ -9773,6 +9774,16 @@ namespace FlexKit
 
 	void RenderSystem::_OnCrash()
 	{
+		static std::mutex m;
+
+		if (!m.try_lock())
+		{
+			DebugBreak();
+			return;
+		}
+
+		EXITSCOPE(m.unlock());
+
 		auto reason = pDevice->GetDeviceRemovedReason();
 
 		switch (reason)
@@ -9922,6 +9933,8 @@ namespace FlexKit
 
 		D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput	= {};
 		D3D12_DRED_PAGE_FAULT_OUTPUT		DredPageFaultOutput			= {};
+
+		DebugBreak();
 
 		std::this_thread::sleep_for(1s);
 
@@ -10636,7 +10649,14 @@ namespace FlexKit
 		if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
 			GraphicsQueue->Wait(sync.fence, sync.syncCounter);
 
-		GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
+		try
+		{
+			GraphicsQueue->ExecuteCommandLists((UINT)cls.size(), cls.begin());
+		}
+		catch (...)
+		{
+			DebugBreak();
+		}
 
 		if (auto HR = GraphicsQueue->Signal(directFence, dispatchIdx); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");

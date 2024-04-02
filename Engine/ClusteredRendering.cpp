@@ -1789,7 +1789,6 @@ namespace FlexKit
 				descHeap.SetStructuredResource(ctx, 8, resources.PixelShaderResource(data.pointLightBufferObject, ctx), sizeof(GPULight));
 				descHeap.SetStructuredResource(ctx, 9, resources.PixelShaderResource(data.lightPass.shadowMatrices, ctx), sizeof(float4x4));
 
-				//for (size_t shadowMapIdx = 0; shadowMapIdx < lightCount; shadowMapIdx++)
 				for (const auto [shadowMapIdx, handle] : enumerate(visableLights))
 				{
 					const auto& light		= lightComponent[handle];

@@ -435,9 +435,10 @@ namespace FlexKit
 
 	void WorkBarrier::Reset()
 	{
-		tasksInProgress	= 0;
-		tasksScheduled	= 0;
-		joined			= false;
+		tasksInProgress.store(0, std::memory_order_relaxed);
+		tasksScheduled.store(0, std::memory_order_relaxed);
+		joined.store(false, std::memory_order_relaxed);
+		ranCompletions.store(false, std::memory_order_relaxed);
 	}
 
 
@@ -446,12 +447,16 @@ namespace FlexKit
 
 	void WorkBarrier::OnEnd()
 	{
-		if (joined.load(std::memory_order_relaxed))
+		if (joined.load(std::memory_order_relaxed) && !ranCompletions.load(std::memory_order_relaxed))
 		{
-			for (auto& evt : PostEvents)
-				evt();
+			bool expected = false;
+			if (ranCompletions.compare_exchange_strong(expected, true))
+			{
+				Vector events{ std::move(PostEvents) };
 
-			PostEvents.clear();
+				for (auto& evt : events)
+					evt();
+			}
 		}
 	}
 

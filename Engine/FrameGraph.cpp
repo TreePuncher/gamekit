@@ -1311,13 +1311,13 @@ namespace FlexKit
 							auto prev		= queuedSubmissions[idx].prev;
 
 							// syncing between submissions of the same queue are uneeded, but inter-queue submission is needed.
-							//if (prev)
-							//	renderSystem.SyncDirectTo(prev);
+							if (prev)
+								renderSystem.SyncDirectTo(prev);
 							//
-							//if (contexts.size())
+							if (contexts.size())
 								renderSystem.Submit(contexts);
-							//else
-							//	renderSystem.Signal(submissionTicket);
+							else
+								renderSystem.Signal(submissionTicket);
 
 							submissionBarrier.JoinLocal();
 						});
@@ -1350,7 +1350,11 @@ namespace FlexKit
 					{
 						FK_LOG_9("Submitting %u", a.sync.syncCounter);
 
-						renderSystem.Submit(a.contexts);
+						if (a.prev)
+							renderSystem.SyncDirectTo(a.prev);
+
+						if (a.contexts.size())
+							renderSystem.Submit(a.contexts);
 					}
 				});
 		}

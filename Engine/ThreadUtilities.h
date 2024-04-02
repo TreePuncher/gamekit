@@ -561,6 +561,7 @@ namespace FlexKit
 		std::atomic_int		tasksInProgress = 0;
 		std::atomic_int		tasksScheduled	= 0;
 		std::atomic_bool	joined			= false;
+		std::atomic_bool	ranCompletions	= false;
 
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;

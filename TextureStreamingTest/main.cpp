@@ -9,11 +9,17 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
+#ifdef _DEBUG
+		constexpr bool enableDebug = false;
+#else
+		constexpr bool enableDebug = false;
+#endif
+
 		FlexKit::CoreOptions options{
 			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1,
-			.GPUdebugMode	= true,
-			.GPUValidation	= true,
-			.GPUSyncQueues	= true,
+			.GPUdebugMode	= enableDebug,
+			.GPUValidation	= enableDebug,
+			.GPUSyncQueues	= enableDebug,
 		};
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, options);
