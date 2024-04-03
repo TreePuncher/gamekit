@@ -267,29 +267,21 @@ float InterleavedGradientNoise(float2 position_screen)
 	return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
-float2 OctWrap(float2 v)
+float2 Encode (float3 n)
 {
-	return (1.0 - abs(v.yx)) * select(v, float2(1.0f, 1.0f), float2(-1.0f, -1.0f)); //(v.xy >= 0.0 ? 1.0 : -1.0);
+    half f = sqrt(8*n.z+8);
+    return n.xy / f + 0.5;
 }
 
-float2 Encode(float3 n)
+float3 Decode(float2 enc)
 {
-	n /= (abs(n.x) + abs(n.y) + abs(n.z));
-	n.xy = n.z >= 0.0 ? n.xy : OctWrap(n.xy);
-	n.xy = n.xy * 0.5 + 0.5;
-	return n.xy;
-}
-
-float3 Decode(float2 f)
-{
-	f = f * 2.0 - 1.0;
-
-	// https://twitter.com/Stubbesaurus/status/937994790553227264
-	float3 n = float3(f.x, f.y, 1.0 - abs(f.x) - abs(f.y));
-	float t	 = saturate(-n.z);
-	n.xy	+= select(n.xy >= 0.0, float2(-t, -t), float2(t, t));
-	
-	return normalize(n);
+    const float2 fenc = enc * 4.0f - 2.0f;
+    const float f		= dot(fenc, fenc);
+    const float g		= sqrt(1.0f - f / 4.0f);
+    float3 n;
+    n.xy = fenc*g;
+    n.z = 1-f/2;
+    return n;
 }
 
 float2 VectorToSphere(float3 XYZ)
@@ -365,8 +357,8 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 	const float4 MRIA		= MRIABuffer.Load(uint3(px.xy, 0));
 
-	const float3 N_WS		= normalize(UnpackNormal(px));
-	const float3 N			= normalize(mul(View, N_WS));
+	const float3 N_VS		= normalize(UnpackNormal(px));
+	const float3 N_WS		= normalize(mul(ViewI, N_VS));
 
 	const float2 UV			= SampleCoord * WH_I; // [0;1]
 	const float3 V			= -GetViewVector_VS(UV);
@@ -380,7 +372,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 	const float Ks			= lerp(0, 0.4f, saturate(1.0f));
 	const float Kd			= (1.0 - Ks) * (1.0 - metallic);
-	const float NdotV		= saturate(dot(N.xyz, V));
+	const float NdotV		= saturate(dot(N_VS, V));
 
 	float4 color = float4(0, 0, 0, 1);
 	for (uint I = 0; I < localLightCount; I++)
@@ -397,19 +389,19 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float  ld_2		= Ld * Ld;
 		const float  La			= (Li / ld_2) * (1 - (pow(Ld, 10) / pow(Lr, 10)));
 
-		const float  NdotL		= saturate(dot(N, L));
+		const float  NdotL		= saturate(dot(N_VS, L));
 		const float3 H			= normalize(V + L);
 
 		#if DIFFUSETECHNIQUE == 0
 			const float3 diffuse	= NdotL * albedo * INV_PI;
 		#elif DIFFUSETECHNIQUE == 1
-			const float3 diffuse	= max(albedo * F_d(V, H, L, N.xyz, roughness), 0.0f);
+			const float3 diffuse	= max(albedo * F_d(V, H, L, N_VS, roughness), 0.0f);
 		#elif DIFFUSETECHNIQUE == 2
 			const float3 diffuse	= float3(0, 0, 0);
 		#endif 
 
 		#if SPECULARTECHNIQUE == 0
-			const float3 specular	= F_r(V, H, L, N.xyz, roughness);
+			const float3 specular	= F_r(V, H, L, N_VS, roughness);
 		#elif SPECULARTECHNIQUE == 1
 			const float3 specular	= F_r_said(V, H, L, N.xyz, albedo, roughness, 0);
 		#elif SPECULARTECHNIQUE == 2
@@ -579,7 +571,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 	const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-	if (px.x > WH.x / 1.5f)
+	if (px.x > WH.x / 2.0f)
 		//return pow(float4(0, UV.y, 0, 1), 2);
 	
 		//return float4(positionWS * float3(0, 0, -0.01), 1);
@@ -599,7 +591,13 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//
 		//return pow(-positionVS.z / 128, 10.0f);
 		//return depth;
-		return float4(N / 2.0f + 0.5f, 0);
+		return float4(N_VS / 2.0f + 0.5f, 0);
+		//return float4(N_VS / 2.0f + 0.5f, 0);
+	//else
+	//	return float4(Albedo.xyz, 0);
+	//else
+	//	return float4(Albedo.xyz, 0);
+
 	//return float4(0, 0, 0, 0);
 	//return Albedo * Albedo;
 	//return float4(positionWS, 0);
