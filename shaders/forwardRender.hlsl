@@ -88,8 +88,8 @@ Forward_VS_OUT Forward_VS(Vertex In)
 	Forward_VS_OUT Out;
 	Out.depth		= -POS_VS.z / MaxZ;
 	Out.POS			= mul(PV, float4(POS_WS, 1));
-	Out.Normal		= normalize(mul(WT, float4(In.Normal, 0.0f)));
-	Out.Tangent		= normalize(mul(WT, float4(In.Tangent, 0.0f)));
+	Out.Normal		= normalize(mul(View, mul(WT, float4(In.Normal, 0.0f))));
+	Out.Tangent		= normalize(mul(View, mul(WT, float4(In.Tangent, 0.0f))));
 	Out.Bitangent	= cross(Out.Tangent, Out.Normal);
 	Out.UV			= In.UV;
 
@@ -145,8 +145,8 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 	Forward_VS_OUT Out;
 	Out.depth       = -POS_VS.z / MaxZ;
 	Out.POS		    = mul(PV, float4(POS_WS, 1));
-	Out.Normal      = normalize(mul(WT, float4(N.xyz, 0.0f)));
-	Out.Tangent     = normalize(mul(WT, float4(T.xyz, 0.0f)));
+	Out.Normal      = normalize(mul(View, mul(WT, float4(N.xyz, 0.0f))));
+	Out.Tangent     = normalize(mul(View, mul(WT, float4(T.xyz, 0.0f))));
 	Out.Bitangent   = cross(Out.Tangent, Out.Normal);
 	Out.UV		    = In.UV;
 
@@ -261,17 +261,10 @@ float4 VirtualTextureDebug(Texture2D source, in sampler textureSampler, in float
 #define NORMAL 0x02
 #define ROUGHNESS 0x04
 
-float2 OctWrap(float2 v)
-{
-	return (1.0 - abs(v.yx)) * select(v, float2(1.0f, 1.0f), float2(-1.0f, -1.0f)); //(v.xy >= 0.0 ? 1.0 : -1.0);
-}
-
 float2 Encode(float3 n)
 {
-	n /= (abs(n.x) + abs(n.y) + abs(n.z));
-	n.xy = n.z >= 0.0 ? n.xy : OctWrap(n.xy);
-	n.xy = n.xy * 0.5 + 0.5;
-	return n.xy;
+	float f = sqrt(8 * n.z + 8);
+	return n.xy / f + 0.5;
 }
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
@@ -280,20 +273,19 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
 	uint textureIdx = 0;
 
-	float4 albedo;
 	float4 roughMetal;
 
 	if ((textureChannels & ALBEDO) != 0x00)
-		albedo = SampleVirtualTexture(textures[NonUniformResourceIndex(textureIdx++)], BiLinear, IN.UV);
+		gbuffer.Albedo = SampleVirtualTexture(textures[NonUniformResourceIndex(textureIdx++)], BiLinear, IN.UV);
 	else
-		albedo = Albedo;
+		gbuffer.Albedo = Albedo;
 
 	if ((textureChannels & ROUGHNESS) != 0x00)
 		roughMetal = SampleVirtualTexture(textures[NonUniformResourceIndex(textureIdx++)], BiLinear, IN.UV);
 	else
-		roughMetal = float4(IOR, Roughness, Metallic, Anisotropic);
+		roughMetal = float4(Metallic, Roughness, IOR, Anisotropic);
 
-	if((textureChannels & NORMAL) != 0x00)
+	if((textureChannels & NORMAL) != 0x00 && false)
 	{
 		const float3 normalSample		= SampleVirtualTexture(textures[NonUniformResourceIndex(textureIdx++)], BiLinear, IN.UV).xyz;
 		const float3 normalCorrected	= float3(normalSample.x, normalSample.y, normalSample.z);
@@ -301,13 +293,12 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 		float3x3 inverseTBN				= float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
 		float3x3 TBN					= transpose(inverseTBN);
 		const float3 normal				= mul(TBN, normalCorrected * 2.0f - 1.0f);
-		gbuffer.Normal					= Encode(normal);
+		gbuffer.Normal					= Encode(normal.xyz);
 	}
 	else
-		gbuffer.Normal = Encode(normalize(IN.Normal));
+		gbuffer.Normal = Encode(IN.Normal);
 
-	gbuffer.Albedo	= float4(albedo.xyz, Ks);
-	gbuffer.MRIA	= float4(Metallic, Roughness, IOR, Anisotropic);
+	gbuffer.MRIA	= roughMetal;
 	gbuffer.Depth	= IN.depth;
 
 	return gbuffer;
