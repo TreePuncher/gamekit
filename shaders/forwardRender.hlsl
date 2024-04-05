@@ -261,11 +261,24 @@ float4 VirtualTextureDebug(Texture2D source, in sampler textureSampler, in float
 #define NORMAL 0x02
 #define ROUGHNESS 0x04
 
-float2 Encode(float3 n)
+/************************************************************************************************/
+
+
+float2 SignNotZero(float2 v)
 {
-	float f = sqrt(8 * n.z + 8);
-	return n.xy / f + 0.5;
+	return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
 }
+
+
+float2 Encode(float3 v)
+{
+	float2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+	return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * SignNotZero(p)) : p;
+}
+
+
+/************************************************************************************************/
+
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {

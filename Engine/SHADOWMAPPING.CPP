@@ -77,7 +77,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
@@ -141,7 +141,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		Rast_Desc.FillMode = D3D12_FILL_MODE_SOLID;
-		Rast_Desc.CullMode = D3D12_CULL_MODE_NONE;
+		Rast_Desc.CullMode = D3D12_CULL_MODE_FRONT;
 
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -213,7 +213,7 @@ namespace FlexKit
 		for (size_t I = 0; I < 6; I++)
 		{
 			const float4x4 ViewI            = ViewOrientations[I] * TranslationMatrix(pos);
-			const float4x4 View             = (TranslationMatrix(-pos) * ViewOrientations[I].Transpose()).Transpose();
+			const float4x4 View             = ViewOrientations[I].Transpose() * TranslationMatrix(-pos);
 			const float4x4 perspective      = CreatePerspectiveRH(DegreetoRad(90.0f), 0.01f, r, 1.0f);
 			const float4x4 PV               = perspective * View;
 
@@ -352,7 +352,7 @@ namespace FlexKit
 
 					LightComponent& lightComponent = LightComponent::GetComponent();
 
-					for(auto [handleIdx, lightHandle] : zip(iota(0), lights))
+					for(auto [handleIdx, lightHandle] : enumerate(lights))
 					{
 						if (handleIdx >= frameHandles.size())
 							return;
@@ -382,7 +382,7 @@ namespace FlexKit
 				},
 			.layout		= DeviceLayout::DeviceLayout_DepthStencilWrite,
 			.access		= DeviceAccessState::DASDEPTHBUFFERWRITE,
-			.max		= Max(ShadowMapComponent::GetComponent().size(), 16),
+			.max		= Max((uint32_t)ShadowMapComponent::GetComponent().size(), 16),
 			.pool		= &shadowMapPool,
 			.dependency	= visibleLights
 		};
@@ -400,7 +400,7 @@ namespace FlexKit
 				Vector<PassData> passes{ allocator };
 				passes.reserve(lightList.size());
 
-				for (auto [idx, lightHandle] : zip(iota(0), lightList))
+				for (auto [idx, lightHandle] : enumerate(lightList))
 				{
 					auto& light = lights[lightHandle];
 
