@@ -2446,7 +2446,8 @@ namespace FlexKit
 
 		D3D12_RAYTRACING_GEOMETRY_DESC desc;
 		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-		desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+		desc.Flags =
+			D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 
 		desc.Triangles.Transform3x4 = 0;
 		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
@@ -10422,8 +10423,8 @@ namespace FlexKit
 		};
 
 		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
-		RootSignatureDesc.pStaticSamplers = Samplers;
-		RootSignatureDesc.NumStaticSamplers = 3;
+		RootSignatureDesc.pStaticSamplers	= builder.LocalRoot ? nullptr : Samplers;
+		RootSignatureDesc.NumStaticSamplers = builder.LocalRoot ? 0 : 3;
 
 		RootSignatureDesc.Flags |= builder.AllowIA ?
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT :
@@ -10433,6 +10434,9 @@ namespace FlexKit
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT :
 			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
+		RootSignatureDesc.Flags |= builder.LocalRoot ?
+			D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE :
+			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 		HRESULT HR = D3D12SerializeRootSignature(
 			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,

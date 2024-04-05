@@ -1780,6 +1780,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		bool AllowIA	= true;
 		bool AllowSO	= false;
+		bool LocalRoot	= false;
 
 		struct RootEntry
 		{

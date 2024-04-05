@@ -1,6 +1,6 @@
 #include "common.hlsl"
 
-struct MyMassiveLoad
+struct RayPayload
 {
 	bool	hit;
 	float4	color;
@@ -14,7 +14,7 @@ struct MyParams
 };
 
 [shader("anyhit")]
-void AnyHit(inout MyMassiveLoad payload, in MyAttributes attr)
+void AnyHit(inout RayPayload payload, in MyAttributes attr)
 {
 	payload.color		= float4(1, 0, 1, 0);
 	payload.hit			= true;
@@ -23,25 +23,42 @@ void AnyHit(inout MyMassiveLoad payload, in MyAttributes attr)
 }
 
 [shader("miss")]
-void Miss(inout MyMassiveLoad payload)
+void Miss(inout RayPayload payload)
 {
 	payload.color	 = float4(1, 1, 0, 1);
 }
 
-[shader("closesthit")]
-void ClosestHit1(inout MyMassiveLoad payload, in MyAttributes attr)
+
+StructuredBuffer<float3>	points		: register(t0, space1);
+StructuredBuffer<uint32_t>	indices		: register(t1, space1);
+
+cbuffer hitArguments : register(b1)
 {
-	float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
-	payload.color		= float4(barycentrics, 1) * float4(1, 0, 1, 1);
-	payload.hit			= true;
+	float4	color;
+	uint	index;
+	uint	unused0;
+};
+
+[shader("closesthit")]
+void ClosestHit1(inout RayPayload payload, in MyAttributes attr)
+{
+	const float3 barycentrics	= float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+	const uint triangleIndex	= PrimitiveIndex();
+	const float4x3 wt			= ObjectToWorld4x3();
+	const float3 p1				= mul(wt, float4(points[indices[triangleIndex * 3 + 0]], 1));
+	const float3 p2				= mul(wt, float4(points[indices[triangleIndex * 3 + 1]], 1));
+	const float3 p3				= mul(wt, float4(points[indices[triangleIndex * 3 + 2]], 1));
+
+	payload.color	= float4(p1 * barycentrics.x + p2 * barycentrics.y + p3 * barycentrics.z, 1);
+	payload.hit		= true;
 }
 
 [shader("closesthit")]
-void ClosestHit2(inout MyMassiveLoad payload, in MyAttributes attr)
+void ClosestHit2(inout RayPayload payload, in MyAttributes attr)
 {
 	float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
-	payload.color = float4(0, 1, 0, 1) * float4(barycentrics, 1);
-	payload.hit = true;
+	payload.color		= color * float4(barycentrics, 1);
+	payload.hit			= true;
 }
 
 RaytracingAccelerationStructure	accelerationStructure	: register(t0);
@@ -65,14 +82,14 @@ void RayGenerator()
 	ray.TMax		= 200.0f;
 	ray.Direction	= dir;
 	
-	MyMassiveLoad payload;
+	RayPayload payload;
 	payload.color	= 0.0f;
 	payload.hit		= false;
 	
 	TraceRay(
 		accelerationStructure,
-		RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
-		0x01, 0, 1, 0, ray,
+		RAY_FLAG_CULL_BACK_FACING_TRIANGLES,
+		0xff, 0, 1, 0, ray,
 		payload);
 
 	target[uint2(DispatchRaysIndex().xy)] = payload.color;
