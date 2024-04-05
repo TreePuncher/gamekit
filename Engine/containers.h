@@ -743,6 +743,10 @@ namespace FlexKit
 			}
 		}
 
+		void reserve_pow2(size_t NewSize)
+		{
+			reserve(2 << ceil(log2f(NewSize)));
+		}
 
 		std::tuple<Ty*, size_t, iAllocator*> Steal() noexcept
 		{
@@ -831,6 +835,7 @@ namespace FlexKit
 		TYSize size()			const { return Size; }
 		TYSize ByteSize()		const { return Size * sizeof(Ty); }
 
+		TYSize Capacity()		const { return Max; }
 
 		Vector Copy(iAllocator& destination) const
 		{

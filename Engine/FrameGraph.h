@@ -2102,8 +2102,6 @@ namespace FlexKit
 
 				AcquireResult AcquireTemporary(FrameResourceHandle dstResource, const GPUResourceDesc& desc)
 				{
-
-
 					auto GetMemoryPool = [&]
 					{
 						if (!nodeData->pool)

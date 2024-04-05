@@ -99,6 +99,19 @@ namespace FlexKit
 	};
 
 
+	template<IsConstCharStar ... TY>
+	struct BrushReq	// Request gameobjects with Brushes
+	{
+		using Type		= BrushView&;
+		using ValueType	= BrushView;
+		static constexpr bool IsConst() { return false; }
+
+		bool		IsValid		(const ValueType&)				{ return true; }
+		bool		Available	(const GameObject& gameObject)	{ return gameObject.hasView(BrushComponentID); }
+		ValueType&	GetValue	(GameObject& gameObject)		{ return GetView<BrushView>(gameObject); }
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -636,15 +649,17 @@ namespace FlexKit
 		[[nodiscard]] auto Query(iAllocator& allocator, TY_Queries ... queries)
 		{
 			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
+			using Internal_ty = std::remove_reference_t<decltype(std::declval<Optional_ty>().value())>;
+
 			auto& visables = SceneVisibilityComponent::GetComponent();
 
-			Vector<Optional_ty> results{ &allocator };
+			Vector<Internal_ty> results{&allocator};
 
 			for (auto entity : sceneEntities)
 			{
 				auto& gameObject = *visables[entity].entity;
 				if (auto res = FlexKit::Query(gameObject, queries...); res)
-					results.emplace_back(std::move(res));
+					results.emplace_back(std::move(res.value()));
 			}
 
 			return results;
@@ -654,9 +669,9 @@ namespace FlexKit
 		void Query(auto& outVector, uint32_t max, TY_Queries ... queries)
 		{
 			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
+			using Internal_ty = decltype(std::declval<Optional_ty>().value());
 
 			auto& visables = SceneVisibilityComponent::GetComponent();
-
 
 			uint32_t count = 0;
 
