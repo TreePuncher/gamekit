@@ -69,8 +69,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	AddAssetFile(R"(assets\ShadowTest.gameres)");
+	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
@@ -79,10 +79,11 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light)
 		{
-			light.SetType(FlexKit::LightType::SpotLight);
-			light.SetOuterAngle((float)pi / 1.3f);
-			light.SetIntensity(2048);
-			light.SetRadius(30.0f);
+			light.SetType(FlexKit::LightType::PointLight);
+			//light.SetOuterAngle((float)pi / 1.3f);
+			//light.SetIntensity(4096 * light.GetIntensity());
+			//light.SetIntensity(4096);
+			//light.SetRadius(50.0f);
 		},
 		LightQuery{});
 
@@ -130,11 +131,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
 
-	if(1)
+	if(0)
 	scene.QueryFor(
 		[&](GameObject& gameObject, auto&& light, auto&& node)
 		{
-			node.Pitch(dT * pi * 0.25f);
+			node.Pitch(dT * pi * 0.125f);
 		},
 		LightQuery{}, SceneNodeReq{});
 

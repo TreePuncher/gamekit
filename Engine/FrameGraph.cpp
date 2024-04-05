@@ -1542,11 +1542,6 @@ namespace FlexKit
 			case OT_StreamOut:
 			{
 				DebugBreak();
-
-				auto SOBuffer	= I.SOBuffer;
-
-				//auto state		= I.State;
-				//Resources.renderSystem.SetObjectAccessState(SOBuffer, state);
 			}	break;
 			case OT_BackBuffer:
 			case OT_DepthBuffer:

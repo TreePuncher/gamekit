@@ -11,6 +11,9 @@
 // 2 - DISABALED
 #define SPECULARTECHNIQUE 0
 
+#define ENABLE_SPOTLIGHT_SSPCF
+#define ENABLE_SPOTLIGHT_PCF
+
 struct PointLight
 {
 	float4 KI;	// Color + intensity in W
@@ -19,11 +22,13 @@ struct PointLight
 	uint4  TypeExtra;
 };
 
+
 struct ShadowMap
 {
 	float4x4 PV;
 	float4x4 V;
 };
+
 
 struct Cluster
 {
@@ -40,6 +45,7 @@ cbuffer LocalConstants : register(b1)
 	uint	lightCount;
 	float4	ambientLight;
 }
+
 
 Texture2D<float4> AlbedoBuffer	: register(t0);
 Texture2D<float4> MRIABuffer	: register(t1); // metallic, roughness, IOR, anisotropic
@@ -267,21 +273,17 @@ float InterleavedGradientNoise(float2 position_screen)
 	return frac(magic.z * frac(dot(position_screen, magic.xy)));
 }
 
-float2 Encode (float3 n)
+float2 SignNotZero(float2 v)
 {
-    half f = sqrt(8*n.z+8);
-    return n.xy / f + 0.5;
+	return float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
 }
 
-float3 Decode(float2 enc)
+float3 Decode(float2 e)
 {
-    const float2 fenc = enc * 4.0f - 2.0f;
-    const float f		= dot(fenc, fenc);
-    const float g		= sqrt(1.0f - f / 4.0f);
-    float3 n;
-    n.xy = fenc*g;
-    n.z = 1-f/2;
-    return n;
+	float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+	if (v.z < 0) v.xy = (1.0 - abs(v.yx)) * SignNotZero(v.xy);
+
+	return normalize(v);
 }
 
 float2 VectorToSphere(float3 XYZ)
@@ -363,7 +365,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 	const float2 UV			= SampleCoord * WH_I; // [0;1]
 	const float3 V			= -GetViewVector_VS(UV);
 	const float3 positionVS	= GetViewSpacePosition(UV, depth);
-	const float3 positionWS = mul(ViewI, float4(positionVS, 1)); //GetWorldSpacePosition(UV, depth);
+	const float3 positionWS = mul(ViewI, float4(positionVS, 1));
 
 	const float ior			= MRIA.b;
 	const float metallic	= 1 - MRIA.r > 0.1f ? 1.0f : 0.0f; 
@@ -382,6 +384,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 		const float3 Lc			= light.KI.rgb;
 		const float3 Lp			= mul(View, float4(light.PR.xyz, 1));
+
 		const float3 L			= normalize(Lp - positionVS);
 		const float  Ld			= length(Lp - positionVS);
 		const float  Li			= light.KI.w / 2;
@@ -392,6 +395,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		const float  NdotL		= saturate(dot(N_VS, L));
 		const float3 H			= normalize(V + L);
 
+#if 1
 		#if DIFFUSETECHNIQUE == 0
 			const float3 diffuse	= NdotL * albedo * INV_PI;
 		#elif DIFFUSETECHNIQUE == 1
@@ -408,6 +412,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 specular	= float3(0, 0, 0);
 		#endif
 
+		const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
+#endif
+
 		switch (light.TypeExtra[0])
 		{
 		case 0:	// Point Light
@@ -416,19 +423,19 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const	float	depth		= length(Lp - positionVS) / Lr;
 
 			float t = 0;
-			static const int sampleCount = 4;
+			static const int sampleCount = 16;
 			for (int i = 0; i < sampleCount; i++)
 			{
 				const float3	sampleVector	= VogelDiskSample3D(i, sampleCount, InterleavedGradientNoise(px), v_WS, 0.000125f);
 				const float		expDepth		= shadowCubes[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, sampleVector);
-
-				t += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / sampleCount;
+			
+				t += saturate(step(1.0f, ExponentialShadowSample(expDepth, depth))) / (float)sampleCount;
 			}
 
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * La * Lc;
 			color += max(float4(colorSample, 0.0f), 0.0f) * t;
 			break;
 		}
+#ifdef ENABLE_SPOTLIGHT_SSPCF
 		case 1: // Spot light
 		{
 			const float	dp					= saturate(dot(L, mul(View, light.DS.xyz)));
@@ -443,6 +450,9 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3	N_DC		= SC.xyz / SC.w;
 			const float2	shadowMapUV = float2(0.5f + N_DC.x / 2.0f, 0.5f - N_DC.y / 2.0f);
 
+			if (SC.z <= 0.0f)
+				continue;
+
 			if (shadowMapUV.x < 0.0f || shadowMapUV.x > 1.0f |
 				shadowMapUV.y < 0.0f || shadowMapUV.y > 1.0f)
 				continue;
@@ -451,7 +461,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			float		gradientNoise	= InterleavedGradientNoise(px);
 			const float	depth			= length(positionVS - Lp) / Lr;
 
-			const uint blockerSampleCount	= 16;
+			const uint blockerSampleCount	= 48;
 			const float maxSearchDistance	= (sqrt(blockerSampleCount + 0.5f) / sqrt(blockerSampleCount)) / 10.0f;
 			const float searchWidth			= CalcSearchWidth(lightSize, depth, 0.1f);
 			float blockerDistance			= 0.0f;
@@ -460,7 +470,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			for (uint i = 0; i < blockerSampleCount; i++)
 			{
 				const float		penumbraFilterMaxSize	= 1.0f;
-				const float2	sampleUVOffset			= searchWidth * VogelDiskSample2D(i, blockerSampleCount, gradientNoise + lightIdx) * maxSearchDistance * 2.0f;
+				const float2	sampleUVOffset			= searchWidth * VogelDiskSample2D(i, blockerSampleCount, gradientNoise + lightIdx) * maxSearchDistance;
 				const float2	sampleUV				= clamp(shadowMapUV + sampleUVOffset * penumbraFilterMaxSize, 0.0f, 1.0f);
 				const float		expDepth				= shadowMaps[NonUniformResourceIndex(lightIdx)].Sample(BiLinear, float3(sampleUV, 0.0f));
 
@@ -474,12 +484,14 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 			if (blockerCount == 0)
 				shadowing = 1.0f;
+			else if (blockerCount == blockerSampleCount)
+				continue;
 			else
 			{
 				blockerDistance /= blockerCount;
 
 				const float penumbraSize	= CalcPenumbraSize(lightSize, depth, blockerDistance);
-				const float sampleCount		= blockerCount == blockerSampleCount ? 8 : 16;
+				const float sampleCount		= 32;
 
 				for (uint j = 0; j < sampleCount; j++)
 				{
@@ -492,15 +504,15 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 				}
 			}
 
-			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
+			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
 			color += float4(max(colorSample, 0), 0) * shadowing;
 		}	break;
+#endif
 		case 2:	// DirectionalLight
 		{
 			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI;
-			const float		shadowDepth = shadowMaps[NonUniformResourceIndex(lightIdx)].Gather(BiLinear, float3( 0.5, 0.5, 0.0f ));
 			
-			color += float4(max(colorSample, 0), 0) * shadowDepth;
+			color += float4(max(colorSample, 0), 0);
 		}	break;
 		case 3: // PointLight no shadows
 		{
@@ -513,12 +525,12 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float lightAngleScale		= asfloat(light.TypeExtra[1]);
 			const float lightAngleOffset	= asfloat(light.TypeExtra[2]);
 			const float lightSize			= asfloat(light.TypeExtra[3]);
-
-			const float a = square(saturate(dp * lightAngleScale + lightAngleOffset));
+			const float a					= square(saturate(dp * lightAngleScale + lightAngleOffset));
 
 			const float3	colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
 			color += float4(max(colorSample, 0), 0);
 		}	break;
+#ifdef ENABLE_SPOTLIGHT_PCF
 		case 5:	// Spot light basic PCF shadows
 		{
 			const float	dp					= saturate(dot(L, mul(View, light.DS.xyz)));
@@ -540,7 +552,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			float		shadowing		= 0;
 			float		gradientNoise	= InterleavedGradientNoise(px);
 			const float	depth			= length(positionVS - Lp) / Lr;
-			const float sampleCount		= 16;
+			const float sampleCount		= 32;
 
 			for (uint j = 0; j < sampleCount; j++)
 			{
@@ -554,6 +566,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * NdotL * INV_PI * La * a * dp;
 			color += float4(max(colorSample, 0), 0) * shadowing;
 		}	break;
+#endif
 		}
 	}
 

@@ -310,7 +310,7 @@ namespace FlexKit
 
 	struct WorldRenderOptions
 	{
-		EGITECHNIQUE GI = EGITECHNIQUE::DISABLE;
+		EGITECHNIQUE GI = EGITECHNIQUE::AUTOMATIC;
 	};
 
 	class FLEXKITAPI WorldRender

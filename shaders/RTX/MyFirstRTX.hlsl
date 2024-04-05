@@ -3,7 +3,7 @@
 struct MyMassiveLoad
 {
 	bool	hit;
-	float4	alsoMyThing;
+	float4	color;
 };
 
 typedef BuiltInTriangleIntersectionAttributes MyAttributes;
@@ -16,8 +16,7 @@ struct MyParams
 [shader("anyhit")]
 void AnyHit(inout MyMassiveLoad payload, in MyAttributes attr)
 {
-	float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
-	payload.alsoMyThing = float4(1, 0, 1, 0);
+	payload.color		= float4(1, 0, 1, 0);
 	payload.hit			= true;
 	
 	AcceptHitAndEndSearch();
@@ -26,15 +25,23 @@ void AnyHit(inout MyMassiveLoad payload, in MyAttributes attr)
 [shader("miss")]
 void Miss(inout MyMassiveLoad payload)
 {
-	payload.alsoMyThing = float4(0, 1, 0, 1);
+	payload.color	 = float4(1, 1, 0, 1);
 }
 
 [shader("closesthit")]
-void ClosestHit(inout MyMassiveLoad payload, in MyAttributes attr)
+void ClosestHit1(inout MyMassiveLoad payload, in MyAttributes attr)
 {
 	float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
-	payload.alsoMyThing = float4(barycentrics, 1);
+	payload.color		= float4(barycentrics, 1) * float4(1, 0, 1, 1);
 	payload.hit			= true;
+}
+
+[shader("closesthit")]
+void ClosestHit2(inout MyMassiveLoad payload, in MyAttributes attr)
+{
+	float3 barycentrics = float3(1 - attr.barycentrics.x - attr.barycentrics.y, attr.barycentrics.x, attr.barycentrics.y);
+	payload.color = float4(0, 1, 0, 1) * float4(barycentrics, 1);
+	payload.hit = true;
 }
 
 RaytracingAccelerationStructure	accelerationStructure	: register(t0);
@@ -59,15 +66,14 @@ void RayGenerator()
 	ray.Direction	= dir;
 	
 	MyMassiveLoad payload;
-	payload.alsoMyThing = 0.0f;
-	payload.hit			= false;
+	payload.color	= 0.0f;
+	payload.hit		= false;
 	
 	TraceRay(
 		accelerationStructure,
-		0,
-		~0, 0, 1, 0, ray,
+		RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+		0x01, 0, 1, 0, ray,
 		payload);
 
-	if(payload.hit)
-		target[uint2(DispatchRaysIndex().xy)] = payload.alsoMyThing;
+	target[uint2(DispatchRaysIndex().xy)] = payload.color;
 }

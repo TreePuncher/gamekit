@@ -263,6 +263,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct ShaderTableEntry
+	{
+		ShaderTableEntry() = default;
+		explicit	ShaderTableEntry(void* shaderID)
+		{
+			memcpy(&program, shaderID, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+		}
+
+		D3D12_PROGRAM_IDENTIFIER	program;
+	};
+
+	struct ShaderTable
+	{
+		void SetRootSignature()
+		{
+
+		}
+
+
+	};
+
+
 	constexpr PSOHandle InlineTest{ GetTypeGUID(InlineTest) };
 
 	class NOOBs_First_RTX_Technqiue : public GITechniqueInterface
@@ -299,12 +321,6 @@ namespace FlexKit
 
 			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem.LoadShader(nullptr, "lib_6_5", awesomeRaytracingCode);
 
-			/*
-			LPCWSTR Name;
-			LPCWSTR ExportToRename;
-			D3D12_EXPORT_FLAGS Flags;
-			*/
-
 			D3D12_EXPORT_DESC exports[] =
 			{
 				{
@@ -323,8 +339,13 @@ namespace FlexKit
 					D3D12_EXPORT_FLAGS::D3D12_EXPORT_FLAG_NONE
 				},
 				{
-					L"ClosestHit",
-					L"ClosestHit",
+					L"ClosestHit1",
+					L"ClosestHit1",
+					D3D12_EXPORT_FLAGS::D3D12_EXPORT_FLAG_NONE
+				},
+				{
+					L"ClosestHit2",
+					L"ClosestHit2",
 					D3D12_EXPORT_FLAGS::D3D12_EXPORT_FLAG_NONE
 				}
 			};
@@ -352,7 +373,7 @@ namespace FlexKit
 			{
 				{
 					.DXILLibrary	= shaderByteCode,
-					.NumExports		= 4,
+					.NumExports		= 5,
 					.pExports		= exports,
 				}
 			};
@@ -367,16 +388,25 @@ namespace FlexKit
 
 			D3D12_RAYTRACING_PIPELINE_CONFIG pipelineConfig[] = {
 				{
-					.MaxTraceRecursionDepth = 16,
+					.MaxTraceRecursionDepth = 6,
 				}
 			};
 
-			D3D12_HIT_GROUP_DESC hitGroupDesc = {
-				.HitGroupExport				= L"DefaultHitGroup",
-				.Type						= D3D12_HIT_GROUP_TYPE_TRIANGLES,
-				.AnyHitShaderImport			= L"AnyHit",
-				.ClosestHitShaderImport		= L"ClosestHit",
-				.IntersectionShaderImport	= nullptr
+			D3D12_HIT_GROUP_DESC hitGroupDesc[] = {
+				{
+					.HitGroupExport				= L"DefaultHitGroup",
+					.Type						= D3D12_HIT_GROUP_TYPE_TRIANGLES,
+					.AnyHitShaderImport			= L"AnyHit",
+					.ClosestHitShaderImport		= L"ClosestHit1",
+					.IntersectionShaderImport	= nullptr
+				},
+				{
+					.HitGroupExport				= L"HitGroup2",
+					.Type						= D3D12_HIT_GROUP_TYPE_TRIANGLES,
+					.AnyHitShaderImport			= L"AnyHit",
+					.ClosestHitShaderImport		= L"ClosestHit2",
+					.IntersectionShaderImport	= nullptr
+				},
 			};
 
 			D3D12_STATE_SUBOBJECT subObjects[] =
@@ -399,7 +429,11 @@ namespace FlexKit
 				},
 				{
 					.Type	= D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
-					.pDesc	= &hitGroupDesc
+					.pDesc	= hitGroupDesc + 0
+				},
+				{
+					.Type	= D3D12_STATE_SUBOBJECT_TYPE_HIT_GROUP,
+					.pDesc	= hitGroupDesc + 1
 				}
 			};
 
@@ -429,9 +463,9 @@ namespace FlexKit
 				{},
 				[&](FrameGraphNodeBuilder& builder, Resources& data)
 				{
-					data.rayGenTable		= builder.CopyDest(rayGenTable);
-					data.hitShaderTable		= builder.CopyDest(hitShaderTable);
-					data.missShaderTable	= builder.CopyDest(missShaderTable);
+					data.rayGenTable = builder.CopyDest(rayGenTable);
+					data.hitShaderTable = builder.CopyDest(hitShaderTable);
+					data.missShaderTable = builder.CopyDest(missShaderTable);
 				},
 				[&](Resources& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				{
@@ -439,36 +473,21 @@ namespace FlexKit
 					if (FAILED(stateObject->QueryInterface(&stateObjectProperties)))
 						FK_LOG_ERROR("Failed to query ID3D12StateObjectProperties");
 
-					const auto rayGenIdentifier		= stateObjectProperties->GetShaderIdentifier(L"RayGenerator");
-					const auto missIdentifier		= stateObjectProperties->GetShaderIdentifier(L"Miss");
-					const auto hitTableIdentifier	= stateObjectProperties->GetShaderIdentifier(L"DefaultHitGroup");
+					Vector<ShaderTableEntry> hitTable	{ allocator };
+					Vector<ShaderTableEntry> missTable	{ allocator };
 
-					struct ShaderTableLayout
-					{
-						uint8_t		rayGen[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-					} rayGen;
+					ShaderTableEntry rayGeneration{ stateObjectProperties->GetShaderIdentifier(L"RayGenerator") };
+					hitTable.emplace_back(stateObjectProperties->GetShaderIdentifier(L"DefaultHitGroup"));
+					hitTable.emplace_back(stateObjectProperties->GetShaderIdentifier(L"HitGroup2"));
+					missTable.emplace_back(stateObjectProperties->GetShaderIdentifier(L"Miss"));
 
-					struct hitTableLayout
-					{
-						uint8_t		anyhit_main[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-					} hitTable;
+					auto rayGenUpload		= ctx.ReserveDirectUploadSpace(sizeof(rayGeneration));
+					auto hitTableUpload		= ctx.ReserveDirectUploadSpace(hitTable.ByteSize());
+					auto missTableUpload	= ctx.ReserveDirectUploadSpace(missTable.ByteSize());
 
-					struct missTableLayout
-					{
-						uint8_t		miss[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-					} missTable;
-
-					memcpy(&rayGen.rayGen,			rayGenIdentifier,	D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-					memcpy(&hitTable.anyhit_main,	hitTableIdentifier,	D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-					memcpy(&missTable.miss,			missIdentifier,		D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-
-					auto rayGenUpload		= ctx.ReserveDirectUploadSpace(sizeof(rayGen));
-					auto hitTableUpload		= ctx.ReserveDirectUploadSpace(sizeof(hitTable));
-					auto missTableUpload	= ctx.ReserveDirectUploadSpace(sizeof(missTable));
-
-					memcpy(rayGenUpload.buffer,		&rayGen,	sizeof(rayGen));
-					memcpy(hitTableUpload.buffer,	&hitTable,	sizeof(hitTable));
-					memcpy(missTableUpload.buffer,	&missTable,	sizeof(missTable));
+					memcpy(rayGenUpload.buffer,		&rayGeneration,	sizeof(rayGeneration));
+					memcpy(hitTableUpload.buffer,	hitTable.data(), hitTable.ByteSize());
+					memcpy(missTableUpload.buffer,	missTable.data(), missTable.ByteSize());
 
 					ctx.CopyBuffer(rayGenUpload,	rayGenTable);
 					ctx.CopyBuffer(hitTableUpload,	hitShaderTable);
@@ -531,13 +550,14 @@ namespace FlexKit
 							auto&	lod				= meshResource->GetLowestLoadedLod();
 							
 							resourceCtx.BuildBLAS(frameHandle, lod);
+							return;
 						}
 					},
-				.layout		= DeviceLayout::DeviceLayout_Unknown,
-				.access		= DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
-				.max		= 256,
-				.pool		= &ASpool,
-				.dependency	= &passes,
+				.layout			= DeviceLayout::DeviceLayout_Unknown,
+				.access			= DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
+				.max			= 16,
+				.pool			= &ASpool,
+				.dependency		= &passes,
 			};
 
 			const auto& allocationRes = frameGraph.AllocateResourceSet(allocation);
@@ -583,13 +603,13 @@ namespace FlexKit
 					builder.NonPixelShaderResource(rayGenTable);
 
 					data.tlAS		= builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(2 * MEGABYTE), DASACCELERATIONSTRUCTURE_WRITE, &ASpool);
-					data.scratchPad	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV);
-					data.temporary	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1 * MEGABYTE), DASCopyDest);
-					data.target2D	= builder.WriteTransition(renderTarget, DASUAV, { FlexKit::Sync_All, FlexKit::Sync_Raytracing });
-
+					data.scratchPad	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2 * MEGABYTE), DASUAV);
+					data.temporary	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(2 * MEGABYTE), DASCopyDest);
+					data.target2D	= builder.WriteTransition(renderTarget, DASUAV, { Sync_All, Sync_Raytracing });
+					
 					data.depthBuffer	= builder.NonPixelShaderResource(depthTarget);
 					data.albedo			= builder.NonPixelShaderResource(gbuffer.albedo);
-
+					
 					builder.AddNodeDependency(static_cast<const ResourceAllocation*>(bvh._ptr)->node);
 				},
 				[&](raytrace_data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
@@ -602,39 +622,36 @@ namespace FlexKit
 
 					auto UpdateAS = [&]()
 					{
+						ctx.BeginEvent_DEBUG("Build TLAS");
 						Vector<D3D12_RAYTRACING_INSTANCE_DESC> sceneElements{ &allocator };
 
 						[&]{
-						for (auto& pvs : passes.GetData().GetPass(PassHandle{ GBufferPassID }))
-						{
-							for(auto mesh : pvs.brush->meshes)
+							auto pass = passes.GetData().GetPass(PassHandle{ GBufferPassID });
+							for (auto&& [idx, pvs] : enumerate(pass))
 							{
-								auto& lod = GetMeshResource(mesh)->GetLowestLoadedLod();
+								for(auto mesh : pvs.brush->meshes)
+								{
+									auto& lod = GetMeshResource(mesh)->GetLowestLoadedLod();
 
-								if (lod.blAS == -1 || lod.GetIndexCount() < 1000)
-									continue;
+									if (lod.blAS == -1)
+										continue;
 
-								D3D12_RAYTRACING_INSTANCE_DESC instance;
-								instance.AccelerationStructure					= resources.GetDevicePointer(lod.blAS);
-								instance.Flags									= D3D12_RAYTRACING_INSTANCE_FLAGS::D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
-								instance.InstanceContributionToHitGroupIndex	= 0;
-								instance.InstanceID								= 0x000000;
-								instance.InstanceMask							= 0xFF;
+									D3D12_RAYTRACING_INSTANCE_DESC instance;
+									instance.AccelerationStructure					= resources.GetDevicePointer(lod.blAS);
+									instance.Flags									= D3D12_RAYTRACING_INSTANCE_FLAGS::D3D12_RAYTRACING_INSTANCE_FLAG_TRIANGLE_FRONT_COUNTERCLOCKWISE;
+									instance.InstanceContributionToHitGroupIndex	= idx & 0x01;
+									instance.InstanceID								= idx;
+									instance.InstanceMask							= 0x01;
 								
-								const auto WT = GetWT(pvs.brush->Node);
+									const auto WT = GetWT(pvs.brush->Node);
 
-								for (size_t row = 0; row < 3; row++)
-									for (size_t col = 0; col < 4; col++)
-										instance.Transform[row][col] = 0;// WT[row][col];
+									for (size_t row = 0; row < 3; row++)
+										for (size_t col = 0; col < 4; col++)
+											instance.Transform[row][col] = WT[row][col];
 
-								instance.Transform[0][0] = 1;
-								instance.Transform[1][1] = 1;
-								instance.Transform[2][2] = 1;
-
-								sceneElements.emplace_back(instance);
-								return;
+									sceneElements.emplace_back(instance);
+								}
 							}
-						}
 						}();
 
 						const uint32_t arraySize = (uint32_t)(FlexKit::AlignedSize(sceneElements.ByteSize()));
@@ -653,7 +670,7 @@ namespace FlexKit
 								.Flags			= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
 								.NumDescs		= static_cast<UINT>(sceneElements.size()),
 								.DescsLayout	= D3D12_ELEMENTS_LAYOUT_ARRAY,
-								.InstanceDescs	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.temporary, ctx))
+								.InstanceDescs	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.temporary, ctx)),
 							},
 							.ScratchAccelerationStructureData = Align(resources.GetDevicePointer(resources.UAV(data.scratchPad, ctx)), D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT),
 						};
@@ -661,15 +678,14 @@ namespace FlexKit
 						ctx.FlushBarriers();
 						ctx.DeviceContext->BuildRaytracingAccelerationStructure(&buildAS, 0, nullptr);
 
-						//ctx.AddBufferBarrier(resources.GetResource(data.tlAS), DASACCELERATIONSTRUCTURE_WRITE, DASACCELERATIONSTRUCTURE_READ, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing);
+						ctx.AddBufferBarrier(resources.GetResource(data.tlAS), DASACCELERATIONSTRUCTURE_WRITE, DASACCELERATIONSTRUCTURE_READ, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing);
+						ctx.EndEvent_DEBUG();
 					};
 
 					UpdateAS();
 
 					ctx.EndEvent_DEBUG();
 					ctx.BeginEvent_DEBUG("Cast Rays");
-
-
 
 
 					const uint32_t bufferSize = (uint32_t)FlexKit::AlignedSize<Camera::ConstantBuffer>();
@@ -694,8 +710,8 @@ namespace FlexKit
 						{
 							.rangeStride = {
 								.StartAddress	= resources.GetDevicePointer(hitShaderTable),
-								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.SizeInBytes	= 64,
+								.StrideInBytes	= sizeof(ShaderTableEntry),
 							}
 						},
 						.missTable =
@@ -703,7 +719,7 @@ namespace FlexKit
 							.rangeStride = {
 								.StartAddress	= resources.GetDevicePointer(missShaderTable),
 								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+								.StrideInBytes	= sizeof(ShaderTableEntry),
 							}
 						},
 						.rayGenerationRecord =
