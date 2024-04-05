@@ -528,7 +528,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			case Sync_BuildRaytracingAccellerationStructure:
 				return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
 			case Sync_CopyRaytracingAccellerationStructure:
-				return D3D12_BARRIER_SYNC_RAYTRACING;
+				return D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
 			case Sync_Split:
 				return D3D12_BARRIER_SYNC_SPLIT;
 			case Sync_Unknown:
