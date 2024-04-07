@@ -33,6 +33,6 @@ PS_Point ImGui_VS(ImDrawVert vert)
 
 float4 ImGui_PS(PS_Point fragment) : SV_TARGET
 {
-    float4 sample = font.Sample(NearestPoint, fragment.uv);
+	float4 sample = font.Sample(BiLinear, fragment.uv);
     return fragment.col * sample;
 }

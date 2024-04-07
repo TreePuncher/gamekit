@@ -1960,6 +1960,22 @@ namespace FlexKit
 		return textureBlockAllocator.inuse.size();
 	}
 
+	size_t TextureStreamingEngine::TilesFree() const noexcept
+	{
+		return textureBlockAllocator.free.size();
+	}
+
+	size_t TextureStreamingEngine::TilesStale() const noexcept
+	{
+		return textureBlockAllocator.stale.size();
+	}
+
+	size_t TextureStreamingEngine::TilesTotal() const noexcept
+	{
+		return
+			TilesAllocated() +
+			TilesFree();
+	}
 
 
 	/************************************************************************************************/

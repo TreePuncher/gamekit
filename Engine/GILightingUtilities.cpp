@@ -854,7 +854,7 @@ namespace FlexKit
 							.rangeStride = {
 								.StartAddress	= resources.GetDevicePointer(missShaderTable),
 								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes	= sizeof(ShaderTableEntry),
+								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 							}
 						},
 						.rayGenerationRecord =
