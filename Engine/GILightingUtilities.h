@@ -37,6 +37,7 @@ namespace FlexKit
 			ResourceHandle					depthTarget,
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
+			LightBufferUpdate&				lightBuffers,
 			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator) = 0;
 	};
@@ -79,6 +80,7 @@ namespace FlexKit
 			ResourceHandle					depthTarget,
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
+			LightBufferUpdate&				lightBuffers,
 			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator);
 

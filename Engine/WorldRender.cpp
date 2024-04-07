@@ -901,6 +901,7 @@ namespace FlexKit
 				depthTarget.Get(),
 				shadingPass.renderTargetObject,
 				gbuffer,
+				lightPass,
 				reserveCB,
 				temporary);
 

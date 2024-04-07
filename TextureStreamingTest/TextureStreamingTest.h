@@ -21,7 +21,6 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;
 
-	bool vsync = true;
 	bool rotate = false;
 	bool streamingUpdates = true;
 
