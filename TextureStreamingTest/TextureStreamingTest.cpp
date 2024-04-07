@@ -2,6 +2,7 @@
 #include "CameraUtilities.h"
 #include "SceneLoadingContext.h"
 #include "TextureStreamingTest.h"
+#include "ProfilingUtilities.h"
 
 #include <imgui.h>
 #include <fmt\format.h>
@@ -58,6 +59,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Texture Streaming");
+	renderWindow.EnableCaptureMouse(false);
 
 	// Load Test Scene
 	layer = physx.CreateLayer(false);
@@ -178,13 +180,15 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 	space2 = (space2 * 64 * KILOBYTE) / MEGABYTE;
 
 	auto vidMemStats = core.RenderSystem._GetVidMemStats();
+	size_t textureBlocksInUse = textureStreamingEngine.TilesAllocated();
+	size_t textureBlocksTotal = textureStreamingEngine.TilesTotal();
 
 	auto str = fmt::format(
 		"Debug Stats\n"
 		"SmallBlocks: {} / {}\n"
 		"MediumBlocks: {} / {}\n"
 		"LargeBlocks: {} / {}\n"
-		"Memory in use: {}mb\n"
+		"Memory in use: {}MB\n"
 		"M to toggle mouse\n"
 		"T to toggle texture streaming\n"
 		"R to toggle rotating camera\n"
@@ -192,18 +196,23 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"UAV buffer   Pool space left: {}MB\n"
 		"RenderTarget Pool space left: {}MB\n"
 		"UAV texture  Pool space left: {}MB\n"
-		"Video Memory {}/{}\n",
+		"Video Memory {}/{}\n"
+		"Texture Blocks {}/{}\n",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
 		memoryInUse,
 		space0, space1, space2,
-		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE);
+		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
+		textureBlocksInUse, textureBlocksTotal);
 
 
 	ImGui::Text(str.c_str());
 
 	ImGui::End();
+
+	profiler.DrawProfiler({ 0, 0 }, { 1920, 1080 }, core.GetTempMemory());
+
 	ImGui::EndFrame();
 	ImGui::Render();
 

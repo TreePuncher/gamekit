@@ -170,7 +170,7 @@ namespace FlexKit
 
 	struct EngineProfiling
 	{
-		EngineProfiling() { printf("Main Thread Initialized\n"); }
+		EngineProfiling() { FK_LOG_INFO("Profiling Initialized\n"); }
 
 		ThreadProfiler& GetThreadProfiler()
 		{
@@ -212,7 +212,9 @@ namespace FlexKit
 				frameStats->Threads.push_back(threadProfiler->GetStats());
 
 			if (!paused)
-				stats.push_back(std::move(frameStats));
+				stats.emplace_back(std::move(frameStats));
+
+			frameID++;
 #endif
 		}
 
@@ -224,7 +226,7 @@ namespace FlexKit
 			stats.Release();
 		}
 
-		std::shared_ptr<ProfilingStats>  GetStats()
+		std::shared_ptr<ProfilingStats> GetStats()
 		{
 			if(stats.size())
 				return stats[stats.size() - 1 - frameOffset];
@@ -234,9 +236,12 @@ namespace FlexKit
 
 		void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
 
+		size_t GetFrameID() const { return frameID; }
+
 		bool paused     = false;
 		bool showLabels = true;
-		size_t frameOffset = 0;
+		size_t frameOffset	= 0;
+		size_t frameID		= 0;
 
 		std::shared_ptr<ProfilingStats>                     pausedFrame;
 		CircularBuffer<std::shared_ptr<ProfilingStats>>     stats;
@@ -260,27 +265,30 @@ namespace FlexKit
 		return function();
 	}
 
-	//inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
+	inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
 
 	class _ProfileFunction
 	{
 	public:
 		_ProfileFunction(const char* FunctionName, uint64_t IN_profileID) :
 			function	{ FunctionName },
-			profileID	{ IN_profileID + rand() }
+			profileID	{ IN_profileID + rand() },
+			frameID		{ profiler.GetFrameID() }
 		{
 			profiler.GetThreadProfiler().Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
 		}
 
 		~_ProfileFunction()
 		{
-			profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
+			if(profiler.GetFrameID() == frameID)
+				profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
 		}
 
 	private:
 		std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
 		const char*     function = "Unnamed function";
 		const uint64_t  profileID;
+		const uint64_t  frameID;
 	};
 
 #define PROFILELABEL_(a) MERGECOUNT_(PROFILE_ID_, a)

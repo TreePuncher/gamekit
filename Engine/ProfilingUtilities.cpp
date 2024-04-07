@@ -44,7 +44,7 @@ namespace FlexKit
 		frames.pop_back();
 
 		currentFrame.end = tp;
-		completedFrames.push_back(currentFrame);
+		completedFrames.emplace_back(currentFrame);
 	}
 
 

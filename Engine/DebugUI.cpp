@@ -319,9 +319,10 @@ namespace FlexKit
 			{
 				if (!drawData)
 				{
-					std::cout << "IMGUI + SKIPPED!\n";
+					FK_LOG_INFO( "imgui skipped!: drawData null" );
 					return;
 				}
+
 				ctx.BeginEvent_DEBUG("ImGui");
 
 				const auto cmdCount     = drawData->CmdListsCount;
@@ -339,8 +340,6 @@ namespace FlexKit
 				auto& rootSig        = frameResources.renderSystem().Library.RSDefault;
 
 				// Setup draw State
-				//
-
 				auto SetupState = [&] {
 					ctx.SetRootSignature(rootSig);
 					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui, allocator));
@@ -373,12 +372,10 @@ namespace FlexKit
 					{
 						if (cmd.UserCallback != NULL)
 						{
-							/*
 							if (cmd.UserCallback == ImDrawCallback_ResetRenderState)
 								SetupState();
 							else
-								pcmd->UserCallback(cmd_list, pcmd);
-							*/
+								cmd.UserCallback(cmdList, &cmd);
 						}
 
 						const D3D12_RECT r = {

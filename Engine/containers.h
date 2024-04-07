@@ -1440,12 +1440,14 @@ namespace FlexKit
 
 		Ty& front() noexcept
 		{
-			return Buffer[(SIZE + _Head - _Size) % SIZE];
+			auto idx = (SIZE + _Head - _Size) % SIZE;
+			return Buffer[idx];
 		}
 
 		Ty& back() noexcept
 		{
-			return Buffer[(SIZE + _Head - 1) % SIZE];
+			auto idx = (SIZE + _Head) % SIZE;
+			return Buffer[idx];
 		}
 
 

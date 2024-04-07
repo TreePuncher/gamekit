@@ -453,6 +453,9 @@ namespace FlexKit
 		BlockAllocation	AllocateTiles		(const gpuTileID* begin, const gpuTileID* end, iAllocator& allocator);
 
 		size_t			TilesAllocated() const noexcept;
+		size_t			TilesFree() const noexcept;
+		size_t			TilesStale() const noexcept;
+		size_t			TilesTotal() const noexcept;
 
 		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;

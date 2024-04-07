@@ -115,7 +115,7 @@ namespace FlexKit
 		static_vector(static_vector<TY_, RHSIZE>&& in)
 		{
 			Size = in.size();
-			memcpy(buffer, in.data(), in.size() * sizeof(TY_));
+			memcpy(buffer, in.data(), RHSIZE * sizeof(TY_));
 
 			in.Size = 0;
 		}
