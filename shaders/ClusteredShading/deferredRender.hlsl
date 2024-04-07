@@ -341,6 +341,8 @@ float3 UnpackNormal(uint2 px)
 
 float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 {
+	discard;
+	
 	const float2 SampleCoord	= Position;
 	const uint2  px				= Position.xy;
 	const float  depth			= DepthBuffer.Load(uint3(px.xy, 0));

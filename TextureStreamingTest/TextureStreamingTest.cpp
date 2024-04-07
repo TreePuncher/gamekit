@@ -40,7 +40,6 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 	gbuffer			{ { resolution }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { resolution } },
-	renderWindow	{ },
 
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
@@ -189,6 +188,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"M to toggle mouse\n"
 		"T to toggle texture streaming\n"
 		"R to toggle rotating camera\n"
+		"V to toggle vsync\n"
 		"UAV buffer   Pool space left: {}MB\n"
 		"RenderTarget Pool space left: {}MB\n"
 		"UAV texture  Pool space left: {}MB\n"
@@ -280,7 +280,7 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	FK_LOG_9("Frame End");
 
-	renderWindow.Present(vsync ? 1 : 0, 0);
+	renderWindow.Present(core.vSync ? 1 : 0, 0);
 
 	depthBuffer.Increment();
 }
@@ -318,7 +318,7 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					streamingUpdates = !streamingUpdates;
 					return true;
 				case KC_V:
-					vsync = !vsync;
+					framework.core.vSync = !framework.core.vSync;
 					return true;
 				case KC_R:
 					rotate = !rotate;

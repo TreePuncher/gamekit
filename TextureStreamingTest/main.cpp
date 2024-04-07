@@ -10,7 +10,7 @@ int main()
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
 #ifdef _DEBUG
-		constexpr bool enableDebug = false;
+		constexpr bool enableDebug = true;
 #else
 		constexpr bool enableDebug = false;
 #endif
@@ -26,8 +26,8 @@ int main()
 		
 		app->PushState<TextureStreamingTest>();
 		app->GetCore().FPSLimit		= 90;
-		app->GetCore().FrameLock	= true;
-		app->GetCore().vSync		= true;
+		app->GetCore().FrameLock	= false;
+		app->GetCore().vSync		= false;
 		app->Run();
 	}
 	catch (...)

@@ -35,6 +35,7 @@ namespace FlexKit
 			ResourceHandle					depthTarget,
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
+			LightBufferUpdate&				lightBuffers,
 			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator) {}
 	};
@@ -286,7 +287,8 @@ namespace FlexKit
 
 		ShaderFunction			function;
 		DevicePointer			indexBuffer;
-		DevicePointer			vertexBuffer;
+		DevicePointer			pointBuffer;
+		DevicePointer			normalBuffer;
 		std::array<float, 4>	color;
 		std::array<uint32_t, 2>	arguments;
 		//Vector<uint8_t>		argumentBuffer;
@@ -380,7 +382,7 @@ namespace FlexKit
 
 			DesciptorHeapLayout UAV_layout{};
 			UAV_layout.SetParameterAsShaderUAV(0, 1, 1);
-			UAV_layout.SetParameterAsSRV(1, 1, 2);
+			UAV_layout.SetParameterAsSRV(1, 1, 8);
 
 			RootSignatureBuilder builder{ temp };
 
@@ -394,7 +396,8 @@ namespace FlexKit
 			builder.Clear();
 			builder.SetParameterAsSRV(0, 0, 1);
 			builder.SetParameterAsSRV(1, 1, 1);
-			builder.SetParameterAsUINT(2, 6, 1, 0);
+			builder.SetParameterAsSRV(2, 2, 1);
+			builder.SetParameterAsUINT(3, 6, 1, 0);
 			builder.LocalRoot	= true;
 			builder.AllowIA		= false;
 			builder.AllowSO		= false;
@@ -645,6 +648,7 @@ namespace FlexKit
 			ResourceHandle					depthTarget,
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
+			LightBufferUpdate&				lightBuffers,
 			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator)
 		    {
@@ -659,6 +663,14 @@ namespace FlexKit
 
 				FrameResourceHandle				depthBuffer;
 				FrameResourceHandle				albedo;
+				FrameResourceHandle				normal;
+				FrameResourceHandle				material;
+
+				FrameResourceHandle				lights;
+				FrameResourceHandle				lightIndexes;
+				FrameResourceHandle				lightLists;
+				FrameResourceHandle				lightBuffers;
+				FrameResourceHandle				lightBVH;
 
 				CameraHandle					camera;
 			};
@@ -680,6 +692,14 @@ namespace FlexKit
 
 					data.depthBuffer	= builder.NonPixelShaderResource(depthTarget);
 					data.albedo			= builder.NonPixelShaderResource(gbuffer.albedo);
+					data.normal			= builder.NonPixelShaderResource(gbuffer.normal);
+					data.material		= builder.NonPixelShaderResource(gbuffer.MRIA);
+
+					data.lights			= builder.NonPixelShaderResource(lightBuffers.lightBufferObject);
+					data.lightIndexes	= builder.NonPixelShaderResource(lightBuffers.indexBufferObject);
+					data.lightLists		= builder.NonPixelShaderResource(lightBuffers.lightLists);
+					data.lightBuffers	= builder.NonPixelShaderResource(lightBuffers.lightListBuffer);
+					data.lightBVH		= builder.NonPixelShaderResource(lightBuffers.lightBVH);
 					
 					builder.AddNodeDependency(static_cast<TracableScene*>(bvh._ptr)->resourceAllocation->node);
 				},
@@ -778,7 +798,8 @@ namespace FlexKit
 										idx % 2 == 0 ? hitFunction1 : hitFunction2,
 										lod.vertexBuffer[0]->GetGPUVirtualAddress(),
 										lod.vertexBuffer[lod.GetIndexBufferIndex()]->GetGPUVirtualAddress(),
-										std::array<float, 4>{ (rand() % 1024) / 1024.0f, (rand() % 1024) / 1024.0f, (rand() % 1024) / 1024.0f  },
+										lod.vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)->GetDevicePointer(),
+										std::array<float, 4>{ (rand() % 32) / 32.0f, (rand() % 1024) / 1024.0f, (rand() % 1024) / 1024.0f  },
 										std::array<uint32_t, 2>{ (uint32_t)idx, 1 });
 							}
 
@@ -805,6 +826,14 @@ namespace FlexKit
 					heap.SetUAVTexture(ctx, 0, resources.UAV(data.target2D, ctx));
 					heap.SetSRV(ctx, 1, resources.NonPixelShaderResource(data.depthBuffer, ctx), DeviceFormat::R32_FLOAT);
 					heap.SetSRV(ctx, 2, resources.NonPixelShaderResource(data.albedo, ctx));
+					heap.SetSRV(ctx, 3, resources.NonPixelShaderResource(data.normal, ctx));
+					heap.SetSRV(ctx, 4, resources.NonPixelShaderResource(data.material, ctx));
+					heap.SetSRV(ctx, 5, resources.NonPixelShaderResource(data.lightIndexes, ctx));
+
+					heap.SetStructuredResource(ctx, 6, resources.NonPixelShaderResource(data.lights, ctx));
+					heap.SetStructuredResource(ctx, 7, resources.NonPixelShaderResource(data.lightLists, ctx));
+					heap.SetStructuredResource(ctx, 8, resources.NonPixelShaderResource(data.lightBuffers, ctx));
+					heap.SetStructuredResource(ctx, 9, resources.NonPixelShaderResource(data.lightBVH, ctx));
 
 					ctx.SetComputeRootSignature(globalRootSig);
 					ctx.SetComputeShaderResourceView(0, resources.AccelerationStructure(data.tlAS, ctx, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing), 0);
@@ -909,7 +938,7 @@ namespace FlexKit
 			Scene&							scene,
 			GatherPassesTask&				passes,
 			ReserveConstantBufferFunction	reserveCB,
-			iAllocator&						allocator)
+			iAllocator&						allocator) final
 		{
 			lightingEngine.VoxelizeScene(
 				frameGraph,
@@ -929,8 +958,9 @@ namespace FlexKit
 			ResourceHandle					depthTarget,
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
+			LightBufferUpdate&				lightBuffers,
 			ReserveConstantBufferFunction	reserveCB,
-			iAllocator*						allocator)
+			iAllocator*						allocator) final
 		{
 			lightingEngine.RayTrace(
 				dispatcher,
@@ -1042,6 +1072,7 @@ namespace FlexKit
 		ResourceHandle					depthTarget,
 		FrameResourceHandle				renderTarget,
 		GBuffer&						gbuffer,
+		LightBufferUpdate&				lightBuffers,
 		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
@@ -1055,6 +1086,7 @@ namespace FlexKit
 				depthTarget,
 				renderTarget,
 				gbuffer,
+				lightBuffers,
 				reserveCB,
 				allocator);
 	}

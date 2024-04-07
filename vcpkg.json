@@ -37,7 +37,8 @@
     "simde",
     "slikenet",
     "stb",
-    "tinygltf",
+    "tinygltf", 
+    "usd",
     "zlib-ng"
   ],
   "builtin-baseline": "a34c873a9717a888f58dc05268dea15592c2f0ff",
@@ -45,6 +46,10 @@
     {
       "name": "physx",
       "version": "5.2.1"
+    },
+    {
+      "name": "tbb",
+      "version-string": "2020_U3"
     }
   ]
 }
