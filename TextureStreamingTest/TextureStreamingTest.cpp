@@ -70,8 +70,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
-	AddAssetFile(R"(assets\ShadowTest.gameres)");
+	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");

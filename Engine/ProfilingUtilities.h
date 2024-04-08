@@ -85,7 +85,7 @@ namespace FlexKit
 
 	struct ThreadStats
 	{
-		std::vector<FrameTiming> timePoints;
+		Vector<FrameTiming> timePoints;
 	};
 
 
@@ -125,7 +125,7 @@ namespace FlexKit
 		{
 			if (completedFrames.size())
 			{
-				std::vector<FrameTiming> temp{ std::move(completedFrames) };
+				Vector<FrameTiming> temp{ std::move(completedFrames) };
 				completedFrames.reserve(1024);
 				return { std::move(temp) };
 			}
@@ -153,9 +153,9 @@ namespace FlexKit
 			completedFrames.reserve(1024);
 		}
 
-		std::vector<FrameTiming> activeFrames{};
-		std::vector<FrameTiming> completedFrames{};
-		std::mutex              m;
+		Vector<FrameTiming> activeFrames	{ SystemAllocator };
+		Vector<FrameTiming>	completedFrames	{ SystemAllocator };
+		std::mutex          m;
 	};
 
 
@@ -163,7 +163,7 @@ namespace FlexKit
 	{
 	public:
 
-		std::vector<ThreadStats> Threads;
+		Vector<ThreadStats> Threads { SystemAllocator };
 	};
 
 	inline static std::mutex _ProfilerLock = std::mutex{};
@@ -264,8 +264,6 @@ namespace FlexKit
 
 		return function();
 	}
-
-	inline thread_local ThreadProfiler& threadProfiler = profiler.GetThreadProfiler();
 
 	class _ProfileFunction
 	{

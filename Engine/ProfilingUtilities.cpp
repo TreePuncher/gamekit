@@ -37,14 +37,13 @@ namespace FlexKit
 	{
 		auto& frames = activeFrames;
 
-		if (!frames.size() || Id != frames.back().profileID) // Discard, frame changed
-			return;
+		if (auto frameOpt = frames.steal_back(); frameOpt && Id == frameOpt.value().profileID) // check for frame change, discards if frame changes
+		{
+			auto& currentFrame = frameOpt.value();
 
-		auto currentFrame = frames.back();
-		frames.pop_back();
-
-		currentFrame.end = tp;
-		completedFrames.emplace_back(currentFrame);
+			currentFrame.end = tp;
+			completedFrames.emplace_back(currentFrame);
+		}
 	}
 
 
