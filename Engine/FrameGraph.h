@@ -1512,7 +1512,7 @@ namespace FlexKit
 			frameObject.lastUsers.push_back(node.handle);
 
 			const auto p = std::make_pair(access, layout);
-			node.subNodeTracking.push_back({ frameResourceHandle, access, layout, std::get<0>(finalTransition.value_or(p)), std::get<1>(finalTransition.value_or(p)) });
+			node.subNodeTracking.push_back({ frameResourceHandle, frameObject.access, frameObject.layout, std::get<0>(finalTransition.value_or(p)), std::get<1>(finalTransition.value_or(p)) });
 
 			return frameResourceHandle;
 		}

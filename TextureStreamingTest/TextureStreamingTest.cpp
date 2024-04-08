@@ -124,7 +124,7 @@ TextureStreamingTest::~TextureStreamingTest()
 FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FK_LOG_9("Frame Begin");
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+	ProfileFunctionTextName(Update);
 
 	UpdateInput();
 
@@ -211,7 +211,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	ImGui::End();
 
-	profiler.DrawProfiler({ 0, 0 }, { 1920, 1080 }, core.GetTempMemory());
+	profiler.DrawProfiler({ 0, 0 }, { 1520, 1080 }, core.GetTempMemory());
 
 	ImGui::EndFrame();
 	ImGui::Render();
@@ -225,6 +225,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
+	ProfileFunctionTextName(Draw);
+
 	frameGraph.AddOutput(renderWindow.GetBackBuffer());
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
@@ -289,6 +291,7 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	FK_LOG_9("Frame End");
 
+	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	renderWindow.Present(core.vSync ? 1 : 0, 0);
 
 	depthBuffer.Increment();

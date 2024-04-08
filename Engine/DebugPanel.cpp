@@ -29,6 +29,29 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
+	DebugPanel::DebugPanel(GameFramework& framework, FrameworkState& IN_topState) :
+		FrameworkState	{ framework         },
+		topState        { IN_topState       },
+		core            { framework.core    },
+		console         { framework.console }
+	{
+		pauseBackgroundLogic = true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	DebugPanel::~DebugPanel()
+	{
+		framework.consoleActive = false;
+		console.allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
+	}
+
+
+	/************************************************************************************************/
+
+
 	UpdateTask* DebugPanel::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
         if (!pauseBackgroundLogic)

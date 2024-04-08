@@ -302,6 +302,8 @@ namespace FlexKit
 #if USING(ENABLEPROFILER)
 #define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
 #define ProfileFunctionLabeled(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(__FUNCTION__":"#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunctionTextName(LABEL)  const auto PROFILELABEL_##LABEL = _ProfileFunction(#LABEL, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
+#define ProfileFunctionStrName(STR)  const auto PROFILELABEL_##LABEL = _ProfileFunction(STR, GETLINEHASH(STRINGIFY(__LINE__) __FUNCTION__ ))
 #else
 #define ProfileFunction()
 #define ProfileFunctionLabeled(LABEL)

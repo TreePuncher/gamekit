@@ -648,6 +648,8 @@ namespace FlexKit
 		template<typename ... TY_Queries>
 		[[nodiscard]] auto Query(iAllocator& allocator, TY_Queries ... queries)
 		{
+			ProfileFunctionTextName(SceneQuery);
+
 			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
 			using Internal_ty = std::remove_reference_t<decltype(std::declval<Optional_ty>().value())>;
 
@@ -668,6 +670,8 @@ namespace FlexKit
 		template<typename ... TY_Queries>
 		void Query(auto& outVector, uint32_t max, TY_Queries ... queries)
 		{
+			ProfileFunctionTextName(SceneQuery);
+
 			using Optional_ty = decltype(FlexKit::Query(std::declval<GameObject&>(), queries...));
 			using Internal_ty = decltype(std::declval<Optional_ty>().value());
 
@@ -692,6 +696,8 @@ namespace FlexKit
 		template<typename TY_FN, typename ... TY_Queries>
 		void QueryFor(TY_FN FN, const TY_Queries& ... queries)
 		{
+			ProfileFunctionTextName(SceneQuery);
+
 			auto& visables = SceneVisibilityComponent::GetComponent();
 
 			for (const auto entity : sceneEntities)
