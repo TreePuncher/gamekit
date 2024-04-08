@@ -5918,7 +5918,7 @@ namespace FlexKit
 		// Create Resources
 		const UINT DXGIFLAGS =
 #if USING( DEBUGGRAPHICS )
-			DXGI_CREATE_FACTORY_DEBUG;
+			0;// DXGI_CREATE_FACTORY_DEBUG;
 #else
 			0;
 #endif
@@ -6166,10 +6166,7 @@ namespace FlexKit
 			ProfileFunctionTextName(GPU_WAIT);
 #ifdef _DEBUG
 			if (stallCounter == 100)
-			{
 				FK_LOG_ERROR("Stuck waiting for: %z\n", counter);
-				DebugBreak();
-			}
 #endif
 
 			const size_t completedValue = directFence->GetCompletedValue();

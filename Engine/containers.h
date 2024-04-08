@@ -479,6 +479,17 @@ namespace FlexKit
 			return A[Size - 1];
 		}
 
+		std::optional<Ty> steal_back()
+		{
+			if (size())
+			{
+				EXITSCOPE(pop_back(););
+				return { std::move(A[Size - 1]) };
+			}
+			else
+				return {};
+		}
+
 		/************************************************************************************************/
 
 

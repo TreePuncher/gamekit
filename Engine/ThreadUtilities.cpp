@@ -201,6 +201,8 @@ namespace FlexKit
 		Thread = std::move(
 			std::thread([&]
 				{
+					profiler.GetThreadProfiler();
+
 					localWorkQueue  = &workQueue;
 					_localThread    = this;
 
@@ -241,6 +243,8 @@ namespace FlexKit
 		backgroundThread = std::thread{
 			[&]
 			{
+				profiler.GetThreadProfiler();
+
 				localWorkQueue = &queue;
 				running = true;
 
