@@ -1082,6 +1082,15 @@ namespace FlexKit
 				builder.AddNodeDependency(allocation.node);
 				//builder.AddDataDependency(sceneDescription.lights);
 				//builder.AddDataDependency(sceneDescription.cameras);
+
+				builder.Requires(CREATECLUSTERS);
+				builder.Requires(CLEARCOUNTERSPSO);
+				builder.Requires(CREATELIGHTBVH_PHASE1);
+				builder.Requires(CREATELIGHTBVH_PHASE2);
+				builder.Requires(CREATECLUSTERLIGHTLISTS);
+				builder.Requires(CREATELIGHTLISTARGS_PSO);
+				builder.Requires(RESOLUTIONMATCHSHADOWMAPS);
+				builder.Requires(CLEARSHADOWRESOLUTIONBUFFER);
 			},
 			[this, XY = WH / 32](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{

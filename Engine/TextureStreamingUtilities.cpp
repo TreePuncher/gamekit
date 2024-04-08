@@ -686,6 +686,8 @@ namespace FlexKit
 			ReserveVertexBufferFunction&	reserveVB,
 			iAllocator&						tempAllocator)
 	{
+		ProfileFunctionStrName("Feedback:Pass");
+
 		auto initiateFeedbackPass = frameGraph.AddNode<TextureFeedbackPass_Data>(
 			TextureFeedbackPass_Data{
 				camera,

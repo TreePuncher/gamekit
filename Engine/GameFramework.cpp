@@ -218,6 +218,8 @@ namespace FlexKit
 
 	UpdateTask* GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
 	{
+		ProfileFunctionTextName(Update);
+
 		runningTime += dT;
 
 		if (!subStates.size()) {
@@ -238,7 +240,7 @@ namespace FlexKit
 
 	UpdateTask* GameFramework::Draw(UpdateTask* update, UpdateDispatcher& dispatcher, iAllocator& TempMemory, double dT)
 	{
-		ProfileFunction();
+		ProfileFunctionTextName(Draw);
 
 		FrameGraph&	frameGraph = TempMemory.allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
@@ -256,7 +258,7 @@ namespace FlexKit
 
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
-		ProfileFunction();
+		ProfileFunctionTextName(PostDraw);
 
 		if(subStates.back())
 			subStates.back()->PostDrawUpdate(core, dt);
@@ -268,9 +270,7 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
-		ProfileFunction();
-
-
+		ProfileFunctionTextName(DrawFrame);
 		FK_LOG_9("Frame Begin");
 
 		if (!subStates.size() && !deferredPushes.size())
@@ -306,7 +306,7 @@ namespace FlexKit
 		FK_LOG_9("Frame End");
 
 		{
-			ProfileFunctionLabeled(Frees);
+			ProfileFunctionStrName("DrawFrame:Frees");
 
 			for (auto state : deferredFrees) {
 				core.GetBlockMemory().release_allocation(*state);

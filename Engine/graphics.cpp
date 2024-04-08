@@ -571,6 +571,8 @@ namespace FlexKit
 
 	void ConstantBufferTable::Reset(ConstantBufferHandle Handle)
 	{
+		ProfileFunctionTextName(ConstantBufferTableReset);
+
 		const size_t UserIdx	= handles[Handle];
 		auto& buffer			= buffers[UserIdx];
 
@@ -6161,6 +6163,7 @@ namespace FlexKit
 		uint32_t stallCounter = 0;
 		while (true)
 		{
+			ProfileFunctionTextName(GPU_WAIT);
 #ifdef _DEBUG
 			if (stallCounter == 100)
 			{

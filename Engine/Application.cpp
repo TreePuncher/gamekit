@@ -53,6 +53,7 @@ namespace FlexKit
 		while (!Core.End && framework.Running())
 		{
 			profiler.BeginFrame();
+			ProfileFunctionTextName(Frame);
 
 			Core.Time.Before();
 
@@ -85,6 +86,8 @@ namespace FlexKit
 
 			if (Core.FrameLock)// FPS Locked
 			{
+				ProfileFunctionTextName(Wait);
+
 				auto sleepTime  = desiredFrameTime - updateDuration;
 				auto timePointA = std::chrono::high_resolution_clock::now();
 

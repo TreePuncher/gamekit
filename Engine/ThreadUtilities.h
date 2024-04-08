@@ -634,6 +634,8 @@ namespace FlexKit
 		template<typename ... TY_ARGS>
 		decltype(auto) operator ()(TY_ARGS&& ... args)
 		{
+			ProfileFunctionStrName("SynchronizedOperation");
+
 			const auto lock = std::scoped_lock( criticalSection );
 			return operation(std::forward<TY_ARGS>(args)...);
 		}

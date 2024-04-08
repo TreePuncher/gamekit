@@ -90,203 +90,210 @@ namespace FlexKit
 
 				ImGui::DragFloatRange2("Range", &beginRange,&endRange, 0.0001f, 0.0f, 1.0f);
 
-				const float range = endRange - beginRange;
+				if(ImGui::BeginChild("FlameGraph"))
+				{ 
+					const float range = endRange - beginRange;
 
-				ImDrawList* draw_list       = ImGui::GetWindowDrawList();
-				const float scrollY         = ImGui::GetScrollY();
+					ImDrawList* draw_list       = ImGui::GetWindowDrawList();
+					const float scrollY         = ImGui::GetScrollY();
 
-				ImGui::CalcItemWidth();
-				ImGui::GetFrameHeight();
+					ImGui::CalcItemWidth();
+					ImGui::GetFrameHeight();
 
-				if (stats)
-				{
-					TimePoint begin = TimePoint::max();
-					TimePoint end = TimePoint::min();
-
-					for (auto& thread : stats->Threads)
+					if (stats)
 					{
-						for (const auto sample : thread.timePoints)
+						TimePoint begin = TimePoint::max();
+						TimePoint end = TimePoint::min();
+
+						for (auto& thread : stats->Threads)
 						{
-							begin = min(sample.begin, begin);
-							end = max(sample.end, end);
-						}
-					}
-
-					const auto duration     = end - begin;
-					const double fDuration  = double(duration.count()) / 1000000.0;
-
-					const float barWidth    = 25.0f;
-					const float areaH       = stats->Threads.size() * maxDepth * barWidth;
-
-					const ImVec2 windowPOS  = ImGui::GetWindowPos();
-					const ImVec2 windowSize = ImGui::GetWindowSize();
-
-					ImGui::SameLine();
-					ImGui::Text(fmt::format("Capture duration {}ms", fDuration).c_str());
-
-					struct imDrawText
-					{
-						ImVec2      pos;
-						ImColor     color;
-						std::string string;
-					};
-
-					Vector<imDrawText> textstack{ &temp };
-					size_t drawCount = 0;
-
-					if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH/2)))
-					{
-						const auto contentBegin = ImGui::GetCursorScreenPos();
-
-						uint32_t threadOffsetCounter = 0;
-
-						for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
-						{
-							auto& thread        = stats->Threads[threadID];
-							auto& profilings    = thread.timePoints;
-
-							if (!profilings.size())
-								continue;
-
-							auto GetChild = [&](uint64_t childID) -> FrameTiming&
+							for (const auto sample : thread.timePoints)
 							{
-								for (auto& timeSample : profilings)
-									if (timeSample.profileID == childID)
-										return timeSample;
-
-								FK_ASSERT(0);
-
-								return *profilings.end();
-							};
-
-
-							const float threadOffset = (float)threadOffsetCounter++ * barWidth * maxDepth;
-
-
-							const ImVec2 pMin{ contentBegin.x,                  contentBegin.y + barWidth + threadOffset - scrollY };
-							const ImVec2 pMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
-
-							const ImVec2 threadBoxMin{ contentBegin.x,                  contentBegin.y + threadOffset - scrollY };
-							const ImVec2 threadBoxMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
-
-							static const ImColor colors[] = {
-								ImColor{11, 173, 181},
-								ImColor{73, 127, 130},
-								ImColor{56, 75,  65},
-							};
-
-							draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 7.0f, ImDrawFlags_RoundCornersAll);
-							draw_list->AddRect(threadBoxMin, threadBoxMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
-
-							if (pMax.y > 0.0f)
-							{
-								auto VisitChildren =
-									[&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
-									{
-										FrameTiming& node = GetChild(nodeID);
-										// Render Current Profile Sample
-										const float fbegin  = node.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
-										const float fend    = node.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
-
-										const ImVec2 pMin = ImVec2{
-											contentBegin.x + windowSize.x * fbegin,
-											contentBegin.y + (currentDepth + 0) * barWidth + threadOffset - scrollY };
-
-										const ImVec2 pMax = ImVec2{
-											contentBegin.x + windowSize.x * fend,
-											contentBegin.y + (currentDepth + 1) * barWidth + threadOffset - scrollY };
-
-										if (pMax.y > 0.0f)
-										{
-											static const ImColor colors[] = {
-												{37, 232, 132},
-												{235, 96, 115},
-												{181, 11, 119},
-											};
-
-											draw_list->AddRectFilled(pMin, pMax, colors[drawCount++ % 3], 7.0f, ImDrawFlags_RoundCornersAll);
-											draw_list->AddRect(pMin, pMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
-
-											const ImVec2 pTxt = ImVec2{
-												contentBegin.x + windowSize.x * fbegin,
-												contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
-
-											const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-
-											// Visit Child Samples
-											if (currentDepth + 1 < maxDepth)
-												for (uint64_t childID : node.children)
-													_Self(childID, _Self, maxDepth, currentDepth + 1);
-
-
-											auto txt        = fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100);
-											auto txtSize    = ImGui::CalcTextSize(txt.c_str());
-
-											if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
-											{
-												textstack.emplace_back(
-													pTxt,
-													textColor,
-													txt.c_str()
-												);
-											}
-											else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
-											{
-												textstack.emplace_back(
-													pTxt,
-													textColor,
-													fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
-												);
-
-												auto parentNode = node.parentID;
-												for (size_t I = 1; parentNode != uint64_t(-1); I++)
-												{
-													auto& parentNode_ref = GetChild(parentNode);
-
-													const float fbegin  = parentNode_ref.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
-													const float fend    = parentNode_ref.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
-
-													const ImVec2 pTxt = ImVec2{
-														contentBegin.x + windowSize.x * fbegin,
-														contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
-
-													const auto txt      = fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100);
-													const auto size     = windowSize.x * (fend - fbegin);
-													const auto txtSize  = ImGui::CalcTextSize(txt.c_str());
-
-													if (txtSize.x > size)
-														textstack.emplace_back(
-															pTxt,
-															textColor,
-															txt.c_str());
-
-													parentNode = parentNode_ref.parentID;
-												}
-											}
-										}
-									};
-
-								for (const auto& profile : profilings)
-									if (profile.parentID == uint64_t(-1))
-										VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
+								begin = min(sample.begin, begin);
+								end = max(sample.end, end);
 							}
 						}
 
+						const auto duration     = end - begin;
+						const double fDuration  = double(duration.count()) / 1000000.0;
 
-						for(const auto& txt : textstack)
-							draw_list->AddText(txt.pos, txt.color, txt.string.c_str());
+						const float barWidth    = 25.0f;
+						const float areaH       = stats->Threads.size() * maxDepth * barWidth;
 
-						ImGui::EndChild();
+						const ImVec2 windowPOS  = ImGui::GetWindowPos();
+						const ImVec2 windowSize = ImGui::GetWindowSize();
+
+						ImGui::SameLine();
+						ImGui::Text(fmt::format("Capture duration {}ms", fDuration).c_str());
+
+						struct imDrawText
+						{
+							ImVec2      pos;
+							ImColor     color;
+							std::string string;
+						};
+
+						Vector<imDrawText> textstack{ &temp };
+						size_t drawCount = 0;
+
+						if(ImGui::BeginChild(GetCRCGUID("PROFILEGRAPH" + threadID++), ImVec2(windowSize.x, areaH/2)))
+						{
+							const auto contentBegin = ImGui::GetCursorScreenPos();
+
+							uint32_t threadOffsetCounter = 0;
+
+							for (size_t threadID = 0; threadID < stats->Threads.size(); threadID++)
+							{
+								auto& thread        = stats->Threads[threadID];
+								auto& profilings    = thread.timePoints;
+
+								if (!profilings.size())
+									continue;
+
+								auto GetChild = [&](uint64_t childID) -> FrameTiming&
+								{
+									for (auto& timeSample : profilings)
+										if (timeSample.profileID == childID)
+											return timeSample;
+
+									FK_ASSERT(0);
+
+									return *profilings.end();
+								};
+
+
+								const float threadOffset = (float)threadOffsetCounter++ * barWidth * maxDepth;
+
+
+								const ImVec2 pMin{ contentBegin.x,                  contentBegin.y + barWidth + threadOffset - scrollY };
+								const ImVec2 pMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+
+								const ImVec2 threadBoxMin{ contentBegin.x,                  contentBegin.y + threadOffset - scrollY };
+								const ImVec2 threadBoxMax{ contentBegin.x + windowSize.x,   contentBegin.y + maxDepth * barWidth + threadOffset - scrollY };
+
+								static const ImColor colors[] = {
+									ImColor{11, 173, 181},
+									ImColor{73, 127, 130},
+									ImColor{56, 75,  65},
+								};
+
+								draw_list->AddRectFilled(threadBoxMin, threadBoxMax, colors[threadOffsetCounter % 2], 7.0f, ImDrawFlags_RoundCornersAll);
+								draw_list->AddRect(threadBoxMin, threadBoxMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
+
+								if (pMax.y > 0.0f)
+								{
+									auto VisitChildren =
+										[&](uint64_t nodeID, auto& _Self, uint32_t maxDepth, uint32_t currentDepth) -> void
+										{
+											FrameTiming& node = GetChild(nodeID);
+											// Render Current Profile Sample
+											const float fbegin  = node.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+											const float fend    = node.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
+
+											const ImVec2 pMin = ImVec2{
+												contentBegin.x + windowSize.x * fbegin,
+												contentBegin.y + (currentDepth + 0) * barWidth + threadOffset - scrollY };
+
+											const ImVec2 pMax = ImVec2{
+												contentBegin.x + windowSize.x * fend,
+												contentBegin.y + (currentDepth + 1) * barWidth + threadOffset - scrollY };
+
+											if (pMax.y > 0.0f)
+											{
+												static const ImColor colors[] = {
+													{37, 232, 132},
+													{235, 96, 115},
+													{181, 11, 119},
+												};
+
+												draw_list->AddRectFilled(pMin, pMax, colors[drawCount++ % 3], 7.0f, ImDrawFlags_RoundCornersAll);
+												draw_list->AddRect(pMin, pMax, ImColor{ 0, 0, 0 }, 7.0f, ImDrawFlags_RoundCornersAll);
+
+												const ImVec2 pTxt = ImVec2{
+													contentBegin.x + windowSize.x * fbegin,
+													contentBegin.y + currentDepth * barWidth + threadOffset - scrollY };
+
+												const ImColor textColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+
+												// Visit Child Samples
+												if (currentDepth + 1 < maxDepth)
+													for (uint64_t childID : node.children)
+														_Self(childID, _Self, maxDepth, currentDepth + 1);
+
+
+												auto txt        = fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100);
+												auto txtSize    = ImGui::CalcTextSize(txt.c_str());
+
+												if ((showLabels && txtSize.x <= (pMax.x - pMin.x)))
+												{
+													textstack.emplace_back(
+														pTxt,
+														textColor,
+														txt.c_str()
+													);
+												}
+												else if (ImGui::IsMouseHoveringRect(pMin, pMax, true))
+												{
+													textstack.emplace_back(
+														pTxt,
+														textColor,
+														fmt::format("{} [ {}.ms ]", node.Function, node.GetDurationDouble() * 100)
+													);
+
+													auto parentNode = node.parentID;
+													for (size_t I = 1; parentNode != uint64_t(-1); I++)
+													{
+														auto& parentNode_ref = GetChild(parentNode);
+
+														const float fbegin  = parentNode_ref.GetRelativeTimePointBegin(begin, duration) / range - beginRange / range;
+														const float fend    = parentNode_ref.GetRelativeTimePointEnd(begin, duration) / range - beginRange / range;
+
+														const ImVec2 pTxt = ImVec2{
+															contentBegin.x + windowSize.x * fbegin,
+															contentBegin.y + (currentDepth - I) * barWidth + threadOffset - scrollY };
+
+														const auto txt      = fmt::format("{} [ {}.ms ]", parentNode_ref.Function, parentNode_ref.GetDurationDouble() * 100);
+														const auto size     = windowSize.x * (fend - fbegin);
+														const auto txtSize  = ImGui::CalcTextSize(txt.c_str());
+
+														if (txtSize.x > size)
+															textstack.emplace_back(
+																pTxt,
+																textColor,
+																txt.c_str());
+
+														parentNode = parentNode_ref.parentID;
+													}
+												}
+											}
+										};
+
+									for (const auto& profile : profilings)
+										if (profile.parentID == uint64_t(-1))
+											VisitChildren(profile.profileID, VisitChildren, maxDepth, 0);
+								}
+							}
+
+
+							for(const auto& txt : textstack)
+								draw_list->AddText(txt.pos, txt.color, txt.string.c_str());
+
+							ImGui::EndChild();
+						}
 					}
+					else
+					{
+						ImGui::Text("No Profiling Stats Available!");
+					}
+
+					ImGui::EndChild();
 				}
-				else
-				{
-					ImGui::Text("No Profiling Stats Available!");
-				}
+
 			}
 
 			ImGui::End();
+
 		}
 #endif
 	}

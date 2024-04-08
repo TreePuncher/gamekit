@@ -6,23 +6,11 @@
 
 
 namespace FlexKit
-{	// Will eventually be a Quake Style Console
+{
 	struct DebugPanel : public FrameworkState
 	{
-		DebugPanel(GameFramework& framework, FrameworkState& IN_topState) :
-			FrameworkState  { framework         },
-			topState        { IN_topState       },
-			core            { framework.core    },
-			console         { framework.console }
-		{
-			pauseBackgroundLogic = true;
-		}
-
-		~DebugPanel()
-		{
-			framework.consoleActive = false;
-			console.allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
-		}
+		DebugPanel(GameFramework& framework, FrameworkState& IN_topState);
+		~DebugPanel();
 
 		bool			pauseBackgroundLogic;
 		size_t			recallIndex;
