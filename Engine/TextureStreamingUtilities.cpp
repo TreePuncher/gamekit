@@ -619,14 +619,6 @@ namespace FlexKit
 		double							dt,
 		iAllocator&						tempAllocator)
 	{
-		//if (timeSinceLastUpdate < 1.0f / 10.0f)
-		//{
-		//	timeSinceLastUpdate += (float)dt;
-		//	return;
-		//}
-		//else
-		//	timeSinceLastUpdate = 0;
-
 		if (async)
 		{
 			if (updateInProgress)
@@ -849,8 +841,16 @@ namespace FlexKit
 					{
 						for (size_t itr = 0; itr < subMeshCount; itr++)
 						{
+							auto GetMaterial = [&]
+								{
+									if (itr < material.subMaterials.size())
+										return materials[material.subMaterials[itr]];
+									else
+										return material;
+								};
+
 							const auto subMesh		= lod.subMeshes[itr];
-							const auto& subMaterial	= materials[material.subMaterials[itr]];
+							const auto& subMaterial	= GetMaterial();
 
 							if (subMaterial.textureDescriptors.size != 0)
 							{
@@ -1310,7 +1310,7 @@ namespace FlexKit
 
 		for (const auto& block : reallocatedResourceList)
 		{
-			TileMapList mappings{ allocator };
+			TileMapList mappings{ threadLocalAllocator };
 
 			const auto resource = block.resource;
 			const auto blocks	= filter(
@@ -1384,8 +1384,9 @@ namespace FlexKit
 			TileMapList mappings{ &threadLocalAllocator };
 			for (const AllocatedBlock& block : blocks)
 			{
+
 				const auto level = block.tileID.GetMipLevel();
-				if (asset && !streamContext.Open(level, asset.value()))
+				if (asset && !streamContext.Open(level, asset.value(), threadLocalAllocator))
 				{
 					FK_LOG_ERROR("Texture Streaming : Failed to open stream context!");
 					continue;
@@ -1434,7 +1435,7 @@ namespace FlexKit
 				FK_LOG_ERROR("Texture Streaming: Asset not found!");
 				continue;
 			}
-
+			
 			const auto deviceResource	= renderSystem.GetDeviceResource(resource);
 			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
 

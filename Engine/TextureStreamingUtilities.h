@@ -140,14 +140,19 @@ namespace FlexKit
 
 		bool Open(const uint32_t MIPlevel, AssetHandle asset)
 		{
+			return Open(MIPlevel, asset, *allocator);
+		}
+
+		bool Open(const uint32_t MIPlevel, AssetHandle asset, iAllocator& allocator)
+		{
 			if (MIPlevel == currentLevel && asset == currentAsset)
 				return true;
 
 			if (!isAssetAvailable(asset))
 				return false;
-
+			
 			TextureResourceBlob textureHeader;
-			ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader));
+			ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader), allocator);
 			
 			if (IsDDS((DeviceFormat)textureHeader.format))
 			{

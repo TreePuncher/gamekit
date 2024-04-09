@@ -2969,7 +2969,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseTexture	(ResourceHandle Handle, const uint64_t idx);
 		void LockUntil		(size_t FrameID);
 
-		void UpdateLocks(ThreadManager& thread, const uint64_t currentIdx);
+		void FreeDelayedResources(ThreadManager& thread, const uint64_t currentIdx);
+		bool FreeDelayedResourcesIncrementally(const uint64_t currentIdx);
 		void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
@@ -3679,7 +3680,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void		EndFrame();
 		void		Signal(SyncPoint);
 
-		void		_UpdateCounters();
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitForGPU();
@@ -3825,6 +3825,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
 		void				_ForceReleaseTexture(ResourceHandle handle);
+
+		void				_ReleaseDelayedResources();
+
 
 		struct VidMemoryStates
 		{

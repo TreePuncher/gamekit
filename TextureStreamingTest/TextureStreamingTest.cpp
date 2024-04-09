@@ -70,7 +70,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	AddAssetFile(R"(assets\SanMiguel.gameres)");
+	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
 	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
 	if (!LoadScene(framework.core, loadCtx, "Scene"))

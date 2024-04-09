@@ -1230,11 +1230,7 @@ namespace FlexKit
 	template<typename Ty, int SIZE = 64, int Alignment = 16>
 	struct CircularBuffer
 	{
-		CircularBuffer() : _Head(0), _Size(0)
-		{
-			for (auto& e : Buffer)
-				new(&e) Ty{};
-		}
+		CircularBuffer() : _Head(0), _Size(0) {}
 
 
 		~CircularBuffer()
@@ -1263,14 +1259,14 @@ namespace FlexKit
 
 		Ty& at(size_t idx)
 		{
-			idx = (_Head - idx - 1) % SIZE;
-			return Buffer[idx];
+			idx = (_Head + idx) % SIZE;
+			return *_get(idx);
 		}
 
 		const Ty& at(size_t idx) const noexcept
 		{
-			idx = (_Head - idx - 1) % SIZE;
-			return Buffer[idx];
+			idx = (_Head + idx) % SIZE;
+			return *_get(idx);
 		}
 
 		bool full() const noexcept {
@@ -1298,6 +1294,8 @@ namespace FlexKit
 
 			Ty Out = std::move(front());
 			_Size = FlexKit::Max(--_Size, 0);
+			_Head = (SIZE + _Head + 1) % SIZE;
+
 			return std::move(Out);
 		}
 
@@ -1309,7 +1307,6 @@ namespace FlexKit
 
 			Ty Out = std::move(back());
 			_Size = FlexKit::Max(--_Size, 0);
-			_Head = (SIZE + --_Head) % SIZE;
 			return std::move(Out);
 		}
 
@@ -1321,144 +1318,190 @@ namespace FlexKit
 			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
-			Buffer[idx] = Item;
+			*_get(idx) = Item;
 
 			return true;
 		}
 
 		bool push_back(Ty&& Item) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-				back().~Ty();
+			if (_Size + 1 > SIZE) {// Call Destructor on Tail
+				if constexpr (!std::is_trivially_destructible_v<Ty>)
+					_get(_Head)->~Ty();
 
-			_Size = Min(++_Size, SIZE);
-			size_t idx = _Head++;
-			_Head = _Head % SIZE;
-
-			new(Buffer + idx) Ty(std::move(Item));
-
+				new(_get(_Head)) Ty{ std::move(Item) };
+				_Head = (1 + _Head) % SIZE;
+			}
+			else
+			{
+				auto idx = (_Head + _Size) % SIZE;
+				_Size = Min(++_Size, SIZE);
+				new(_get(idx)) Ty{ std::move(Item) };
+			}
 			return true;
 		}
 
 		template<typename FN>
 		bool push_back(const Ty& Item, FN callOnTail) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-			{
-				callOnTail(back());
-				back().~Ty();
+			if (_Size + 1 > SIZE) {// Call Destructor on Tail
+				callOnTail(*_get(_Head));
+
+				if constexpr (!std::is_trivially_destructible_v<Ty>)
+					_get(_Head)->~Ty();
+
+				new(_get(_Head)) Ty{ Item };
+				_Head = (1 + _Head) % SIZE;
 			}
-
-			_Size = Min(++_Size, SIZE);
-			size_t idx = _Head++;
-			_Head = _Head % SIZE;
-			Buffer[idx] = Item;
-
+			else
+			{
+				auto idx = (_Head + _Size) % SIZE;
+				_Size = Min(++_Size, SIZE);
+				new(Buffer + idx) Ty(std::move(Item));
+			}
 			return true;
 		}
 
 		template<typename FN>
 		bool push_back(Ty&& Item, FN callOnTail) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-			{
-				callOnTail(back());
-				back().~Ty();
+			if (_Size + 1 > SIZE) {// Call Destructor on Tail
+				callOnTail(*_get(_Head));
+				_get(_Head)->~Ty();
+				new(_get(_Head)) Ty(Item);
+				_Head = (1 + _Head) % SIZE;
 			}
-
-			_Size = Min(++_Size, SIZE);
-			size_t idx = _Head++;
-			_Head = _Head % SIZE;
-
-			new(Buffer + idx) Ty(std::move(Item));
-
+			else
+			{
+				auto idx = (_Head + _Size) % SIZE;
+				_Size = Min(++_Size, SIZE);
+				new(_get(idx)) Ty(std::move(Item));
+			}
 			return true;
 		}
 
 		template<typename ... TY_ARGS>
 		bool emplace_back(TY_ARGS&& ... args) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-				back().~Ty();
-
-			_Size       = Min(++_Size, SIZE);
-			size_t idx  = _Head++;
-			_Head       = _Head % SIZE;
-
-			new(Buffer + idx) Ty{ std::forward<TY_ARGS>(args)... };
-
+			if (_Size + 1 > SIZE) {// Call Destructor on Tail
+				_get(_Head)->~Ty();
+				new(_get(_Head)) Ty{ std::forward<TY_ARGS>(args)... };
+				_Head = (1 + _Head) % SIZE;
+			}
+			else
+			{
+				auto idx = (_Head + _Size) % SIZE;
+				_Size = Min(++_Size, SIZE);
+				new(_get(idx)) Ty{ std::forward<TY_ARGS>(args)... };
+			}
 			return true;
 		}
 
 		template<typename ... TY>
 		bool emplace_back(TY&& ... args, std::invocable<Ty&> auto&& callOnTail) noexcept
 		{
-			_Size       = Min(++_Size, SIZE);
-			size_t idx  = _Head++;
-			_Head       = _Head % SIZE;
-
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-			{
-				callOnTail(back());
-				Buffer[idx].~Ty();
+			if (_Size + 1 > SIZE) {// Call Destructor on Tail
+				callOnTail(reinterpret_cast<Ty&>(*_get(_Head)));
+				_get(_Head)->~Ty();
+				new(_get(_Head)) Ty{ std::forward<TY>(args)... };
+				_Head = (1 + _Head) % SIZE;
 			}
-
-			new(Buffer + idx) Ty{ std::forward<TY>(args)... };
-
+			else
+			{
+				auto idx = (_Head + _Size) % SIZE;
+				_Size = Min(++_Size, SIZE);
+				new(_get(idx)) Ty{ std::forward<TY>(args)... };
+			}
 			return true;
 		}
 
 		void push_front(const Ty& Item) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Head
-			{
-				front().~Ty();
-			}
+			if (_Size + 1 > SIZE)
+			{// Call Destructor on Head
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
 
-			_Size = Min(++_Size, SIZE);
-			const size_t idx = (SIZE + _Head - _Size) % SIZE;
-			new (Buffer + idx) Ty{ Item };
+				_get(_Head)->~Ty();
+				new (Buffer + _Head) Ty{ Item };
+			}
+			else
+			{
+				new (_get(_Head)) Ty{Item};
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+			}
 		}
 
 		template<typename FN>
 		void push_front(const Ty& Item, FN callOnTail) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Head
-			{
-				front().~Ty();
-				callOnTail(front());
-			}
+			if (_Size + 1 > SIZE)
+			{// Call Destructor on Head
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
 
-			_Size = Min(++_Size, SIZE);
-			const size_t idx = (SIZE + _Head - _Size) % SIZE;
-			new (Buffer + idx) Ty{ Item };
+				callOnTail(*_get(_Head));
+				_get(_Head)->~Ty();
+				new (_get(_Head)) Ty{ Item };
+			}
+			else
+			{
+				new (_get(_Head)) Ty{ Item };
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+			}
+		}
+
+		template<typename FN>
+		void push_front(Ty&& Item) noexcept
+		{
+			if (_Size + 1 > SIZE)
+			{// Call Destructor on Head
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+
+				callOnTail(_get(_Head));
+				_get(_Head)->~Ty();
+				new (_get(_Head)) Ty{ std::move(Item) };
+			}
+			else
+			{
+				new (_get(_Head)) Ty{ std::move(Item) };
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+			}
 		}
 
 		template<typename ... TY_args>
 		void emplace_front(TY_args&& ... args) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Head
-			{
-				front().~Ty();
-				callOnTail(front());
+			if (_Size + 1 > SIZE)
+			{// Call Destructor on Head
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+
+				_get(_Head)->~Ty();
+				new (_get(_Head)) Ty{ std::forward<TY_args>(args)... };
 			}
-
-			_Size = Min(++_Size, SIZE);
-			const size_t idx = (SIZE + _Head - _Size) % SIZE;
-
-			new (Buffer + idx) Ty{ std::forward<TY_args>(args)... };
+			else
+			{
+				new (_get(_Head)) Ty{ std::forward<TY_args>(args)... };
+				_Head = ((SIZE + _Head) - 1) % SIZE;
+				_Size = Min(++_Size, SIZE);
+			}
 		}
 
 		Ty& front() noexcept
 		{
-			auto idx = (SIZE + _Head - _Size) % SIZE;
-			return Buffer[idx];
+			auto idx = (SIZE + _Head) % SIZE;
+			return *_get(idx);
 		}
 
 		Ty& back() noexcept
 		{
-			auto idx = (SIZE + _Head) % SIZE;
-			return Buffer[idx];
+			auto idx = (SIZE + _Head + _Size - 1) % SIZE;
+			return *_get(idx);
 		}
 
 
@@ -1566,8 +1609,18 @@ namespace FlexKit
 
 		Ty* data() { return Buffer; }
 
+		Ty* _get(size_t idx) noexcept
+		{
+			return reinterpret_cast<Ty*>(Buffer + sizeof(Ty) * idx);
+		}
+
+		const Ty* _get(size_t idx) const noexcept
+		{
+			return reinterpret_cast<const Ty*>(Buffer + sizeof(Ty) * idx);
+		}
+
 		int _Head, _Size;
-		alignas(Alignment) Ty Buffer[SIZE];
+		alignas(Alignment) char Buffer[SIZE * sizeof(Ty)];
 	};
 
 	struct test

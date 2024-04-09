@@ -1572,8 +1572,16 @@ namespace FlexKit
 
 							for (size_t K = 0; K < subMeshesEnd; K++)
 							{
+								auto GetMaterial = [&](size_t idx)
+									{
+										if (idx < material.subMaterials.size())
+											return (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
+										else
+											return material;
+									};
+
 								const auto	subMesh		= submeshes[K];
-								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
+								const auto& subMaterial	= GetMaterial(K);
 
 								if (subMaterial.textureDescriptors.size != 0)
 									ctx.SetGraphicsDescriptorTable(0, subMaterial.textureDescriptors);

@@ -334,6 +334,39 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	ReadContext OpenReadContext(GUID_t guid, iAllocator& allocator)
+	{
+		AssetHandle RHandle = INVALIDHANDLE;
+
+		for (auto resource : Resources.ResourcesLoaded)
+		{
+			if (resource->GUID == guid)
+			{
+				auto& bufferCtx = allocator.allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+				return ReadContext{ guid, &bufferCtx, allocator };
+			}
+		}
+
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+				{
+					auto& fileCtx = allocator.allocate<FileContext>(Resources.ResourceFiles[TI].str, t->Entries[I].ResourcePosition);
+					return ReadContext{ guid, &fileCtx, allocator };
+				}
+			}
+		}
+
+		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
 	ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, size_t readOffset)
 	{
 		for (auto resource : Resources.ResourcesLoaded)
@@ -360,9 +393,54 @@ namespace FlexKit
 				{
 					size_t resourceOffset = t->Entries[I].ResourcePosition;
 
-					//if (readContext.fileDir != Resources.ResourceFiles[TI].str)
 					if (readContext.guid != guid)
-						readContext = OpenReadContext(guid);// ReadContext{ Resources.ResourceFiles[TI].str, resourceOffset };
+						readContext = OpenReadContext(guid);
+
+					readContext.SetOffset(resourceOffset);
+					readContext.Read(_ptr, readSize, readOffset);
+
+					return RAC_OK;
+				}
+			}
+		}
+
+		FK_LOG_ERROR("ReadContext::ReadAsset: Failed to find asset!");
+
+		return RAC_ERROR;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ReadAsset_RC ReadAsset(ReadContext& readContext, GUID_t guid, void* _ptr, size_t readSize, iAllocator& allocator, size_t readOffset)
+	{
+		for (auto resource : Resources.ResourcesLoaded)
+		{
+			if (resource->GUID == guid)
+			{
+				auto& bufferCtx = allocator.allocate<BufferContext>((byte*)resource, resource->ResourceSize, 0);
+				readContext = ReadContext{ guid, &bufferCtx, allocator };
+
+				readContext.Read(_ptr, readSize, readOffset);
+
+				return RAC_OK;
+			}
+		}
+
+
+		AssetHandle RHandle = INVALIDHANDLE;
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
+		{
+			auto& t = Resources.Tables[TI];
+			for (size_t I = 0; I < t->ResourceCount; ++I)
+			{
+				if (t->Entries[I].GUID == guid)
+				{
+					size_t resourceOffset = t->Entries[I].ResourcePosition;
+
+					if (readContext.guid != guid)
+						readContext = OpenReadContext(guid, allocator);
 
 					readContext.SetOffset(resourceOffset);
 					readContext.Read(_ptr, readSize, readOffset);
@@ -727,6 +805,17 @@ namespace FlexKit
 		}
 
 		CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+
+		if (true) // Free memory
+		{
+			for (auto& buffer : lod.buffers)
+			{
+				memory.free(buffer);
+			}
+
+			lod.buffers.clear();
+		}
+
 
 		const size_t subMeshCount = lodHeader->descriptor.subMeshCount;
 		for (size_t I = 0; I < subMeshCount; I++)
