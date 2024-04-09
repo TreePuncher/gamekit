@@ -60,6 +60,7 @@ namespace FlexKit
 				renderSystem->_OnCrash();
 			}
 
+			renderSystem->_ReleaseDelayedResources();
 			renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 
 			return res;

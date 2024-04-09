@@ -22,6 +22,7 @@
 #include <stb_image_write.h>
 #include <tiny_gltf.h>
 #include <ranges>
+#include <print>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -112,6 +113,8 @@ namespace FlexKit
 
 		for (auto& mesh : model.meshes)
 		{
+			std::print("Importing model: {} \n", mesh.name);
+
 			uint64_t GUID = rand();
 			std::string LOD;
 
@@ -554,6 +557,8 @@ namespace FlexKit
 
 			meshMap.push_back(GUID);
 		}
+
+		std::print("Finish Importing {} Model(s) \n", resources.size());
 
 		return { resources, meshMap };
 	}

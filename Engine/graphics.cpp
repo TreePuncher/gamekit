@@ -6120,15 +6120,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	void RenderSystem::_UpdateCounters()
-	{
-		Textures.UpdateLocks(threads, directFence->GetCompletedValue());
-	}
-
-
-	/************************************************************************************************/
-
 
 	void RenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
 	{
@@ -6149,6 +6140,16 @@ namespace FlexKit
 
 			const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			directFence->SetEventOnCompletion(currentCounter, eventHandle);
+
+			while (Textures.FreeDelayedResourcesIncrementally(directFence->GetCompletedValue()))
+			{
+				if (WaitForSingleObject(eventHandle, 0) == WAIT_OBJECT_0)
+				{
+					CloseHandle(eventHandle);
+					return;
+				}
+			}
+
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
 		}
@@ -6176,7 +6177,17 @@ namespace FlexKit
 
 				const HANDLE eventHandle = CreateEventEx(nullptr, nullptr, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 				directFence->SetEventOnCompletion(counter, eventHandle);
-				WaitForSingleObject(eventHandle, 1);
+
+				while (Textures.FreeDelayedResourcesIncrementally(directFence->GetCompletedValue()))
+				{
+					if (WaitForSingleObject(eventHandle, 0) == WAIT_OBJECT_0)
+					{
+						CloseHandle(eventHandle);
+						return;
+					}
+				}
+
+				WaitForSingleObject(eventHandle, 33);
 				CloseHandle(eventHandle);
 			}
 			else
@@ -6632,7 +6643,9 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
-					//DebugBreak();
+					static std::mutex m;
+					std::unique_lock lock{ m };
+
 					ProfileFunctionLabeled(Placed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
 
@@ -9199,8 +9212,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::UpdateLocks(ThreadManager& threads, const uint64_t completed)
+	void ResourceStateTable::FreeDelayedResources(ThreadManager& threads, const uint64_t completed)
 	{
+		if (delayRelease.size() < 32)
+			return;
+
 		ProfileFunction();
 
 		Vector<ID3D12Resource*> freeList = { delayRelease.Allocator };
@@ -9240,6 +9256,27 @@ namespace FlexKit
 				[&](auto& res) { return res.resource == nullptr; }),
 
 		delayRelease.end());
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool ResourceStateTable::FreeDelayedResourcesIncrementally(const uint64_t completed)
+	{
+		ProfileFunction();
+
+		for (auto& release : delayRelease)
+		{
+			auto&& [resource, submissionID] = release;
+			if (completed > submissionID)
+			{
+				resource->Release();
+				delayRelease.remove_unstable(&release);
+				return true;
+			}
+		}
+		return false;
 	}
 
 
@@ -9707,6 +9744,13 @@ namespace FlexKit
 	void RenderSystem::_ForceReleaseTexture(ResourceHandle handle)
 	{
 		Textures._ReleaseTextureForceRelease(handle);
+	}
+
+
+	void RenderSystem::_ReleaseDelayedResources()
+	{
+		//while (Textures.FreeDelayedResourcesIncrementally(directFence->GetCompletedValue()));
+		Textures.FreeDelayedResources(threads, directFence->GetCompletedValue());
 	}
 
 
@@ -10687,8 +10731,6 @@ namespace FlexKit
 		Textures.LockUntil(dispatchIdx);
 
 		ReadBackTable.Update();
-
-		_UpdateCounters();
 	}
 
 

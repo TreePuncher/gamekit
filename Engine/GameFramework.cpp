@@ -160,7 +160,7 @@ namespace FlexKit
 		char* NewStr = (char*)framework.core.GetBlockMemory().malloc(StrLen + 1);
 		memset((void*)NewStr, '\0', StrLen + 1);
 		strncpy_s(NewStr, StrLen + 1, Str, StrLen);
-
+		
 		framework.console.PrintLine(NewStr, framework.core.GetBlockMemory());
 	}
 

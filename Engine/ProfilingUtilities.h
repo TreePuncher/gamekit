@@ -305,6 +305,8 @@ namespace FlexKit
 #else
 #define ProfileFunction()
 #define ProfileFunctionLabeled(LABEL)
+#define ProfileFunctionTextName(LABEL)
+#define ProfileFunctionStrName(STR)
 #endif
 #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A(); }, B)
 

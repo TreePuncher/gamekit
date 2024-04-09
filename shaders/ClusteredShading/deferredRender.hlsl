@@ -584,14 +584,17 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 
 	const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-	if (px.x > WH.x / 2.0f)
+	//if (px.x > WH.x / 2.0f)
+	{
+		if (px.x % 32 == 0 || px.y % 32 == 0)
+			return float4(0, 0, 0, 0);
 		//return pow(float4(0, UV.y, 0, 1), 2);
 	
 		//return float4(positionWS * float3(0, 0, -0.01), 1);
 		//return float4(N);
 		//return float4(positionWS, 1);
 		//return float4(positionVS, 1);
-		//return pow(depth * 100, 1.0f);
+		return pow(depth * 100, 1.0f);
 		// 
 		//return pow(Colors[localLightCount % 8], 2.0f) * color;
 		//return pow(Colors[lightListKey % 8] * color, 1.0f);
@@ -600,12 +603,14 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return (float(localLightCount) / float(lightCount));
 		// 
 		//return pow(Colors[clusterKey % 8], 1.0f);
-		//return pow(Colors[GetSliceIdx(-positionVS.z) % 8], 1.0f);
+		//return pow(Colors[GetSliceIdx(-positionVS.z) % 8], 1.0f) * (localLightCount / float(lightCount));
 		//
-		//return pow(-positionVS.z / 128, 10.0f);
+		//return pow(positionVS.z * 1000, 1);
 		//return depth;
-		return float4(N_VS / 2.0f + 0.5f, 0);
 		//return float4(N_VS / 2.0f + 0.5f, 0);
+		//return float4(N_VS / 2.0f + 0.5f, 0);
+	}
+		
 	//else
 	//	return float4(Albedo.xyz, 0);
 	//else

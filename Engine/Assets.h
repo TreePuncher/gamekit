@@ -503,7 +503,9 @@ namespace FlexKit
 
 
 	ReadContext		OpenReadContext(GUID_t guid);
+	ReadContext		OpenReadContext(GUID_t guid, iAllocator&);
 	ReadAsset_RC	ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, size_t readOffset = 0);
+	ReadAsset_RC	ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, iAllocator& , size_t readOffset = 0);
 
 	const char*		GetResourceStringID(GUID_t guid);
 
