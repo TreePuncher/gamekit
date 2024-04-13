@@ -93,13 +93,13 @@ namespace FlexKit
 	{
 		ThreadProfiler()
 		{
-			activeFrames.reserve(1024);
-			completedFrames.reserve(1024);
+			activeFrames.reserve(4096);
+			completedFrames.reserve(4096);
 		}
 
 		void BeginFrame()
 		{
-			std::scoped_lock lock(m);
+			std::unique_lock lock(m);
 
 			activeFrames.clear();
 			completedFrames.clear();
@@ -107,10 +107,10 @@ namespace FlexKit
 
 		void EndFrame()
 		{
-			std::scoped_lock lock(m);
+			std::unique_lock lock(m);
 
 			for (auto& frame : activeFrames)
-				Pop(frame.profileID, std::chrono::high_resolution_clock::now());
+				_Pop(frame.profileID, std::chrono::high_resolution_clock::now());
 
 			std::sort(
 				completedFrames.begin(),
@@ -123,11 +123,14 @@ namespace FlexKit
 
 		ThreadStats GetStats()
 		{
+			std::unique_lock lock(m);
+
 			if (completedFrames.size())
 			{
-				Vector<FrameTiming> temp{ std::move(completedFrames) };
-				completedFrames.reserve(1024);
-				return { std::move(temp) };
+				Vector<FrameTiming> temp{ completedFrames };
+				completedFrames.clear();
+
+				return { temp };
 			}
 			else return {};
 		}
@@ -137,25 +140,27 @@ namespace FlexKit
 			activeFrames.clear();
 			completedFrames.clear();
 
-			activeFrames.reserve(1024);
-			completedFrames.reserve(1024);
+			activeFrames.reserve(4096);
+			completedFrames.reserve(4096);
 		}
 
-		void Push(const char* func, uint64_t Id, TimePoint tp);
+		FrameTiming* Push(const char* func, uint64_t Id, TimePoint tp);
 		void Pop(uint64_t Id, TimePoint tp);
+		void _Pop(uint64_t Id, TimePoint tp);
+
 
 		void Release()
 		{
 			activeFrames.clear();
 			completedFrames.clear();
 
-			activeFrames.reserve(1024);
-			completedFrames.reserve(1024);
+			activeFrames.reserve(4096);
+			completedFrames.reserve(4096);
 		}
 
 		Vector<FrameTiming> activeFrames	{ SystemAllocator };
 		Vector<FrameTiming>	completedFrames	{ SystemAllocator };
-		std::mutex          m;
+		std::shared_mutex m;
 	};
 
 
@@ -175,17 +180,17 @@ namespace FlexKit
 		ThreadProfiler& GetThreadProfiler()
 		{
 #if USING(ENABLEPROFILER)
-			thread_local ThreadProfiler*    profiler = nullptr;
+			thread_local ThreadProfiler*    localProfiler = nullptr;
 
-			if (!profiler)
+			if (!localProfiler)
 			{
 				std::scoped_lock lock{ _ProfilerLock };
 
 				threadProfilers.emplace_back(std::make_unique<ThreadProfiler>());
-				profiler    = threadProfilers.back().get();
+				localProfiler = threadProfilers.back().get();
 			}
 
-			return *profiler;
+			return *localProfiler;
 #else
 			ThreadProfiler& NULL_REF = *((ThreadProfiler*)(nullptr));
 			return NULL_REF;
@@ -273,13 +278,16 @@ namespace FlexKit
 			profileID	{ IN_profileID + rand() },
 			frameID		{ profiler.GetFrameID() }
 		{
-			profiler.GetThreadProfiler().Push(FunctionName, profileID, std::chrono::high_resolution_clock::now());
+			auto tp = profiler.GetThreadProfiler().Push(FunctionName, profileID, {});
+			tp->begin = std::chrono::high_resolution_clock::now();
 		}
 
 		~_ProfileFunction()
 		{
-			if(profiler.GetFrameID() == frameID)
-				profiler.GetThreadProfiler().Pop(profileID, std::chrono::high_resolution_clock::now());
+			if (profiler.GetFrameID() == frameID) {
+				auto& localProfiler = profiler.GetThreadProfiler();
+				localProfiler.Pop(profileID, std::chrono::high_resolution_clock::now());
+			}
 		}
 
 	private:

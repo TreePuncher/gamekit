@@ -29,7 +29,6 @@ cbuffer ShadingConstants : register(b2)
 
 Texture2D<float4> textures[3]	: register(t0);
 
-//TextureCube<float4>			HDRMap			: register(t3);
 Texture2D<float4>				MRIATexture		: register(t4);
 
 StructuredBuffer<uint>			lightLists		: register(t5);
@@ -80,7 +79,7 @@ struct Forward_VS_OUT
 	float3 Bitangent : BITANGENT;
 };
 
-Forward_VS_OUT Forward_VS(Vertex In)
+Forward_VS_OUT Forward_VS(Vertex In, uint ID : SV_VertexID)
 {
 	const float3 POS_WS = mul(WT, float4(In.POS, 1));
 	const float3 POS_VS = mul(View, float4(POS_WS, 1));
@@ -92,7 +91,7 @@ Forward_VS_OUT Forward_VS(Vertex In)
 	Out.Tangent		= normalize(mul(View, mul(WT, float4(In.Tangent, 0.0f))));
 	Out.Bitangent	= cross(Out.Tangent, Out.Normal);
 	Out.UV			= In.UV;
-
+	
 	return Out;
 }
 
@@ -115,21 +114,10 @@ struct VertexSkinned
 
 Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 {
-	//float4 P = float4(In.POS_Blend, 0.0f);
-	//float4 N = float4(In.Normal_Blend, 0.0f);
-	//float4 T = float4(In.Tangent_Blend, 0.0f);
-
 	float4 P = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 T = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	float4 W = float4(In.Weights.xyz, 1 - In.Weights.x - In.Weights.y - In.Weights.z);
-
-	float4x4 Identity =
-		float4x4(
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			0, 0, 0, 1);
 
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)

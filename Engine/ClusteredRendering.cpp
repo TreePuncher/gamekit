@@ -140,7 +140,8 @@ namespace FlexKit
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		FK_ASSERT(SUCCEEDED(HR));
+		if (FAILED(HR))
+			return {};
 
 		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
 

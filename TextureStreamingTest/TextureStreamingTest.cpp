@@ -77,17 +77,18 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
 
-	if(0)
+	if(true)
 	scene.QueryFor(
-		[&](GameObject& gameObject, LightView& light)
+		[&](GameObject& gameObject, LightView& light, SceneNodeView& node)
 		{
-			light.SetType(FlexKit::LightType::PointLight);
-			//light.SetOuterAngle((float)pi / 1.3f);
-			//light.SetIntensity(4096 * light.GetIntensity());
+			light.SetType(FlexKit::LightType::SpotLightNoShadows);
+			light.SetOuterAngle((float)pi / 1.3f);
+			light.SetIntensity(2 * light.GetIntensity());
 			//light.SetIntensity(4096);
-			//light.SetRadius(50.0f);
+			light.SetRadius(50.0f);
+			node.SetPosition({ 16.8, -2, -6 });
 		},
-		LightQuery{});
+		LightQuery{}, SceneNodeReq{});
 
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();
@@ -102,7 +103,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	SetCameraFOV(orbitComponent.camera, (float)pi / 4.0f);
 
 	//OrbitCameraPitch(orbitCamera, float(pi / 2.0f));
-	OrbitCameraTranslate(orbitCamera, { 0, 3, 0 });
+	//OrbitCameraTranslate(orbitCamera, { 16.8, -2, -6 });
 }
 
 
@@ -133,11 +134,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
 
-	if(0)
+	if(1)
 	scene.QueryFor(
 		[&](GameObject& gameObject, auto&& light, auto&& node)
 		{
-			node.Pitch(dT * pi * 0.125f);
+			node.Yaw(dT * pi * 0.125f);
 		},
 		LightQuery{}, SceneNodeReq{});
 
@@ -184,6 +185,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 	size_t textureBlocksInUse = textureStreamingEngine.TilesAllocated();
 	size_t textureBlocksTotal = textureStreamingEngine.TilesTotal();
 
+	auto pos = GetPositionW(GetCameraNode(activeCamera));
+
 	auto str = fmt::format(
 		"Debug Stats\n"
 		"SmallBlocks: {} / {}\n"
@@ -198,14 +201,19 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"RenderTarget Pool space left: {}MB\n"
 		"UAV texture  Pool space left: {}MB\n"
 		"Video Memory {}/{}\n"
-		"Texture Blocks {}/{}\n",
+		"Texture Blocks {}/{}\n"
+		"Camera Position:"
+		"X: {}\n"
+		"Y: {}\n"
+		"Z, {}\n",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
 		memoryInUse,
 		space0, space1, space2,
 		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
-		textureBlocksInUse, textureBlocksTotal);
+		textureBlocksInUse, textureBlocksTotal,
+		pos.x, pos.y, pos.z);
 
 
 	ImGui::Text(str.c_str());
@@ -328,6 +336,14 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					framework.GetRenderSystem().DEBUG_EndPixCapture();
 					return true;
 				case KC_T:
+					if (true)
+						scene.QueryFor(
+							[&](GameObject& gameObject, LightView& light, SceneNodeView& node)
+							{
+								light.SetType(FlexKit::LightType::SpotLight);
+								light.SetOuterAngle((float)pi / 1.3f);
+							},
+							LightQuery{}, SceneNodeReq{});
 					streamingUpdates = !streamingUpdates;
 					return true;
 				case KC_V:
