@@ -570,7 +570,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		}
 	}
 
-#if 1
+#if 0
 	static float4 Colors[] = {
 		float4(0.5f, 0.5f, 0.5f, 0), 
 		float4(1, 0, 0, 0), 
@@ -594,7 +594,7 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return float4(N);
 		//return float4(positionWS, 1);
 		//return float4(positionVS, 1);
-		return pow(depth * 100, 1.0f);
+		//return pow(depth * 100, 1.0f);
 		// 
 		//return pow(Colors[localLightCount % 8], 2.0f) * color;
 		//return pow(Colors[lightListKey % 8] * color, 1.0f);
@@ -609,10 +609,11 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		//return depth;
 		//return float4(N_VS / 2.0f + 0.5f, 0);
 		//return float4(N_VS / 2.0f + 0.5f, 0);
+		//return float4(N_VS / 2.0f + 0.5f, 0) * max(0, dot(V, N_VS));
+		return float4(Albedo.xyz, 0) * max(0, dot(V, N_VS));
 	}
 		
 	//else
-	//	return float4(Albedo.xyz, 0);
 	//else
 	//	return float4(Albedo.xyz, 0);
 

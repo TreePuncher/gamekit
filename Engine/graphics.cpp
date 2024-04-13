@@ -6643,8 +6643,8 @@ namespace FlexKit
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
-					static std::mutex m;
-					std::unique_lock lock{ m };
+					//static std::mutex m;
+					//std::unique_lock lock{ m };
 
 					ProfileFunctionLabeled(Placed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
@@ -9232,21 +9232,29 @@ namespace FlexKit
 
 		if (freeList.size())
 		{
-			auto& workItem = FlexKit::CreateWorkItem(
-				[freeList = std::move(freeList)](auto& threadLocalAllocator)
-				{
-					for (auto res : freeList)
+			if(false)
+			{
+				auto& workItem = FlexKit::CreateWorkItem(
+					[freeList = std::move(freeList)](auto& threadLocalAllocator)
 					{
+						for (auto res : freeList)
+						{
 #if USING(AFTERMATH)
-						if (res)
-							GFSDK_Aftermath_DX12_UnregisterResource(res);
+							if (res)
+								GFSDK_Aftermath_DX12_UnregisterResource(res);
 #endif
 
-						res->Release();
-					}
-				}, delayRelease.Allocator);
+							res->Release();
+						}
+					}, delayRelease.Allocator);
 
-			threads.AddBackgroundWork(workItem);
+				threads.AddBackgroundWork(workItem);
+			}
+			else
+			{
+				for (auto& res : freeList)
+					res->Release();
+			}
 		}
 
 		delayRelease.erase(

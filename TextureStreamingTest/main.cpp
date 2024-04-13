@@ -16,8 +16,9 @@ int main()
 #endif
 
 		FlexKit::CoreOptions options{
-			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1,
-			.GPUdebugMode	= enableDebug,
+			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency(), 1u) - 1,
+			//.threadCount	= 0,
+			.GPUdebugMode	= false,
 			.GPUValidation	= enableDebug,
 			.GPUSyncQueues	= enableDebug,
 		};
@@ -27,7 +28,7 @@ int main()
 		app->PushState<TextureStreamingTest>();
 		app->GetCore().FPSLimit		= 90;
 		app->GetCore().FrameLock	= false;
-		app->GetCore().vSync		= false;
+		app->GetCore().vSync		= true;
 		app->Run();
 	}
 	catch (...)
