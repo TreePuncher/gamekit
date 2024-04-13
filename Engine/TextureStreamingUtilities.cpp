@@ -1311,7 +1311,7 @@ namespace FlexKit
 		for (const auto& block : reallocatedResourceList)
 		{
 			TileMapList mappings{ allocator };
-
+			
 			const auto resource = block.resource;
 			const auto blocks	= filter(
 				blockChanges.reallocations,
@@ -1319,7 +1319,7 @@ namespace FlexKit
 				{
 					return block.resource == resource;
 				});
-
+			
 			for (const AllocatedBlock& block : blocks)
 			{
 				const TileMapping mapping = {
@@ -1328,7 +1328,7 @@ namespace FlexKit
 					.state		= TileMapState::Null,
 					.heapOffset	= block.tileIdx,
 				};
-
+			
 				mappings.push_back(mapping);
 			}
 
@@ -1355,7 +1355,7 @@ namespace FlexKit
 		{
 			const auto resource = block.resource;
 			auto asset = GetResourceAsset(resource);
-
+			
 			if (!asset) // Skipped unmapped blocks
 			{
 				FK_LOG_ERROR("Texture Streaming: Asset not found!");
@@ -1363,7 +1363,7 @@ namespace FlexKit
 			}
 
 			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
-
+			
 			const auto blocks = [&]
 			{
 				auto blocks = filter(
@@ -1372,12 +1372,12 @@ namespace FlexKit
 					{
 						return block.resource == resource;
 					});
-
+			
 				std::sort(
 					std::begin(blocks),
 					std::end(blocks),
 					cmp_mipGtr);
-
+			
 				return blocks;
 			}();
 
@@ -1390,7 +1390,7 @@ namespace FlexKit
 					FK_LOG_ERROR("Texture Streaming : Failed to open stream context!");
 					continue;
 				}
-
+				
 				mappings.push_back(
 					TileMapping{
 						block.tileID,
@@ -1428,7 +1428,7 @@ namespace FlexKit
 		{
 			const auto resource			= packedBlock.resource;
 			const auto asset			= GetResourceAsset(resource);
-
+			
 			if (!asset)
 			{
 				FK_LOG_ERROR("Texture Streaming: Asset not found!");
@@ -1437,12 +1437,12 @@ namespace FlexKit
 
 			const auto deviceResource	= renderSystem.GetDeviceResource(resource);
 			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
-
+			
 			const auto startingLevel	= packedBlockInfo.startingLevel;
 			const auto endingLevel		= packedBlockInfo.endingLevel;
-
+			
 			TileMapList mappings{ threadLocalAllocator };
-
+			
 			mappings.push_back(
 				TileMapping{
 					packedBlock.tileID,
@@ -1459,9 +1459,9 @@ namespace FlexKit
 					FK_LOG_ERROR("Texture Streaming: Failed to open asset!");
 					continue;
 				}
-
+				
 				const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
-
+				
 				const TileID_t tileID	= CreateTileID( 0, 0, level );
 				const auto tile			= streamContext.Read(MIPLevelInfo.WH, ctx);
 
@@ -1970,13 +1970,6 @@ namespace FlexKit
 	size_t TextureStreamingEngine::TilesStale() const noexcept
 	{
 		return textureBlockAllocator.stale.size();
-	}
-
-	size_t TextureStreamingEngine::TilesTotal() const noexcept
-	{
-		return
-			TilesAllocated() +
-			TilesFree();
 	}
 
 

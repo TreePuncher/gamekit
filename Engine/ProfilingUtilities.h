@@ -170,7 +170,7 @@ namespace FlexKit
 
 	struct EngineProfiling
 	{
-		EngineProfiling() { FK_LOG_INFO("Profiling Initialized\n"); }
+		EngineProfiling() {}
 
 		ThreadProfiler& GetThreadProfiler()
 		{

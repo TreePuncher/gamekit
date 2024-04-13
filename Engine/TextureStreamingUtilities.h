@@ -148,7 +148,7 @@ namespace FlexKit
 
 			TextureResourceBlob textureHeader;
 			ReadAsset(readContext, asset, &textureHeader, sizeof(textureHeader));
-			
+
 			if (IsDDS((DeviceFormat)textureHeader.format))
 			{
 				Close();
@@ -455,7 +455,6 @@ namespace FlexKit
 		size_t			TilesAllocated() const noexcept;
 		size_t			TilesFree() const noexcept;
 		size_t			TilesStale() const noexcept;
-		size_t			TilesTotal() const noexcept;
 
 		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;
