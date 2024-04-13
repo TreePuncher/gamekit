@@ -59,7 +59,6 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 	renderWindow.Handler->Subscribe(sub);
 	renderWindow.SetWindowTitle("Texture Streaming");
-	renderWindow.EnableCaptureMouse(false);
 
 	// Load Test Scene
 	layer = physx.CreateLayer(false);
@@ -76,14 +75,14 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
 
-	if(0)
+	if(1)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light)
 		{
 			light.SetType(FlexKit::LightType::PointLight);
 			//light.SetOuterAngle((float)pi / 1.3f);
 			//light.SetIntensity(4096 * light.GetIntensity());
-			//light.SetIntensity(4096);
+			light.SetIntensity(4096 * 4);
 			//light.SetRadius(50.0f);
 		},
 		LightQuery{});
@@ -181,7 +180,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	auto vidMemStats = core.RenderSystem._GetVidMemStats();
 	size_t textureBlocksInUse = textureStreamingEngine.TilesAllocated();
-	size_t textureBlocksTotal = textureStreamingEngine.TilesTotal();
+	size_t textureBlocksFree = textureStreamingEngine.TilesFree();
+	size_t textureBlocksStale = textureStreamingEngine.TilesStale();
 
 	auto str = fmt::format(
 		"Debug Stats\n"
@@ -197,14 +197,18 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"RenderTarget Pool space left: {}MB\n"
 		"UAV texture  Pool space left: {}MB\n"
 		"Video Memory {}/{}\n"
-		"Texture Blocks {}/{}\n",
+		"Texture Blocks:\n"
+		"	inuse:  {}\n"
+		"	free:   {}\n"
+		"	stale:  {}\n"
+		"	total:  {}\n",
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
 		memoryInUse,
 		space0, space1, space2,
 		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
-		textureBlocksInUse, textureBlocksTotal);
+		textureBlocksInUse, textureBlocksFree, textureBlocksStale, textureBlocksInUse + textureBlocksFree + textureBlocksStale);
 
 
 	ImGui::Text(str.c_str());
