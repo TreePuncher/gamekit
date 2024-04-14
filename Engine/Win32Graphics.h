@@ -60,6 +60,7 @@ namespace FlexKit
 				renderSystem->_OnCrash();
 			}
 
+			renderSystem->_ReleaseDelayedResources();
 			renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 
 			return res;
@@ -297,7 +298,7 @@ namespace FlexKit
 		double                      T = 0.0f;
 		MouseInputState             mouseState;
 
-		std::shared_ptr<EventNotifier<>> Handler = std::make_shared<EventNotifier<>>();
+		EventNotifier<> Handler;
 
 		WORD	InputBuffer[128];
 		size_t	InputBuffSize;
@@ -331,21 +332,24 @@ namespace FlexKit
 		case WM_SIZE:
 		{
 			FlexKit::Event ev;
-			ev.mType		  = Event::Internal;
-			ev.InputSource	  = Event::E_SystemEvent;
-			ev.Action		  = Event::InputAction::Resized;
-			ev.mData1.mINT[0] = (lParam & 0x000000000000ffff);			// Width
-			ev.mData2.mINT[0] = (lParam & 0x00000000ffff0000) >> 16;	// Heigth
+			ev.mType			= Event::Internal;
+			ev.InputSource		= Event::E_SystemEvent;
+			ev.Action			= Event::InputAction::Resized;
+			ev.mData1.mINT[0]	= (lParam & 0x000000000000ffff);			// Width
+			ev.mData1.mINT[1]	= (lParam & 0x00000000ffff0000) >> 16;	// Heigth
+			ev.mData2.mUser		= nullptr;
 
+			FK_LOG_WARNING("RESIZE EVENT HAS HAD A BREAKING CHANGE!");
 			eventHandler->NotifyEvent(ev);
 
-			internal_WH = { ev.mData1.mINT[0], ev.mData2.mINT[0] };
+			internal_WH = { ev.mData1.mINT[0], ev.mData1.mINT[1] };
 		}
 			break;
 		case WM_PAINT:
 			break;
 
 		case WM_DESTROY:
+		{
 			PostQuitMessage( 0 );
 
 			FlexKit::Event ev;
@@ -354,7 +358,7 @@ namespace FlexKit
 			ev.Action       = Event::InputAction::Exit;
 
 			eventHandler->NotifyEvent(ev);
-			break;
+		}	break;
 		case WM_MOUSEMOVE:
 		{
 			/*
@@ -707,7 +711,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline FLEXKITAPI std::optional<Win32RenderWindow> CreateWin32RenderWindow(RenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc)
+	inline FLEXKITAPI Win32RenderWindow* CreateWin32RenderWindow(RenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc)
 	{
 		static bool _TEMP   =
 			[]
@@ -719,7 +723,10 @@ namespace FlexKit
 				return true;
 			}();
 
-		Win32RenderWindow renderWindow;
+
+		Win32RenderWindow& renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
+		renderWindow.Handler.SetSource(&renderWindow);
+
 		static size_t Window_Count = 0;
 
 		Window_Count++;
@@ -733,7 +740,7 @@ namespace FlexKit
 								nullptr,
 								nullptr,
 								gInstance,
-								(void*)renderWindow.Handler.get());
+								(void*)&renderWindow.Handler);
 
 		RECT ClientRect;
 		RECT WindowRect;
@@ -793,22 +800,21 @@ namespace FlexKit
 
 		if (FAILED(HR))
 		{
-			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
+			FK_ASSERT(FAILED(HR), "Failed to create swap chain!");
 			return {};
 		}
 
 		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
 		renderWindow.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-		//CreateBackBuffer
 		ID3D12Resource* buffer[3];
 
 		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
-				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-				return {};
+				FK_ASSERT(buffer[I], "Failed to create back buffer!");
+				return nullptr;
 			}
 		}
 
@@ -835,8 +841,8 @@ namespace FlexKit
 			{
 				NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 				if (!buffer[I]) {
-					FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-					return {};
+					FK_ASSERT(buffer[I], "Failed to create back buffer!");
+					return nullptr;
 				}
 
 			}
@@ -854,16 +860,16 @@ namespace FlexKit
 		SetActiveWindow(windowHWND);
 		ShowWindow(windowHWND, 5);
 
-		return renderWindow;
+		return &renderWindow;
 	}
 
 
 	/************************************************************************************************/
 
 
-	inline FLEXKITAPI std::pair<Win32RenderWindow, bool> CreateWin32RenderWindowFromHWND (RenderSystem& renderSystem, HWND hwnd)
+	inline FLEXKITAPI Win32RenderWindow* CreateWin32RenderWindowFromHWND (RenderSystem& renderSystem, HWND hwnd)
 	{
-		Win32RenderWindow renderWindow;
+		Win32RenderWindow& renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
 
 		RECT rect;
 		GetWindowRect(hwnd, &rect);
@@ -887,9 +893,8 @@ namespace FlexKit
 
 		if (FAILED(HR))
 		{
-			std::cout << "Failed to Create Swap Chain!\n";
-			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
-			return { {}, false };
+			FK_ASSERT(FAILED(HR), "Failed TO CREATE SWAP CHAIN!");
+			return nullptr;
 		}
 
 		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
@@ -903,7 +908,7 @@ namespace FlexKit
 			NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
 				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-				return { {}, false };
+				return nullptr;
 			}
 
 		}
@@ -924,7 +929,7 @@ namespace FlexKit
 
 		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 
-		return { renderWindow, true };
+		return &renderWindow;
 	}
 
 }// Namespace FlexKit

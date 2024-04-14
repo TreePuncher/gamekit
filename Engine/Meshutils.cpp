@@ -342,7 +342,12 @@ namespace FlexKit
 			}
 			else
 			{
+				const auto span = aabb.Span();
+				auto a = span.x * span.y;
+				auto b = span.x * span.z;
+				auto d = span.y * span.z;
 				auto plane = aabb.LongestAxis();
+
 				while (true)
 				{
 					auto splitPlane = SplitPlanes[plane];
@@ -363,8 +368,7 @@ namespace FlexKit
 
 					if (begin == midIdx || midIdx == end)
 					{
-						DebugBreak();
-						//plane = (AABB::Axis)((plane + 1) % AABB::Axis::Axis_count);
+						plane = (AABB::Axis)((plane + 1) % AABB::Axis::Axis_count);
 						continue;
 					}
 

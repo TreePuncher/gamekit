@@ -23,19 +23,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "DebugPanel.h"
+#include "DebugUI.h"
+#include "Win32Graphics.h"
+#include <imgui.h>
 
 
 namespace FlexKit
 {	/************************************************************************************************/
 
 
-	DebugPanel::DebugPanel(GameFramework& framework, FrameworkState& IN_topState) :
+	DebugPanel::DebugPanel(GameFramework& framework, IRenderWindow& IN_renderWindow, FrameworkState& IN_topState) :
 		FrameworkState	{ framework         },
 		topState        { IN_topState       },
 		core            { framework.core    },
-		console         { framework.console }
+		console         { framework.console },
+		renderWindow	{ &IN_renderWindow	}
 	{
-		pauseBackgroundLogic = true;
+		pauseBackgroundLogic = false;
 	}
 
 
@@ -45,7 +49,6 @@ namespace FlexKit
 	DebugPanel::~DebugPanel()
 	{
 		framework.consoleActive = false;
-		console.allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
 	}
 
 
@@ -54,10 +57,33 @@ namespace FlexKit
 
 	UpdateTask* DebugPanel::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
-        if (!pauseBackgroundLogic)
-            return topState.Update(core, dispatcher, dT);
+		UpdateTask* res = nullptr;
+		if (!pauseBackgroundLogic)
+			res = topState.Update(core, dispatcher, dT);
+		else
+			UpdateInput();
 
-        return nullptr;
+		if (framework.ImGuiAvailable())
+		{
+			if (ImGui::BeginTabBar("Tabs"))
+			{
+				if (ImGui::BeginTabItem("Console"))
+				{
+					console.Draw(core.GetTempMemory());
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem("Profiler"))
+				{
+					profiler.DrawProfiler(core.GetTempMemory());
+					ImGui::EndTabItem();
+				}
+
+			}
+			ImGui::EndTabBar();
+		}
+
+		return res;
 	}
 
 
@@ -66,19 +92,19 @@ namespace FlexKit
 
 	UpdateTask* DebugPanel::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
-        return topState.Draw(update, core, dispatcher, dT, graph);
-		//console.Draw(graph, core.Window.backBuffer, core.GetTempMemory());
+		auto temp = topState.Draw(update, core, dispatcher, dT, graph);
+
+		return temp;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void DebugPanel::PostDrawUpdate(EngineCore& core, double dT)
-    {
-        topState.PostDrawUpdate(core, dT);
-        renderWindow->Present(1, 0);
-    }
+	void DebugPanel::PostDrawUpdate(EngineCore& core, double dT)
+	{
+		topState.PostDrawUpdate(core, dT);
+	}
 
 
 	/************************************************************************************************/
@@ -86,6 +112,8 @@ namespace FlexKit
 
 	bool DebugPanel::EventHandler(Event evt)
 	{
+
+
 		if (evt.InputSource == Event::Keyboard)
 		{
 			switch (evt.Action)
@@ -94,17 +122,12 @@ namespace FlexKit
 			{
 				switch (evt.mData1.mKC[0])
 				{
-                case KC_TILDA: {
-                    PopSubState(framework);
-                }	break;
+				case KC_TILDA: {
+					PopSubState(framework);
+				}	break;
 				case KC_BACKSPACE:
 					framework.console.BackSpace();
 					break;
-				case KC_ENTER:
-				{
-					recallIndex = 0;
-					framework.console.EnterLine(framework.core.GetTempMemory());
-				}	break;
 				case KC_ARROWUP:
 				{
 					if(console.commandHistory.size()){
@@ -129,27 +152,13 @@ namespace FlexKit
 						DecrementRecallIndex();
 					}
 				}	break;
-				case KC_SPACE:
-				{
-					framework.console.Input(' ');
-				}	break;
-				default:
-				{
-					if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
-						(evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
-						(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
-						(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
-						(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
-						(evt.mData1.mKC[0] == KC_SYMBOL ))
-						framework.console.Input((char)evt.mData2.mINT[0]);
-
-				}	break;
 				}
 			}	break;
 			}
 		}
 
-        return true;
+		if (auto res = framework.debugUI->HandleInput(evt); res)
+			return true;
 	}
 
 

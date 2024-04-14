@@ -19,7 +19,7 @@ namespace FlexKit
         ~ImGUIIntegrator();
 
         void Update(uint2 MouseXY, uint2 WH, FlexKit::UpdateDispatcher& dispatcher, double dT);
-        void Update(Win32RenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT);
+        void Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT);
         bool HandleInput(FlexKit::Event evt);
 
         void DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&, FlexKit::ReserveVertexBufferFunction, FlexKit::ReserveConstantBufferFunction, FlexKit::ResourceHandle renderTarget);

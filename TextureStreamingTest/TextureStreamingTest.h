@@ -43,9 +43,9 @@ public:
 
 	FlexKit::GBuffer				gbuffer;
 	FlexKit::DepthBuffer			depthBuffer;
-	FlexKit::Win32RenderWindow		renderWindow;
 	FlexKit::ConstantBufferHandle	constantBuffer;
 	FlexKit::VertexBufferHandle		vertexBuffer;
+	FlexKit::Win32RenderWindow*		renderWindow;
 
 	FlexKit::WorldRender			renderer;
 	FlexKit::TextureStreamingEngine	textureStreamingEngine;
@@ -57,6 +57,4 @@ public:
 	FlexKit::GameObject				orbitCamera;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
-
-	FlexKit::ImGUIIntegrator		debugUI;
 };

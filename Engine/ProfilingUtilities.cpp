@@ -10,8 +10,10 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	void ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
+	FrameTiming* ThreadProfiler::Push(const char* func, uint64_t Id, TimePoint tp)
 	{
+		std::shared_lock sl{ m };
+
 		const auto parentID = activeFrames.size() ? activeFrames.back().profileID : -1;
 
 		if (activeFrames.size()) {
@@ -27,6 +29,7 @@ namespace FlexKit
 		};
 
 		activeFrames.push_back(timing);
+		return &activeFrames.back();
 	}
 
 
@@ -34,6 +37,21 @@ namespace FlexKit
 
 
 	void ThreadProfiler::Pop(uint64_t Id, TimePoint tp)
+	{
+		std::shared_lock sl{ m };
+
+		auto& frames = activeFrames;
+
+		if (auto frameOpt = frames.steal_back(); frameOpt && Id == frameOpt.value().profileID) // check for frame change, discards if frame changes
+		{
+			auto& currentFrame = frameOpt.value();
+
+			currentFrame.end = tp;
+			completedFrames.emplace_back(currentFrame);
+		}
+	}
+
+	void ThreadProfiler::_Pop(uint64_t Id, TimePoint tp)
 	{
 		auto& frames = activeFrames;
 
@@ -50,15 +68,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
+	void EngineProfiling::DrawProfiler(iAllocator& temp)
 	{
 #if USING(ENABLEPROFILER)
 		if (auto stats = profiler.GetStats(); stats)
 		{
-			if (ImGui::Begin("Profiler"))
+			//if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_NoMove))
 			{
-				ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
-				ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
+				//ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
+				//ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
 
 				static int maxDepth = 15;
 
@@ -291,7 +309,7 @@ namespace FlexKit
 
 			}
 
-			ImGui::End();
+			//ImGui::End();
 
 		}
 #endif

@@ -742,15 +742,27 @@ namespace FlexKit
 		}
 		else
 		{
-			auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, VirtualResourceScope::Temporary == lifeSpan);
+			bool asyncronousAcquire = false;
 
-			if (heap == InvalidHandle)
-				FK_LOG_ERROR("Failed to find usable pool allocator");
+			if (!asyncronousAcquire)
+			{
+				auto [resource, _overlap] = memoryPool->Acquire(desc, VirtualResourceScope::Temporary == lifeSpan);
 
-			context.AddDeferredCreation(resource, offset, heap, desc);
+				virtualResource = resource;
+				overlap = _overlap;
+			}
+			else
+			{
+				auto [resource, _overlap, offset, heap] = memoryPool->AcquireDeferred(desc, VirtualResourceScope::Temporary == lifeSpan);
 
-			virtualResource	= resource;
-			overlap			= _overlap;
+				if (heap == InvalidHandle)
+					FK_LOG_ERROR("Failed to find usable pool allocator");
+
+				context.AddDeferredCreation(resource, offset, heap, desc);
+
+				virtualResource	= resource;
+				overlap			= _overlap;
+			}
 		}
 
 		if (virtualResource == InvalidHandle)
