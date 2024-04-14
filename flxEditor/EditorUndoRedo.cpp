@@ -31,7 +31,7 @@ void PushState(ObjectState&& objectState)
 
 void Undo()
 {
-	if (currentPosition > globalUndoStack.size())
+	if (currentPosition >= globalUndoStack.size())
 		return;
 
 	auto itr = globalUndoStack.begin() + currentPosition;

@@ -369,12 +369,12 @@ namespace FlexKit
 		meshOut->TriMeshID		= lods[0].subMeshs[0].ID;
 		meshOut->ID				= ID;
 
-		std::cout << "Max x: " << aabb.Max.x << "\n";
-		std::cout << "Max y: " << aabb.Max.y << "\n";
-		std::cout << "Max z: " << aabb.Max.z << "\n";
-		std::cout << "Min x: " << aabb.Min.x << "\n";
-		std::cout << "Min y: " << aabb.Min.y << "\n";
-		std::cout << "Min z: " << aabb.Min.z << "\n";
+		//std::cout << "Max x: " << aabb.Max.x << "\n";
+		//std::cout << "Max y: " << aabb.Max.y << "\n";
+		//std::cout << "Max z: " << aabb.Max.z << "\n";
+		//std::cout << "Min x: " << aabb.Min.x << "\n";
+		//std::cout << "Min y: " << aabb.Min.y << "\n";
+		//std::cout << "Min z: " << aabb.Min.z << "\n";
 
 		meshOut->data->Info.Max	= aabb.Max;
 		meshOut->data->Info.Min	= aabb.Min;

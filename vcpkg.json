@@ -2,45 +2,51 @@
   "name": "flexkit",
   "version-string": "0.0.1",
   "supports": "(!x86 & windows)",
-  "dependencies": [
-    {
-      "name": "angelscript",
-      "features": [
-        "addons"
-      ]
-    },
-    {
-      "name": "directxtex",
-      "features": [
-        "dx12",
-        "openexr"
-      ]
-    },
-    "boost-interprocess",
-    "boost-process",
-    "cppcoro",
-    "cpptoml",
-    "directx-dxc",
-    "directx-headers",
-    "directxmesh",
-    "directxtk12",
-    "fmt",
-    "fp16",
-    "imgui",
-    "implot",
-    "imguizmo",
-    "ois",
-    "physx",
-    "rmlui",
-    "range-v3",
-    "scnlib",
-    "simde",
-    "slikenet",
-    "stb",
-    "tinygltf", 
-    "usd",
-    "zlib-ng"
-  ],
+    "dependencies": [
+        {
+            "name": "angelscript",
+            "features": [
+                "addons"
+            ]
+        },
+        {
+            "name": "directxtex",
+            "features": [
+                "dx12",
+                "openexr"
+            ]
+        },
+        "boost-interprocess",
+        "boost-process",
+        "cppcoro",
+        "cpptoml",
+        "directx-dxc",
+        "directx-headers",
+        "directxmesh",
+        "directxtk12",
+        "fmt",
+        "fp16",
+        "imgui",
+        "implot",
+        "imguizmo",
+        "ois",
+        "physx",
+        "rmlui",
+        "range-v3",
+        "scnlib",
+        "simde",
+        "slikenet",
+        "stb",
+        "tinygltf",
+        "usd",
+        {
+            "name": "uvatlas",
+            "features": [
+                "tools"
+            ]
+        },
+        "zlib-ng"
+    ],
   "builtin-baseline": "a34c873a9717a888f58dc05268dea15592c2f0ff",
   "overrides": [
     {

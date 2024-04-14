@@ -149,6 +149,7 @@ namespace FlexKit
 
 		Vector<const char*>		CmdArguments;
 
+		IRenderWindow*			activeWindow = nullptr;
 		EngineMemory*			Memory;
 
 		BlockAllocator&			GetBlockMemory()	{ return  Memory->BlockAllocator; }

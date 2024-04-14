@@ -43,6 +43,7 @@ namespace FlexKit
 		Threads			{ options.threadCount, memory->BlockAllocator	},
 		RenderSystem	{ *(new FlexKit::RenderSystem{ memory->BlockAllocator, &Threads }) }
 	{
+		profiler.GetThreadProfiler();
 		InitiateSceneNodeBuffer(memory->BlockAllocator);
 
 #ifdef _DEBUG
@@ -109,8 +110,6 @@ namespace FlexKit
 	{
 		DEBUGBLOCK(PrintBlockStatus(&Memory->GetBlockMemory()));
 		VirtualFree(Memory, 0, MEM_RELEASE);
-
-		_aligned_free(Memory);
 	}
 
 

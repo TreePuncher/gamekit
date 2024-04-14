@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Console.h"
 #include "TextRendering.h"
 #include "defaultpipelinestates.h"
+#include <imgui.h>
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -43,15 +45,10 @@ namespace FlexKit
 
 
 
-	Console::Console(SpriteFontAsset* IN_font, RenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
-		vertexBuffer    { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
-		textBuffer      { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
-		constantBuffer  { IN_renderSystem.CreateConstantBuffer(1024 * 32, false)   },
-		renderSystem    { IN_renderSystem }
+	Console::Console(iAllocator* IN_allocator)
 	{
 		lines.clear();
 		allocator					 = IN_allocator;
-		font                         = IN_font;
 		inputBufferSize              = 0;
 		variables.Allocator          = allocator;
 		functionTable.Allocator      = allocator;
@@ -100,80 +97,24 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void Console::Draw(FrameGraph& graph, ResourceHandle renderTarget, iAllocator* allocator)
+	void Console::Draw(iAllocator* allocator)
 	{
-		if (!font) {
-			FK_LOG_ERROR("Console has Null font, aborting draw!");
-			return;
+		ImGui::BeginChild("", {});
+
+		for(auto& line : lines)
+			ImGui::Text(line.Str);
+
+		ImGui::EndChild();
+
+		char buff[512];
+		memset(buff, 0, sizeof(buff));
+
+		if (ImGui::InputText("Command", buff, sizeof(buff), ImGuiInputTextFlags_AllowTabInput | ImGuiInputTextFlags_AlwaysOverwrite | ImGuiInputTextFlags_CtrlEnterForNewLine | ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			ImGui::SetScrollY(1.0);
+			memset(buff, 0, sizeof(buff));
 		}
-		const auto WindowWH = graph.GetRenderSystem().GetTextureWH(renderTarget);
-
-		const float		HeightScale			= 0.5f;
-		const auto		FontSize			= font->FontSize;
-		const float2	PixelSize			= { 0.5f / (float)WindowWH[0],  0.5f / (float)WindowWH[1]};
-		const float		LineHeight			= FontSize[1] * PixelSize[1] * HeightScale;
-		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
-		const float2	StartingPosition	= float2{ 1	, 0.5f + (FontSize[1] * PixelSize[1]) };
-
-		FK_ASSERT(0);
-		/*
-		DrawShapes(
-				DRAW_PSO, graph, 
-				vertexBuffer,
-				constantBuffer,
-				renderTarget,
-				allocator,
-			RectangleShape{
-				float2{0.0f	, 0.0f},
-				StartingPosition, //
-				{ 0.25f, 0.25f, 0.25f, 1.0f } });
-		*/
-
-		size_t	itr				= 1;
-		float	y				= 0.5f - float(1 + (itr)) * LineHeight;
-
-		PrintTextFormatting format = PrintTextFormatting::DefaultParams();
-		format.StartingPOS = {0, 0.5f};
-		format.TextArea    = float2(1,1);
-		format.Color       = float4(1.0f, 1.0f, 1.0f, 1.0f);
-		format.Scale       = { 1.0f / AspectRatio, 1.0f };
-		format.PixelSize   = float2{ 1.0f, 1.0f } / WindowWH;
-		format.CenterX	   = false;
-		format.CenterY	   = false;
-
-		DrawSprite_Text(
-				inputBuffer, 
-				graph, 
-				*font, 
-				textBuffer, 
-				renderTarget, 
-				allocator, 
-				format);
-
-		for (auto& Line : lines) {
-			float y = 0.5f - LineHeight * itr * 2;
-
-			if (y > 0) {
-				float2 Position(0.0f, y);
-				format.StartingPOS	= Position;
-				format.TextArea		= float2(1.0f, 1.0f) - Position;
-				format.CurrentX		= 0;
-				format.CurrentY		= 0;
-
-				DrawSprite_Text(
-					Line.Str,
-					graph,
-					*font,
-					textBuffer,
-					renderTarget,
-					allocator, 
-					format);
-
-				itr++;
-			}
-			else
-				break;
-		}
+		
 	}
 
 
@@ -786,6 +727,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Console::ProcessLine(std::string_view view, iAllocator* temporary)
+	{
+		if (view.empty())
+			return;
+
+		size_t bufferSize	= inputBufferSize;
+		char* str			= (char*)allocator->malloc(bufferSize);
+		strcpy_s(str, view.size(), view.data());
+
+		PushCommandToHistory	(view.data(), view.size());
+		PrintLine(view.data(), allocator);
+
+		ErrorTable ErrorHandler;
+
+		auto Tokens = GetTokens(allocator, inputBuffer, ErrorHandler);
+		if (!ProcessTokens(
+							allocator, 
+							temporary, 
+							Tokens, 
+							ErrorHandler))
+		{
+			// Handle Errors
+			FK_LOG_WARNING("Unrecognized Command!");
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Console::BackSpace()
 	{
 		if(inputBufferSize)
@@ -925,6 +896,9 @@ namespace FlexKit
 		lines.push_back({ _ptr, Allocator });
 	}
 
+	void Console::PrintLine(const char* _ptr, float4 color, iAllocator* Memory = nullptr)
+	{
+	}
 
 	/************************************************************************************************/
 }
