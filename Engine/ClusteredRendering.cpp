@@ -1742,6 +1742,8 @@ namespace FlexKit
 				data.passConstants				= reserveCB(128 * KILOBYTE);
 				data.passVertices				= reserveVB(sizeof(float4) * 6);
 
+				builder.ReadTransition(lightPass.shadowMatrices, DeviceAccessState::DASPixelShaderResource, { FlexKit::Sync_All, FlexKit::Sync_PixelShader });
+
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 			}, 
 			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature, &shadowMaps = lightShadowMaps.acquireMaps, &gbuffer = gbufferPass.gbuffer]
