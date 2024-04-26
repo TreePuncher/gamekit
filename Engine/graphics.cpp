@@ -2672,7 +2672,7 @@ namespace FlexKit
 			barrier.src				= syncBefore;
 			barrier.dst				= syncAfter;
 			barrier.resource		= resource;
-			barrier.type = BarrierType::Texture;
+			barrier.type			= BarrierType::Texture;
 
 			barrier.texture.layoutBefore	= layoutBefore;
 			barrier.texture.layoutAfter		= layoutAfter;
@@ -4532,6 +4532,10 @@ namespace FlexKit
 			}	break;
 			case BarrierType::Buffer:
 			{
+#ifdef USING(DEBUGGRAPHICS)
+				FK_ASSERT(renderSystem->GetTextureDimension(barrier.resource) == TextureDimension::Buffer);
+#endif
+
 				D3D12_BUFFER_BARRIER bufferBarrier;
 				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
 				bufferBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
@@ -4545,6 +4549,16 @@ namespace FlexKit
 			}	break;
 			case BarrierType::Texture:
 			{
+#ifdef USING(DEBUGGRAPHICS)
+				auto dimension = renderSystem->GetTextureDimension(barrier.resource);
+				FK_ASSERT(
+					dimension == TextureDimension::Texture1D ||
+					dimension == TextureDimension::Texture2D ||
+					dimension == TextureDimension::Texture2DArray ||
+					dimension == TextureDimension::Texture3D ||
+					dimension == TextureDimension::TextureCubeMap);
+#endif
+
 				D3D12_TEXTURE_BARRIER textureBarrier;
 				textureBarrier.AccessBefore		= DAS2AccessState(barrier.accessBefore);
 				textureBarrier.AccessAfter		= DAS2AccessState(barrier.accessAfter);

@@ -42,13 +42,13 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	gbuffer			{ { resolution }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { resolution } },
 
-	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
-	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
+	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(128 * MEGABYTE, false) },
+	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(128 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
 	scene			{ framework.core.GetBlockMemory() },
 	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0],}); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0],}); res)
 		renderWindow = std::move(res.value());
 
 	framework.GetRenderSystem().DEBUG_AttachPIX();

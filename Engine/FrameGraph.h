@@ -111,9 +111,9 @@ namespace FlexKit
 
 		uint32_t						lastSubmission	= -1;
 		DeviceAccessState				access			= DeviceAccessState::DASCommon;
-		DeviceLayout					layout;
+		DeviceLayout					layout			= DeviceLayout_Unknown;
 
-		TextureDimension				dimensions;
+		TextureDimension				dimensions		= TextureDimension::Unknown;
 		VirtualResourceState			virtualState	= VirtualResourceState::NonVirtual;
 		Vector<FrameGraphNodeHandle>	lastUsers		= nullptr;
 		PoolAllocatorInterface*			pool			= nullptr;
@@ -806,6 +806,8 @@ namespace FlexKit
 				case TextureDimension::Buffer:
 					if (access != currentObject.access)
 					{
+						FK_ASSERT(renderSystem().GetTextureDimension(object_ref.shaderResource) == TextureDimension::Buffer);
+
 						ctx.AddBufferBarrier(object_ref.shaderResource, currentObject.access, access, before, after);
 						currentObject.access = access;
 					}
@@ -970,6 +972,10 @@ namespace FlexKit
 					return res.resource == handle;
 				});
 
+#if _DEBUG
+			if (res == SubNodeTracking.end())
+				FK_LOG_ERROR("Failed to find tracking for resource!");
+#endif
 			return *res;
 		}
 
@@ -2126,6 +2132,7 @@ namespace FlexKit
 					frameObject->shaderResource		= resourceHandle;
 					frameObject->pool				= pool;
 					frameObject->virtualState		= VirtualResourceState::Virtual_Created;
+					frameObject->dimensions			= desc.Dimensions;
 
 					return { resourceHandle, overlap };
 				}

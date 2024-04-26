@@ -2308,6 +2308,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Texture2DArray,
 		Texture3D,
 		TextureCubeMap,
+		Unknown,
 	};
 
 
