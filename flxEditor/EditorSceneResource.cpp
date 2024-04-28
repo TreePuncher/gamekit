@@ -104,461 +104,483 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model)
+	std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model, FlexKit::WorkBarrier& parentBarrier, EditorTask_ptr parentTask)
 	{
 		using namespace tinygltf;
 
+		FlexKit::WorkBarrier localBarrier{ parentBarrier.Threads() };
+
 		ResourceList		resources;
 		std::vector<size_t>	meshMap;
+		std::mutex m;
 
-		for (auto& mesh : model.meshes)
+		meshMap.resize(model.meshes.size());
+		resources.resize(model.meshes.size());
+
+		for (auto&& [idx, mesh] : enumerate(model.meshes))
 		{
-			std::print("Importing model: {} \n", mesh.name);
+			EditorTask_ptr task = std::make_shared<EditorTask>();
 
-			uint64_t GUID = rand();
-			std::string LOD;
+			task->SetDescription(std::format("Importing model: {} \n", mesh.name));
+			task->SetName(std::format("Importing model: {} \n", mesh.name));
+			parentTask->AddChildTask(task);
 
-			if (mesh.extras.Has("internal"))
-			{
-				meshMap.push_back(-1);
-				continue;
-			}
-
-			if (mesh.extras.Has("ResourceID"))
-			{
-				auto& resourceID = mesh.extras.Get("ResourceID");
-				if (resourceID.IsInt())
-					GUID = resourceID.Get<int>();
-			}
-
-			if (mesh.extras.Has("LOD"))
-			{
-				auto& LODproperty = mesh.extras.Get("LOD");
-				if (LODproperty.IsString())
-					LOD = LODproperty.Get<std::string>();
-			}
-
-			if (auto res = std::find_if(
-				std::begin(resources),
-				std::end(resources),
-				[&](Resource_ptr& resource)
+			auto& workItem = FlexKit::CreateWorkItem(
+				[&, task, idx](auto& threadLocalAllocator)
 				{
-					return resource->GetResourceGUID() == GUID;
-				}); res != std::end(resources))
-			{
-				meshMap.push_back((*res)->GetResourceGUID());
-				continue;
-			}
+					const auto logStr = std::format("Importing model: {} \n", mesh.name);
+					FK_LOG_INFO(logStr.c_str());
 
-			std::vector<tinygltf::Mesh*> lodSources;
-			// Fetch LOD's
+					uint64_t GUID = rand();
+					std::string LOD;
 
-			auto fetchLOD =
-				[&](const std::string lodMeshName, auto _THIS) -> void
-				{
-					for (auto& mesh : model.meshes)
+					if (mesh.extras.Has("internal"))
 					{
-						if (mesh.name == lodMeshName)
-						{
-							lodSources.push_back(&mesh);
+						meshMap[idx] = -1;
+						return;
+					}
 
-							if (mesh.extras.Has("LOD"))
+					if (mesh.extras.Has("ResourceID"))
+					{
+						auto& resourceID = mesh.extras.Get("ResourceID");
+						if (resourceID.IsInt())
+							GUID = resourceID.Get<int>();
+					}
+
+					if (mesh.extras.Has("LOD"))
+					{
+						auto& LODproperty = mesh.extras.Get("LOD");
+						if (LODproperty.IsString())
+							LOD = LODproperty.Get<std::string>();
+					}
+
+					if (auto res = std::find_if(
+						std::begin(resources),
+						std::end(resources),
+						[&](Resource_ptr& resource)
+						{
+							return resource != nullptr && resource->GetResourceGUID() == GUID;
+						}); res != std::end(resources))
+					{
+						meshMap[idx] = (*res)->GetResourceGUID();
+						return;
+					}
+
+					std::vector<tinygltf::Mesh*> lodSources;
+					// Fetch LOD's
+
+					auto fetchLOD =
+						[&](const std::string lodMeshName, auto _THIS) -> void
+						{
+							for (auto& mesh : model.meshes)
 							{
-								auto LODid = mesh.extras.Get("LOD").Get<std::string>();
-								_THIS(LODid, _THIS);
-							}
-						}
-					}
-				};
-
-			lodSources.push_back(&mesh);
-
-			if(LOD.size())
-				fetchLOD(LOD, fetchLOD);
-
-			for (auto& source : lodSources)
-			{
-				if (source->primitives.size() != lodSources[0]->primitives.size())
-				{
-					std::cout << "Invalid Input LOD";
-					return {};
-				}
-			}
-
-			std::vector<LODLevel>		lodLevels;
-			std::vector<std::string>	morphTargetNames;
-
-			for(auto sourceMesh : lodSources)
-			{
-				auto&	primitives = sourceMesh->primitives;
-				auto	meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
-
-				struct XYZ {
-					float x;
-					float y;
-					float z;
-
-					XYZ() = default;
-
-					XYZ(const float IN_x, const float IN_y, const float IN_z)
-					{
-						x = IN_x;
-						y = IN_y;
-						z = IN_z;
-					}
-
-					XYZ(const float3& xyz)
-					{
-						x = xyz.x;
-						y = xyz.y;
-						z = xyz.z;
-					}
-
-					XYZ& operator = (const float3& xyz)
-					{
-						x = xyz.x;
-						y = xyz.y;
-						z = xyz.z;
-
-						return *this;
-					}
-
-					XYZ Inverse() const noexcept { return XYZ{ -x, -y, -z }; }
-
-					operator float3 () const { return { x, y, z }; }
-				};
-
-				struct UV {
-					float x;
-					float y;
-
-					operator float2 () const { return { x, y };		}
-					operator float3 () const { return { x, y, 0 };	}
-				};
-
-
-				LODLevel lod;
-				for(auto& primitive : primitives)
-				{
-					MeshDesc newMesh;
-
-					std::span<uint32_t>			indices;
-					std::span<XYZ>				points;
-					std::span<XYZ>				normals;
-					std::span<float4>			tangents;
-					std::vector<std::span<UV>>	UVChannels;
-
-					for(auto& attribute : primitive.attributes)
-					{
-						auto& bufferAcessor	= model.accessors[attribute.second];
-						auto& bufferView	= model.bufferViews[bufferAcessor.bufferView];
-						auto* buffer		= model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
-
-						auto stride			= bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
-						auto elementCount	= bufferView.byteLength / stride;
-
-						static const std::regex texcoordPattern		{ R"(TEXCOORD_[0-9]+)" };
-						static const std::regex jointPattern		{ R"(JOINTS_[0-9]+)" };
-
-						if (attribute.first == "POSITION")
-						{							
-							for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
-							{
-								newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
-								newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
-							}
-
-							points = { (XYZ*)buffer, elementCount };
-						}
-						else if (attribute.first == "TANGENT")
-						{
-							//tangents = { (float4*)buffer, elementCount };
-						}
-						else if (attribute.first == "NORMAL")
-						{
-							normals = { (XYZ*)buffer, elementCount };
-						}
-						else if (std::regex_search(attribute.first, texcoordPattern))
-						{
-							newMesh.UV = true;
-
-							uint32_t idx = 0; 
-							static const std::regex idx_pattern{ R"([0-9]+)" };
-
-							std::smatch results;
-							auto res = std::regex_search(
-								attribute.first,
-								results, 
-								idx_pattern);
-
-
-							idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
-
-							UVChannels.emplace_back((UV*)buffer, elementCount);
-						}
-						else if (std::regex_search(attribute.first, jointPattern))
-						{
-							newMesh.Weights = true;
-
-							uint32_t idx = 0; 
-							static const std::regex idx_pattern{ R"([0-9]+)" };
-
-							std::smatch results;
-							auto res = std::regex_search(
-								attribute.first,
-								results, 
-								idx_pattern);
-
-							idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
-
-							auto& weightsAcessor	= model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
-							auto& weightsView		= model.bufferViews[weightsAcessor.bufferView];
-							auto* weightsbuffer		= model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
-
-							const auto weightsStride	= weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
-
-							for (size_t I = 0; I < elementCount; I++)
-							{
-								uint4_16	joints;
-								float4		weights;
-
-
-								if(stride == 4)
+								if (mesh.name == lodMeshName)
 								{
-									uint8_t joints_small[4];
-									memcpy(joints_small, buffer + stride * I, 4);
+									lodSources.push_back(&mesh);
 
-									joints[0] = joints_small[0];
-									joints[1] = joints_small[1];
-									joints[2] = joints_small[2];
-									joints[3] = joints_small[3];
+									if (mesh.extras.Has("LOD"))
+									{
+										auto LODid = mesh.extras.Get("LOD").Get<std::string>();
+										_THIS(LODid, _THIS);
+									}
 								}
-								else if (stride == 8)
-									memcpy(&joints, buffer + stride * I, stride);
-
-								memcpy(&weights, weightsbuffer + weightsStride * I, weightsStride);
-
-								const float sum = weights[0] + weights[1] + weights[2] + weights[3];
-
-								MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights.xyz(), joints }, meshTokens);
 							}
-						}
+						};
 
-					}
+					lodSources.push_back(&mesh);
 
-					auto& indexAccessor		= model.accessors[primitive.indices];
-					auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
-					auto& indexBuffer		= model.buffers[indexBufferView.buffer];
-					 
-					const auto indexComponentType	= indexAccessor.componentType;
-					const auto indexType			= indexAccessor.type;
+					if(LOD.size())
+						fetchLOD(LOD, fetchLOD);
 
-					const auto indexStride	= indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(indexComponentType) * GetNumComponentsInType(indexType) : indexBufferView.byteStride;
-					const auto indexCount	= indexBufferView.byteLength / indexStride;
-
-					auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
-
-
-					std::vector<uint32_t>	uint32Indices;
-					std::vector<float4>		generatedTangents;
-
-					if (indexStride == 2)
+					for (auto& source : lodSources)
 					{
-						std::span<uint16_t> uint16Indices{ (uint16_t*)buffer, indexCount };
-						std::ranges::copy(uint16Indices, std::back_inserter(uint32Indices));
-
-						indices = uint32Indices;
-					}
-					else if(indexStride == 4)
-						indices = { (uint32_t*)buffer, indexCount };
-
-
-					if (!tangents.size() && normals.size() && UVChannels.size()) // Generate Tangents
-					{
-						GenerateTangents(indices, points, normals, UVChannels[0], generatedTangents);
-						tangents = generatedTangents;
-					}
-
-					for (auto& point : points)
-						MeshUtilityFunctions::OBJ_Tools::AddVertexToken(point, meshTokens);
-
-					if (normals.size() && tangents.size())
-					{
-						for (auto&& [normal, tangent] : zip(normals, tangents))
+						if (source->primitives.size() != lodSources[0]->primitives.size())
 						{
-							auto tangentAdjusted = (tangent.w != 0) ? float4{ tangent.xyz() * tangent.w, tangent.w } : tangent;
-
-							MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, tangentAdjusted.xyz(), meshTokens);
+							FK_LOG_ERROR("Invalid Input LOD");
+							return;
 						}
 					}
-					else if (normals.size() && !tangents.size())
+
+					std::vector<LODLevel>		lodLevels;
+					std::vector<std::string>	morphTargetNames;
+
+					for(auto sourceMesh : lodSources)
 					{
-						for (auto&& normal : normals)
-							MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, meshTokens);
-					}
+						auto&	primitives = sourceMesh->primitives;
+						auto	meshTokens = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
 
-					for (auto&& [idx, uvs] : zip(iota(0), UVChannels))
-						for(auto uv : uvs)
-							MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(uv, idx, meshTokens);
+						struct XYZ {
+							float x;
+							float y;
+							float z;
 
-					size_t					morphTargetCount = 0;
-					uint32_t				morphTargetVertexCount = 0;
-					std::vector<uint32_t>	morphTargetStart;
+							XYZ() = default;
 
-					for(auto& morphChannels : primitive.targets)
-					{
-						auto position		= morphChannels.find("POSITION");
-						auto tangent		= morphChannels.find("TANGENT");
-						auto normal			= morphChannels.find("NORMAL");
-
-						morphTargetStart.push_back(morphTargetVertexCount);
-
-						std::span<XYZ>		morphPointSpan;
-						std::span<XYZ>		morphNormalSpan;// { (XYZ*)normalBuffer, normalElementCount };
-						std::span<float4>	morphTangentSpan;// = tangentbuffer != nullptr ? std::span<XYZ>{ (XYZ*)normalBuffer, normalElementCount } : std::span<XYZ>{};
-
-						auto& positionAcessor		= model.accessors[position->second];
-						auto& positionView			= model.bufferViews[positionAcessor.bufferView];
-						auto* positionBuffer		= model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
-
-						auto& normalAcessor			= model.accessors[normal->second];
-						auto& normalView			= model.bufferViews[normalAcessor.bufferView];
-						auto* normalBuffer			= model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
-
-						auto positionStride			= positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
-						auto positionElementCount	= positionView.byteLength / positionStride;
-						morphPointSpan				= { (XYZ*)positionBuffer, positionElementCount };;
-
-						auto normalStride			= normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
-						auto normalElementCount		= normalView.byteLength / normalStride;
-						morphNormalSpan				= { (XYZ*)normalBuffer, normalElementCount };
-
-						if (tangent != morphChannels.end())
-						{
-							auto& tangentAcessor		= model.accessors[tangent->second];
-							auto& tangentView			= model.bufferViews[tangentAcessor.bufferView];
-							auto* tangentbuffer			= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
-
-							auto tangentStride			= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
-							auto tangentElementCount	= tangentView.byteLength / tangentStride;
-							morphTangentSpan = std::span<float4>{ (float4*)tangentbuffer, tangentElementCount };
-						}
-
-						std::vector<float4> generatedMorphTangents;
-
-						if (!morphTangentSpan.size())
-						{	// Generate Tangents
-							std::vector<float3>	morphPoints;
-							std::vector<float3>	morphNormals;
-
-							morphPoints.reserve(points.size());
-							morphPoints.reserve(normals.size());
-
-							std::ranges::copy(points, std::back_inserter(morphPoints));
-							std::ranges::copy(normals, std::back_inserter(morphNormals));
-
-							for (auto&& [mp, p, mn, n] : zip(morphPoints, morphPointSpan, morphNormals, morphNormalSpan))
+							XYZ(const float IN_x, const float IN_y, const float IN_z)
 							{
-								//mp += p;
-								//mn += n;
+								x = IN_x;
+								y = IN_y;
+								z = IN_z;
 							}
 
-							GenerateTangents(indices, morphPoints, morphNormals, UVChannels[0], generatedMorphTangents);
-
-							for (auto&& [mt, t] : zip(generatedMorphTangents, tangents))
+							XYZ(const float3& xyz)
 							{
-								auto tangentAdjusted = (t.w != 0) ? float4{ t.xyz() * t.w, 0 } : t;
-
-								mt = float4{ mt.xyz(), 0 } - tangentAdjusted;
-								//mt = float4{ mt.xyz() * mt.w, 0 } - float4{ t.xyz() * t.w, 0 };
+								x = xyz.x;
+								y = xyz.y;
+								z = xyz.z;
 							}
 
-							morphTangentSpan = generatedMorphTangents;
-						}
+							XYZ& operator = (const float3& xyz)
+							{
+								x = xyz.x;
+								y = xyz.y;
+								z = xyz.z;
 
-						for (auto&& [position, normal, tangent] : zip(morphPointSpan, morphNormalSpan, morphTangentSpan))
-						{
-							const MorphTargetVertexToken token{
-								.position	= position,
-								.normal		= normal,
-								.tangent	= tangent * -1.0f,
-								.morphIdx	= (uint32_t)morphTargetCount,
-							};
-
-							meshTokens.push_back(token);
-						}
-
-						morphTargetVertexCount += normalElementCount;
-						morphTargetCount++;
-					}
-
-					newMesh.Normals		= normals.size() != 0;
-					newMesh.Tangents	= tangents.size() != 0;
-
-					for (size_t I = 0; I < indexCount; I += 3)
-					{
-						VertexToken tokens[3];
-
-						for(size_t II = 0; II < 3; II++)
-						{
-							uint32_t idx = 0;
-							memcpy(&idx, buffer + indexStride * (I + II), indexStride);
-
-							tokens[II].vertex.push_back(VertexField{ idx, VertexField::Point });
-							tokens[II].vertex.push_back(VertexField{ idx, VertexField::Normal });
-
-
-							if (newMesh.Tangents)
-								tokens[II].vertex.push_back(VertexField{ idx, VertexField::Tangent });
-
-							if (newMesh.UV)
-								tokens[II].vertex.push_back(VertexField{ idx, VertexField::TextureCoordinate });
-
-							if (newMesh.Weights) {
-								tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointIndex });
-								tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointWeight });
+								return *this;
 							}
 
-							for (uint32_t morphIdx = 0; morphIdx < morphTargetCount; morphIdx++)
-								tokens[II].vertex.push_back(VertexField{ morphTargetStart[morphIdx] + idx, VertexField::MorphTarget});
+							XYZ Inverse() const noexcept { return XYZ{ -x, -y, -z }; }
 
-							std::sort(
-								tokens[II].vertex.begin(), tokens[II].vertex.end(),
-								[&](VertexField& lhs, VertexField& rhs)
+							operator float3 () const { return { x, y, z }; }
+						};
+
+						struct UV {
+							float x;
+							float y;
+
+							operator float2 () const { return { x, y };		}
+							operator float3 () const { return { x, y, 0 };	}
+						};
+
+
+						LODLevel lod;
+						for(auto& primitive : primitives)
+						{
+							MeshDesc newMesh;
+
+							std::span<uint32_t>			indices;
+							std::span<XYZ>				points;
+							std::span<XYZ>				normals;
+							std::span<float4>			tangents;
+							std::vector<std::span<UV>>	UVChannels;
+
+							for(auto& attribute : primitive.attributes)
+							{
+								auto& bufferAcessor	= model.accessors[attribute.second];
+								auto& bufferView	= model.bufferViews[bufferAcessor.bufferView];
+								auto* buffer		= model.buffers[bufferView.buffer].data.data() + bufferView.byteOffset;
+
+								auto stride			= bufferView.byteStride == 0 ? GetComponentSizeInBytes(bufferAcessor.componentType) * GetNumComponentsInType(bufferAcessor.type) : bufferView.byteStride;
+								auto elementCount	= bufferView.byteLength / stride;
+
+								static const std::regex texcoordPattern		{ R"(TEXCOORD_[0-9]+)" };
+								static const std::regex jointPattern		{ R"(JOINTS_[0-9]+)" };
+
+								if (attribute.first == "POSITION")
+								{							
+									for (size_t i = 0; i < bufferAcessor.minValues.size(); i++)
+									{
+										newMesh.MinV[i] = (float)bufferAcessor.minValues[i];
+										newMesh.MaxV[i] = (float)bufferAcessor.maxValues[i];
+									}
+
+									points = { (XYZ*)buffer, elementCount };
+								}
+								else if (attribute.first == "TANGENT")
 								{
-									return lhs.type < rhs.type;
-								});
+									//tangents = { (float4*)buffer, elementCount };
+								}
+								else if (attribute.first == "NORMAL")
+								{
+									normals = { (XYZ*)buffer, elementCount };
+								}
+								else if (std::regex_search(attribute.first, texcoordPattern))
+								{
+									newMesh.UV = true;
+
+									uint32_t idx = 0; 
+									static const std::regex idx_pattern{ R"([0-9]+)" };
+
+									std::smatch results;
+									auto res = std::regex_search(
+										attribute.first,
+										results, 
+										idx_pattern);
+
+
+									idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
+
+									UVChannels.emplace_back((UV*)buffer, elementCount);
+								}
+								else if (std::regex_search(attribute.first, jointPattern))
+								{
+									newMesh.Weights = true;
+
+									uint32_t idx = 0; 
+									static const std::regex idx_pattern{ R"([0-9]+)" };
+
+									std::smatch results;
+									auto res = std::regex_search(
+										attribute.first,
+										results, 
+										idx_pattern);
+
+									idx = res ? std::atoi(results.begin()->str().c_str()) : 0;
+
+									auto& weightsAcessor	= model.accessors[primitive.attributes[fmt::format("WEIGHTS_{0}", idx)]];
+									auto& weightsView		= model.bufferViews[weightsAcessor.bufferView];
+									auto* weightsbuffer		= model.buffers[weightsView.buffer].data.data() + weightsView.byteOffset;
+
+									const auto weightsStride	= weightsView.byteStride == 0 ? GetComponentSizeInBytes(weightsAcessor.componentType) * GetNumComponentsInType(weightsAcessor.type) : weightsView.byteStride;
+
+									for (size_t I = 0; I < elementCount; I++)
+									{
+										uint4_16	joints;
+										float4		weights;
+
+
+										if(stride == 4)
+										{
+											uint8_t joints_small[4];
+											memcpy(joints_small, buffer + stride * I, 4);
+
+											joints[0] = joints_small[0];
+											joints[1] = joints_small[1];
+											joints[2] = joints_small[2];
+											joints[3] = joints_small[3];
+										}
+										else if (stride == 8)
+											memcpy(&joints, buffer + stride * I, stride);
+
+										memcpy(&weights, weightsbuffer + weightsStride * I, weightsStride);
+
+										const float sum = weights[0] + weights[1] + weights[2] + weights[3];
+
+										MeshUtilityFunctions::OBJ_Tools::AddWeightToken({ weights.xyz(), joints }, meshTokens);
+									}
+								}
+
+							}
+
+							auto& indexAccessor		= model.accessors[primitive.indices];
+							auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
+							auto& indexBuffer		= model.buffers[indexBufferView.buffer];
+					 
+							const auto indexComponentType	= indexAccessor.componentType;
+							const auto indexType			= indexAccessor.type;
+
+							const auto indexStride	= indexBufferView.byteStride == 0 ? GetComponentSizeInBytes(indexComponentType) * GetNumComponentsInType(indexType) : indexBufferView.byteStride;
+							const auto indexCount	= indexBufferView.byteLength / indexStride;
+
+							auto* buffer = model.buffers[indexBufferView.buffer].data.data() + indexBufferView.byteOffset;
+
+
+							std::vector<uint32_t>	uint32Indices;
+							std::vector<float4>		generatedTangents;
+
+							if (indexStride == 2)
+							{
+								std::span<uint16_t> uint16Indices{ (uint16_t*)buffer, indexCount };
+								std::ranges::copy(uint16Indices, std::back_inserter(uint32Indices));
+
+								indices = uint32Indices;
+							}
+							else if(indexStride == 4)
+								indices = { (uint32_t*)buffer, indexCount };
+
+
+							if (!tangents.size() && normals.size() && UVChannels.size()) // Generate Tangents
+							{
+								GenerateTangents(indices, points, normals, UVChannels[0], generatedTangents);
+								tangents = generatedTangents;
+							}
+
+							for (auto& point : points)
+								MeshUtilityFunctions::OBJ_Tools::AddVertexToken(point, meshTokens);
+
+							if (normals.size() && tangents.size())
+							{
+								for (auto&& [normal, tangent] : zip(normals, tangents))
+								{
+									auto tangentAdjusted = (tangent.w != 0) ? float4{ tangent.xyz() * tangent.w, tangent.w } : tangent;
+
+									MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, tangentAdjusted.xyz(), meshTokens);
+								}
+							}
+							else if (normals.size() && !tangents.size())
+							{
+								for (auto&& normal : normals)
+									MeshUtilityFunctions::OBJ_Tools::AddNormalToken(normal, meshTokens);
+							}
+
+							for (auto&& [idx, uvs] : zip(iota(0), UVChannels))
+								for(auto uv : uvs)
+									MeshUtilityFunctions::OBJ_Tools::AddTexCordToken(uv, idx, meshTokens);
+
+							size_t					morphTargetCount = 0;
+							uint32_t				morphTargetVertexCount = 0;
+							std::vector<uint32_t>	morphTargetStart;
+
+							for(auto& morphChannels : primitive.targets)
+							{
+								auto position		= morphChannels.find("POSITION");
+								auto tangent		= morphChannels.find("TANGENT");
+								auto normal			= morphChannels.find("NORMAL");
+
+								morphTargetStart.push_back(morphTargetVertexCount);
+
+								std::span<XYZ>		morphPointSpan;
+								std::span<XYZ>		morphNormalSpan;// { (XYZ*)normalBuffer, normalElementCount };
+								std::span<float4>	morphTangentSpan;// = tangentbuffer != nullptr ? std::span<XYZ>{ (XYZ*)normalBuffer, normalElementCount } : std::span<XYZ>{};
+
+								auto& positionAcessor		= model.accessors[position->second];
+								auto& positionView			= model.bufferViews[positionAcessor.bufferView];
+								auto* positionBuffer		= model.buffers[positionView.buffer].data.data() + positionView.byteOffset;
+
+								auto& normalAcessor			= model.accessors[normal->second];
+								auto& normalView			= model.bufferViews[normalAcessor.bufferView];
+								auto* normalBuffer			= model.buffers[normalView.buffer].data.data() + normalView.byteOffset;
+
+								auto positionStride			= positionView.byteStride == 0 ? GetComponentSizeInBytes(positionAcessor.componentType) * GetNumComponentsInType(positionAcessor.type) : positionView.byteStride;
+								auto positionElementCount	= positionView.byteLength / positionStride;
+								morphPointSpan				= { (XYZ*)positionBuffer, positionElementCount };;
+
+								auto normalStride			= normalView.byteStride == 0 ? GetComponentSizeInBytes(normalAcessor.componentType) * GetNumComponentsInType(normalAcessor.type) : normalView.byteStride;
+								auto normalElementCount		= normalView.byteLength / normalStride;
+								morphNormalSpan				= { (XYZ*)normalBuffer, normalElementCount };
+
+								if (tangent != morphChannels.end())
+								{
+									auto& tangentAcessor		= model.accessors[tangent->second];
+									auto& tangentView			= model.bufferViews[tangentAcessor.bufferView];
+									auto* tangentbuffer			= model.buffers[tangentView.buffer].data.data() + tangentView.byteOffset;
+
+									auto tangentStride			= tangentView.byteStride == 0 ? GetComponentSizeInBytes(tangentAcessor.componentType) * GetNumComponentsInType(tangentAcessor.type) : tangentView.byteStride;
+									auto tangentElementCount	= tangentView.byteLength / tangentStride;
+									morphTangentSpan = std::span<float4>{ (float4*)tangentbuffer, tangentElementCount };
+								}
+
+								std::vector<float4> generatedMorphTangents;
+
+								if (!morphTangentSpan.size())
+								{	// Generate Tangents
+									std::vector<float3>	morphPoints;
+									std::vector<float3>	morphNormals;
+
+									morphPoints.reserve(points.size());
+									morphPoints.reserve(normals.size());
+
+									std::ranges::copy(points, std::back_inserter(morphPoints));
+									std::ranges::copy(normals, std::back_inserter(morphNormals));
+
+									for (auto&& [mp, p, mn, n] : zip(morphPoints, morphPointSpan, morphNormals, morphNormalSpan))
+									{
+										//mp += p;
+										//mn += n;
+									}
+
+									GenerateTangents(indices, morphPoints, morphNormals, UVChannels[0], generatedMorphTangents);
+
+									for (auto&& [mt, t] : zip(generatedMorphTangents, tangents))
+									{
+										auto tangentAdjusted = (t.w != 0) ? float4{ t.xyz() * t.w, 0 } : t;
+
+										mt = float4{ mt.xyz(), 0 } - tangentAdjusted;
+										//mt = float4{ mt.xyz() * mt.w, 0 } - float4{ t.xyz() * t.w, 0 };
+									}
+
+									morphTangentSpan = generatedMorphTangents;
+								}
+
+								for (auto&& [position, normal, tangent] : zip(morphPointSpan, morphNormalSpan, morphTangentSpan))
+								{
+									const MorphTargetVertexToken token{
+										.position	= position,
+										.normal		= normal,
+										.tangent	= tangent * -1.0f,
+										.morphIdx	= (uint32_t)morphTargetCount,
+									};
+
+									meshTokens.push_back(token);
+								}
+
+								morphTargetVertexCount += normalElementCount;
+								morphTargetCount++;
+							}
+
+							newMesh.Normals		= normals.size() != 0;
+							newMesh.Tangents	= tangents.size() != 0;
+
+							for (size_t I = 0; I < indexCount; I += 3)
+							{
+								VertexToken tokens[3];
+
+								for(size_t II = 0; II < 3; II++)
+								{
+									uint32_t idx = 0;
+									memcpy(&idx, buffer + indexStride * (I + II), indexStride);
+
+									tokens[II].vertex.push_back(VertexField{ idx, VertexField::Point });
+									tokens[II].vertex.push_back(VertexField{ idx, VertexField::Normal });
+
+
+									if (newMesh.Tangents)
+										tokens[II].vertex.push_back(VertexField{ idx, VertexField::Tangent });
+
+									if (newMesh.UV)
+										tokens[II].vertex.push_back(VertexField{ idx, VertexField::TextureCoordinate });
+
+									if (newMesh.Weights) {
+										tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointIndex });
+										tokens[II].vertex.push_back(VertexField{ idx, VertexField::JointWeight });
+									}
+
+									for (uint32_t morphIdx = 0; morphIdx < morphTargetCount; morphIdx++)
+										tokens[II].vertex.push_back(VertexField{ morphTargetStart[morphIdx] + idx, VertexField::MorphTarget});
+
+									std::sort(
+										tokens[II].vertex.begin(), tokens[II].vertex.end(),
+										[&](VertexField& lhs, VertexField& rhs)
+										{
+											return lhs.type < rhs.type;
+										});
+								}
+
+								meshTokens.push_back(tokens[0]);
+								meshTokens.push_back(tokens[2]);
+								meshTokens.push_back(tokens[1]);
+							}
+
+							newMesh.tokens		= std::move(meshTokens);
+							newMesh.faceCount	= indexCount / 3;
+					
+							lod.subMeshs.emplace_back(std::move(newMesh));
 						}
 
-						meshTokens.push_back(tokens[0]);
-						meshTokens.push_back(tokens[2]);
-						meshTokens.push_back(tokens[1]);
+						lodLevels.emplace_back(std::move(lod));
 					}
 
-					newMesh.tokens		= std::move(meshTokens);
-					newMesh.faceCount	= indexCount / 3;
-					
-					lod.subMeshs.emplace_back(std::move(newMesh));
-				}
+					auto meshResource		= CreateMeshResource(lodLevels, mesh.name, {}, false);
+					meshResource->TriMeshID	= GUID;
 
-				lodLevels.emplace_back(std::move(lod));
-			}
+					auto& extraValues = mesh.extras.Get<tinygltf::Value::Object>();
+					auto& targetNames = extraValues["targetNames"].Get<tinygltf::Value::Array>();
 
-			auto meshResource		= CreateMeshResource(lodLevels, mesh.name, {}, false);
-			meshResource->TriMeshID	= GUID;
+					for (size_t I = 0; I < meshResource->data->morphTargetBuffers.size(); I++)
+						meshResource->data->morphTargetBuffers[I].name = targetNames[I].Get<std::string>();
 
-			auto& extraValues = mesh.extras.Get<tinygltf::Value::Object>();
-			auto& targetNames = extraValues["targetNames"].Get<tinygltf::Value::Array>();
+					meshMap[idx] = GUID;
+					resources[idx] = std::move(meshResource);
+				});
 
-			for (size_t I = 0; I < meshResource->data->morphTargetBuffers.size(); I++)
-				meshResource->data->morphTargetBuffers[I].name = targetNames[I].Get<std::string>();
-
-			resources.emplace_back(std::move(meshResource));
-
-			meshMap.push_back(GUID);
+			localBarrier.AddWork(workItem);
+			PostTask(workItem, task);
 		}
 
-		std::print("Finish Importing {} Model(s) \n", resources.size());
+		localBarrier.JoinLocal();
+
+		const auto logStr = std::format("Finish Importing {} Model(s) \n", resources.size());
+		FK_LOG_INFO(logStr.c_str());
 
 		return { resources, meshMap };
 	}
@@ -799,7 +821,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceList GatherDeformers(tinygltf::Model& model)
+	ResourceList GatherDeformers(tinygltf::Model& model, FlexKit::WorkBarrier& barrier, EditorTask_ptr parentTask)
 	{
 		ResourceList resources;
 
@@ -869,7 +891,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceList GatherAnimations(tinygltf::Model& model)
+	ResourceList GatherAnimations(tinygltf::Model& model, FlexKit::WorkBarrier& barrier, EditorTask_ptr parentTask)
 	{
 		ResourceList resources;
 
@@ -961,7 +983,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList& MD)
+	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList& MD, FlexKit::WorkBarrier& barrier, EditorTask_ptr parentTask)
 	{
 		using namespace tinygltf;
 		Model model;
@@ -979,9 +1001,42 @@ namespace FlexKit
 		
 		if (auto res = loader.LoadBinaryFromFile(&model, &err, &warn, fileDir.string()); res == true)
 		{
-			auto deformers					= GatherDeformers(model);
-			auto animations					= GatherAnimations(model);
-			auto [meshResources, meshMap]	= GatherGeometry(model);
+			WorkBarrier localBarrier{ barrier.Threads() };
+
+			auto gatherDeformers =
+				FlexKit::CreatePromise(
+					[&](auto&)
+					{
+						return GatherDeformers(model, localBarrier, parentTask);
+					});
+
+			auto gatherAnimations =
+				FlexKit::CreatePromise(
+					[&](auto&)
+					{
+						return GatherAnimations(model, localBarrier, parentTask);
+					});
+
+			auto gatherGeometry =
+				FlexKit::CreatePromise(
+					[&](auto&)
+					{
+						return GatherGeometry(model, localBarrier, parentTask);
+					});
+
+
+			localBarrier.AddWork(gatherDeformers);
+			localBarrier.AddWork(gatherAnimations);
+			localBarrier.AddWork(gatherGeometry);
+
+			PushToLocalQueue(gatherDeformers);
+			PushToLocalQueue(gatherAnimations);
+			PushToLocalQueue(gatherGeometry);
+			localBarrier.JoinLocal();
+
+			auto&& deformers	= gatherDeformers.value();
+			auto&& animations	= gatherAnimations.value();
+			auto&& [meshResources, meshMap] = gatherGeometry.value();
 
 			auto scenes = GatherScenes(model, meshMap, imageMap, deformers, options);
 

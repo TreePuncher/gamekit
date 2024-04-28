@@ -45,7 +45,9 @@ Global
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.UnityBuild|x64.ActiveCfg = UnityBuild|x64
 		{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}.UnityBuild|x64.Build.0 = UnityBuild|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Debug|x64.ActiveCfg = Debug|x64
+		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Debug|x64.Build.0 = Debug|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Release|x64.ActiveCfg = Release|x64
+		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.Release|x64.Build.0 = Release|x64
 		{31EBEF0D-793C-4B4D-84A1-EAF0AE305B60}.UnityBuild|x64.ActiveCfg = UnityBuild|x64
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Debug|x64.ActiveCfg = Debug|x64
 		{90611E9C-5078-49DF-B5CF-B772032BAB5D}.Release|x64.ActiveCfg = Release|x64
@@ -65,9 +67,7 @@ Global
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.ActiveCfg = Debug|x64
 		{7A4C6073-D26A-4212-B0FF-2FD78D2EDB98}.UnityBuild|x64.Build.0 = Debug|x64
 		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x64.ActiveCfg = Debug|x64
-		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Debug|x64.Build.0 = Debug|x64
 		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x64.ActiveCfg = Release|x64
-		{233CC021-9348-439B-8D0F-3E714DBE39F8}.Release|x64.Build.0 = Release|x64
 		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x64.ActiveCfg = Debug|x64
 		{233CC021-9348-439B-8D0F-3E714DBE39F8}.UnityBuild|x64.Build.0 = Debug|x64
 		{F9692A62-B26D-4F57-AD20-8E8660522EE5}.Debug|x64.ActiveCfg = Debug|x64
@@ -91,8 +91,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		Qt5Version = qt5
 		SolutionGuid = {4F8D44AA-933C-484E-B443-E8BC15140F28}
+		Qt5Version = qt5
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Engine\Engine.vcxitems*{233cc021-9348-439b-8d0f-3e714dbe39f8}*SharedItemsImports = 4

@@ -1,22 +1,5 @@
-#pragma once
-
-#include <QWidget>
-#include "ui_EditorTaskList.h"
-
-class EditorTaskList : public QWidget
-{
-	Q_OBJECT
-
-public:
-	EditorTaskList(QWidget *parent = nullptr);
-	~EditorTaskList();
-
-private:
-
-	void Update();
-	Ui::EditorTaskListClass ui;
-	QTimer*					timer;
-};
+#include "PCH.h"
+#include "EditorTaskManager.h"
 
 
 /**********************************************************************

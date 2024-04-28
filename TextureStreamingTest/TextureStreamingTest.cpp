@@ -14,7 +14,7 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-const uint2 resolution = uint2{ 1920, 1080 };
+const uint2 resolution = uint2{ 1920, 1080 } / 2;
 
 TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState		{ IN_framework },
@@ -48,7 +48,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	scene			{ framework.core.GetBlockMemory() },
 	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0],}); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0],}); res)
 		renderWindow = std::move(res.value());
 
 	framework.GetRenderSystem().DEBUG_AttachPIX();

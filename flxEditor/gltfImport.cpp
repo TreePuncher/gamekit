@@ -1,7 +1,8 @@
-#include <gltfImport.h>
 #include "ui_EditorImportGLTF.h"
+#include "EditorTaskManager.h"
+#include <gltfImport.h>
 #include <string>
-
+#include <ThreadUtilities.h>
 
 /************************************************************************************************/
 
@@ -9,9 +10,10 @@
 class Dialog : public QWidget
 {
 public:
-	Dialog(std::string IN_fileDir, EditorProject& IN_project) :
+	Dialog(std::string IN_fileDir, EditorProject& IN_project, FlexKit::ThreadManager& IN_threads) :
 		fileDir	{ std::move(IN_fileDir) },
-		project	{ IN_project }
+		project	{ IN_project },
+		threads { IN_threads }
 	{
 		ui.setupUi(this);
 		setAttribute(Qt::WA_DeleteOnClose, true);
@@ -36,36 +38,53 @@ public:
 		options.importScenes		= ui.importScenes->isChecked();
 		options.importTextures		= ui.importTextures->isChecked();
 
-		auto resources = FlexKit::CreateSceneFromGlTF(fileDir, options, meta);
+		EditorTask_ptr task = std::make_shared<EditorTask>();
 
-		for (auto& resource : resources)
-		{
-			if (resource == nullptr)
-				continue;
+		task->SetDescription("Loading gltf file");
+		task->SetName("import");
 
-			if (SceneResourceTypeID == resource->GetResourceTypeID())
+		auto& workItem =
+			FlexKit::CreateWorkItem(
+			[task, this, options, meta](auto& threadLocalAllocator) mutable
 			{
-				EditorScene_ptr gameScene = std::make_shared<EditorScene>();
+				FlexKit::WorkBarrier barrier{ threads };
 
-				gameScene->resource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
+				auto resources = FlexKit::CreateSceneFromGlTF(fileDir, options, meta, barrier, task);
 
-				for (auto& dependentResource : resources)
-					if (dependentResource != resource)
-						gameScene->resources.push_back(std::make_shared<ProjectResource>(dependentResource));
+				barrier.JoinLocal();
 
-				project.AddScene(gameScene);
-				project.AddResource(resource);
-			}
-			else
-				project.AddResource(resource);
-		}
+				for (auto& resource : resources)
+				{
+					if (resource == nullptr)
+						continue;
 
-		close();
+					if (SceneResourceTypeID == resource->GetResourceTypeID())
+					{
+						EditorScene_ptr gameScene = std::make_shared<EditorScene>();
+
+						gameScene->resource = std::static_pointer_cast<FlexKit::SceneResource>(resource);
+
+						for (auto& dependentResource : resources)
+							if (dependentResource != resource)
+								gameScene->resources.push_back(std::make_shared<ProjectResource>(dependentResource));
+
+						project.AddScene(gameScene);
+						project.AddResource(resource);
+					}
+					else
+						project.AddResource(resource);
+				}
+
+				close();
+			});
+
+		PostTask(workItem, task);
 	}
 
-	std::string			fileDir;
-	EditorProject&		project;
-	Ui_ImportglTFDialog ui;
+	std::string				fileDir;
+	EditorProject&			project;
+	FlexKit::ThreadManager& threads;
+	Ui_ImportglTFDialog		ui;
 };
 
 
@@ -77,7 +96,7 @@ bool gltfImporter::Import(const std::string fileDir)
 	if (!std::filesystem::exists(fileDir))
 		return false;
 
-	new Dialog{ fileDir, project };
+	new Dialog{ fileDir, project, threads };
 
 	return true;
 }

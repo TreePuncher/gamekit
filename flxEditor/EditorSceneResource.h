@@ -4,10 +4,12 @@
 #include "buildsettings.h"
 
 #include "EditorResource.h"
+#include "EditorTaskManager.h"
 #include "ResourceUtilities.h"
 
 #include "containers.h"
 #include "RuntimeComponentIDs.h"
+
 
 #include <filesystem>
 
@@ -273,7 +275,7 @@ namespace FlexKit
 		bool importTextures		= true;
 	};
 
-	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList&);
+	ResourceList CreateSceneFromGlTF(const std::filesystem::path& fileDir, const gltfImportOptions& options, MetaDataList&, class FlexKit::WorkBarrier& barrier, EditorTask_ptr parentTask);
 
 
 }   /************************************************************************************************/

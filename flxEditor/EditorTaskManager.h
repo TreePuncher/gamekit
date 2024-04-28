@@ -1,22 +1,68 @@
 #pragma once
+#include <memory>
+#include <string>
+#include <vector>
+#include <cstdlib>
 
-#include <QWidget>
-#include "ui_EditorTaskList.h"
-
-class EditorTaskList : public QWidget
+enum class TaskState
 {
-	Q_OBJECT
+	Running,
+	Error,
+	Completed
+};
 
+class EditorTask
+{
 public:
-	EditorTaskList(QWidget *parent = nullptr);
-	~EditorTaskList();
+	TaskState state;
+
+	void AddChildTask(std::shared_ptr<EditorTask> task)
+	{
+		std::scoped_lock sl{ m };
+		childTasks.push_back(task);
+	}
+
+	void SetName(std::string&& newName)
+	{
+		std::scoped_lock sl{ m };
+		name = newName;
+	}
+
+	void SetDescription(std::string&& newDescription)
+	{
+		std::scoped_lock sl{ m };
+		name = newDescription;
+	}
+
+	std::string GetName() const
+	{
+		std::scoped_lock sl{ const_cast<std::mutex&>(m) };
+		return name;
+	}
+
+	std::string GetDescription() const
+	{
+		std::scoped_lock sl{ const_cast<std::mutex&>(m) };
+		return description;
+	}
 
 private:
+	uint32_t	id				= rand();
+	std::string name			= "Un-named task";
+	std::string description		= "Describe me please!";
 
-	void Update();
-	Ui::EditorTaskListClass ui;
-	QTimer*					timer;
+	std::vector<std::shared_ptr<EditorTask>> childTasks;
+	std::mutex m;
 };
+
+namespace FlexKit
+{
+	class iWork;
+}
+
+using EditorTask_ptr = std::shared_ptr<EditorTask>;
+
+void PostTask(FlexKit::iWork&, EditorTask_ptr);
 
 
 /**********************************************************************

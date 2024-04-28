@@ -178,7 +178,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
 	scripts				{ std::make_unique<EditorScriptEngine>()	},
-	gltfImporter		{ std::make_unique<::gltfImporter>(project) },
+	gltfImporter		{ std::make_unique<::gltfImporter>(project, fkApplication.GetCore().Threads) },
 
 	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
 
