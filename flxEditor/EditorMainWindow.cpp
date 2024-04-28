@@ -10,6 +10,7 @@
 #include "EditorViewport.h"
 #include "EditorRenderer.h"
 #include "EditorUndoRedo.h"
+#include "EditorTaskList.h"
 
 #include <chrono>
 #include <QShortcut.h>
@@ -43,29 +44,32 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	setCentralWidget(tabBar);
 
 	auto viewMenu	= menuBar()->addMenu("View");
-	auto Add3DView	= viewMenu->addAction("Add 3D AddViewPort");
+	auto Add3DView	= viewMenu->addAction("ViewPort");
 	connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
 
-	auto AddTextView = viewMenu->addAction("Add Text View");
+	auto AddTextView = viewMenu->addAction("Text Editor");
 	connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
 
-	auto addResourceView = viewMenu->addAction("Add Resource List");
+	auto addResourceView = viewMenu->addAction("Resource Browser");
 	connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
 
-	auto addTextureView = viewMenu->addAction("Add Texture View");
+	auto addTextureView = viewMenu->addAction("Texture View");
 	connect(addTextureView, &QAction::triggered, this, [&] { AddTextureViewer(); });
 
-	auto addCodeEditor = viewMenu->addAction("Add Code Editor");
+	auto addCodeEditor = viewMenu->addAction("Code Editor");
 	connect(addCodeEditor, &QAction::triggered, this, [&] { AddEditorView(); });
 
-	auto addTextOutput = viewMenu->addAction("Add text Output");
+	auto addTextOutput = viewMenu->addAction("Log Viewer");
 	connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
 
-	auto addInspector = viewMenu->addAction("Add Inspector");
+	auto addInspector = viewMenu->addAction("Inspector");
 	connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
 
-	auto addOutliner= viewMenu->addAction("Add Scene Outliner");
+	auto addOutliner = viewMenu->addAction("Scene Outliner");
 	connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
+
+	auto addTaskManager = viewMenu->addAction("Task Manager");
+	connect(addTaskManager, &QAction::triggered, this, [&] { AddTaskManager(); });
 
 	auto tools = menuBar()->addMenu("Tools");
 	gadgetMenu = tools->addMenu("Scripts");
@@ -297,6 +301,23 @@ void EditorMainWindow::AddSceneOutliner()
 /************************************************************************************************/
 
 
+void EditorMainWindow::AddTaskManager()
+{
+	auto docklet	= new QDockWidget{ this };
+	auto taskList	= new EditorTaskList{};
+
+	docklet->setWindowTitle("Task Manager");
+	docklet->setWidget(taskList);
+	docklet->setFeatures(docklet->features() | QDockWidget::DockWidgetFeature::DockWidgetVerticalTitleBar);
+	docklet->show();
+
+	addDockWidget(Qt::LeftDockWidgetArea, docklet, Qt::Orientation::Vertical);
+}
+
+
+/************************************************************************************************/
+
+
 void EditorMainWindow::AddModelViewer()
 {
 	auto docklet        = new QDockWidget{ this };
@@ -408,7 +429,7 @@ void EditorMainWindow::Update()
 
 /**********************************************************************
 
-Copyright (c) 2019-2023 Robert May
+Copyright (c) 2019-2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -6,8 +6,9 @@ class EditorProject;
 class gltfImporter : public iEditorImportor
 {
 public:
-	gltfImporter(EditorProject& IN_project) :
-		project{ IN_project } {}
+	gltfImporter(EditorProject& IN_project, class FlexKit::ThreadManager& IN_threads) :
+		project	{ IN_project },
+		threads	{ IN_threads } {}
 
 	bool Import(const std::string fileDir) override;
 
@@ -15,5 +16,7 @@ public:
 	std::string GetFileExt()		override { return "glb"; }
 
 	EditorProject&		project;
+
+	class FlexKit::ThreadManager& threads;
 };
 

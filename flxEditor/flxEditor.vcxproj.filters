@@ -74,6 +74,9 @@
     <QtMoc Include="EditorMeshResourceViewer.h">
       <Filter>Headers</Filter>
     </QtMoc>
+    <QtMoc Include="EditorTaskList.h">
+      <Filter>Headers</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DXRenderWindow.cpp">
@@ -98,9 +101,6 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="TaskManager.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="EditorTaskList.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="EditorScriptEngine.cpp">
@@ -232,6 +232,12 @@
     <ClCompile Include="EditorMeshResourceViewer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorTaskList.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorTaskManager.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -283,9 +289,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="EditorScriptEngine.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="EditorTaskList.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="FBXResourceUtilities.h">
@@ -348,6 +351,7 @@
     <ClInclude Include="EditorPlayer.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="EditorTaskManager.h" />
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
@@ -393,6 +397,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorMeshResourceForm.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="EditorTaskList.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>

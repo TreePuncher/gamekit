@@ -274,9 +274,13 @@
     <QtMoc Include="EditorMeshResourceViewer.h" />
     <ClInclude Include="EditorPlayer.h" />
     <ClInclude Include="EditorSceneEntityComponents.h" />
+    <QtMoc Include="EditorTaskList.h" />
+    <ClInclude Include="EditorTaskManager.h" />
     <ClInclude Include="EditorTextureImporter.h" />
     <ClInclude Include="EditorUndoRedo.h" />
     <ClCompile Include="EditorSelectObjectDialog.cpp" />
+    <ClCompile Include="EditorTaskList.cpp" />
+    <ClCompile Include="EditorTaskManager.cpp" />
     <ClCompile Include="EditorTextureImporter.cpp" />
     <ClCompile Include="EditorUndoRedo.cpp" />
     <ClCompile Include="ExtraTu.cpp">
@@ -323,7 +327,6 @@
     <ClCompile Include="EditorResourcePickerDialog.cpp" />
     <ClCompile Include="EditorScriptEngine.cpp" />
     <ClCompile Include="EditorPrefabObject.cpp" />
-    <ClCompile Include="EditorTaskList.cpp" />
     <ClCompile Include="FBXResourceUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -426,7 +429,6 @@
     <QtMoc Include="EditorOutputWindow.h" />
     <ClInclude Include="EditorResource.h" />
     <ClInclude Include="EditorScriptEngine.h" />
-    <ClInclude Include="EditorTaskList.h" />
     <QtMoc Include="EditorTextureViewer.h" />
     <QtMoc Include="TaskManager.h" />
     <QtMoc Include="ResourceBrowserWidget.h" />
@@ -444,6 +446,7 @@
     <QtUic Include="EditorOutputWindow.ui" />
     <QtUic Include="EditorResourcePickerDialog.ui" />
     <QtUic Include="EditorSelectObjectDialog.ui" />
+    <QtUic Include="EditorTaskList.ui" />
     <QtUic Include="ModelViewerWidget.ui" />
     <QtUic Include="ResourceBrowserWidget.ui" />
     <QtUic Include="SceneOutliner.ui" />

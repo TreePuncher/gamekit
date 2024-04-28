@@ -435,10 +435,10 @@ namespace FlexKit
 	class LambdaWork : public iWork
 	{
 	public:
-		LambdaWork(TY_FN FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
-			iWork		{ IN_allocator	},
-			allocator	{ IN_allocator	},
-			Callback	{ FNIN			} {}
+		LambdaWork(const TY_FN& FNIN, iAllocator* IN_allocator) noexcept :
+			iWork		{ IN_allocator		},
+			allocator	{ IN_allocator		},
+			Callback	{ FNIN				} {}
 
 		void Release() noexcept
 		{
@@ -459,21 +459,109 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
+	template<typename TY_FN>
+	class Promise : public iWork
+	{
+	public:
+		Promise(const TY_FN& FNIN, iAllocator* IN_allocator) noexcept :
+			iWork		{ IN_allocator		},
+			allocator	{ IN_allocator		},
+			callback	{ FNIN				} {}
+
+		~Promise()
+		{
+			if (promisedValue.has_value())
+				throw std::exception("Unretrieved promise value!");
+		}
+
+		void Run(iAllocator& allocator) override
+		{
+			ProfileFunction();
+
+			promisedValue = callback(allocator);
+
+			ready.store(true, std::memory_order_release);
+		}
+
+		using TY_value = decltype(std::declval<TY_FN&>()(std::declval<iAllocator&>()));
+
+		TY_value value()
+		{
+			while (!ready.load(std::memory_order_acquire));
+
+			auto temp = std::move(promisedValue.value());
+			promisedValue.reset();
+
+			return temp;
+		};
+
+
+		TY_value value_or(auto&& orValue) noexcept
+		{
+			while (!ready.load(std::memory_order_acquire()));
+
+			auto temp = std::move(promisedValue.value_or(orValue));
+			promisedValue.reset();
+
+			return temp;
+		};
+
+
+	protected:
+
+		void Release() noexcept {}
+
+		std::atomic_bool		ready = false;
+		std::optional<TY_value>	promisedValue;
+		TY_FN					callback;
+		iAllocator*				allocator;
+	};
+
+
+	/************************************************************************************************/
+
+
 	template<typename TY_FN>
 	[[nodiscard]] iWork& CreateWorkItem(
-		TY_FN		FNIN, 
+		const TY_FN& FNIN, 
 		iAllocator* objectAllocator,
 		iAllocator* workitemAllocator)
 	{
 		return objectAllocator->allocate<LambdaWork<TY_FN>>(FNIN, workitemAllocator);
 	}
 
+
 	template<typename TY_FN>
 	[[nodiscard]] iWork& CreateWorkItem(
-		TY_FN		FNIN,
-		iAllocator* allocator = SystemAllocator)
+		const TY_FN&	FNIN,
+		iAllocator*		allocator = SystemAllocator)
 	{
 		return CreateWorkItem(FNIN, allocator, allocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_FN>
+	[[nodiscard]] auto CreatePromise(
+		const TY_FN&	FNIN, 
+		iAllocator*		objectAllocator,
+		iAllocator*		workitemAllocator)
+	{
+		return Promise<TY_FN>(FNIN, workitemAllocator);
+	}
+
+
+	template<typename TY_FN>
+	[[nodiscard]] auto CreatePromise(
+		const TY_FN&	FNIN,
+		iAllocator*		allocator = SystemAllocator)
+	{
+		return CreatePromise(FNIN, allocator, allocator);
 	}
 
 
@@ -553,6 +641,8 @@ namespace FlexKit
 		void	JoinLocal	();
 
 		void 	Reset();
+
+		ThreadManager& Threads() { return threads; }
 
 	private:
 

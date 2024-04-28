@@ -26,6 +26,8 @@ ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
 
 bool EditorProject::LoadProject(const std::string& projectDir)
 {
+	std::unique_lock sl{m};
+
 	std::filesystem::path projectPath(projectDir);
 	
 	auto f = fopen(projectDir.c_str(), "rb");
@@ -52,6 +54,8 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 
 bool EditorProject::SaveProject(const std::string& projectDir)
 {
+	std::unique_lock sl{ m };
+
 	std::filesystem::path projectPath(projectDir);
 	const std::string fileName = projectPath.replace_extension().string();
 	std::filesystem::create_directory(fileName + R"(.objects)");
@@ -86,8 +90,28 @@ bool EditorProject::SaveProject(const std::string& projectDir)
 /************************************************************************************************/
 
 
+void EditorProject::lock()
+{
+	m.lock();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::unlock()
+{
+	m.unlock();
+}
+
+
+/************************************************************************************************/
+
+
 void EditorProject::AddScene(EditorScene_ptr scene)
 {
+	std::unique_lock sl{ m };
+
 	scenes.emplace_back(scene);
 }
 
@@ -97,6 +121,8 @@ void EditorProject::AddScene(EditorScene_ptr scene)
 
 ProjectResource_ptr EditorProject::AddResource(FlexKit::Resource_ptr resource)
 {
+	std::unique_lock sl{ m };
+
 	auto projectResource = std::make_shared<ProjectResource>(resource);
 	resources.emplace_back(projectResource);
 
@@ -109,6 +135,8 @@ ProjectResource_ptr EditorProject::AddResource(FlexKit::Resource_ptr resource)
 
 FlexKit::ResourceList EditorProject::GetResources() const
 {
+	std::shared_lock sl{ const_cast<std::shared_mutex&>(m) };
+
 	FlexKit::ResourceList out;
 
 	for (auto& r : resources)
@@ -123,6 +151,8 @@ FlexKit::ResourceList EditorProject::GetResources() const
 
 void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
 {
+	std::unique_lock sl{ m };
+
 	if (resource->GetResourceTypeID() == SceneResourceTypeID)
 		std::erase_if(scenes, [&](auto& res) -> bool { return (res->resource == resource); });
 
@@ -135,6 +165,8 @@ void EditorProject::RemoveResource(FlexKit::Resource_ptr resource)
 
 ProjectResource_ptr EditorProject::FindProjectResource(uint64_t assetID)
 {
+	std::shared_lock sl{ m };
+
 	auto res = std::find_if(
 		resources.begin(),
 		resources.end(),
@@ -156,6 +188,8 @@ ProjectResource_ptr EditorProject::FindProjectResource(uint64_t assetID)
 
 ProjectResource_ptr EditorProject::FindProjectResource(const std::string& id)
 {
+	std::shared_lock sl{ m };
+
 	auto res = std::find_if(
 		resources.begin(),
 		resources.end(),
