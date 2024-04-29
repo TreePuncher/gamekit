@@ -120,9 +120,9 @@ namespace FlexKit
 
 	struct FLEXKITAPI Brush
 	{
-		NodeHandle							Node		= InvalidHandle; // 2
-		MaterialHandle						material	= InvalidHandle; // 2
-		TriMeshHandle						Occluder	= InvalidHandle; // 2
+		NodeHandle							Node		= InvalidHandle; // 4
+		MaterialHandle						material	= InvalidHandle; // 4
+		uint32_t							brushID		= 0xffffffff; // 4
 		Vector<TriMeshHandle, 16, uint8_t>	meshes;
 
 		bool					DrawLast		= false; // 1

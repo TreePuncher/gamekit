@@ -600,7 +600,6 @@ namespace FlexKit
 
 	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
 			renderSystem				{ IN_renderSystem },
-			enableOcclusionCulling		{ false	},
 
 			UAVPool						{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
 			RTPool						{ renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
@@ -617,7 +616,8 @@ namespace FlexKit
 			lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
-			transparency				{ renderSystem, *persistent }
+			transparency				{ renderSystem, *persistent },
+			passHistories				{ *persistent }
 	{
 		FlexKit::DesciptorHeapLayout layout{};
 		layout.SetParameterAsSRV(0, 0, 2, 0);
@@ -814,21 +814,8 @@ namespace FlexKit
 				UAVPool,
 				temporary);
 
-		/*
-		auto& occlutionConstants =
-			OcclusionCulling(
-				dispatcher,
-				frameGraph,
-				entityConstants,
-				passes,
-				camera,
-				drawSceneDesc.reserveCB,
-				depthTarget,
-				temporary);
-		*/
-
 		auto& gbufferPass =
-			clusteredRender.FillGBuffer(
+			clusteredRender.FillGBuffer1(
 				dispatcher,
 				frameGraph,
 				passes,
@@ -836,10 +823,21 @@ namespace FlexKit
 				gbuffer,
 				depthTarget.Get(),
 				staticConstants,
+				*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
 				animationResources,
 				reserveCB,
 				temporary);
 
+		auto& occlutionConstants =
+			OcclusionCulling(
+				dispatcher,
+				frameGraph,
+				staticConstants,
+				passes,
+				camera,
+				drawSceneDesc.reserveCB,
+				depthTarget,
+				temporary);
 
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass();
@@ -962,6 +960,8 @@ namespace FlexKit
 		}
 		*/
 
+		passHistories.GetHistory(renderSystem, drawSceneDesc.camera)->EndFrame();
+
 		return DrawOutputs{
 					.passes				= passes,
 					.entityConstants	= staticConstants,
@@ -1072,10 +1072,13 @@ namespace FlexKit
 				DepthBuffer&					depthBuffer,
 				ThreadSafeAllocator&			temporary)
 	{
+		auto* history = passHistories.GetHistory(frameGraph.GetRenderSystem(), camera);
+
 		auto& occlusion = frameGraph.AddNode<OcclusionCullingResults>(
 			OcclusionCullingResults{
 				passes,
 				brushConstants,
+				*history, 
 				reserveConstants,
 			},
 			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
@@ -1084,165 +1087,12 @@ namespace FlexKit
 				const uint MipLevels	= (uint)log2((float)Max(WH[0], WH[1]));
 
 				data.depthBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
-				data.ZPyramid		= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT, true, MipLevels), DASUAV);
 
 				builder.SetDebugName(data.depthBuffer, "depthBuffer");
-				builder.SetDebugName(data.ZPyramid, "ZPyramid");
 			},
 			[camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
-
-				return;
-				ctx.BeginEvent_DEBUG("Occlusion Culling");
-				ctx.BeginEvent_DEBUG("Occluder Pass");
-
-				auto& constants				= data.entityConstants.GetConstantBuffer();
-				auto ZPassConstantsBuffer	= data.reserveCB(AlignedSize<Camera::ConstantBuffer>());
-
-				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), ZPassConstantsBuffer };
-
-				DescriptorHeap heap{
-					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
-					&allocator };
-
-				heap.NullFill(ctx);
-
-				ctx.ClearDepthBuffer(resources.GetResource(data.depthBuffer), 1.0f);
-				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
-				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS, allocator));
-
-				ctx.SetScissorAndViewports({ resources.GetResource(data.depthBuffer) });
-				ctx.SetRenderTargets(
-					{},
-					true,
-					resources.GetResource(data.depthBuffer));
-
-				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-				ctx.SetGraphicsDescriptorTable(0, heap);
-				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
-				ctx.NullGraphicsConstantBufferView(6);
-
-				TriMesh* prevMesh		= nullptr;
-				const auto& brushes		= data.passes.GetData().solid;
-				const size_t brushCount	= brushes.size();
-
-				auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(constants);
-
-				for (size_t I = 0; I < brushCount; I++)
-				{
-					auto& meshes = brushes[I]->meshes;
-					for(auto mesh : meshes)
-						{
-							auto* const triMesh	= GetMeshResource(mesh);
-							const auto& lod		= triMesh->GetLowestLoadedLod();
-							const auto& lodIdx	= triMesh->GetLowestLodIdx();
-
-						if (triMesh != prevMesh)
-						{
-							prevMesh = triMesh;
-
-							ctx.AddIndexBuffer(triMesh, lodIdx);
-							ctx.AddVertexBuffers(triMesh,
-								lodIdx,
-								{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
-						}
-
-						ctx.SetGraphicsConstantBufferView(2u, brushConstants[I]);
-						ctx.DrawIndexedInstanced(lod.GetIndexCount());
-					}
-				}
-
-				ctx.EndEvent_DEBUG();
-
-				ctx.BeginEvent_DEBUG("Occlusion Culling - Create Z-Pyramid");
-
-				auto& rootSignature = resources.renderSystem().Library.RSDefault;
-
-				ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
-
-				auto currentConstants   = GetCameraConstants(camera);
-				auto previousConstants  = GetCameraPreviousConstants(camera);
-
-				struct ReprojectionConstants
-				{
-					float4x4 currentPV;
-					float4x4 previousIView;
-
-					float3  TLCorner_VS;
-					float3  TRCorner_VS;
-
-					float3  BLCorner_VS;
-					float3  BRCorner_VS;
-
-					float3  cameraPOS;
-					float   MaxZ;
-				} projectionConstants{
-					.currentPV      = currentConstants.PV,
-					.previousIView  = previousConstants.ViewI,
-
-					.TLCorner_VS    = currentConstants.TLCorner_VS,
-					.TRCorner_VS    = currentConstants.TRCorner_VS,
-
-					.BLCorner_VS    = currentConstants.BLCorner_VS,
-					.BRCorner_VS    = currentConstants.BRCorner_VS,
-
-					.cameraPOS      = currentConstants.WPOS.xyz(),
-					.MaxZ           = currentConstants.MaxZ
-				};
-
-				auto CBBuffer   = data.reserveCB(AlignedSize<ReprojectionConstants>());
-				auto computeCB  = ConstantBufferDataSet{ projectionConstants, CBBuffer };
-
-				const auto ZPyramid = resources.GetResource(data.ZPyramid);
-
-				DescriptorHeap SRVHeap;
-				SRVHeap.Init2(ctx, rootSignature->GetDescHeap(0), 1, &allocator);
-				SRVHeap.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.depthBuffer, ctx), DeviceFormat::R32_FLOAT);
-
-				DescriptorHeap UAVHeap;
-				UAVHeap.Init2(ctx, rootSignature->GetDescHeap(1), 1, &allocator);
-				UAVHeap.SetUAVTexture(ctx, 0, 0, resources.UAV(data.ZPyramid, ctx), DeviceFormat::R32_FLOAT);
-
-				ctx.SetComputeConstantBufferView(0, computeCB);
-				ctx.SetComputeDescriptorTable(4, SRVHeap);
-				ctx.SetComputeDescriptorTable(5, UAVHeap);
-
-				const uint2 dispatchWH = resources.GetTextureWH(data.ZPyramid);
-
-				auto copySource     = resources.GetPipelineState(DEPTHCOPY, allocator);
-				auto buildZLevel    = resources.GetPipelineState(ZPYRAMIDBUILDLEVEL, allocator);
-
-				ctx.Dispatch(copySource,    { dispatchWH[0], dispatchWH[1], 1 });
-
-				ctx.AddUAVBarrier(ZPyramid);
-
-				const uint mipCount = 5;
-				const uint end      = mipCount - 1;
-
-				for (uint32_t I = 0; I < end; I++)
-				{
-					ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
-
-					DescriptorHeap SRVHeap;
-					SRVHeap.Init2(ctx, rootSignature->GetDescHeap(0), 1, &allocator);
-					SRVHeap.SetSRV(ctx, 0, resources.GetResource(data.ZPyramid), I, DeviceFormat::R32_FLOAT);
-
-					DescriptorHeap UAVHeap;
-					UAVHeap.Init2(ctx, rootSignature->GetDescHeap(1), 1, &allocator);
-					UAVHeap.SetUAVTexture(ctx, 0, I + 1, resources.NonPixelShaderResource(data.ZPyramid, ctx), DeviceFormat::R32_FLOAT);
-
-					ctx.SetComputeDescriptorTable(4, SRVHeap);
-					ctx.SetComputeDescriptorTable(5, UAVHeap);
-
-					ctx.Dispatch(buildZLevel, { dispatchWH[0], dispatchWH[1], 1 });
-					ctx.AddUAVBarrier(ZPyramid);
-				}
-
-				ctx.EndEvent_DEBUG();
-				ctx.EndEvent_DEBUG();
 			});
 
 		return occlusion;

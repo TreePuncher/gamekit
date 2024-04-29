@@ -267,7 +267,8 @@ void ResourceBrowserWidget::ShowContextMenu(const QPoint& pos)
 				});
 		}
 
-		contextMenu.addAction("Remove", [&, index = index, projRes = project.resources[index.row()]]
+		contextMenu.addAction("Remove",
+			[&, index = index, projRes = project.resources[index.row()]]
 			{
 				RemoveSelectedItems();
 				//project.RemoveResource(projRes->resource);

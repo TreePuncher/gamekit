@@ -2195,6 +2195,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	enum class QueryType
 	{
 		OcclusionQuery,
+		BinaryOcclusionQuery,
 		PipelineStats,
 		TimeStats,
 	};
@@ -2203,14 +2204,25 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	FLEXKITAPI struct QueryTable
 	{
 		QueryTable(iAllocator* persistent, RenderSystem* RS_in) :
-			users		{ persistent },
-			resources	{ persistent },
-			RS			{ RS_in } {}
+			users			{ persistent },
+			resources		{ persistent },
+			pendingFrees	{ persistent },
+			RS				{ RS_in } {}
 
 
 		~QueryTable()
 		{
 			Release();
+		}
+
+
+		void Release(QueryHandle query, uint64_t submissionCounter)
+		{
+			auto idx = users[query].resourceIdx;
+			
+			pendingFrees.emplace_back(submissionCounter, resources[idx].resources[0]);
+			pendingFrees.emplace_back(submissionCounter, resources[idx].resources[1]);
+			pendingFrees.emplace_back(submissionCounter, resources[idx].resources[2]);
 		}
 
 
@@ -2284,6 +2296,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		RenderSystem*			RS;
 		Vector<UserEntry>		users;
 		Vector<ResourceEntry>	resources;
+
+		struct PendingFree
+		{
+			uint64_t			id;
+			ID3D12QueryHeap*	resource;
+		};
+
+		Vector<PendingFree>		pendingFrees;
 	};
 
 
@@ -3793,6 +3813,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ReleaseResource(ResourceHandle);
 		void ReleaseReadBack(ReadBackResourceHandle);
 		void ReleaseHeap(DeviceHeapHandle);
+		void ReleaseQuery(QueryHandle);
 
 		void					SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
 		CopyContextHandle		OpenUploadQueue();
@@ -3998,6 +4019,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
+
+	enum class PredicateOp
+	{
+		EqualZero,
+		NotEqualZero
+	};
 
 	FLEXKITAPI class Context
 	{
@@ -4206,7 +4233,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void FlushBarriers();
 
-		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
+		void SetPredicate(bool Enable, ResourceHandle Handle = InvalidHandle, size_t = 0, PredicateOp op = PredicateOp::EqualZero);
 
 		void CopyBuffer		(const UploadReservation src, const ResourceHandle destination, const size_t destOffset = 0);
 		void CopyTexture2D	(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize);

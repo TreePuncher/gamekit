@@ -1233,6 +1233,30 @@ namespace FlexKit
 		CircularBuffer() : _Head(0), _Size(0) {}
 
 
+		CircularBuffer(std::span<Ty> initial) :
+			CircularBuffer()
+		{
+			for (auto&& [idx, e] : enumerate(initial))
+			{
+				if (idx >= SIZE)
+					return;
+
+				push_back(e);
+			}
+		}
+
+		CircularBuffer(std::initializer_list<Ty> initial) :
+			CircularBuffer()
+		{
+			for (auto&& [idx, e] : enumerate(initial))
+			{
+				if (idx >= SIZE)
+					return;
+
+				push_back(e);
+			}
+		}
+
 		~CircularBuffer()
 		{
 			Release();
@@ -1318,7 +1342,9 @@ namespace FlexKit
 			_Size = Min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
-			*_get(idx) = Item;
+
+			auto _ptr = _get(idx);
+			new(_ptr) Ty{ Item };
 
 			return true;
 		}
@@ -2845,7 +2871,7 @@ namespace FlexKit
 			allocator{ IN_allocator } {}
 
 
-		HashTable(const HashTable& rhs) 
+		HashTable(const HashTable& rhs)
 		{
 			Clone(*this, rhs, allocator ? *allocator : rhs.allocator);
 		}
@@ -2876,6 +2902,18 @@ namespace FlexKit
 			return (*this);
 		}
 
+		void clear() noexcept
+		{
+			used = 0;
+
+			for (size_t i = 0; i < max; i++)
+			{
+				if (keys[i] != (TY_key)0xffffffff)
+					values[i].~TY_value();
+			}
+
+			memset(keys, 0xffffffff, sizeof(TY_key) * max);
+		}
 
 		TY_value* try_insert(const TY_key key, const TY_value& value)
 		{
@@ -2888,14 +2926,14 @@ namespace FlexKit
 					uint64_t idx	= hash % max;
 
 			const uint64_t end = Min(idx + 4, max);
-			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+			for (; keys[idx] != (TY_key)0xffffffffffffffff && idx < end; idx++);
 		
 			if (idx >= end)
 				return nullptr;
 			else
 			{
 				used++;
-				keys[idx] = hash;
+				keys[idx] = key;
 				return new(values + idx) TY_value{ std::move(value) };
 			}
 		}
@@ -2912,28 +2950,27 @@ namespace FlexKit
 					uint64_t idx	= hash % max;
 
 			const uint64_t end = Min(idx + 4, max);
-			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+			for (; keys[idx] != (TY_key)0xffffffffffffffff && idx < end; idx++);
 		
 			if (idx >= end)
 				return nullptr;
 			else
 			{
 				used++;
-				keys[idx] = hash;
+				keys[idx] = key;
 				return new(values + idx) TY_value{ std::move(value) };
 			}
 		}
 
 		TY_value* insert(const TY_key key, const TY_value& value)
 		{
-			TY_value* ret = try_insert(key, value);
-			while (ret == nullptr)
+			while (true)
 			{
-				reserve(max * 2);
-				TY_value* ret = try_insert(key, value);
-			}
+				if (TY_value* res = try_insert(key, value); res)
+					return res;
 
-			return ret;
+				reserve(max * 2);
+			}
 		}
 
 
@@ -2961,20 +2998,33 @@ namespace FlexKit
 					uint64_t idx	= hash % max;
 
 			const uint64_t end = Min(idx + 4, max);
-			for (; keys[idx] != 0xffffffffffffffff && idx < end; idx++);
+			for (; keys[idx] != (TY_key)0xffffffffffffffff && idx < end; idx++);
 		
 			if (idx >= end)
 				return nullptr;
 			else
 			{
 				used++;
-				keys[idx] = hash;
+				keys[idx] = key;
 				return new(values + idx) TY_value{ std::forward<TY_params>(args)... };
 			}
 		}
 
+		TY_value* Find_Or(const TY_key key, auto&& initialValue)
+		{
+			auto res = find(key);
+			if (!res)
+				res = insert(key, initialValue);
+
+			return res;
+		}
 
 		TY_value* operator [] (const TY_key key) const noexcept
+		{
+			return find(key);
+		}
+
+		TY_value* find (const TY_key key) const noexcept
 		{
 			if (!max)
 				return nullptr;
@@ -2983,9 +3033,9 @@ namespace FlexKit
 					uint64_t idx	= hash % max;
 
 			const uint64_t end = Min(idx + 4, max);
-			while (keys[idx] != hash && idx < end) idx++;
+			while (keys[idx] != key && idx < end) idx++;
 
-			if (idx >= end || keys[idx] != hash)
+			if (idx >= end || keys[idx] != key)
 				return nullptr;
 			else
 				return (values + idx);
@@ -3021,11 +3071,12 @@ namespace FlexKit
 
 		void reserve(const uint32_t newSize)
 		{
-			const size_t	newByteSize	= sizeof(TY_key) * newSize;
-			TY_key*			newKeys		= (TY_key*)allocator->_aligned_malloc(newByteSize);
-			TY_value*		newValues	= (TY_value*)allocator->_aligned_malloc(newByteSize);
+			const size_t	newKeyByteSize		= sizeof(TY_key) * newSize;
+			const size_t	newValueByteSize	= sizeof(TY_value) * newSize;
+			TY_key*			newKeys		= (TY_key*)allocator->_aligned_malloc(newKeyByteSize);
+			TY_value*		newValues	= (TY_value*)allocator->_aligned_malloc(newValueByteSize);
 
-			memset(newKeys, 0xff, newByteSize);
+			memset(newKeys, 0xffffffff, newKeyByteSize);
 
 			if (used)
 			{

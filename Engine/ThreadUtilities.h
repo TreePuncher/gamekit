@@ -473,8 +473,7 @@ namespace FlexKit
 
 		~Promise()
 		{
-			if (promisedValue.has_value())
-				throw std::exception("Unretrieved promise value!");
+			FK_LOG_ERROR("Unretrieved promise value!");
 		}
 
 		void Run(iAllocator& allocator) override

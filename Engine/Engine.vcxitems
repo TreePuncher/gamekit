@@ -310,6 +310,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)OcclusionCulling.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ParticleRendering.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|Win32'">false</ExcludedFromBuild>
@@ -873,6 +874,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)OcclusionCulling.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ParticleRendering.hpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|Win32'">false</ExcludedFromBuild>
