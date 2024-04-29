@@ -1413,7 +1413,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GBufferPass& ClusteredRender::FillGBuffer(
+	GBufferPass& ClusteredRender::FillGBuffer1(
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
 		GatherPassesTask&				passes,
@@ -1421,12 +1421,14 @@ namespace FlexKit
 		GBuffer&						gbuffer,
 		ResourceHandle					depthTarget,
 		BrushConstants&					entityConstants,
+		PassHistory&					passHistory,
 		const ResourceAllocation&		animationResources,
 		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
 		using std::views::zip;
 		using std::views::iota;
+		passHistory.Current();
 
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
@@ -1434,6 +1436,7 @@ namespace FlexKit
 				passes,
 				camera,
 				reserveCB,
+				passHistory,
 			},
 			[&](FrameGraphNodeBuilder& builder, GBufferPass& data)
 			{
@@ -1507,7 +1510,6 @@ namespace FlexKit
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
 				ctx.BeginEvent_DEBUG("G-Buffer Pass");
-				ctx.BeginEvent_DEBUG("Static Objects");
 
 				//ctx.TimeStamp(timeStats, 0);
 
@@ -1528,10 +1530,19 @@ namespace FlexKit
 				auto& constantBuffer	= entityConstants.GetConstantBuffer();
 				auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
+				auto& currentHistory = data.history.Current();
+
 				if(pass && pass->pvs.size())
 				{
+					ctx.BeginEvent_DEBUG("Static Objects");
+
 					TriMesh*					prevMesh	= nullptr;
 					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
+
+					auto& prevHistory		= data.history.PreviousHistory();
+
+					if(currentHistory.drawableOffsetMappings.max < pass->pvs.size())
+						currentHistory.drawableOffsetMappings.reserve(pass->pvs.size() + pass->pvs.size() / 4);
 
 					for (auto&& [I, brush] : zip(iota(0), pass->pvs))
 					{
@@ -1544,6 +1555,17 @@ namespace FlexKit
 						const auto beginConstants	= entityConstants.entityTable[I];
 
 						const size_t meshCount	= brush->meshes.size();
+						const auto brushID		= brush->brushID;
+						auto occlusionIDRes		= prevHistory.drawableOffsetMappings.find(brushID);
+						const uint32_t queryIdx = currentHistory.GetQueryIdx(brushID);
+
+						ctx.BeginQuery(currentHistory.occlusionQueries, queryIdx);
+
+						if (occlusionIDRes)
+							ctx.SetPredicate(true, prevHistory.occlusionResults, *occlusionIDRes);
+						else
+							ctx.SetPredicate(false);
+
 						for (size_t J = 0; J < meshCount; J++)
 						{
 							auto mesh		= brush->meshes[J];
@@ -1594,24 +1616,20 @@ namespace FlexKit
 									subMesh.BaseIndex);
 							}
 						}
+
+						ctx.EndQuery(currentHistory.occlusionQueries, queryIdx);
 					}
+
+					ctx.SetPredicate(false);
+					ctx.EndEvent_DEBUG();
 				}
 
 				// skinned models
-				ctx.EndEvent_DEBUG();
-
-				if (!animatedPass || !animatedPass->pvs.size())
-				{
-					ctx.EndEvent_DEBUG();
-					return;
-				}
-
-				ctx.BeginEvent_DEBUG("Skinned Objects");
-
-
 				if(animatedPass && animatedPass->pvs.size())
 				{
-					auto& animatedBrushes = animatedPass->pvs;
+					ctx.BeginEvent_DEBUG("Skinned Objects");
+					auto& animatedBrushes	= animatedPass->pvs;
+					auto& prevHistory		= data.history.PreviousHistory();
 
 					ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED, allocator));
 
@@ -1626,8 +1644,20 @@ namespace FlexKit
 						if (!brush->meshes.size())
 							continue;
 
-						const auto& material		= materials[brush->material];
-						const auto beginConstants	= entityConstants.entityTable[brush.submissionID];
+						const auto		brushID		= brush->brushID;
+						const uint32_t	queryIdx	= currentHistory.GetQueryIdx(brushID);
+
+						ctx.BeginQuery(currentHistory.occlusionQueries, queryIdx);
+
+						auto occlusionIDRes = prevHistory.drawableOffsetMappings.find(brush->brushID);
+
+						if (occlusionIDRes)
+							ctx.SetPredicate(true, prevHistory.occlusionResults, *occlusionIDRes);
+						else
+							ctx.SetPredicate(false);
+
+						const auto&	material		= materials[brush->material];
+						const auto	beginConstants	= entityConstants.entityTable[brush.submissionID];
 
 						const size_t meshCount	= brush->meshes.size();
 						for (size_t J = 0; J < meshCount; J++)
@@ -1676,10 +1706,16 @@ namespace FlexKit
 									subMesh.BaseIndex);
 							}
 						}
+
+						ctx.EndQuery(currentHistory.occlusionQueries, queryIdx);
 					}
+
+					ctx.SetPredicate(false);
+					ctx.EndEvent_DEBUG();
 				}
 
-				ctx.EndEvent_DEBUG();
+				ctx.ResolveQuery(currentHistory.occlusionQueries, 0, currentHistory.counter, currentHistory.occlusionResults, 0);
+
 				ctx.EndEvent_DEBUG();
 				//ctx.TimeStamp(timeStats, 1u);
 			}

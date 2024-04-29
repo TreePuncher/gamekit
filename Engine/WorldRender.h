@@ -10,6 +10,7 @@
 #include "DepthBuffer.h"
 #include "FrameGraph.h"
 #include "graphics.h"
+#include "OcclusionCulling.h"
 #include "Scene.h"
 #include "ShadowMapping.h"
 #include "SVOGI.h"
@@ -280,10 +281,11 @@ namespace FlexKit
 	{
 		GatherPassesTask&				passes;
 		BrushConstants&					entityConstants;
+		PassHistory&					occlusionHistory;
+
 		ReserveConstantBufferFunction	reserveCB;
 
 		FrameResourceHandle				depthBuffer;
-		FrameResourceHandle				ZPyramid;
 	};
 
 	struct DrawOutputs
@@ -312,6 +314,7 @@ namespace FlexKit
 	{
 		EGITECHNIQUE GI = EGITECHNIQUE::DISABLE;
 	};
+
 
 	class FLEXKITAPI WorldRender
 	{
@@ -442,7 +445,6 @@ namespace FlexKit
 			lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB, allocator);
 		}
 
-	//private:
 		LoadPipelineStateRes CreateAverageLumanceLocal	(RenderSystem* rs, iAllocator&);
 		LoadPipelineStateRes CreateAverageLumanceGlobal	(RenderSystem* rs, iAllocator&);
 		LoadPipelineStateRes CreateToneMapping			(RenderSystem* rs, iAllocator&);
@@ -466,12 +468,13 @@ namespace FlexKit
 		Transparency				transparency;
 		GlobalIlluminationEngine	lightingEngine;
 
+		PassHistoryTable			passHistories;
+
 		static_vector<RenderTask>	pendingGPUTasks; // Tasks must be completed prior to rendering
 
 		CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 
 		TextureStreamingEngine&		streamingEngine;
-		bool						enableOcclusionCulling;
 
 		const FlexKit::RootSignature*	rootSignatureToneMapping;
 

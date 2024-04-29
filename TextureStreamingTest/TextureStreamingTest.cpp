@@ -14,7 +14,7 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-const uint2 resolution = uint2{ 1920, 1080 } / 2;
+const uint2 resolution = uint2{ 1920, 1080 };
 
 TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework) :
 	FrameworkState		{ IN_framework },
@@ -355,6 +355,10 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					if(rotate)
 						renderWindow.EnableCaptureMouse(false);
 					return true;
+				case KC_I:
+				{
+					renderer.passHistories.ResetAll();
+				}	return true;
 				}
 			}	break;
 			}

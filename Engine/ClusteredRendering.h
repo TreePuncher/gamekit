@@ -2,8 +2,10 @@
 
 #include "graphics.h"
 #include "FrameGraph.h"
+#include "OcclusionCulling.h"
 #include "Scene.h"
 #include "ShadowMapping.h"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -139,6 +141,7 @@ namespace FlexKit
 		const CameraHandle					camera;
 
 		ReserveConstantBufferFunction		reserveCB;
+		PassHistory&						history;
 
 		FrameResourceHandle entityConstants;
 
@@ -319,7 +322,21 @@ namespace FlexKit
 								ReserveConstantBufferFunction&	reserveCB);
 
 
-		GBufferPass& FillGBuffer(
+		GBufferPass& FillGBuffer1(
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								GatherPassesTask&				passes,
+								const CameraHandle				camera,
+								GBuffer&						gbuffer,
+								ResourceHandle					depthTarget,
+								BrushConstants&					entityConstants,
+								PassHistory&					passHistory,
+								const ResourceAllocation&		animationResources,
+								ReserveConstantBufferFunction	reserveCB,
+								iAllocator*						allocator);
+
+		
+		GBufferPass& FillGBuffer2(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								GatherPassesTask&				passes,

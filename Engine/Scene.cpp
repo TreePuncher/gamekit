@@ -114,8 +114,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	static std::atomic_uint brushCount = 0;
+
 	BrushView::BrushView(GameObject& gameObject, TriMeshHandle	triMesh) :
-		brush{ GetComponent().Create(gameObject, Brush{}) }
+		brush{ GetComponent().Create(gameObject, Brush{ .brushID = brushCount.fetch_add(1, std::memory_order_acq_rel) }) }
 	{
 		Apply(gameObject,
 			[&](TriggerView& view)
@@ -125,7 +127,7 @@ namespace FlexKit
 					SceneChangedSlot,
 					[&gameObject](...)
 					{
-						FlexKit::SetBoundingSphereFromMesh(gameObject);
+						SetBoundingSphereFromMesh(gameObject);
 					});
 
 				view->Connect(AddedToSceneID, SceneChangedSlot);
@@ -145,7 +147,6 @@ namespace FlexKit
 	BrushView::~BrushView()
 	{
 		auto& brush_ref = GetComponent()[brush];
-		ReleaseMesh(brush_ref.Occluder);
 
 		for (auto& mesh : brush_ref.meshes)
 			ReleaseMesh(mesh);
@@ -674,6 +675,8 @@ namespace FlexKit
 			brush = &gameObject.AddView<BrushView>();
 		else
 			brush = (BrushView*)gameObject.GetView(FlexKit::BrushComponentID);
+
+		brush->GetBrush().brushID = brushCount.fetch_add(1, std::memory_order_acq_rel);
 
 		for(uint I = 0; I < brushComponent.meshCount; I++)
 		{

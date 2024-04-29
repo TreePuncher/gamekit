@@ -4256,13 +4256,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetPredicate(bool Enabled, QueryHandle Handle, size_t Offset)
+	void Context::SetPredicate(bool Enabled, ResourceHandle handle, size_t Offset, PredicateOp op)
 	{
 		if (Enabled)
 			DeviceContext->SetPredication(
-				reinterpret_cast<ID3D12Resource*>(renderSystem->_GetQueryResource(Handle)),
-				Offset, 
-				D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
+				renderSystem->GetDeviceResource(handle),
+				Offset * 8, 
+				op == PredicateOp::NotEqualZero ? D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 		else
 			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 	}
@@ -6810,7 +6810,7 @@ namespace FlexKit
 
 	QueryHandle	RenderSystem::CreateOcclusionBuffer(size_t Counts)
 	{
-		return Queries.CreateQueryBuffer(Counts, QueryType::OcclusionQuery);
+		return Queries.CreateQueryBuffer(Counts, QueryType::BinaryOcclusionQuery);
 	}
 
 
@@ -7511,6 +7511,15 @@ namespace FlexKit
 	void RenderSystem::ReleaseHeap(DeviceHeapHandle heap)
 	{
 		heaps.ReleaseHeap(heap);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ReleaseQuery(QueryHandle q)
+	{
+		Queries.Release(q, directSubmissionCounter.load(std::memory_order_acquire));
 	}
 
 
@@ -8502,6 +8511,10 @@ namespace FlexKit
 		case QueryType::OcclusionQuery:
 			desc.Type			= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
 			newResEntry.type	= D3D12_QUERY_TYPE_OCCLUSION;
+			break;
+		case QueryType::BinaryOcclusionQuery:
+			desc.Type			= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+			newResEntry.type	= D3D12_QUERY_TYPE_BINARY_OCCLUSION;
 			break;
 		case QueryType::PipelineStats:
 			desc.Type			= D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
