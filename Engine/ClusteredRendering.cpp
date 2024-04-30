@@ -653,6 +653,70 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		/*
+		* 	struct EInputElement
+		*	{
+		*		const char*				name				= 0;
+		*		uint8_t					index				= 0;
+		*		DeviceFormat			format				= DeviceFormat::UNKNOWN;
+		*		uint16_t				slot				= 0;
+		*		uint16_t				alignedByteOffset	= 0;
+		*		EInputClassification	inputSlotClass		= EInputClassification::PerVertex;
+		*		uint16_t				instanceStepRate	= 0;
+		*	};
+		*/
+
+		PipelineBuilder builder{ allocator };
+		builder.AddVertexShader("main", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
+		builder.AddInputLayout({
+				.inputs = {
+					EInputElement{
+						.name				= "POSITION",
+						.index				= 0,
+						.format				= DeviceFormat::R32G32B32_FLOAT,
+						.slot				= 0,
+						.alignedByteOffset	= 0,
+						.inputSlotClass		= EInputClassification::PerInstance,
+						.instanceStepRate	= 12
+					}
+				},
+				.count = 1,
+			});
+		builder.AddDepthStencilState({
+				.depthEnable	= true,
+				.depthWriteMask = EDepthWriteMask::Zero,
+				.stencilEnable	= false
+			}
+		);
+
+		return builder.Build(*RS);
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		PipelineBuilder builder{ allocator };
+		builder.AddVertexShader("main", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddDepthStencilState({
+				.depthEnable	= true,
+				.depthWriteMask = EDepthWriteMask::Zero,
+				.stencilEnable	= false
+			}
+		);
+
+		return builder.Build(*RS);
+	}
+
+
+	/************************************************************************************************/
+
+
 	GBuffer::GBuffer(const uint2 WH, RenderSystem& RS_IN) :
 		RS				{ RS_IN },
 		albedo			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
@@ -1428,7 +1492,6 @@ namespace FlexKit
 	{
 		using std::views::zip;
 		using std::views::iota;
-		passHistory.Current();
 
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
@@ -1722,6 +1785,105 @@ namespace FlexKit
 			);
 
 		return pass;
+	}
+
+
+	/************************************************************************************************/
+
+
+	GBufferPass& ClusteredRender::FillGBuffer2(
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		GatherPassesTask&				passes,
+		const CameraHandle				camera,
+		GBufferPass&					gbuffer,
+		ResourceHandle					depthTarget,
+		BrushConstants&					entityConstants,
+		PassHistory&					passHistory,
+		const ResourceAllocation&		animationResources,
+		ReserveConstantBufferFunction	reserveCB,
+		iAllocator*						allocator)
+	{
+		struct Shared
+		{
+
+		} shared;
+
+		PassDescription<Shared> pass{
+			.sharedData = shared,
+			.getPVS		= []() -> std::span<FlexKit::PVEntry> { return {}; }
+		};
+
+		auto setup =
+			[&](FrameGraphNodeBuilder& builder, Shared& data)
+			{
+			};
+
+		auto draw =
+			[](const auto begin, const auto end, std::span<const PVEntry> pvs, Shared& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+			{
+			};
+
+		frameGraph.AddPass(pass, setup, draw);
+
+		return gbuffer;
+	}
+
+
+	/************************************************************************************************/
+
+	
+	OcclusionCullingResults& ClusteredRender::OcclusionCulling(
+				UpdateDispatcher&				dispatcher,
+				FrameGraph&						frameGraph,
+				BrushConstants&					brushConstants,
+				GatherPassesTask&				passes,
+				CameraHandle					camera,
+				ReserveConstantBufferFunction&	reserveConstants,
+				PassHistoryTable&				occlusionTable,
+				ResourceHandle					depthBuffer,
+				ThreadSafeAllocator&			temporary)
+	{
+		auto* history = occlusionTable.GetHistory(frameGraph.GetRenderSystem(), camera);
+		FK_ASSERT(history != nullptr);
+
+		PassDescription<OcclusionCullingResults> pass{
+			.sharedData =
+				{
+					.passes				= passes,
+					.brushConstants		= brushConstants,
+					.occlusionHistory	= *occlusionTable.GetHistory(frameGraph.GetRenderSystem(),	camera),
+					.reserveCB			= reserveConstants
+				},
+			.getPVS = []() -> std::span<FlexKit::PVEntry> { return {}; }
+		};
+
+		auto setup =
+			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
+			{
+				data.occlussionResults	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
+				data.depthBuffer		= builder.ReadTransition(builder.GetHandle(depthBuffer), DeviceAccessState::DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
+			};
+
+		auto draw =
+			[](const auto begin, const auto end, std::span<const PVEntry> pvs, OcclusionCullingResults& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+			{
+				for (auto&& [idx, draw] : enumerate(std::span(begin, end)))
+				{
+					BoundingSphere bs{};
+
+					for (TriMeshHandle meshHndl : draw.brush->meshes)
+					{
+						const TriMesh* meshResource = GetMeshResource(meshHndl);
+						bs += meshResource->AABB;
+					}
+
+					bs += GetPositionW(draw.brush->Node);
+				}
+			};
+
+		auto& passResults = frameGraph.AddPass(pass, setup, draw);
+		return passResults.shared;
 	}
 
 

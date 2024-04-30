@@ -1245,17 +1245,28 @@ namespace FlexKit
 			}
 		}
 
-		CircularBuffer(std::initializer_list<Ty> initial) :
-			CircularBuffer()
+		CircularBuffer(std::initializer_list<Ty> initial) : CircularBuffer()
 		{
 			for (auto&& [idx, e] : enumerate(initial))
 			{
 				if (idx >= SIZE)
 					return;
 
-				push_back(e);
+				//emplace_back(std::move(e));
 			}
 		}
+
+		CircularBuffer& operator = (std::initializer_list<Ty> initial)
+		{
+			for (auto&& [idx, e] : enumerate(initial))
+			{
+				if (idx >= SIZE)
+					return;
+
+				emplace_back(std::move(e));
+			}
+		}
+
 
 		~CircularBuffer()
 		{
@@ -1264,8 +1275,8 @@ namespace FlexKit
 
 		void Release()
 		{
-			for (auto& Element : *this)
-				Element.~Ty();
+			for (auto itr = begin(); itr < end(); itr++)
+				(*itr).~Ty();
 
 			_Head = 0;
 			_Size = 0;
@@ -3088,7 +3099,7 @@ namespace FlexKit
 							uint64_t idx	= hash % newSize;
 
 					newKeys[idx] = key;
-					if (key != 0xffffffffffffffff)
+					if (key != (TY_key)0xffffffffffffffff)
 					{
 						new(newValues + idx) TY_value{ std::move(values[itr]) };
 
@@ -3115,7 +3126,7 @@ namespace FlexKit
 				{
 					for (size_t itr = 0; itr < max; itr++)
 					{
-						if (keys[itr] != 0xffffffffffffffff)
+						if (keys[itr] != (TY_key)0xffffffffffffffff)
 							values[itr].~TY_value();
 					}
 				}

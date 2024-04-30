@@ -6,8 +6,10 @@ namespace FlexKit
 	OcclusionQueries::~OcclusionQueries()
 	{
 		if (occlusionQueries != InvalidHandle)
+		{
 			RenderSystem::_GetInstance().ReleaseQuery(occlusionQueries);
-
+			RenderSystem::_GetInstance().ReleaseResource(occlusionResults);
+		}
 		occlusionQueries = InvalidHandle;
 	}
 
@@ -41,26 +43,22 @@ namespace FlexKit
 		{
 			res = passState.insert(
 				camera,
-				PassHistory
-				{
-					.occlusionQueryHistory = {
-						{
-							.occlusionQueries = renderSystem.CreateOcclusionBuffer(4096),
-							.occlusionResults = renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
-							.drawableOffsetMappings{allocator}
-						},
-						{
-							.occlusionQueries = renderSystem.CreateOcclusionBuffer(4096),
-							.occlusionResults = renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
-							.drawableOffsetMappings{allocator}
-						},
-						{
-							.occlusionQueries = renderSystem.CreateOcclusionBuffer(4096),
-							.occlusionResults = renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
-							.drawableOffsetMappings{allocator}
-						}
-					}
-				});
+				PassHistory{});
+
+			res->occlusionQueryHistory.emplace_back(
+				renderSystem.CreateOcclusionBuffer(4096),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				allocator);
+
+			res->occlusionQueryHistory.emplace_back(
+				renderSystem.CreateOcclusionBuffer(4096),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				allocator);
+
+			res->occlusionQueryHistory.emplace_back(
+				renderSystem.CreateOcclusionBuffer(4096),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				allocator);
 		}
 
 		return res;

@@ -277,16 +277,6 @@ namespace FlexKit
 		CBPushBuffer&					GetConstantBuffer();
 	};
 
-	struct OcclusionCullingResults
-	{
-		GatherPassesTask&				passes;
-		BrushConstants&					entityConstants;
-		PassHistory&					occlusionHistory;
-
-		ReserveConstantBufferFunction	reserveCB;
-
-		FrameResourceHandle				depthBuffer;
-	};
 
 	struct DrawOutputs
 	{
@@ -340,16 +330,6 @@ namespace FlexKit
 				GatherPassesTask&				passes,
 				ReserveConstantBufferFunction&	reserveConstants,
 				iAllocator&						allocator);
-
-		OcclusionCullingResults&	OcclusionCulling(
-				UpdateDispatcher&				dispatcher,
-				FrameGraph&						frameGraph,
-				BrushConstants&					entityConstants,
-				GatherPassesTask&				passes,
-				CameraHandle					camera,
-				ReserveConstantBufferFunction&	reserveConstants,
-				DepthBuffer&					depthBuffer,
-				ThreadSafeAllocator&			temporary);
 
 		DepthPass&					DepthPrePass(
 				UpdateDispatcher&				dispatcher,

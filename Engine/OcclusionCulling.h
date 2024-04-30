@@ -7,7 +7,32 @@ namespace FlexKit
 {
 	struct OcclusionQueries
 	{
+		OcclusionQueries() = default;
+
+		OcclusionQueries(
+			QueryHandle			IN_occlusionQueries,
+			ResourceHandle		IN_occlusionResults,
+			iAllocator&			allocator	) :
+				occlusionQueries		{ IN_occlusionQueries },
+				occlusionResults		{ IN_occlusionResults },
+				drawableOffsetMappings	{ allocator } {}
+
 		~OcclusionQueries();
+
+							OcclusionQueries	(const OcclusionQueries&)	= delete;
+		OcclusionQueries&	operator =			(OcclusionQueries& rhs)		= delete;
+
+		OcclusionQueries(OcclusionQueries&& rhs) :
+			counter				{ std::exchange(rhs.counter, 0) },
+			occlusionQueries	{ std::exchange(rhs.occlusionQueries, InvalidHandle) },
+			occlusionResults	{ std::exchange(rhs.occlusionResults, InvalidHandle) } {}
+
+		OcclusionQueries& operator = (OcclusionQueries&& rhs)
+		{
+			counter				= std::exchange(rhs.counter, 0);
+			occlusionQueries	= std::exchange(rhs.occlusionQueries, InvalidHandle);
+			occlusionResults	= std::exchange(rhs.occlusionResults, InvalidHandle);
+		}
 
 		uint32_t GetQueryIdx(uint32_t);
 

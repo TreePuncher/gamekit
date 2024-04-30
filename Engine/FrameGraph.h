@@ -1339,7 +1339,9 @@ namespace FlexKit
 		void AddNodeDependency(FrameGraphNodeHandle node);
 
 
-		FrameGraphNodeHandle GetNodeHandle() const;
+		FrameGraphNodeHandle	GetNodeHandle() const;
+
+		FrameResourceHandle		GetHandle(ResourceHandle) const;
 
 		FrameResourceHandle CreateConstantBuffer();
 		FrameResourceHandle ReadConstantBuffer(FrameResourceHandle);

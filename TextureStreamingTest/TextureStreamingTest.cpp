@@ -86,7 +86,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 			light.SetIntensity(2 * light.GetIntensity());
 			//light.SetIntensity(4096);
 			light.SetRadius(50.0f);
-			node.SetPosition({ 16.8, -2, -6 });
+			node.SetPosition({ 16.8f, -2.0f, -6.0f });
 		},
 		LightQuery{}, SceneNodeReq{});
 
@@ -189,6 +189,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	auto str = fmt::format(
 		"Debug Stats\n"
+		"FPS: {}\n"
 		"SmallBlocks: {} / {}\n"
 		"MediumBlocks: {} / {}\n"
 		"LargeBlocks: {} / {}\n"
@@ -206,6 +207,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		"X: {}\n"
 		"Y: {}\n"
 		"Z, {}\n",
+		framework.stats.fps,
 		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,

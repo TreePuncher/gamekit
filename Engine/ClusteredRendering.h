@@ -249,6 +249,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct OcclusionCullingResults
+	{
+		GatherPassesTask&				passes;
+		BrushConstants&					brushConstants;
+		PassHistory&					occlusionHistory;
+
+		ReserveConstantBufferFunction&	reserveCB;
+
+		FrameResourceHandle				occlussionResults;
+		FrameResourceHandle				depthBuffer;
+	};
+
+
+	/************************************************************************************************/
+
+
 	constexpr PSOHandle LIGHTPREPASS                    = PSOHandle(GetTypeGUID(LIGHTPREPASS));
 	constexpr PSOHandle CREATECLUSTERS                  = PSOHandle(GetTypeGUID(CREATECLUSTERS));
 	constexpr PSOHandle CREATECLUSTERBUFFER             = PSOHandle(GetTypeGUID(CREATECLUSTERBUFFER));
@@ -336,17 +352,31 @@ namespace FlexKit
 								iAllocator*						allocator);
 
 		
+		OcclusionCullingResults& OcclusionCulling(
+								UpdateDispatcher&				dispatcher,
+								FrameGraph&						frameGraph,
+								BrushConstants&					brushConstants,
+								GatherPassesTask&				passes,
+								CameraHandle					camera,
+								ReserveConstantBufferFunction&	reserveConstants,
+								PassHistoryTable&				occlusionTable,
+								ResourceHandle					depthBuffer,
+								ThreadSafeAllocator&			temporary);
+
+
 		GBufferPass& FillGBuffer2(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								GatherPassesTask&				passes,
 								const CameraHandle				camera,
-								GBuffer&						gbuffer,
+								GBufferPass&					pass1,
 								ResourceHandle					depthTarget,
 								BrushConstants&					entityConstants,
+								PassHistory&					passHistory,
 								const ResourceAllocation&		animationResources,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
+
 
 		void MarkClusters_Pass(
 								UpdateDispatcher&				dispatcher,
@@ -357,6 +387,7 @@ namespace FlexKit
 								BrushConstants&					entityConstants,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
+
 
 		LightBufferUpdate& UpdateLightBuffers(
 								UpdateDispatcher&				dispatcher,
@@ -424,6 +455,9 @@ namespace FlexKit
 			   LoadPipelineStateRes CreateDeferredShadingPassPSO        (RenderSystem* RS, iAllocator&);
 		static LoadPipelineStateRes CreateDeferredShadingPassComputePSO (RenderSystem* RS, iAllocator&);
 		static LoadPipelineStateRes CreateComputeTiledDeferredPSO       (RenderSystem* RS, iAllocator&);
+
+		static LoadPipelineStateRes CreateOcclusionQueryPSO				(RenderSystem* RS, iAllocator&);
+		static LoadPipelineStateRes CreateOcclusionQueryInstancedPSO	(RenderSystem* RS, iAllocator&);
 
 		static LoadPipelineStateRes CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS, iAllocator&);
 		static LoadPipelineStateRes CreateLightBVH_PHASE1_PSO       (RenderSystem* RS, iAllocator&);
