@@ -828,15 +828,29 @@ namespace FlexKit
 				reserveCB,
 				temporary);
 
-		auto& occlutionConstants =
-			OcclusionCulling(
+		auto& occlutionResults =
+			clusteredRender.OcclusionCulling(
 				dispatcher,
 				frameGraph,
 				staticConstants,
 				passes,
 				camera,
 				drawSceneDesc.reserveCB,
-				depthTarget,
+				passHistories,
+				depthTarget.Get(),
+				temporary);
+
+		clusteredRender.FillGBuffer2(
+				dispatcher,
+				frameGraph,
+				passes,
+				camera,
+				gbufferPass,
+				depthTarget.Get(),
+				staticConstants,
+				*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
+				animationResources,
+				reserveCB,
 				temporary);
 
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
@@ -1056,46 +1070,6 @@ namespace FlexKit
 					}
 				}
 			});
-	}
-
-
-	/************************************************************************************************/
-
-
-	OcclusionCullingResults& WorldRender::OcclusionCulling(
-				UpdateDispatcher&				dispatcher,
-				FrameGraph&						frameGraph,
-				BrushConstants&					brushConstants,
-				GatherPassesTask&				passes,
-				CameraHandle					camera,
-				ReserveConstantBufferFunction&	reserveConstants,
-				DepthBuffer&					depthBuffer,
-				ThreadSafeAllocator&			temporary)
-	{
-		auto* history = passHistories.GetHistory(frameGraph.GetRenderSystem(), camera);
-
-		auto& occlusion = frameGraph.AddNode<OcclusionCullingResults>(
-			OcclusionCullingResults{
-				passes,
-				brushConstants,
-				*history, 
-				reserveConstants,
-			},
-			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
-			{
-				const uint2 WH			= builder.GetRenderSystem().GetTextureWH(depthBuffer.Get());
-				const uint MipLevels	= (uint)log2((float)Max(WH[0], WH[1]));
-
-				data.depthBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget(WH, DeviceFormat::D32_FLOAT), DASDEPTHBUFFERWRITE);
-
-				builder.SetDebugName(data.depthBuffer, "depthBuffer");
-			},
-			[camera = camera](OcclusionCullingResults& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
-			{
-				ProfileFunction();
-			});
-
-		return occlusion;
 	}
 
 

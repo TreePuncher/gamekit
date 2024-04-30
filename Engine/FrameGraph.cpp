@@ -352,6 +352,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FrameResourceHandle FrameGraphNodeBuilder::GetHandle(ResourceHandle handle) const
+	{
+		return context.GetFrameObject(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
 	FrameResourceHandle FrameGraphNodeBuilder::CreateConstantBuffer()
 	{
 		FrameResourceHandle resource = context.frameResources.AddConstantBuffer();

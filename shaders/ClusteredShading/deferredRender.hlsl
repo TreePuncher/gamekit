@@ -582,12 +582,14 @@ float4 DeferredShade_PS(float4 Position : SV_Position) : SV_Target0
 		float4(1, 1, 1, 1), 
 	};
 
-	const uint clusterKey = GetSliceIdx(depth * MaxZ);
 
-	//if (px.x > WH.x / 2.0f)
+	if (px.x % 32 == 0 || px.y % 32 == 0)
+		return float4(0, 0, 0, 0);
+	
+	if (px.x > WH.x / 2.0f)
 	{
-		if (px.x % 32 == 0 || px.y % 32 == 0)
-			return float4(0, 0, 0, 0);
+		const uint clusterKey = GetSliceIdx(depth * MaxZ);
+
 		//return pow(float4(0, UV.y, 0, 1), 2);
 	
 		//return float4(positionWS * float3(0, 0, -0.01), 1);

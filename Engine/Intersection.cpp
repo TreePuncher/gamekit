@@ -177,7 +177,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Intersects(const Frustum frustum, const AABB aabb) noexcept
+	bool Intersects(const Frustum& frustum, const AABB aabb) noexcept
 	{
 		int Result = 1;
 
@@ -359,6 +359,21 @@ namespace FlexKit
 		}
 
 		return (Bottom & Near & Far & Left & Right & Top);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool Intersects(const BoundingSphere bs, const AABB aabb)
+	{
+		auto POS = bs.xyz();
+
+		aabb.Min;
+
+		float3 closestPoint = clamp(aabb.Min, POS, aabb.Max);
+
+		return (closestPoint - POS).magnitudeSq() < (bs.w * bs.w);
 	}
 
 

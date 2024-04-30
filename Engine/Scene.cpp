@@ -1586,7 +1586,7 @@ namespace FlexKit
 				lightHandle			{ IN_light },
 				bvh					{ IN_bvh }
 			{
-				_debugID = "PointLightUpdate_Task";
+				_debugID = "LightUpdateTask";
 			}
 
 			void Run(iAllocator& threadLocalAllocator)
@@ -1630,7 +1630,10 @@ namespace FlexKit
 						.theta	= light.outerAngle
 					};
 
-					bvh.Traverse(c,
+
+					const BoundingSphere bs{ position, light.R };
+
+					bvh.Traverse(bs,
 						[&](
 												VisibilityHandle	visable,
 							[[maybe_unused]]	auto&				intersionResult,
