@@ -45,21 +45,28 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(128 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(128 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
-	scene			{ framework.core.GetBlockMemory() },
-	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
+	scene			{ framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0],}); res)
-		renderWindow = std::move(res.value());
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0], }); res)
+	{
+		renderWindow = res;
+	}
+	else
+	{
+		FK_LOG_ERROR("Failed to create render window!");
 
+		throw std::runtime_error{ std::format("Failed to create render window! arguments [fullscreen = {}, width = {}, height = {} ]", false, resolution[0], resolution[1])};
+	}
+
+	framework.core.activeWindow = renderWindow;
 	framework.GetRenderSystem().DEBUG_AttachPIX();
 
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify	= &FlexKit::EventsWrapper;
 	sub._ptr	= &framework;
 
-	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Texture Streaming");
-	renderWindow.EnableCaptureMouse(false);
+	renderWindow->Handler.Subscribe(sub);
+	renderWindow->SetWindowTitle("Texture Streaming");
 
 	// Load Test Scene
 	layer = physx.CreateLayer(false);
@@ -70,14 +77,14 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 		.nodes = Vector<FlexKit::NodeHandle>{ framework.core.GetBlockMemory() }
 	};
 
-	AddAssetFile(R"(assets\SanMiguel.gameres)");
-	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	//AddAssetFile(R"(assets\SanMiguel.gameres)");
+	AddAssetFile(R"(assets\TextureStreaming.gameres)");
 	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
 	if (!LoadScene(framework.core, loadCtx, "Scene"))
 		throw std::runtime_error("Failed to load scene!");
 
-	if(true)
+	if(false)
 	scene.QueryFor(
 		[&](GameObject& gameObject, LightView& light, SceneNodeView& node)
 		{
@@ -97,9 +104,9 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	orbitComponent.acceleration = 100;
 
 	if(!rotate)
-		renderWindow.ToggleMouseCapture();
+		renderWindow->ToggleMouseCapture();
 
-	SetCameraAspectRatio(orbitComponent.camera, renderWindow.GetAspectRatio());
+	SetCameraAspectRatio(orbitComponent.camera, renderWindow->GetAspectRatio());
 	SetCameraFOV(orbitComponent.camera, (float)pi / 4.0f);
 
 	//OrbitCameraPitch(orbitCamera, float(pi / 2.0f));
@@ -114,7 +121,7 @@ TextureStreamingTest::~TextureStreamingTest()
 {
 	scene.ClearScene();
 
-	renderWindow.Release();
+	renderWindow->Release();
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
 }
@@ -130,11 +137,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	UpdateInput();
 
-	renderWindow.UpdateCapturedMouseInput(dT);
+	renderWindow->UpdateCapturedMouseInput(dT);
 
-	OrbitCameraUpdate(orbitCamera, renderWindow.mouseState, dT);
+	OrbitCameraUpdate(orbitCamera, renderWindow->mouseState, dT);
 
-	if(1)
+	if(false)
 	scene.QueryFor(
 		[&](GameObject& gameObject, auto&& light, auto&& node)
 		{
@@ -147,44 +154,47 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 	cameras.MarkDirty(activeCamera);
 
-	debugUI.Update(renderWindow, core, dispatcher, dT);
+	if (framework.ImGuiAvailable())
+	{
+		ImGui::SetNextWindowPos({ (float)renderWindow->WH[0] - 400.0f, 0 });
+		ImGui::SetNextWindowSize({ 400, 400 });
 
-	ImGui::NewFrame();
-	ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 400.0f, 0});
-	ImGui::SetNextWindowSize({ 400, 400 });
+		ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
-	ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+		const auto memoryStats = framework.core.GetBlockMemory().GetStats();
 
-	const auto memoryStats = framework.core.GetBlockMemory().GetStats();
+		auto memoryInUse = (memoryStats.smallBlocksAllocated * 64 +
+			memoryStats.mediumBlocksAllocated * 2048 +
+			memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
 
-	auto memoryInUse = (memoryStats.smallBlocksAllocated * 64 +
-		memoryStats.mediumBlocksAllocated * 2048 +
-		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
+		auto temp = core.RenderSystem.directFence->GetCompletedValue();
+		size_t space0 = 0;
+		size_t space1 = 0;
+		size_t space2 = 0;
+		for (auto& a : renderer.UAVPool.freeRanges)
+			if (a.frameID < temp)
+				space0 += a.blockCount;
 
-	auto temp = core.RenderSystem.directFence->GetCompletedValue();
-	size_t space0 = 0;
-	size_t space1 = 0;
-	size_t space2 = 0;
-	for (auto& a : renderer.UAVPool.freeRanges)
-		if(a.frameID < temp)
-			space0 += a.blockCount;
+		for (auto& a : renderer.RTPool.freeRanges)
+			if (a.frameID < temp)
+				space1 += a.blockCount;
 
-	for (auto& a : renderer.RTPool.freeRanges)
-		if (a.frameID < temp)
-			space1 += a.blockCount;
+		for (auto& a : renderer.UAVTexturePool.freeRanges)
+			if (a.frameID < temp)
+				space2 += a.blockCount;
 
-	for (auto& a : renderer.UAVTexturePool.freeRanges)
-		if (a.frameID < temp)
-			space2 += a.blockCount;
+		space0 = (space0 * 64 * KILOBYTE) / MEGABYTE;
+		space1 = (space1 * 64 * KILOBYTE) / MEGABYTE;
+		space2 = (space2 * 64 * KILOBYTE) / MEGABYTE;
 
-	space0 = (space0 * 64 * KILOBYTE) / MEGABYTE;
-	space1 = (space1 * 64 * KILOBYTE) / MEGABYTE;
-	space2 = (space2 * 64 * KILOBYTE) / MEGABYTE;
+		auto vidMemStats = core.RenderSystem._GetVidMemStats();
+		size_t textureBlocksInUse = textureStreamingEngine.TilesAllocated();
+		size_t textureBlocksFree = textureStreamingEngine.TilesFree();
+		size_t textureBlocksStale = textureStreamingEngine.TilesStale();
 
-	auto vidMemStats = core.RenderSystem._GetVidMemStats();
-	size_t textureBlocksInUse = textureStreamingEngine.TilesAllocated();
-	size_t textureBlocksTotal = textureStreamingEngine.TilesTotal();
+		auto pos = GetPositionW(GetCameraNode(activeCamera));
 
+<<<<<<< TextureStreamingTest/TextureStreamingTest.cpp
 	auto pos = GetPositionW(GetCameraNode(activeCamera));
 
 	auto str = fmt::format(
@@ -216,16 +226,47 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
 		textureBlocksInUse, textureBlocksTotal,
 		pos.x, pos.y, pos.z);
+=======
+		auto str = fmt::format(
+			"Debug Stats\n"
+			"FPS: {}\n"
+			"SmallBlocks: {} / {}\n"
+			"MediumBlocks: {} / {}\n"
+			"LargeBlocks: {} / {}\n"
+			"Memory in use: {}MB\n"
+			"M to toggle mouse\n"
+			"T to toggle texture streaming\n"
+			"R to toggle rotating camera\n"
+			"V to toggle vsync\n"
+			"UAV buffer   Pool space left: {}MB\n"
+			"RenderTarget Pool space left: {}MB\n"
+			"UAV texture  Pool space left: {}MB\n"
+			"Video Memory {}/{}\n"
+			"Camera Position:"
+			"	X: {}\n"
+			"	Y: {}\n"
+			"	Z, {}\n"
+			"Texture Blocks:\n"
+			"	inuse:  {}\n"
+			"	free:   {}\n"
+			"	stale:  {}\n"
+			"	total:  {}\n",
+			framework.stats.fps,
+			memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
+			memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
+			memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
+			memoryInUse,
+			space0, space1, space2,
+			vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
+			pos.x, pos.y, pos.z,
+			textureBlocksInUse, textureBlocksFree, textureBlocksStale, textureBlocksInUse + textureBlocksFree + textureBlocksStale);
+>>>>>>> TextureStreamingTest/TextureStreamingTest.cpp
 
 
-	ImGui::Text(str.c_str());
+		ImGui::Text(str.c_str());
 
-	ImGui::End();
-
-	profiler.DrawProfiler({ 0, 0 }, { 1520, 1080 }, core.GetTempMemory());
-
-	ImGui::EndFrame();
-	ImGui::Render();
+		ImGui::End();
+	}
 
 	return nullptr;
 }
@@ -238,12 +279,12 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 {
 	ProfileFunctionTextName(Draw);
 
-	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 	FlexKit::WorldRender_Targets targets{
-		.RenderTarget = renderWindow.GetBackBuffer(),
+		.RenderTarget = renderWindow->GetBackBuffer(),
 		.DepthTarget = depthBuffer,
 	};
 
@@ -283,8 +324,11 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		core.GetTempMemoryMT()
 	);
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
-	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
+
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+
+
+	PresentBackBuffer(frameGraph, *renderWindow);
 
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetTempMemoryMT());
 
@@ -303,7 +347,7 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	FK_LOG_9("Frame End");
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-	renderWindow.Present(core.vSync ? 1 : 0, 0);
+	renderWindow->Present(core.vSync ? 1 : 0, 0);
 
 	depthBuffer.Increment();
 }
@@ -329,7 +373,7 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					return true;
 				case KC_M:
 					rotate = false;
-					renderWindow.ToggleMouseCapture();
+					renderWindow->ToggleMouseCapture();
 					return true;
 				case KC_P:
 					framework.GetRenderSystem().DEBUG_BeginPixCapture();
@@ -355,7 +399,7 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					rotate = !rotate;
 
 					if(rotate)
-						renderWindow.EnableCaptureMouse(false);
+						renderWindow->EnableCaptureMouse(false);
 					return true;
 				case KC_I:
 				{
@@ -377,8 +421,8 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 		framework.quit = true;
 		return true;
 	}
-	else
-		return debugUI.HandleInput(evt);
+
+	return false;
 }
 
 

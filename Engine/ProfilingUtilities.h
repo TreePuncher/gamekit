@@ -175,7 +175,7 @@ namespace FlexKit
 
 	struct EngineProfiling
 	{
-		EngineProfiling() { FK_LOG_INFO("Profiling Initialized\n"); }
+		EngineProfiling() {}
 
 		ThreadProfiler& GetThreadProfiler()
 		{
@@ -239,7 +239,7 @@ namespace FlexKit
 				return {};
 		}
 
-		void DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp);
+		void DrawProfiler(iAllocator& temp);
 
 		size_t GetFrameID() const { return frameID; }
 

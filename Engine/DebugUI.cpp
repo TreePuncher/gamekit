@@ -160,10 +160,12 @@ namespace FlexKit
 
 
 
-	void ImGUIIntegrator::Update(Win32RenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+	void ImGUIIntegrator::Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{
+		auto& win32Window = static_cast<Win32RenderWindow&>(window);
+
 		const auto WH   = window.GetWH();
-		auto hwnd       = window.hWindow;
+		auto hwnd       = win32Window.hWindow;
 
 		ImGuiIO& io     = ImGui::GetIO();
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
@@ -202,7 +204,7 @@ namespace FlexKit
 		if (io.WantSetMousePos)
 		{
 			POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
-			::ClientToScreen(window.hWindow, &pos);
+			::ClientToScreen(win32Window.hWindow, &pos);
 			::SetCursorPos(pos.x, pos.y);
 		}
 
@@ -250,7 +252,8 @@ namespace FlexKit
 						(evt.mData1.mKC[0] == KC_EQUAL) ||
 						(evt.mData1.mKC[0] == KC_SYMBOL) ||
 						(evt.mData1.mKC[0] == KC_BACKSPACE) ||
-						(evt.mData1.mKC[0] == KC_SPACE))
+						(evt.mData1.mKC[0] == KC_SPACE) ||
+						(evt.mData1.mKC[0] == KC_ENTER))
 					{
 						io.AddInputCharacter((char)evt.mData2.mINT[0]);
 					}

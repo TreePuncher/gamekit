@@ -7,9 +7,15 @@
 
 namespace FlexKit
 {
+	enum class PanelMode
+	{
+		Stats,
+
+	};
+
 	struct DebugPanel : public FrameworkState
 	{
-		DebugPanel(GameFramework& framework, FrameworkState& IN_topState);
+		DebugPanel(GameFramework& framework, IRenderWindow& renderWindow, FrameworkState& topState);
 		~DebugPanel();
 
 		bool			pauseBackgroundLogic;

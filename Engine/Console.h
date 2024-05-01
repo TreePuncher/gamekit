@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "buildsettings.h"	
 #include "EngineCore.h"
-#include "Graphics.h"
-#include "FrameGraph.h"
-#include "GuiUtilities.h"
+#include "memoryutilities.h"
 
 namespace FlexKit
 {
@@ -199,6 +197,7 @@ namespace FlexKit
 		}
 
 		const char* Str;
+		float4		color = float4{ 1, 1, 1, 1 };
 		iAllocator*	Memory;
 
 		operator const char* (){ return Str; }
@@ -207,16 +206,17 @@ namespace FlexKit
 
 	struct Console
 	{
-		Console(SpriteFontAsset* font, RenderSystem& renderSystem, iAllocator* allocator);
+		Console(iAllocator* allocator);
 		~Console();
 
 		void Release();
 
-		void Draw(FrameGraph& Graph, ResourceHandle RenderTarget, iAllocator* TempMemory);
+		void Draw(iAllocator* TempMemory);
 
 
-		void Input( char InputCharacter );
-		void EnterLine( iAllocator* Memory );
+		void Input(char InputCharacter);
+		void EnterLine(iAllocator* Memory);
+		void ProcessLine(std::string_view view, iAllocator* Memory);
 		void BackSpace();
 
 
@@ -237,18 +237,14 @@ namespace FlexKit
 		bool				ExecuteGrammerTokens	(Vector<GrammerToken>& Tokens, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack);
 		bool				ProcessTokens			(iAllocator* persistent, iAllocator* temporary, Vector<InputToken>& in, ErrorTable& errorHandler);
 
-
 		void				PrintLine( const char* _ptr, iAllocator* Memory = nullptr );
+		void				PrintLine( const char* _ptr, float4 color, iAllocator* Memory = nullptr );
 
 		/************************************************************************************************/
 
-		VertexBufferHandle		vertexBuffer    = InvalidHandle; 
-		VertexBufferHandle		textBuffer      = InvalidHandle;
-		ConstantBufferHandle	constantBuffer  = InvalidHandle;
 
-		CircularBuffer<ConsoleLine, 32>	lines;
-		CircularBuffer<ConsoleLine, 32>	commandHistory;
-		SpriteFontAsset*				font;
+		CircularBuffer<ConsoleLine, 512>	lines;
+		CircularBuffer<ConsoleLine, 512>	commandHistory;
 
 		Vector<ConsoleVariable>		variables;
 		ConsoleFunctionTable		functionTable;
@@ -259,7 +255,8 @@ namespace FlexKit
 		char	inputBuffer[1024];
 		size_t	inputBufferSize;
 
-        RenderSystem& renderSystem;
+		bool resetScroll = false;
+
 		iAllocator*	allocator;
 
 		const char* engineVersion = "Version: Pre-Alpha 0.0.0.3:" __DATE__;

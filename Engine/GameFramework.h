@@ -59,11 +59,17 @@ namespace FlexKit
 
 	void PushMessageToConsole(void* User, const char* Str, size_t StrLen);
 
+	class ImGUIIntegrator;
+
+	struct FrameworkOptions
+	{
+		bool integrateIMGUI = true;
+	};
 
 	class GameFramework
 	{
 	public:
-		GameFramework(EngineCore& core);
+		GameFramework(EngineCore& core, const FrameworkOptions& options = {});
 
 		GameFramework				(const GameFramework&) = delete;
 		GameFramework& operator =	(const GameFramework&) = delete;
@@ -81,7 +87,16 @@ namespace FlexKit
 
 		bool DispatchEvent(const Event& evt);
 
-		void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, ResourceHandle renderTarget, FrameGraph& Graph);
+		void DrawDebugUI(
+			double							dT,
+			UpdateDispatcher&				dispatcher,
+			FrameGraph&						frameGraph,
+			ReserveVertexBufferFunction		vertexBuffer,
+			ReserveConstantBufferFunction	constantBuffer,
+			ResourceHandle					renderTarget);
+
+		//void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, ResourceHandle renderTarget, FrameGraph& Graph);
+
 		void PrintMemoryStats() const;
 
 		void PostPhysicsUpdate	();
@@ -117,8 +132,14 @@ namespace FlexKit
 			return !quit && (subStates.size() || deferredPushes.size());
 		}
 
-		EngineCore&				core;
-		NodeHandle				rootNode;
+		bool ImGuiAvailable() const noexcept
+		{
+			return (debugUI != nullptr && core.activeWindow != nullptr);
+		}
+
+		ImGUIIntegrator*	debugUI = nullptr;
+		EngineCore&			core;
+		NodeHandle			rootNode;
 
 		static_vector<FrameworkState*>	subStates;
 		static_vector<FrameworkState*>	deferredPushes;
@@ -160,6 +181,8 @@ namespace FlexKit
 			CircularBuffer<TimePoint, 120>  presentTimes;
 		}stats;
 
+		FrameworkOptions options;
+
 		struct {
 			SpriteFontAsset*	Font;
 			Texture2D			Terrain;
@@ -194,7 +217,7 @@ namespace FlexKit
 
 		virtual void PostDrawUpdate	(EngineCore&, double dT) {}
 
-		virtual bool EventHandler	(Event evt) { return false;}
+		virtual bool EventHandler	(Event evt) { return false;	}
 
 		GameFramework&	framework;
 
@@ -233,7 +256,7 @@ namespace FlexKit
 		FrameGraph*				frameGraph);
 
 
-	void EventsWrapper(const Event& evt, void* _ptr);
+	bool EventsWrapper(const Event& evt, void* _ptr);
 
 
 }	/************************************************************************************************/
