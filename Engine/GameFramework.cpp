@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "DebugPanel.h"
+#include "DebugUI.h"
 #include "GameFramework.h"
 #include "Fonts.h"
 #include "graphics.h"
@@ -31,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureUtilities.h"
 #include "Logging.h"
 #include <fmt/printf.h>
+#include <imgui.h>
+
 
 // Todo List
 //	Gameplay:
@@ -98,56 +101,7 @@ namespace FlexKit
 
 
 	bool SetDebugRenderMode	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR);
-	void EventsWrapper		(const Event& evt, void* _ptr);
-
-
-	/************************************************************************************************/
-
-
-	void HandleKeyEvents(const Event& in, GameFramework& framework)
-	{
-		switch (in.Action)
-		{
-		case Event::InputAction::Pressed:
-		{
-			switch (in.mData1.mKC[0])
-			{
-			case KC_ESC:
-				framework.quit = true;
-				break;
-			case KC_E:
-			{
-			}	break;
-			case KC_T:
-				framework.core.RenderSystem.QueuePSOLoad(TILEDSHADING_SHADE);
-				break;
-			case KC_TILDA:
-			{
-				FK_VLOG(Verbosity_9, "Console Key Pressed!");
-
-				if (!framework.consoleActive) {
-					framework.PushState<DebugPanel>(*framework.subStates.back());
-					framework.consoleActive = true;
-				}
-			}	break;
-			case KC_F1:
-			{
-			}	break;
-			case KC_F2:
-			{
-				framework.drawDebugStats = !framework.drawDebugStats;
-			}	break;
-			case KC_F3:
-			{
-			}	break;
-			default:
-				break;
-			}
-		}	break;
-		default:
-			break;
-		}
-	}
+	bool EventsWrapper		(const Event& evt, void* _ptr);
 
 
 	/************************************************************************************************/
@@ -156,7 +110,7 @@ namespace FlexKit
 	void PushMessageToConsole(void* User, const char* Str, size_t StrLen)
 	{
 		GameFramework& framework = *reinterpret_cast<GameFramework*>(User);
-
+		
 		char* NewStr = (char*)framework.core.GetBlockMemory().malloc(StrLen + 1);
 		memset((void*)NewStr, '\0', StrLen + 1);
 		strncpy_s(NewStr, StrLen + 1, Str, StrLen);
@@ -168,10 +122,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GameFramework::GameFramework(EngineCore& IN_core) :
-		console				{ DefaultAssets.Font, IN_core.RenderSystem, IN_core.GetBlockMemory() },
+	GameFramework::GameFramework(EngineCore& IN_core, const FrameworkOptions& IN_options) :
+		console				{ IN_core.GetBlockMemory() },
 		core				{ IN_core	},
-		fixStepAccumulator	{ 0.0		}
+		fixStepAccumulator	{ 0.0		},
+		options				{ IN_options }
 	{
 		Initiate();
 		InitLevelTable(core.GetBlockMemory());
@@ -210,6 +165,9 @@ namespace FlexKit
 		console.AddFunction({ "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
 		AddLogCallback(&logMessagePipe, Verbosity_INFO);
+
+		if(options.integrateIMGUI)
+			debugUI = &core.GetBlockMemory().allocate<ImGUIIntegrator>(core.RenderSystem, core.GetBlockMemory());
 	}
 
 
@@ -219,6 +177,12 @@ namespace FlexKit
 	UpdateTask* GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
 	{
 		ProfileFunctionTextName(Update);
+
+		if (debugUI && core.activeWindow)
+		{
+			debugUI->Update(*core.activeWindow, core, dispatcher, dT);
+			ImGui::NewFrame();
+		}
 
 		runningTime += dT;
 
@@ -230,6 +194,16 @@ namespace FlexKit
 		auto dependency = subStates.back()->Update(core, dispatcher, dT);
 
 		core.End = quit;
+
+		if (debugUI && core.activeWindow)
+		{
+			//auto profilerWH = core.activeWindow->GetWH() - uint2{ 400, 0 };
+			//profiler.DrawProfiler({ 0, 0 }, profilerWH, core.GetTempMemory());
+
+			ImGui::EndFrame();
+			ImGui::Render();
+		}
+
 
 		return dependency;
 	}
@@ -366,7 +340,48 @@ namespace FlexKit
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
 		if (subStates.size() != 0)
-			return subStates.back()->EventHandler(evt);
+		{
+			auto res = subStates.back()->EventHandler(evt);
+			if (res)
+				return false;
+
+			switch (evt.Action)
+			{
+			case Event::InputAction::Pressed:
+			{
+				switch (evt.mData1.mKC[0])
+				{
+				case KC_ESC:
+					quit = true;
+					return true;
+				case KC_TILDA:
+				{
+					FK_VLOG(Verbosity_9, "Console Key Pressed!");
+
+					if (!consoleActive) {
+						PushState<DebugPanel>(*reinterpret_cast<IRenderWindow*>(evt.mSource), *subStates.back());
+						consoleActive = true;
+						return true;
+					}
+					else
+						return false;
+				}
+				case KC_F1:
+				{
+				}	return true;
+				case KC_F2:
+				{
+					drawDebugStats = !drawDebugStats;
+				}	return true;
+				case KC_F3:
+				{
+				}	return true;
+				default:
+					return false;
+				}
+			}	break;
+			}
+		}
 		else
 			return false;
 	}
@@ -375,6 +390,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void GameFramework::DrawDebugUI(
+		double							dT,
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		ReserveVertexBufferFunction		reserveVB,
+		ReserveConstantBufferFunction	reserveCB,
+		ResourceHandle					renderTarget)
+	{
+		if(ImGuiAvailable())
+			debugUI->DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, core.activeWindow->GetBackBuffer());
+	}
+
+
+	/*
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, ResourceHandle renderTarget, FrameGraph& frameGraph)
 	{
 		uint32_t VRamUsage			= (uint32_t)(core.RenderSystem._GetVidMemStats().used / MEGABYTE);
@@ -411,7 +440,7 @@ namespace FlexKit
 				core.GetTempMemory(), 
 				Format);
 	}
-
+	*/
 
 	void GameFramework::PrintMemoryStats() const
 	{
@@ -466,46 +495,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void HandleMouseEvents(const Event& in, GameFramework& framework)
-	{
-		switch (in.Action)
-		{
-		case Event::InputAction::Pressed:
-		{
-			if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-				//framework.MouseState.LMB_Pressed = true;
-			}
-		}	break;
-		case Event::InputAction::Release:
-		{
-			if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-				//framework.MouseState.LMB_Pressed = false;
-			}
-		}	break;
-		default:
-			break;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void EventsWrapper(const Event& evt, void* _ptr)
+	bool EventsWrapper(const Event& evt, void* _ptr)
 	{
 		auto& framework = *reinterpret_cast<GameFramework*>(_ptr);
-
-		if (!framework.DispatchEvent(evt))
-		{
-			switch (evt.InputSource)
-			{
-			case Event::Keyboard:
-				HandleKeyEvents(evt, framework);
-			case Event::Mouse:
-				HandleMouseEvents(evt, framework);
-				break;
-			}
-		}
+		return framework.DispatchEvent(evt);
 	}
 
 

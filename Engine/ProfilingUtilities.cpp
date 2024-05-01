@@ -68,15 +68,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void EngineProfiling::DrawProfiler(uint2 POS, uint2 WH, iAllocator& temp)
+	void EngineProfiling::DrawProfiler(iAllocator& temp)
 	{
 #if USING(ENABLEPROFILER)
 		if (auto stats = profiler.GetStats(); stats)
 		{
-			if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_NoMove))
+			//if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_NoMove))
 			{
-				ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
-				ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
+				//ImGui::SetWindowPos({ (float)POS[0], (float)POS[1] });
+				//ImGui::SetWindowSize({ (float)WH[0], (float)WH[1] });
 
 				static int maxDepth = 15;
 
@@ -309,7 +309,7 @@ namespace FlexKit
 
 			}
 
-			ImGui::End();
+			//ImGui::End();
 
 		}
 #endif

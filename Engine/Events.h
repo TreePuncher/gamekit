@@ -81,7 +81,10 @@ namespace FlexKit
 			int64_t						mKC	[2];
 			int64_t						mINT[2];
 			uint64_t					mSize;
+			void*						mUser;
 		} mData1, mData2;
+
+		void* mSource = nullptr;
 	};
 
 
@@ -98,24 +101,33 @@ namespace FlexKit
 		class SubscriberTemplate
 		{
 		public:
-			typedef void (*NotifyFN)(const Ty&, void*);
+			typedef bool (*NotifyFN)(const Ty&, void*);
 			NotifyFN Notify;
 			void*	_ptr;
 		};
 		typedef SubscriberTemplate<Ty> Subscriber;
 
-		inline void	NotifyEvent( Event Event )
+		void NotifyEvent(Event evt)
 		{
+			evt.mSource = mSource;
+
 			for (auto& Sub : mSubscribers)
-				Sub.Notify( Event, Sub._ptr );
+				Sub.Notify(evt, Sub._ptr );
 		}
-		inline void	 Subscribe( Subscriber Subscriber )
+
+		void Subscribe( Subscriber Subscriber )
 		{
 			mSubscribers.push_back(Subscriber);
 		}
 
+		void SetSource(void* source)
+		{
+			mSource = source;
+		}
+
 	private:
 		static_vector<Subscriber, 8>	mSubscribers;
+		void*							mSource;
 	};
 
 

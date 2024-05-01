@@ -12,7 +12,7 @@ int main()
 #ifdef _DEBUG
 		constexpr bool enableDebug = false;
 #else
-		constexpr bool enableDebug = false;
+		constexpr bool enableDebug = true;
 #endif
 
 		FlexKit::CoreOptions options{
