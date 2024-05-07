@@ -574,12 +574,12 @@ namespace FlexKit
 			PassDrivenResourceAllocation allocation
 			{
 				.getPass =
-					[&]() -> std::span<const PVEntry>
+					[&]() -> std::span<const DrawEntry>
 					{
 						return passes.GetData().GetPass(PassHandle{ GBufferPassID });
 					},
 				.initializeResources =
-					[&](std::span<const PVEntry> objects, std::span<FrameResourceHandle> frameHandles, auto& resourceCtx, iAllocator& allocator)
+					[&](std::span<const DrawEntry> objects, std::span<FrameResourceHandle> frameHandles, auto& resourceCtx, iAllocator& allocator)
 					{
 						ProfileFunction();
 

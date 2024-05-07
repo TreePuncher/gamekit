@@ -144,10 +144,10 @@ namespace FlexKit
 
 	struct DepthPass
 	{
-		DepthPass(const PVS& IN_brushes) :
-			brushes{ IN_brushes } {}
+		DepthPass(const DrawList& IN_draws) :
+			draws{ IN_draws } {}
 
-		const PVS&          brushes;
+		const DrawList&     draws;
 		ResourceHandle      depthPassTarget;
 		FrameResourceHandle depthBufferObject;
 
@@ -169,7 +169,7 @@ namespace FlexKit
 	{
 		ForwardPlusPass(
 			const PointLightHandleList& IN_lights,
-			const PVS&                  IN_PVS,
+			const DrawList&             IN_PVS,
 			const CBPushBuffer&         IN_entityConstants) :
 				pointLights     { IN_lights },
 				brushes         { IN_PVS    },
@@ -190,7 +190,7 @@ namespace FlexKit
 		const CBPushBuffer&         entityConstants;
 
 		const PointLightHandleList& pointLights;
-		const PVS&                  brushes;
+		const DrawList&				brushes;
 	};
 
 
@@ -429,6 +429,7 @@ namespace FlexKit
 		LoadPipelineStateRes CreateAverageLumanceGlobal	(RenderSystem* rs, iAllocator&);
 		LoadPipelineStateRes CreateToneMapping			(RenderSystem* rs, iAllocator&);
 
+		bool occlusionCulling = false;
 
 		RenderSystem&			renderSystem;
 

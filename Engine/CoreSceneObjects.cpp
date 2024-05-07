@@ -14,13 +14,13 @@ namespace FlexKit
 		return DepthPart | PosedBit | TextureBit;
 	}
 
-	void SortPVS(PVS* PVS_, Camera* C)
+	void SortDrawList(std::span<DrawEntry> drawList, Camera* C)
 	{
-		if(!PVS_->size())
+		if(!drawList.size())
 			return;
 
 		auto CP = FlexKit::GetPositionW( C->Node );
-		for( auto& v : *PVS_ )
+		for(auto& v : drawList)
 		{
 			auto b = v.brush;
 			auto P = FlexKit::GetPositionW( b->Node );
@@ -30,7 +30,7 @@ namespace FlexKit
 			v.SortID = SortID;
 		}
 		
-		std::sort( PVS_->begin(), PVS_->end(), [](const PVEntry& R, const PVEntry& L ) -> bool
+		std::sort(drawList.begin(), drawList.end(), [](const DrawEntry& R, const DrawEntry& L ) -> bool
 		{
 			return ( (size_t)R.SortID < (size_t)L.SortID);
 		} );
@@ -40,13 +40,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SortPVSTransparent(PVS* PVS_, Camera* C)
+	void SortDrawListTransparent(std::span<DrawEntry> drawList, Camera* C)
 	{
-		if(!PVS_->size())
+		if(!drawList.size())
 			return;
 
 		auto CP = FlexKit::GetPositionW( C->Node );
-		for( auto& v : *PVS_ )
+		for( auto& v : drawList)
 		{
 			const Brush* b	= v.brush;
 			const float3 P	= GetPositionW( b->Node );
@@ -54,7 +54,7 @@ namespace FlexKit
 			v.SortID		= (uint64_t)D;
 		}
 
-		std::sort( PVS_->begin(), PVS_->end(), []( auto& R, auto& L ) -> bool
+		std::sort(drawList.begin(), drawList.end(), []( auto& R, auto& L ) -> bool
 		{
 			return ( (size_t)R > (size_t)L );
 		} );

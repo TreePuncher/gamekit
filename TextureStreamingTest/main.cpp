@@ -12,12 +12,11 @@ int main()
 #ifdef _DEBUG
 		constexpr bool enableDebug = false;
 #else
-		constexpr bool enableDebug = true;
+		constexpr bool enableDebug = false;
 #endif
 
 		FlexKit::CoreOptions options{
 			.threadCount	= FlexKit::Max(std::thread::hardware_concurrency(), 1u) - 1,
-			//.threadCount	= 0,
 			.GPUdebugMode	= enableDebug,
 			.GPUValidation	= enableDebug,
 			.GPUSyncQueues	= enableDebug,

@@ -47,7 +47,7 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	runOnceQueue	{ framework.core.GetBlockMemory() },
 	scene			{ framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0], }); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0], }); res)
 	{
 		renderWindow = res;
 	}
@@ -157,7 +157,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 	if (framework.ImGuiAvailable())
 	{
 		ImGui::SetNextWindowPos({ (float)renderWindow->WH[0] - 400.0f, 0 });
-		ImGui::SetNextWindowSize({ 400, 400 });
+		ImGui::SetNextWindowSize({ 400, 1080 });
 
 		ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
 
@@ -194,42 +194,10 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 
 		auto pos = GetPositionW(GetCameraNode(activeCamera));
 
-<<<<<<< TextureStreamingTest/TextureStreamingTest.cpp
-	auto pos = GetPositionW(GetCameraNode(activeCamera));
-
-	auto str = fmt::format(
-		"Debug Stats\n"
-		"FPS: {}\n"
-		"SmallBlocks: {} / {}\n"
-		"MediumBlocks: {} / {}\n"
-		"LargeBlocks: {} / {}\n"
-		"Memory in use: {}MB\n"
-		"M to toggle mouse\n"
-		"T to toggle texture streaming\n"
-		"R to toggle rotating camera\n"
-		"V to toggle vsync\n"
-		"UAV buffer   Pool space left: {}MB\n"
-		"RenderTarget Pool space left: {}MB\n"
-		"UAV texture  Pool space left: {}MB\n"
-		"Video Memory {}/{}\n"
-		"Texture Blocks {}/{}\n"
-		"Camera Position:"
-		"X: {}\n"
-		"Y: {}\n"
-		"Z, {}\n",
-		framework.stats.fps,
-		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
-		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
-		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
-		memoryInUse,
-		space0, space1, space2,
-		vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
-		textureBlocksInUse, textureBlocksTotal,
-		pos.x, pos.y, pos.z);
-=======
 		auto str = fmt::format(
 			"Debug Stats\n"
 			"FPS: {}\n"
+			"Occlusion Culling: {}\n"
 			"SmallBlocks: {} / {}\n"
 			"MediumBlocks: {} / {}\n"
 			"LargeBlocks: {} / {}\n"
@@ -252,6 +220,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 			"	stale:  {}\n"
 			"	total:  {}\n",
 			framework.stats.fps,
+			renderer.occlusionCulling ? "Enabled" : "Disabled", 
 			memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
 			memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
 			memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
@@ -260,7 +229,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Update(FlexKit::EngineCore& core, Fle
 			vidMemStats.used / MEGABYTE, vidMemStats.available / MEGABYTE,
 			pos.x, pos.y, pos.z,
 			textureBlocksInUse, textureBlocksFree, textureBlocksStale, textureBlocksInUse + textureBlocksFree + textureBlocksStale);
->>>>>>> TextureStreamingTest/TextureStreamingTest.cpp
 
 
 		ImGui::Text(str.c_str());
@@ -369,6 +337,9 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 				switch (evt.mData1.mKC[0])
 				{
 				case KC_O:
+					renderer.occlusionCulling = !renderer.occlusionCulling;
+					return true;
+				case KC_N:
 					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
 					return true;
 				case KC_M:
@@ -382,6 +353,9 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 					framework.GetRenderSystem().DEBUG_EndPixCapture();
 					return true;
 				case KC_T:
+					streamingUpdates = !streamingUpdates;
+					return true;
+				case KC_Y:
 					if (true)
 						scene.QueryFor(
 							[&](GameObject& gameObject, LightView& light, SceneNodeView& node)
@@ -390,7 +364,6 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 								light.SetOuterAngle((float)pi / 1.3f);
 							},
 							LightQuery{}, SceneNodeReq{});
-					streamingUpdates = !streamingUpdates;
 					return true;
 				case KC_V:
 					framework.core.vSync = !framework.core.vSync;

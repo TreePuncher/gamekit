@@ -704,8 +704,8 @@ namespace FlexKit
 			});
 
 
-		auto getStaticPass		= [&passTable = passes.GetData()]() -> std::span<const PVEntry> { return passTable.GetPass(GBufferPassID); };
-		auto getAnimatedPass	= [&passTable = passes.GetData()]() -> std::span<const PVEntry> { return passTable.GetPass(GBufferAnimatedPassID); };
+		auto getStaticPass		= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferPassID); };
+		auto getAnimatedPass	= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferAnimatedPassID); };
 
 
 		PassDescription<TextureFeedbackPass_Data> staticPass =
@@ -741,7 +741,7 @@ namespace FlexKit
 		auto& feedbackPassRootSignature = this->feedbackPassRootSignature;
 		auto& feedbackTable				= pendingResults;
 
-		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> drawList, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -898,7 +898,7 @@ namespace FlexKit
 			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 
-		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const PVEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 

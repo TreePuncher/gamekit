@@ -15,6 +15,8 @@ namespace FlexKit
 
 	uint32_t OcclusionQueries::GetQueryIdx(uint32_t id)
 	{
+		std::scoped_lock sl{ m };
+
 		return *drawableOffsetMappings.Find_Or(id, counter++);
 	}
 
@@ -34,6 +36,16 @@ namespace FlexKit
 	{
 		return occlusionQueryHistory[idx];
 	}
+
+	std::optional<uint32_t> PassHistory::QueryPrevious(uint32_t id) const
+	{
+		auto res = occlusionQueryHistory[idx + 2].drawableOffsetMappings.find(id);
+		if (res)
+			return { *res };
+		else
+			return{};
+	}
+
 
 	PassHistory* PassHistoryTable::GetHistory(class RenderSystem& renderSystem, CameraHandle camera)
 	{

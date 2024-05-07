@@ -896,7 +896,7 @@ namespace FlexKit
 		lines.push_back({ _ptr, Allocator });
 	}
 
-	void Console::PrintLine(const char* _ptr, float4 color, iAllocator* Memory = nullptr)
+	void Console::PrintLine(const char* _ptr, float4 color, iAllocator* Memory)
 	{
 	}
 

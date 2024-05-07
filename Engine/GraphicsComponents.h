@@ -223,10 +223,10 @@ namespace FlexKit
 			BR);
 	}
 
-	struct PassPVS
+	struct PassDrawList
 	{
 		PassHandle	pass;
-		PVS			pvs;
+		DrawList	drawList;
 	};
 
 

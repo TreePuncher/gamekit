@@ -1252,7 +1252,7 @@ namespace FlexKit
 				if (idx >= SIZE)
 					return;
 
-				//emplace_back(std::move(e));
+				emplace_back(std::move(e));
 			}
 		}
 
@@ -1275,8 +1275,8 @@ namespace FlexKit
 
 		void Release()
 		{
-			for (auto itr = begin(); itr < end(); itr++)
-				(*itr).~Ty();
+			for (auto& element : *this)
+				element.~Ty();
 
 			_Head = 0;
 			_Size = 0;
@@ -1287,7 +1287,7 @@ namespace FlexKit
 			return at(idx);
 		}
 
-		Ty  operator [](size_t idx) const
+		const Ty&  operator [](size_t idx) const
 		{
 			return at(idx);
 		}

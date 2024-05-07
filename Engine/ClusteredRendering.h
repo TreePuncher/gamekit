@@ -141,7 +141,7 @@ namespace FlexKit
 		const CameraHandle					camera;
 
 		ReserveConstantBufferFunction		reserveCB;
-		PassHistory&						history;
+		PassHistory*						history;
 
 		FrameResourceHandle entityConstants;
 
@@ -289,6 +289,9 @@ namespace FlexKit
 
 	constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
+	constexpr PSOHandle OCCLUSIONQUERYPSO				= PSOHandle(GetTypeGUID(OCCLUSIONQUERYPSO));
+	constexpr PSOHandle OCCLUSIONINSTANCEDQUERYPSO		= PSOHandle(GetTypeGUID(OCCLUSIONINSTANCEDQUERYPSO));
+
 
 	/************************************************************************************************/
 
@@ -346,7 +349,7 @@ namespace FlexKit
 								GBuffer&						gbuffer,
 								ResourceHandle					depthTarget,
 								BrushConstants&					entityConstants,
-								PassHistory&					passHistory,
+								PassHistory*					passHistory,
 								const ResourceAllocation&		animationResources,
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
@@ -474,7 +477,6 @@ namespace FlexKit
 		static LoadPipelineStateRes CreateClusterBufferPSO          (RenderSystem* RS, iAllocator&);
 		static LoadPipelineStateRes CreateClearClusterCountersPSO   (RenderSystem* RS, iAllocator&);
 		static LoadPipelineStateRes CreateDEBUGBVHVIS               (RenderSystem* RS, iAllocator&);
-
 	};
 }
 

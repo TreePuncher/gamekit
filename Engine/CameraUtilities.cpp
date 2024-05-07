@@ -119,9 +119,6 @@ namespace FlexKit
 		{
 			bool state = evt.Action == Event::Pressed ? true : false;
 
-			if (evt.mData1.mINT[1] != 0)
-				return false;
-
 			switch (evt.mData1.mINT[0])
 			{
 			case KC_W:

@@ -39,9 +39,9 @@ namespace FlexKit
 				auto res        = FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
 				size_t requiredBlocks = 0;
-				for (auto& skinnedBrush : res->pvs)
+				for (auto& skinnedDraw : res->drawList)
 				{
-					auto pose = GetPoseState(*skinnedBrush.gameObject);
+					auto pose = GetPoseState(*skinnedDraw.gameObject);
 					requiredBlocks += (size_t)ceil((float)pose->JointCount / 8.0f);
 				}
 

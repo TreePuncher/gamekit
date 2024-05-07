@@ -655,42 +655,18 @@ namespace FlexKit
 
 	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(RenderSystem* RS, iAllocator& allocator)
 	{
-		/*
-		* 	struct EInputElement
-		*	{
-		*		const char*				name				= 0;
-		*		uint8_t					index				= 0;
-		*		DeviceFormat			format				= DeviceFormat::UNKNOWN;
-		*		uint16_t				slot				= 0;
-		*		uint16_t				alignedByteOffset	= 0;
-		*		EInputClassification	inputSlotClass		= EInputClassification::PerVertex;
-		*		uint16_t				instanceStepRate	= 0;
-		*	};
-		*/
-
 		PipelineBuilder builder{ allocator };
-		builder.AddVertexShader("main", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
-		builder.AddInputLayout({
-				.inputs = {
-					EInputElement{
-						.name				= "POSITION",
-						.index				= 0,
-						.format				= DeviceFormat::R32G32B32_FLOAT,
-						.slot				= 0,
-						.alignedByteOffset	= 0,
-						.inputSlotClass		= EInputClassification::PerInstance,
-						.instanceStepRate	= 12
-					}
-				},
-				.count = 1,
+		builder.AddVertexShader("VMain", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddRasterizerState({
+				.CullMode = ECullMode::NONE
 			});
 		builder.AddDepthStencilState({
 				.depthEnable	= true,
 				.depthWriteMask = EDepthWriteMask::Zero,
 				.stencilEnable	= false
-			}
-		);
+			});
+		builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
 
 		return builder.Build(*RS);
 	}
@@ -702,13 +678,40 @@ namespace FlexKit
 	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(RenderSystem* RS, iAllocator& allocator)
 	{
 		PipelineBuilder builder{ allocator };
-		builder.AddVertexShader("main", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
+		builder.AddInputLayout({
+			.inputs = {
+				EInputElement{
+					.name				= "POSITION",
+					.index				= 0,
+					.format				= DeviceFormat::R32G32B32_FLOAT,
+					.slot				= 0,
+					.alignedByteOffset	= 0,
+					.inputSlotClass		= EInputClassification::PerInstance,
+					.instanceStepRate	= 16
+				},
+				EInputElement{
+					.name				= "TARGET",
+					.index				= 0,
+					.format				= DeviceFormat::R32_UINT,
+					.slot				= 0,
+					.alignedByteOffset	= 12,
+					.inputSlotClass		= EInputClassification::PerInstance,
+					.instanceStepRate	= 16
+				},
+			},
+			.count = 2,
+			});
+
+		builder.AddVertexShader("VMainInstanced",	R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
 		builder.AddDepthStencilState({
 				.depthEnable	= true,
 				.depthWriteMask = EDepthWriteMask::Zero,
 				.stencilEnable	= false
-			}
-		);
+			});
+
+		builder.AddPixelShader("PMain",				R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
 
 		return builder.Build(*RS);
 	}
@@ -838,13 +841,16 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,	CreateResolutionMatch_PSO);
 		renderSystem.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,	CreateClearResolutionMatch_PSO);
 
-		renderSystem.RegisterPSOLoader(GBUFFERPASS,				CreateGBufferPassPSO);
-		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,		CreateGBufferSkinnedPassPSO);
-		renderSystem.RegisterPSOLoader(SHADINGPASS,				{ this, &ClusteredRender::CreateDeferredShadingPassPSO });
-		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,		CreateDeferredShadingPassComputePSO);
+		renderSystem.RegisterPSOLoader(GBUFFERPASS,					CreateGBufferPassPSO);
+		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,			CreateGBufferSkinnedPassPSO);
+		renderSystem.RegisterPSOLoader(SHADINGPASS,					{ this, &ClusteredRender::CreateDeferredShadingPassPSO });
+		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,			CreateDeferredShadingPassComputePSO);
 
-		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,			CreateDEBUGBVHVIS);
+		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,				CreateDEBUGBVHVIS);
 
+		renderSystem.RegisterPSOLoader(OCCLUSIONQUERYPSO,			CreateOcclusionQueryPSO);
+		renderSystem.RegisterPSOLoader(OCCLUSIONINSTANCEDQUERYPSO,	CreateOcclusionQueryInstancedPSO);
+		
 		RootSignatureBuilder builder{ persistent };
 
 		DesciptorHeapLayout<16> DescriptorHeapSRV1;
@@ -969,7 +975,7 @@ namespace FlexKit
 								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator)
 	{
-		auto getStaticPass		= [&passTable = passes.GetData()]() -> std::span<const PVEntry> { return passTable.GetPass(MLAB_DRAW); };
+		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(MLAB_DRAW); };
 		
 		
 		PassDescription<MarkClustersPass> staticPass =
@@ -983,38 +989,38 @@ namespace FlexKit
 		};
 
 		auto setup	= 
-		[&](FrameGraphNodeBuilder& builder, MarkClustersPass& data)
-		{
-			const uint2 WH = (builder.GetRenderSystem().GetTextureWH(renderTarget) / 32) + 1;
+			[&](FrameGraphNodeBuilder& builder, MarkClustersPass& data)
+			{
+				const uint2 WH = (builder.GetRenderSystem().GetTextureWH(renderTarget) / 32) + 1;
 
-			data.clustersObject = builder.AcquireVirtualResource(
-				GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_UINT), 
-				DeviceAccessState::DASUAV, VirtualResourceScope::Frame);
+				data.clustersObject = builder.AcquireVirtualResource(
+					GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_UINT), 
+					DeviceAccessState::DASUAV, VirtualResourceScope::Frame);
 
-			builder.AddNodeDependency(entityConstants.node);
-		};
+				builder.AddNodeDependency(entityConstants.node);
+			};
 
 		auto draw	=
-		[](const auto begin, const auto end, std::span<const PVEntry> pvs, MarkClustersPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
-		{
-			//auto markClusters1 = resources.GetPipelineState(0); // Static meshes
-			//auto rootSignature = resources.GetPipelineStateRootSig(0);
-
-			ctx.SetRenderTargets({}, false);
-
-			auto& brushConstantBuffer = data.entityConstants.GetConstantBuffer();
-			auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
-
-			for(const auto& draw : std::span<const PVEntry>{ begin, end })
+			[](const auto begin, const auto end, std::span<const DrawEntry> drawList, MarkClustersPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 			{
-				for(auto&& [idx, mesh] : zip(iota(0), draw.brush->meshes))
+				//auto markClusters1 = resources.GetPipelineState(0); // Static meshes
+				//auto rootSignature = resources.GetPipelineStateRootSig(0);
+
+				ctx.SetRenderTargets({}, false);
+
+				auto& brushConstantBuffer = data.entityConstants.GetConstantBuffer();
+				auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
+
+				for(const auto& draw : std::span<const DrawEntry>{ begin, end })
 				{
-					const auto triMesh 	= GetMeshResource(mesh);
-					auto lodLevel 		= triMesh->lods[idx];
-					ctx.SetGraphicsConstantBufferView(0, brushConstants[draw.submissionID]);
+					for(auto&& [idx, mesh] : enumerate(draw.brush->meshes))
+					{
+						const auto triMesh 	= GetMeshResource(mesh);
+						auto lodLevel 		= triMesh->lods[(size_t)idx];
+						ctx.SetGraphicsConstantBufferView(0, brushConstants[draw.submissionID]);
+					}
 				}
-			}
-		};
+			};
 
 		frameGraph.AddPass(staticPass, setup, draw);
 	}
@@ -1485,7 +1491,7 @@ namespace FlexKit
 		GBuffer&						gbuffer,
 		ResourceHandle					depthTarget,
 		BrushConstants&					entityConstants,
-		PassHistory&					passHistory,
+		PassHistory*					passHistory,
 		const ResourceAllocation&		animationResources,
 		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
@@ -1520,9 +1526,8 @@ namespace FlexKit
 				auto pass			= FindPass(passes.begin(), passes.end(), GBufferPassID);
 				auto animatedPass	= FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
-				if ((!pass || !pass->pvs.size()) && (!animatedPass || !animatedPass->pvs.size()))
+				if ((!pass || !pass->drawList.size()) && (!animatedPass || !animatedPass->drawList.size()))
 					return;
-
 
 				struct ForwardDrawConstants
 				{
@@ -1593,23 +1598,29 @@ namespace FlexKit
 				auto& constantBuffer	= entityConstants.GetConstantBuffer();
 				auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
-				auto& currentHistory = data.history.Current();
+				OcclusionQueries* currHistory	= nullptr;
+				OcclusionQueries* prevHistory	= nullptr;
 
-				if(pass && pass->pvs.size())
+				if (data.history)
+				{
+					currHistory		= &data.history->Current();
+					prevHistory		= &data.history->PreviousHistory();
+				}
+
+				if(pass && pass->drawList.size())
 				{
 					ctx.BeginEvent_DEBUG("Static Objects");
 
 					TriMesh*					prevMesh	= nullptr;
 					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
 
-					auto& prevHistory		= data.history.PreviousHistory();
 
-					if(currentHistory.drawableOffsetMappings.max < pass->pvs.size())
-						currentHistory.drawableOffsetMappings.reserve(pass->pvs.size() + pass->pvs.size() / 4);
+					if(currHistory && currHistory->drawableOffsetMappings.max < pass->drawList.size())
+						currHistory->drawableOffsetMappings.reserve((uint32_t)(pass->drawList.size() + pass->drawList.size() / 4));
 
-					for (auto&& [I, brush] : zip(iota(0), pass->pvs))
+					for (auto&& [I, brush] : enumerate(pass->drawList))
 					{
-						auto& brush = pass->pvs[I];
+						auto& brush = pass->drawList[I];
 
 						if (!brush->meshes.size())
 							continue;
@@ -1619,15 +1630,21 @@ namespace FlexKit
 
 						const size_t meshCount	= brush->meshes.size();
 						const auto brushID		= brush->brushID;
-						auto occlusionIDRes		= prevHistory.drawableOffsetMappings.find(brushID);
-						const uint32_t queryIdx = currentHistory.GetQueryIdx(brushID);
 
-						ctx.BeginQuery(currentHistory.occlusionQueries, queryIdx);
+						uint32_t queryIdx;
 
-						if (occlusionIDRes)
-							ctx.SetPredicate(true, prevHistory.occlusionResults, *occlusionIDRes);
-						else
-							ctx.SetPredicate(false);
+						if(currHistory)
+						{
+							auto occlusionIDRes		= prevHistory->drawableOffsetMappings.find(brushID);
+							queryIdx				= currHistory->GetQueryIdx(brushID);
+
+							ctx.BeginQuery(currHistory->occlusionQueries, queryIdx);
+
+							if (occlusionIDRes)
+								ctx.SetPredicate(true, prevHistory->occlusionResults, *occlusionIDRes);
+							else
+								ctx.SetPredicate(false);
+						}
 
 						for (size_t J = 0; J < meshCount; J++)
 						{
@@ -1680,7 +1697,8 @@ namespace FlexKit
 							}
 						}
 
-						ctx.EndQuery(currentHistory.occlusionQueries, queryIdx);
+						if (currHistory)
+							ctx.EndQuery(currHistory->occlusionQueries, queryIdx);
 					}
 
 					ctx.SetPredicate(false);
@@ -1688,11 +1706,10 @@ namespace FlexKit
 				}
 
 				// skinned models
-				if(animatedPass && animatedPass->pvs.size())
+				if(animatedPass && animatedPass->drawList.size())
 				{
 					ctx.BeginEvent_DEBUG("Skinned Objects");
-					auto& animatedBrushes	= animatedPass->pvs;
-					auto& prevHistory		= data.history.PreviousHistory();
+					auto& animatedBrushes	= animatedPass->drawList;
 
 					ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED, allocator));
 
@@ -1702,22 +1719,26 @@ namespace FlexKit
 					TriMesh*					prevMesh	= nullptr;
 					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
 
-					for (auto&& [idx, brush] : zip(iota(0), animatedBrushes))
+					for (auto&& [idx, brush] : enumerate(animatedBrushes))
 					{
 						if (!brush->meshes.size())
 							continue;
 
-						const auto		brushID		= brush->brushID;
-						const uint32_t	queryIdx	= currentHistory.GetQueryIdx(brushID);
+						uint32_t		queryIdx	= 0;
+						const uint32_t	brushID		= brush->brushID;
 
-						ctx.BeginQuery(currentHistory.occlusionQueries, queryIdx);
+						if(currHistory)
+						{
+							queryIdx			= currHistory->GetQueryIdx(brushID);
+							auto occlusionIDRes = prevHistory->drawableOffsetMappings.find(brushID);
 
-						auto occlusionIDRes = prevHistory.drawableOffsetMappings.find(brush->brushID);
+							ctx.BeginQuery(currHistory->occlusionQueries, queryIdx);
 
-						if (occlusionIDRes)
-							ctx.SetPredicate(true, prevHistory.occlusionResults, *occlusionIDRes);
-						else
-							ctx.SetPredicate(false);
+							if (occlusionIDRes)
+								ctx.SetPredicate(true, prevHistory->occlusionResults, *occlusionIDRes);
+							else
+								ctx.SetPredicate(false);
+						}
 
 						const auto&	material		= materials[brush->material];
 						const auto	beginConstants	= entityConstants.entityTable[brush.submissionID];
@@ -1770,14 +1791,16 @@ namespace FlexKit
 							}
 						}
 
-						ctx.EndQuery(currentHistory.occlusionQueries, queryIdx);
+						if(currHistory)
+							ctx.EndQuery(currHistory->occlusionQueries, queryIdx);
 					}
 
 					ctx.SetPredicate(false);
 					ctx.EndEvent_DEBUG();
 				}
 
-				ctx.ResolveQuery(currentHistory.occlusionQueries, 0, currentHistory.counter, currentHistory.occlusionResults, 0);
+				if(currHistory)
+					ctx.ResolveQuery(currHistory->occlusionQueries, 0, currHistory->counter, currHistory->occlusionResults, 0);
 
 				ctx.EndEvent_DEBUG();
 				//ctx.TimeStamp(timeStats, 1u);
@@ -1811,7 +1834,7 @@ namespace FlexKit
 
 		PassDescription<Shared> pass{
 			.sharedData = shared,
-			.getPVS		= []() -> std::span<FlexKit::PVEntry> { return {}; }
+			.getPVS		= []() -> std::span<const DrawEntry> { return {}; }
 		};
 
 		auto setup =
@@ -1820,7 +1843,7 @@ namespace FlexKit
 			};
 
 		auto draw =
-			[](const auto begin, const auto end, std::span<const PVEntry> pvs, Shared& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+			[](const auto begin, const auto end, std::span<const DrawEntry> pvs, Shared& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
 			{
 			};
 
@@ -1855,34 +1878,77 @@ namespace FlexKit
 					.occlusionHistory	= *occlusionTable.GetHistory(frameGraph.GetRenderSystem(),	camera),
 					.reserveCB			= reserveConstants
 				},
-			.getPVS = []() -> std::span<FlexKit::PVEntry> { return {}; }
+			.getPVS =
+				[&passes]()
+				{
+					return passes.GetData().GetPass(GBufferPassID);
+				}
 		};
 
-		auto setup =
+		auto setupFN =
 			[&](FrameGraphNodeBuilder& builder, OcclusionCullingResults& data)
 			{
+				builder.Requires(OCCLUSIONQUERYPSO);
+				builder.Requires(OCCLUSIONINSTANCEDQUERYPSO);
+
 				data.occlussionResults	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(1 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
-				data.depthBuffer		= builder.ReadTransition(builder.GetHandle(depthBuffer), DeviceAccessState::DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
+				data.depthBuffer		= builder.WriteTransition(builder.GetHandle(depthBuffer), DeviceAccessState::DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
 			};
 
-		auto draw =
-			[](const auto begin, const auto end, std::span<const PVEntry> pvs, OcclusionCullingResults& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto drawFN =
+			[camera](const auto begin, const auto end, std::span<const DrawEntry> pvs, OcclusionCullingResults& data, [[maybe_unused]] const FrameResources& resources, Context& ctx, iAllocator& threadLocalAllocator)
 			{
+				ProfileFunctionStrName("OCCLUSIONCULLING");
+
+				auto& current	= data.occlusionHistory.Current();
+				auto& prev		= data.occlusionHistory.PreviousHistory();
+				auto query		= current.occlusionQueries;
+
+				const float4x4 PV = GetCameraConstants(camera).PV;
+
+				auto depthBuffer = resources.GetResource(data.depthBuffer);
+
+				ctx.SetGraphicsPipelineState(OCCLUSIONQUERYPSO, threadLocalAllocator);
+				ctx.SetRenderTargets({}, true, depthBuffer);
+				ctx.SetScissorAndViewports({ depthBuffer });
+
 				for (auto&& [idx, draw] : enumerate(std::span(begin, end)))
 				{
-					BoundingSphere bs{};
+					uint32_t previousID;
+					if (auto res = data.occlusionHistory.QueryPrevious(draw->brushID); !res)
+						continue;
+					else
+						previousID = res.value();
+
+					AABB aabb{};
 
 					for (TriMeshHandle meshHndl : draw.brush->meshes)
 					{
 						const TriMesh* meshResource = GetMeshResource(meshHndl);
-						bs += meshResource->AABB;
+						aabb += meshResource->AABB;
 					}
 
-					bs += GetPositionW(draw.brush->Node);
+					const uint32_t queryID		= current.GetQueryIdx(draw.brush->brushID);
+
+					const float3		posW	= GetPositionW(draw.brush->Node);
+					const float3		span	= aabb.Span();
+					const float4x4_GPU	PVT		= PV * TranslationMatrix(posW) * FlexKit::ScaleMatrix(span);
+
+					ctx.SetGraphicsConstantValue(0, 16, &PVT);
+
+					ctx.SetPredicate(true, prev.occlusionResults, previousID);
+					ctx.BeginQuery(query, queryID);
+
+					ctx.Draw(36, 0, 0);
+
+					ctx.EndQuery(query, queryID);
 				}
+
+				ctx.SetPredicate(false);
+
 			};
 
-		auto& passResults = frameGraph.AddPass(pass, setup, draw);
+		auto& passResults = frameGraph.AddPass(pass, setupFN, drawFN);
 		return passResults.shared;
 	}
 

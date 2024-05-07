@@ -31,10 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceHandles.h"
 #include "Transforms.h"
 
-#include <DirectXMath/DirectXMath.h>
-
-using DirectX::XMMATRIX;
-
 namespace FlexKit
 {	/************************************************************************************************/
 
@@ -173,12 +169,11 @@ namespace FlexKit
 
 	};
 
-	struct PVEntry
+	struct DrawEntry
 	{
 		uint64_t		SortID			= 0u;
 		const Brush*	brush			= nullptr;
 		GameObject*		gameObject		= nullptr;
-		uint32_t		OcclusionID		= (uint32_t)-1;
 		uint32_t		submissionID	= (uint32_t)-1;
 
 		static_vector<uint8_t>	LODlevel{ 0 };
@@ -189,20 +184,20 @@ namespace FlexKit
 		operator const Brush* ()	{ return brush; }
 		operator size_t ()			{ return SortID; }
 
-		bool operator < (PVEntry rhs)
+		bool operator < (DrawEntry rhs)
 		{
 			return SortID < rhs.SortID;
 		}
 	};
 
 	
-	typedef Vector<PVEntry> PVS;
+	typedef Vector<DrawEntry> DrawList;
 
 	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth);
 	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT);
 
-	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
-	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);
+	FLEXKITAPI void SortDrawList			(std::span<DrawEntry>, Camera* C);
+	FLEXKITAPI void SortDrawListTransparent	(std::span<DrawEntry>, Camera* C);
 
 
 	/************************************************************************************************/

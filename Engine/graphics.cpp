@@ -7878,7 +7878,16 @@ namespace FlexKit
 			arguments.push_back(L"-HV 2021");
 
 		IDxcOperationResult* result = nullptr;
-		auto HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
+
+		HRESULT HR2;
+		try
+		{
+			HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
+		}
+		catch (...)
+		{
+			std::cout << "t";
+		}
 
 		if (FAILED(HR2))
 		{
