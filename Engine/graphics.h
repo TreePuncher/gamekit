@@ -4485,9 +4485,9 @@ private:
 		switch (classifiction)
 		{
 		case EInputClassification::PerVertex:
-			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
-		case EInputClassification::PerInstance:
 			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+		case EInputClassification::PerInstance:
+			return D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
 		}
 
 		std::unreachable();

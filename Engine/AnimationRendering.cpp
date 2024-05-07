@@ -34,7 +34,7 @@ namespace FlexKit
 				auto& pass  = passes.GetData().passes;
 				auto res    = FindPass(pass.begin(), pass.end(), GBufferAnimatedPassID);
 
-				if (!res || !res->pvs.size())
+				if (!res || !res->drawList.size())
 					return;
 
 				auto& buffer = data.GetData();
@@ -51,9 +51,9 @@ namespace FlexKit
 
 				auto& poseBuffer = data.GetData();
 
-				for (auto& skinnedBrush : res->pvs)
+				for (auto& skinnedDraw : res->drawList)
 				{
-					auto pose       = GetPoseState(*skinnedBrush.gameObject);
+					auto pose       = GetPoseState(*skinnedDraw.gameObject);
 					auto skeleton   = pose->Sk;
 
 					for (size_t I = 0; I < pose->JointCount; I++)
@@ -77,15 +77,14 @@ namespace FlexKit
 		iAllocator&						allocator)
 	{
 		PassDrivenResourceAllocation allocation {
-			.getPass				= [&passes]() -> std::span<const PVEntry> { return passes.GetData().GetPass(GBufferAnimatedPassID); },
+			.getPass				= [&passes]() -> std::span<const DrawEntry> { return passes.GetData().GetPass(GBufferAnimatedPassID); },
 			.initializeResources	=
-				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				[](std::span<const DrawEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
 				{
 					auto itr = handles.begin();
 
-					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
+					for (auto&& [sortID, brush, gameObject, submissionID, LODlevel] : draws)
 					{
-
 						const auto poseState	= GetPoseState(*gameObject);
 						const auto skeleton		= poseState->Sk;
 
@@ -130,9 +129,9 @@ namespace FlexKit
 
 				FK_LOG_9("Start Loading Needed Morph Targets Updates.");
 
-				const auto& pass = passes.GetData().GetPass(MorphTargetID);
+				const auto& drawList = passes.GetData().GetPass(MorphTargetID);
 
-				for (const auto& [sortID, brush, gameObject, occlusioID, submissionID, lods] : pass)
+				for (const auto& [sortID, brush, gameObject, submissionID, lods] : drawList)
 				{
 					for (auto [lod, mesh] : zip(lods, brush->meshes))
 					{
@@ -168,11 +167,11 @@ namespace FlexKit
 		PassDrivenResourceAllocation desc {
 			.getPass			= [&passes] { return passes.GetData().GetPass(MorphTargetID); },
 			.initializeResources =
-				[](std::span<const PVEntry> brushes, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				[](std::span<const DrawEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
 				{
 					auto itr = handles.begin();
 
-					for (auto&& [sortID, brush, gameObject, occlusionID, submissionID, LODlevel] : brushes)
+					for (auto&& [sortID, brush, gameObject, submissionID, LODlevel] : draws)
 					{
 						auto poseState	= GetPoseState(*gameObject);
 						auto skeleton	= poseState->Sk;

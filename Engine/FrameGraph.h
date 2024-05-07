@@ -1560,7 +1560,7 @@ namespace FlexKit
 	using DataDependencyList = Vector<UpdateTask*>;
 	struct PassPVS;
 
-	template<typename Shared_TY, typename TY = const PVEntry>
+	template<typename Shared_TY, typename TY = const DrawEntry>
 	struct PassDescription
 	{
 		Shared_TY							sharedData;
@@ -1570,7 +1570,7 @@ namespace FlexKit
 		using GetPass_TY	= TypeErasedCallable<std::span<TY> ()>;
 	};
 
-	template<typename Shared_TY, typename TY_PassData, typename TY_PVSElements = const PVEntry>
+	template<typename Shared_TY, typename TY_PassData, typename TY_PVSElements = const DrawEntry>
 	struct DataDrivenMultiPassDescription
 	{
 		Shared_TY														sharedData;
@@ -2218,17 +2218,16 @@ namespace FlexKit
 				{
 					NodeData* nodeData = reinterpret_cast<NodeData*>(node.nodeData);
 
-					const auto	passPVS = nodeData->getPass();
-					const auto	size	= passPVS.size();
+					const auto	pass	= nodeData->getPass();
 
-					if (!size)
+					if (!pass.size())
 						return;
 
 					auto& threadedTask = CreateWorkItem(
-						[nodeData, &resources, passPVS](auto& tempAllocator)
+						[nodeData, &resources, pass](auto& tempAllocator)
 						{
 							ResourceInitializationContext transferCtx{ resources, nodeData };
-							nodeData->initializeResources(passPVS, nodeData->resources.handles, transferCtx, *nodeData->allocator);
+							nodeData->initializeResources(pass, nodeData->resources.handles, transferCtx, *nodeData->allocator);
 
 							if (nodeData->scratchPadSize != 0)
 							{
@@ -2263,7 +2262,7 @@ namespace FlexKit
 
 					FrameGraphNodeWorkItem newWorkItem;
 					newWorkItem.node			= &node;
-					newWorkItem.workWeight		= size;
+					newWorkItem.workWeight		= pass.size();
 					newWorkItem.submissionID	= node.submissionID;
 
 					newWorkItem.action =
@@ -2566,7 +2565,7 @@ namespace FlexKit
 		ResourceHandle          texture         = InvalidHandle;
 	};
 
-	typedef Vector<ShapeDraw> DrawList;
+	typedef Vector<ShapeDraw> ShapeList;
 
 
 	/************************************************************************************************/
@@ -2591,7 +2590,7 @@ namespace FlexKit
 		ShapeProtoType(const ShapeProtoType& rhs) = delete;
 
 		virtual void AddShapeDraw(
-			DrawList&				        DrawList,
+			ShapeList&				        DrawList,
 			ReserveVertexBufferFunction&    reserveCB,
 			ReserveConstantBufferFunction&  reserveVB,
 			FrameResources&			        Resources) = 0;
@@ -2601,38 +2600,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class ShapeList final : public ShapeProtoType
+	class ShapeDrawList final : public ShapeProtoType
 	{
 	public:
-		ShapeList(iAllocator* Memory = SystemAllocator) :
-			Shapes{ Memory } {}
+		ShapeDrawList(iAllocator* Memory = SystemAllocator) :
+			shapes{ Memory } {}
 
-		~ShapeList()
+		~ShapeDrawList()
 		{
-			Shapes.Release();
+			shapes.Release();
 		}
 
 		void AddShape(ShapeProtoType* Shape)
 		{
-			Shapes.push_back(Shape);
+			shapes.push_back(Shape);
 		}
 
 	protected:
 		void AddShapeDraw(
-			DrawList&				        DrawList,
+			ShapeList&				        shapeList,
 			ReserveVertexBufferFunction&    reserveVB,
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        Resources) override
 		{
-			for (auto Shape : Shapes)
-				Shape->AddShapeDraw(
-					DrawList, 
+			for (auto shape : shapes)
+				shape->AddShapeDraw(
+					shapeList, 
 					reserveVB,
 					reserveCB,
 					Resources);
 		}
 
-		FlexKit::Vector<ShapeProtoType*> Shapes;
+		FlexKit::Vector<ShapeProtoType*> shapes;
 	};
 
 
@@ -2710,7 +2709,7 @@ namespace FlexKit
 				AspectRatio { IN_AspectRatio	}{}
 
 		void AddShapeDraw(
-			DrawList&						DrawList, 
+			ShapeList&						shapeList, 
 			ReserveVertexBufferFunction&	reserveVB,
 			ReserveConstantBufferFunction&	reserveCB,
 			FrameResources&					Resources) override
@@ -2743,7 +2742,7 @@ namespace FlexKit
 			auto constantBuffer = reserveCB(256);
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
-			DrawList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, Divisions * 3});
+			shapeList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, Divisions * 3});
 		}
 
 		float2	POS;
@@ -2764,7 +2763,7 @@ namespace FlexKit
 			Lines	{ lines } {}
 
 		void AddShapeDraw(
-			DrawList&				        DrawList,
+			ShapeList&				        shapeList,
 			ReserveVertexBufferFunction&    reserveVB,
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        Resources) override
@@ -2798,7 +2797,7 @@ namespace FlexKit
 
 			auto constantBuffer = reserveCB(AlignedSize<Constants>());
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
-			DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
+			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
 
 
@@ -2818,7 +2817,7 @@ namespace FlexKit
 
 
 		void AddShapeDraw(
-			DrawList&						DrawList,
+			ShapeList&						shapeList,
 			ReserveVertexBufferFunction&	reserveVB,
 			ReserveConstantBufferFunction&	reserveCB,
 			FrameResources&					Resources) override
@@ -2852,7 +2851,7 @@ namespace FlexKit
 
 			auto constantBuffer = reserveCB(256);
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
-			DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
+			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
 
 
@@ -2871,7 +2870,7 @@ namespace FlexKit
 
 
 		void AddShapeDraw(
-			DrawList&				        DrawList, 
+			ShapeList&				        shapeList, 
 			ReserveVertexBufferFunction&    reserveVB,
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        Resources) override
@@ -2899,7 +2898,7 @@ namespace FlexKit
 			auto constantBuffer     = reserveCB(sizeof(Constants));
 			auto vertexBuffer       = reserveVB(sizeof(ShapeVert) * 6);
 
-			DrawList.emplace_back(
+			shapeList.emplace_back(
 					ShapeDraw::RenderMode::Triangle,
 					ConstantBufferDataSet{ constantData, constantBuffer },
 					VertexBufferDataSet{ verticeData, 6, vertexBuffer },
@@ -2925,7 +2924,7 @@ namespace FlexKit
 		~SolidRectangleListShape() {}
 
 		void AddShapeDraw(
-			DrawList&				        drawList, 
+			ShapeList&				        shapeList, 
 			ReserveVertexBufferFunction&    reserveVB,
 			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        resources) override
@@ -2959,7 +2958,7 @@ namespace FlexKit
 					return ShapeVert{};
 				}, vertexBuffer);
 
-			drawList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, 6 * rects.size() });
+			shapeList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, 6 * rects.size() });
 		}
 
 		Vector<FlexKit::Rectangle> rects;
@@ -2981,7 +2980,7 @@ namespace FlexKit
 		~TexturedRectangleListShape() {}
 
 		void AddShapeDraw(
-			DrawList&				            drawList,
+			ShapeList&				            shapeList,
 			ReserveVertexBufferFunction&        reserveCB,
 			ReserveConstantBufferFunction&      reserveVB,
 			FrameResources&			            resources) override

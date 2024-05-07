@@ -599,7 +599,7 @@ namespace FlexKit
 
 	ComputeLod_RES ComputeLOD(const Brush& b, const float3 CameraPosition, const float maxZ);
 
-	void PushPV(GameObject&, const Brush& b, PVS& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
+	void PushDraw(GameObject&, const Brush& b, DrawList& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
 
 	struct SceneRayCastResult
 	{
@@ -757,22 +757,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct GetPVSTaskData
+	struct GetDrawListTaskData
 	{
 		CameraHandle	camera;
 		Scene*			scene; // Source Scene
-		PVS				solid;
-		PVS				transparent;
+		DrawList		solid;
+		DrawList		transparent;
 
-		UpdateTask*		task;
-		Vector<PassPVS> passes;
+		UpdateTask*				task;
+		Vector<PassDrawList>	passes;
 
-		std::span<const PVEntry> GetPass(PassHandle passID) const
+		std::span<const DrawEntry> GetPass(PassHandle passID) const
 		{
 			for (auto& pass : passes)
 			{
 				if (pass.pass == passID)
-					return std::span<const PVEntry>{ pass.pvs };
+					return { pass.drawList };
 			}
 
 			return {};
@@ -785,7 +785,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	using GatherPassesTask = UpdateTaskTyped<GetPVSTaskData>;
+	using GatherPassesTask = UpdateTaskTyped<GetDrawListTaskData>;
 
 	FLEXKITAPI void DEBUG_ListSceneObjects(Scene& scene);
 
@@ -795,7 +795,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-	FLEXKITAPI void					GatherScene(Scene* SM, CameraHandle Camera, PVS& solid);
+	FLEXKITAPI void					GatherScene(Scene* SM, CameraHandle Camera, DrawList& solid);
 	FLEXKITAPI GatherPassesTask&	GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
 	FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);

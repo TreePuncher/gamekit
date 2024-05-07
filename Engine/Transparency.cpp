@@ -11,7 +11,7 @@ namespace FlexKit
 	{
 		ReserveConstantBufferFunction       reserveCB;
 
-		UpdateTaskTyped<GetPVSTaskData>& PVS;
+		UpdateTaskTyped<GetDrawListTaskData>& drawList;
 
 		CameraHandle			camera;
 		FrameResourceHandle		accumalatorObject;
@@ -325,20 +325,21 @@ namespace FlexKit
 				ctx.ClearRenderTarget(resources.GetResource(data.accumalatorObject));
 				ctx.ClearRenderTarget(resources.GetResource(data.counterObject), float4{ 1, 1, 1, 1 });
 
-				auto& passes	= data.PVS.GetData().passes;
-				const PVS* pvs	= nullptr;
+				auto& passes					= data.drawList.GetData().passes;
+				std::span<const DrawEntry> drawList;
+
 				if (auto res = std::find_if(passes.begin(), passes.end(),
 					[](auto& pass) -> bool
 					{
 						return pass.pass == PassHandle{GetCRCGUID(OIT_MCGUIRE)};
 					}); res != passes.end())
 				{
-					pvs = &res->pvs;
+					drawList = res->drawList;
 				}
 				else
 					return;
 
-				if (!pvs->size())
+				if (!drawList.size())
 					return;
 
 				ctx.BeginEvent_DEBUG("OIT - PASS");
@@ -349,7 +350,7 @@ namespace FlexKit
 
 				CBPushBuffer constantBuffer{
 					data.reserveCB(
-						AlignedSize<Brush::VConstantsLayout>() * pvs->size() +
+						AlignedSize<Brush::VConstantsLayout>() * drawList.size() +
 						AlignedSize<Camera::ConstantBuffer>() )};
 
 				const auto cameraConstantValues = GetCameraConstants(data.camera);
@@ -373,7 +374,7 @@ namespace FlexKit
 					resources.GetResource(data.depthTarget)
 				);
 
-				for (auto& draw : *pvs)
+				for (auto& draw : drawList)
 				{
 					const auto meshes		= draw.brush->meshes;
 					const auto material		= draw.brush->material;

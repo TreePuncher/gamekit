@@ -1014,7 +1014,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PushPV(GameObject& gameObject, const Brush& brush, PVS& pvs, const float3 CameraPosition, float maxZ)
+	void PushDraw(GameObject& gameObject, const Brush& brush, DrawList& pvs, const float3 CameraPosition, float maxZ)
 	{
 		auto brushPosition      = GetPositionW(brush.Node);
 		auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
@@ -1054,11 +1054,10 @@ namespace FlexKit
 		}
 
 		pvs.push_back(
-			PVEntry{
+			DrawEntry{
 				.SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
 				.brush          = &brush,
 				.gameObject     = &gameObject,
-				.OcclusionID    = 0,
 				.LODlevel       = lodLevels });
 	}
 
@@ -1066,13 +1065,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GatherScene(Scene* SM, CameraHandle Camera, PVS& pvs)
+	void GatherScene(Scene* SM, CameraHandle Camera, DrawList& solid)
 	{
 		ProfileFunction();
 
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
 		FK_ASSERT(SM		!= nullptr);
-		FK_ASSERT(&pvs      != nullptr);
+		FK_ASSERT(&solid	!= nullptr);
 
 
 		auto& cameraComponent = CameraComponent::GetComponent();
@@ -1103,7 +1102,7 @@ namespace FlexKit
 						const auto& brush = view.GetBrush();
 
 						if (Intersects(F, BS))
-							PushPV(*potentialVisible.entity, brush, pvs, POS);
+							PushDraw(*potentialVisible.entity, brush, solid, POS);
 					});
 			}
 		}
@@ -1118,7 +1117,7 @@ namespace FlexKit
 		using std::views::zip;
 		using std::views::iota;
 
-		auto& task = dispatcher.Add<GetPVSTaskData>(
+		auto& task = dispatcher.Add<GetDrawListTaskData>(
 			[&](auto& builder, auto& data)
 			{
 				data.scene			= scene;
@@ -1126,21 +1125,21 @@ namespace FlexKit
 
 				builder.SetDebugString("Gather Scene");
 			},
-			[&allocator, &threads = *dispatcher.threads](GetPVSTaskData& data, iAllocator& threadAllocator)
+			[&allocator, &threads = *dispatcher.threads](GetDrawListTaskData& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
 
-				PVS pvs{ &threadAllocator };
+				DrawList drawList{ &threadAllocator };
 
 				auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
 
-				GatherScene(data.scene, data.camera, pvs);
-				SortPVS(&pvs, &CameraComponent::GetComponent().GetCamera(data.camera));
+				GatherScene(data.scene, data.camera, drawList);
+				SortDrawList(drawList, &CameraComponent::GetComponent().GetCamera(data.camera));
 
-				for (auto&& [submissionId, PV] : zip(iota(0), pvs))
+				for (auto&& [submissionId, PV] : enumerate(drawList))
 					PV.submissionID = submissionId;
 
-				Vector<PassPVS> passes{ &allocator };
+				Vector<PassDrawList> passes{ &allocator };
 
 				for (auto& pass : activePasses)
 					passes.emplace_back(pass, &allocator);
@@ -1148,23 +1147,23 @@ namespace FlexKit
 				Parallel_For(
 					threads, threadAllocator,
 					passes.begin(), passes.end(), 2,
-					[&](PassPVS& pass, iAllocator& threadAllocator)
+					[&](PassDrawList& pass, iAllocator& threadAllocator)
 					{
 						const auto passID = pass.pass;
 						auto& materials = MaterialComponent::GetComponent();
 
-						pass.pvs.reserve(128);
+						pass.drawList.reserve(128);
 
-						for (auto& visable: pvs)
+						for (auto& visable : drawList)
 						{
 							const auto passes = materials.GetPasses(visable.brush->material);
 
 							if (std::find(passes.begin(), passes.end(), passID) != passes.end())
-								pass.pvs.push_back(visable);
+								pass.drawList.push_back(visable);
 						}
 					});
 
-				data.solid  = pvs.Copy(allocator);
+				data.solid  = drawList.Copy(allocator);
 				data.passes = std::move(passes);
 			});
 
@@ -1175,23 +1174,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
+	void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& passes, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
 	{
 		struct _ {};
 
 		dispatcher.Add<_>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, auto& data)
 			{
-				builder.AddInput(PVS);
+				builder.AddInput(passes);
 				builder.SetDebugString("Load LODs");
 			},
-			[&allocator = allocator, &PVS = PVS.GetData().solid, &renderSystem = renderSystem, camera = camera](_& data, iAllocator& threadAllocator)
+			[&allocator = allocator, &drawList = passes.GetData().solid, &renderSystem = renderSystem, camera = camera](_& data, iAllocator& threadAllocator)
 			{
 				ProfileFunction();
 
-				//static std::mutex m;
-
-				if (!PVS.size())
+				if (!drawList.size())
 					return;
 
 				const float3 cameraPosition = GetPositionW(GetCameraNode(camera));
@@ -1200,7 +1197,7 @@ namespace FlexKit
 
 				CopyContextHandle copyHandle = InvalidHandle;
 
-				for (auto& visable : PVS)
+				for (auto& visable : drawList)
 				{
 					for (auto mesh : visable.brush->meshes)
 					{
@@ -1228,8 +1225,6 @@ namespace FlexKit
 					renderSystem.SubmitUploadQueues(&copyHandle);
 					renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
 				}
-
-				//m.unlock();
 			});
 	}
 

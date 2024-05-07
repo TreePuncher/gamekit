@@ -40,6 +40,7 @@ namespace FlexKit
 		QueryHandle						occlusionQueries	= InvalidHandle;
 		ResourceHandle					occlusionResults	= InvalidHandle;
 		HashTable<uint32_t, uint32_t>	drawableOffsetMappings;
+		std::mutex						m;
 	};
 
 	struct PassHistory
@@ -50,6 +51,8 @@ namespace FlexKit
 		void				EndFrame();
 		OcclusionQueries&	PreviousHistory();
 		OcclusionQueries&	Current();
+
+		std::optional<uint32_t> QueryPrevious(uint32_t) const;
 	};
 
 	class PassHistoryTable

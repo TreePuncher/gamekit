@@ -555,8 +555,8 @@ namespace FlexKit
 
 	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
-		PVS						brushes			{ allocator, (size_t)std::distance(begin, end) };
-		Vector<GameObject*>		animatedBrushes	{ allocator };
+		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
+		Vector<GameObject*>		animatedDrawList{ allocator };
 
 		auto&					lights				= LightComponent::GetComponent();
 		auto&					visiblityComponent	= SceneVisibilityComponent::GetComponent();
@@ -581,7 +581,7 @@ namespace FlexKit
 							return pass == SHADOWMAPPASS;
 						}); res != passes.end())
 					{
-						PushPV(entity, view.GetBrush(), brushes, lightPosition);
+						PushDraw(entity, view.GetBrush(), drawList, lightPosition);
 					}
 					else if (auto res = std::find_if(passes.begin(), passes.end(),
 							[](auto& pass)
@@ -589,7 +589,7 @@ namespace FlexKit
 								return pass == SHADOWMAPANIMATEDPASS;
 							}); res != passes.end())
 						{
-							animatedBrushes.push_back(&entity);
+							animatedDrawList.push_back(&entity);
 						}
 				});
 		}
@@ -634,11 +634,11 @@ namespace FlexKit
 		const float3 position	= FlexKit::GetPositionW(light.node);
 		const auto matrices		= CalculateShadowMapMatrices(position, light.R);
 
-		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)brushes.size(); brushIdx++)
+		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)drawList.size(); brushIdx++)
 		{
-			auto& PV			= brushes[brushIdx];
-			const auto lodLevel	= PV.LODlevel;
-			auto& meshes		= PV.brush->meshes;
+			auto& draw			= drawList[brushIdx];
+			const auto lodLevel	= draw.LODlevel;
+			auto& meshes		= draw.brush->meshes;
 
 			const size_t meshCount = meshes.size();
 			for(size_t I = 0; I < meshCount; I++)
@@ -664,8 +664,8 @@ namespace FlexKit
 					BS = triMesh->BS;
 				}
 
-				const float4x4 WT   = GetWT(PV.brush->Node);
-				const float3 POS    = GetPositionW(PV.brush->Node);
+				const float4x4 WT   = GetWT(draw.brush->Node);
+				const float3 POS    = GetPositionW(draw.brush->Node);
 				const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
 				const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
@@ -714,16 +714,16 @@ namespace FlexKit
 			float4x4_GPU M[256];
 		};
 
-		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
-		if(animatedBrushes.size())
+		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedDrawList.size());
+		if(animatedDrawList.size())
 		{
 			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS, allocator);
 			ctx.SetPipelineState(PSOAnimated);
 			ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
-			for (const auto& brush : animatedBrushes)
+			for (const auto& draw : animatedDrawList)
 			{
-				Apply(*brush,
+				Apply(*draw,
 					[&](const SceneNodeView&	nodeView,
 						const BrushView&		brushView,
 						const SkeletonView&		poseView)
@@ -794,7 +794,7 @@ namespace FlexKit
 
 	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
-		PVS						visibleSet		{ allocator, (size_t)std::distance(begin, end) };
+		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
 
 		auto&					lights				= LightComponent::GetComponent();
@@ -821,7 +821,7 @@ namespace FlexKit
 							return pass == SHADOWMAPPASS;
 						}); res != passes.end())
 					{
-						PushPV(entity, view.GetBrush(), visibleSet, lightPosition);
+						PushDraw(entity, view.GetBrush(), drawList, lightPosition);
 					}
 					else if (auto res = std::find_if(passes.begin(), passes.end(),
 							[](auto& pass)
@@ -847,9 +847,9 @@ namespace FlexKit
 
 		const auto [pv, v] = CalculateSpotLightMatrices(lightPosition, lightOrientation, light.R, light.outerAngle);
 
-		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)visibleSet.size(); brushIdx++)
+		for(uint32_t brushIdx = 0; brushIdx < (uint32_t)drawList.size(); brushIdx++)
 		{
-			auto& visible		= visibleSet[brushIdx];
+			auto& visible		= drawList[brushIdx];
 			const auto lodLevel	= visible.LODlevel;
 			auto& meshes		= visible.brush->meshes;
 

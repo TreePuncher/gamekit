@@ -823,35 +823,38 @@ namespace FlexKit
 				gbuffer,
 				depthTarget.Get(),
 				staticConstants,
-				*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
+				occlusionCulling ? passHistories.GetHistory(renderSystem, drawSceneDesc.camera) : nullptr,
 				animationResources,
 				reserveCB,
 				temporary);
 
-		auto& occlutionResults =
-			clusteredRender.OcclusionCulling(
-				dispatcher,
-				frameGraph,
-				staticConstants,
-				passes,
-				camera,
-				drawSceneDesc.reserveCB,
-				passHistories,
-				depthTarget.Get(),
-				temporary);
+		if(occlusionCulling)
+		{
+			auto& occlutionResults =
+				clusteredRender.OcclusionCulling(
+					dispatcher,
+					frameGraph,
+					staticConstants,
+					passes,
+					camera,
+					drawSceneDesc.reserveCB,
+					passHistories,
+					depthTarget.Get(),
+					temporary);
 
-		clusteredRender.FillGBuffer2(
-				dispatcher,
-				frameGraph,
-				passes,
-				camera,
-				gbufferPass,
-				depthTarget.Get(),
-				staticConstants,
-				*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
-				animationResources,
-				reserveCB,
-				temporary);
+			clusteredRender.FillGBuffer2(
+					dispatcher,
+					frameGraph,
+					passes,
+					camera,
+					gbufferPass,
+					depthTarget.Get(),
+					staticConstants,
+					*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
+					animationResources,
+					reserveCB,
+					temporary);
+		}
 
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass();
@@ -1129,13 +1132,13 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Z-PrePass");
 
 				TriMesh* prevMesh = nullptr;
-				for (const auto& brush : data.brushes)
+				for (const auto& draw : data.draws)
 				{
-					auto& meshes = brush->meshes;
+					auto& meshes = draw->meshes;
 
 					for(size_t I = 0; I < meshes.size(); I++)
 					{
-						const uint8_t lodIdx	= brush.LODlevel[I];
+						const uint8_t lodIdx	= draw.LODlevel[I];
 						auto* const triMesh		= GetMeshResource(meshes[I]);
 						const auto& lod			= triMesh->lods[lodIdx];
 
@@ -1149,7 +1152,7 @@ namespace FlexKit
 								{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
 						}
 
-						auto constants = ConstantBufferDataSet{ brush->GetConstants(), data.entityConstantsBuffer };
+						auto constants = ConstantBufferDataSet{ draw->GetConstants(), data.entityConstantsBuffer };
 						ctx.SetGraphicsConstantBufferView(2, constants);
 						ctx.DrawIndexedInstanced(lod.GetIndexCount());
 					}

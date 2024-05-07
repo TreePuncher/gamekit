@@ -26,15 +26,15 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	debugUI						{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
 	gpuAllocator				{ IN_framework.core.RenderSystem, 512 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
-		renderWindow = std::move(res.value());
+	if (renderWindow = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); !renderWindow)
+		throw std::runtime_error{ "Failed to create Render Window!" };
 
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify = &FlexKit::EventsWrapper;
 	sub._ptr = &framework;
 
-	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Sorting Test - WIP");
+	renderWindow->Handler.Subscribe(sub);
+	renderWindow->SetWindowTitle("Sorting Test - WIP");
 
 	FlexKit::RootSignatureBuilder builder{ IN_framework.core.GetTempMemory() };
 
@@ -79,7 +79,7 @@ SortTest::~SortTest()
 FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FlexKit::UpdateInput();
-	debugUI.Update(renderWindow, core, dispatcher, dT);
+	debugUI.Update(*renderWindow, core, dispatcher, dT);
 	ImGui::NewFrame();
 	ImGui::Begin("Hello");
 
@@ -131,7 +131,7 @@ constexpr uint32_t bufferSize	= 1024 * blockCount;
 
 FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0, 0, 0, 0 });
+	FlexKit::ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0, 0, 0, 0 });
 
 	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
 	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
@@ -146,7 +146,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 	};
 
 	frameGraph.AddMemoryPool(&gpuAllocator);
-	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 	for(size_t J = 0; J < 1; J++)
 	{
@@ -166,7 +166,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 				builder.SetDebugName(data.mergePathBuffer, "mergePathBuffer");
 				builder.ReadBack(readBackBuffer);
 			},
-			[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
+			[=, &sortingRootSignature = sortingRootSignature, backBuffer = renderWindow->GetBackBuffer(), this](RenderStrands& data, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocalAllocator)
 			{
 				ctx.SetComputeRootSignature(sortingRootSignature);
 				ctx.SetComputeConstantValue(0, 1, &bufferSize, 0);
@@ -251,9 +251,9 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			});
 	}
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
-	PresentBackBuffer(frameGraph, renderWindow);
+	PresentBackBuffer(frameGraph, *renderWindow);
 
 	return nullptr;
 }
@@ -264,7 +264,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 
 void SortTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
-	renderWindow.Present(0, 0);
+	renderWindow->Present(0, 0);
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
