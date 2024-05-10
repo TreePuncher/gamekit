@@ -856,9 +856,19 @@ namespace FlexKit
 					temporary);
 		}
 
-		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
-			pass();
+		ExtraGBufferPassInputs extraGPassInputs{
+			.frameGraph		= frameGraph,
+			.dispatcher		= dispatcher,
+			.passes			= passes,
+			.gbuffer		= gbuffer,
+			.reserveCB		= reserveCB,
+			.reserveVB		= reserveVB,
+			.depthTarget	= depthTarget.Get(),
+			.activeCamera	= drawSceneDesc.camera
+		};
 
+		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
+			pass(extraGPassInputs);
 
 		auto& shadowMapPass =
 			shadowMapping.ShadowMapPass(
@@ -976,6 +986,20 @@ namespace FlexKit
 				temporary);
 		}
 		*/
+
+		ExtraForwardPassInputs extraFPassInputs{
+			.frameGraph		= frameGraph,
+			.dispatcher		= dispatcher,
+			.passes			= passes,
+			.reserveCB		= reserveCB,
+			.reserveVB		= reserveVB,
+			.renderTarget	= renderTarget,
+			.depthTarget	= depthTarget.Get(),
+			.activeCamera	= drawSceneDesc.camera
+		};
+
+		for (auto& forwardPass : drawSceneDesc.additionalForwardPasses)
+			forwardPass(extraFPassInputs);
 
 		passHistories.GetHistory(renderSystem, drawSceneDesc.camera)->EndFrame();
 

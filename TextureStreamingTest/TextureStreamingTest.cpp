@@ -45,9 +45,11 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(128 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(128 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
-	scene			{ framework.core.GetBlockMemory() }
+	scene			{ framework.core.GetBlockMemory() },
+
+	planets			{ framework.core.GetBlockMemory() }
 {	// Setup Window and input
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = true, .height = resolution[1], .width = resolution[0], }); res)
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .fullscreen = false, .height = resolution[1], .width = resolution[0], }); res)
 	{
 		renderWindow = res;
 	}
@@ -57,6 +59,8 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 
 		throw std::runtime_error{ std::format("Failed to create render window! arguments [fullscreen = {}, width = {}, height = {} ]", false, resolution[0], resolution[1])};
 	}
+
+	RegisterPlanetRenderingPipelineStates(framework.GetRenderSystem());
 
 	framework.core.activeWindow = renderWindow;
 	framework.GetRenderSystem().DEBUG_AttachPIX();
@@ -78,11 +82,11 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	};
 
 	//AddAssetFile(R"(assets\SanMiguel.gameres)");
-	AddAssetFile(R"(assets\TextureStreaming.gameres)");
+	//AddAssetFile(R"(assets\TextureStreaming.gameres)");
 	//AddAssetFile(R"(assets\ShadowTest.gameres)");
 
-	if (!LoadScene(framework.core, loadCtx, "Scene"))
-		throw std::runtime_error("Failed to load scene!");
+	//if (!LoadScene(framework.core, loadCtx, "Scene"))
+	//	throw std::runtime_error("Failed to load scene!");
 
 	if(false)
 	scene.QueryFor(
@@ -100,17 +104,20 @@ TextureStreamingTest::TextureStreamingTest(FlexKit::GameFramework& IN_framework)
 	// Setup Camera
 	auto& orbitComponent = orbitCamera.AddView<OrbitCameraBehavior>();
 	activeCamera = orbitComponent.camera;
-	orbitComponent.moveRate = 400;
+	orbitComponent.moveRate		= 400;
 	orbitComponent.acceleration = 100;
 
-	if(!rotate)
-		renderWindow->ToggleMouseCapture();
+	//if(!rotate)
+	//	renderWindow->ToggleMouseCapture();
 
 	SetCameraAspectRatio(orbitComponent.camera, renderWindow->GetAspectRatio());
 	SetCameraFOV(orbitComponent.camera, (float)pi / 4.0f);
 
 	//OrbitCameraPitch(orbitCamera, float(pi / 2.0f));
 	//OrbitCameraTranslate(orbitCamera, { 16.8, -2, -6 });
+
+	testPlanet.AddView<PlanetView>();
+	Translate(testPlanet, { 0.0f, 20.0f, 0.0f });
 }
 
 
@@ -276,12 +283,27 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 		.gbuffer = gbuffer,
 
-		.reserveVB = reserveVB, 
-		.reserveCB = reserveCB, 
+		.reserveVB = reserveVB,
+		.reserveCB = reserveCB,
 
 		.transformDependency	= transformUpdate,
-		.cameraDependency		= cameraUpdate
+		.cameraDependency		= cameraUpdate,
+
+		.additionalGbufferPasses = Vector<AdditionalGBufferPass>{ core.GetTempMemory() },
+		.additionalForwardPasses = Vector<AdditionalForwardPass>{ core.GetTempMemory() }
 	};
+
+	drawSceneDesc.additionalGbufferPasses.emplace_back(
+		[&](ExtraGBufferPassInputs& inputs)
+		{
+			PlanetGBufferPass(inputs);
+		});
+
+	drawSceneDesc.additionalForwardPasses.emplace_back(
+		[&](ExtraForwardPassInputs& inputs)
+		{
+			PlanetTestPass(inputs);
+		});
 
 	auto res = renderer.DrawScene(
 		dispatcher,
@@ -294,7 +316,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 
 
 	framework.DrawDebugUI(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
-
 
 	PresentBackBuffer(frameGraph, *renderWindow);
 
@@ -315,7 +336,7 @@ void TextureStreamingTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	FK_LOG_9("Frame End");
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
-	renderWindow->Present(core.vSync ? 1 : 0, 0);
+	renderWindow->Present(core.vSync ? 2 : 0, 0);
 
 	depthBuffer.Increment();
 }
@@ -339,8 +360,8 @@ bool TextureStreamingTest::EventHandler(FlexKit::Event evt)
 				case KC_O:
 					renderer.occlusionCulling = !renderer.occlusionCulling;
 					return true;
-				case KC_N:
-					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+				case KC_F1:
+					framework.core.RenderSystem.QueuePSOLoad(PlanetTestPSO);
 					return true;
 				case KC_M:
 					rotate = false;

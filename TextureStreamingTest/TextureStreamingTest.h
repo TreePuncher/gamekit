@@ -2,6 +2,7 @@
 #include <Application.h>
 #include <Scene.h>
 #include <physicsutilities.h>
+#include <PlanetComponent.h>
 #include <TextureStreamingUtilities.h>
 #include <WorldRender.h>
 #include <Win32Graphics.h>
@@ -41,6 +42,8 @@ public:
 	FlexKit::RigidBodyComponent				rigidBodies;
 	FlexKit::StaticBodyComponent			staticBodies;
 
+	FlexKit::PlanetComponent				planets;
+
 	FlexKit::GBuffer				gbuffer;
 	FlexKit::DepthBuffer			depthBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
@@ -55,6 +58,7 @@ public:
 	FlexKit::CameraHandle			activeCamera;
 
 	FlexKit::GameObject				orbitCamera;
+	FlexKit::GameObject				testPlanet;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 };

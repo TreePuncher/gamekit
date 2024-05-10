@@ -351,6 +351,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)PlanetComponent.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ProfilingUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|Win32'">false</ExcludedFromBuild>
@@ -915,6 +916,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)PlanetComponent.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ProfilingUtilities.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UnityBuild|Win32'">false</ExcludedFromBuild>

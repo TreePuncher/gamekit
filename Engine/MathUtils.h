@@ -132,6 +132,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY>
+	TY ipow(TY base, TY exp)
+	{
+		TY result = 1;
+		for (;;)
+		{
+			if (exp & 1)
+				result *= base;
+			exp >>= 1;
+			if (!exp)
+				break;
+			base *= base;
+		}
+
+		return result;
+	}
+
+
+	/************************************************************************************************/
+
+
 	FLEXKITAPI inline static const double	pi = 3.141592653589793;
 	FLEXKITAPI inline static const unsigned int Matrix_Size = 16;
 
