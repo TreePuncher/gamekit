@@ -827,12 +827,12 @@ namespace FlexKit
 			return resourceHandle;
 		}
 
-		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All)
+		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx, before, after);
 		}
 
-		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All)
+		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx, before, after);
 		}

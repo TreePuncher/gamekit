@@ -762,8 +762,8 @@ namespace FlexKit
 		renderWindow.WindowCenterPosition[ 0 ] = NewCursorPOS.x;
 		renderWindow.WindowCenterPosition[ 1 ] = NewCursorPOS.y;
 		ClientToScreen	(windowHWND, &NewCursorPOS );
-		SetCursorPos	( NewCursorPOS.x, NewCursorPOS.y );
-		GetCursorPos	( &cursor );
+		//SetCursorPos	( NewCursorPOS.x, NewCursorPOS.y );
+		//GetCursorPos	( &cursor );
 
 		renderWindow.LastMousePOS = uint2{ (uint32_t)cursor.x, (uint32_t)cursor.y };
 

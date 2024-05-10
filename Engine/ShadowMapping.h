@@ -95,7 +95,7 @@ namespace FlexKit
 								GatherPassesTask&						passes,
 								ReserveConstantBufferFunction&			reserveCB,
 								ReserveVertexBufferFunction&			reserveVB,
-								static_vector<AdditionalShadowMapPass>&	additional,
+								std::span<AdditionalShadowMapPass>		additional,
 								const double							t,
 								MemoryPoolAllocator&					shadowMapPool,
 								iAllocator&								tempAllocator,

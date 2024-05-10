@@ -34,7 +34,37 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	using AdditionalGbufferPass = TypeErasedCallable<void (), 256>;
+	struct ExtraGBufferPassInputs
+	{
+		FrameGraph&			frameGraph;
+		UpdateDispatcher&	dispatcher;
+		GatherPassesTask&	passes;
+		GBuffer&			gbuffer;
+
+		ReserveConstantBufferFunction&	reserveCB;
+		ReserveVertexBufferFunction&	reserveVB;
+
+		ResourceHandle	depthTarget		= InvalidHandle;
+		CameraHandle	activeCamera	= InvalidHandle;
+	};
+
+	using AdditionalGBufferPass = TypeErasedCallable<void (ExtraGBufferPassInputs&), 256>;
+
+	struct ExtraForwardPassInputs
+	{
+		FrameGraph&			frameGraph;
+		UpdateDispatcher&	dispatcher;
+		GatherPassesTask&	passes;
+
+		ReserveConstantBufferFunction&	reserveCB;
+		ReserveVertexBufferFunction&	reserveVB;
+
+		ResourceHandle	renderTarget	= InvalidHandle;
+		ResourceHandle	depthTarget		= InvalidHandle;
+		CameraHandle	activeCamera	= InvalidHandle;
+	};
+
+	using AdditionalForwardPass = TypeErasedCallable<void (ExtraForwardPassInputs&), 256>;
 
 	struct DrawSceneDescription
 	{
@@ -57,9 +87,10 @@ namespace FlexKit
 		UpdateTask&         transformDependency;
 		UpdateTask&         cameraDependency;
 		
-		Vector<UpdateTask*>                         sceneDependencies;
-		static_vector<AdditionalGbufferPass>        additionalGbufferPasses;
-		static_vector<AdditionalShadowMapPass>      additionalShadowPasses;
+		Vector<UpdateTask*>                 sceneDependencies;
+		Vector<AdditionalGBufferPass>       additionalGbufferPasses;
+		Vector<AdditionalShadowMapPass>		additionalShadowPasses;
+		Vector<AdditionalForwardPass>		additionalForwardPasses;
 	};
 
 
@@ -468,7 +499,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2016-2022 Robert May
+Copyright (c) 2016-2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
