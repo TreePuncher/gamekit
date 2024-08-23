@@ -9,6 +9,7 @@
 #include "EditorTextureImporter.h"
 
 #include "gltfImport.h"
+#include "EditorUSDImport.h"
 #include "MaterialResource.h"
 #include "TextureUtilities.h"
 
@@ -35,7 +36,7 @@ public:
 	GameResExporter(EditorProject& IN_project) :
 		project{ IN_project }{}
 
-	bool Export(const std::string fileDir, const FlexKit::ResourceList& resourceList) override
+	bool Export(const std::string& fileDir, const FlexKit::ResourceList& resourceList) override
 	{
 		return FlexKit::ExportGameRes(fileDir, resourceList);
 	}
@@ -179,6 +180,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
 	scripts				{ std::make_unique<EditorScriptEngine>()	},
 	gltfImporter		{ std::make_unique<::gltfImporter>(project, fkApplication.GetCore().Threads) },
+	usdImporter			{ std::make_unique<::USDImporter>(project, fkApplication.GetCore().Threads) },
 
 	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
 
@@ -197,6 +199,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	qApp->setStyle(QStyleFactory::create("fusion"));
 
 	mainWindow.AddImporter(gltfImporter.get());
+	mainWindow.AddImporter(usdImporter.get());
 	mainWindow.AddImporter(textureImporter.get());
 
 	mainWindow.AddExporter(gameResExporter.get());

@@ -15,6 +15,7 @@ namespace FlexKit
 
 	using FlexKit::Type_t;
 
+#define GetFunctionDefID(A) GetTypeGUID(A)
 
 	template<typename FNDef = void ()>
 	class Signal

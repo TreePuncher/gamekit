@@ -116,7 +116,7 @@ public:
 	FlexKit::MaterialComponent			materials;
 	FlexKit::CameraHandle				activeCamera = FlexKit::InvalidHandle;
 
-	FlexKit::Win32RenderWindow&		renderWindow;
+	FlexKit::Win32RenderWindow*		renderWindow;
 	std::vector<FlexKit::Blob>		resourceBlobs;
 };
 

@@ -238,6 +238,9 @@
     <ClCompile Include="EditorTaskManager.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="EditorUSDImport.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Serialization.h">
@@ -351,7 +354,15 @@
     <ClInclude Include="EditorPlayer.h">
       <Filter>Headers</Filter>
     </ClInclude>
-    <ClInclude Include="EditorTaskManager.h" />
+    <ClInclude Include="EditorTaskManager.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorUSDImport.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorUSDParserInterface.hpp">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="ResourceBrowserWidget.ui">
@@ -390,7 +401,7 @@
     <QtUic Include="EditorSelectObjectDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="EditorImportGLTF.ui">
+    <QtUic Include="EditorImportSceneDialog.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="EditorTextureImport.ui">

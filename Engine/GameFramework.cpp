@@ -381,6 +381,8 @@ namespace FlexKit
 				}
 			}	break;
 			}
+
+			return false;
 		}
 		else
 			return false;

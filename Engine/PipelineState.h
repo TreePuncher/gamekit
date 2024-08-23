@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "containers.h"
 #include "ThreadUtilities.h"
 #include "Handle.h"
+#include "ResourceHandles.h"
 #include <atomic>
 #include <condition_variable>
 
@@ -59,8 +60,6 @@ namespace FlexKit
 	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*, iAllocator&), 32>;
 
 	/************************************************************************************************/
-
-	typedef Handle_t<32, GetTypeGUID(PSOHandle)> PSOHandle;
 
 	class PipelineStateObject
 	{

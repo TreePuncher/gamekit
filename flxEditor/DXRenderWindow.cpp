@@ -10,7 +10,7 @@
 
 DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent) :
 	QWidget         { parent },
-	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()).first }
+	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()) }
 {
 	hide();
 
@@ -47,7 +47,7 @@ DXRenderWindow::~DXRenderWindow()
 
 void DXRenderWindow::Release()
 {
-	renderWindow.Release();
+	renderWindow->Release();
 }
 
 
@@ -64,14 +64,14 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 
 		if (onDraw)
 		{
-			onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow.GetBackBuffer(), threadSafeAllocator);
+			onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow->GetBackBuffer(), threadSafeAllocator);
 		}
 		else
 		{
-			frameGraph.AddResource(renderWindow.backBuffer);
+			frameGraph.AddResource(renderWindow->backBuffer);
 
-			FlexKit::ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
-			FlexKit::PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+			FlexKit::ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
+			FlexKit::PresentBackBuffer(frameGraph, renderWindow->GetBackBuffer());
 		}
 	}
 }
@@ -85,7 +85,7 @@ void DXRenderWindow::Present()
 	if (dirty)
 	{
 		dirty = false;
-		renderWindow.Present(1);
+		renderWindow->Present(1);
 	}
 }
 
@@ -122,7 +122,7 @@ void DXRenderWindow::showEvent(QShowEvent* event)
 
 void DXRenderWindow::resizeSwapChain(int width, int height)
 {
-	renderWindow.Resize(FlexKit::uint2{ (size_t)width, (size_t)height });
+	renderWindow->Resize(FlexKit::uint2{ (size_t)width, (size_t)height });
 }
 
 
@@ -155,7 +155,7 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 
 FlexKit::ResourceHandle DXRenderWindow::GetBackBuffer() const
 {
-	return renderWindow.GetBackBuffer();
+	return renderWindow->GetBackBuffer();
 }
 
 

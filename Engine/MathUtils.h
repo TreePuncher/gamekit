@@ -2393,7 +2393,7 @@ namespace FlexKit
 #pragma warning(disable : 4324)
 	// Row Major
 	template<const int Width, const int Height, typename Ty = float>
-	union alignas (16) Matrix
+	union Matrix
 	{
 	private:
 		template<typename TY_tuple, int ... seq>
@@ -2747,8 +2747,17 @@ namespace FlexKit
 		}
 
 
-		// Row Major
-							Ty				matrix[Height][Width];	
+		constexpr static size_t ColumnCount() noexcept
+		{
+			return Width;
+		}
+
+		constexpr static size_t RowCount() noexcept
+		{
+			return Height;
+		}
+
+							Ty				matrix[Height][Width];	// Row Major
 							Vect<Width, Ty>	rows[Height];
 		NO_UNIQUE_ADDRESS	VectorView		vectorView;	// Optionally Exists, SIMD View
 	};

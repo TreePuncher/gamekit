@@ -25,6 +25,7 @@ class EditorProjectScriptConnector;
 class EditorScriptEngine;
 
 class gltfImporter;
+class USDImporter;
 class GameResExporter;
 class EditorTextureImporter;
 
@@ -33,6 +34,7 @@ using EditorScriptEngine_ptr			= std::unique_ptr<EditorScriptEngine>;
 
 
 using gltfImporter_ptr		= std::unique_ptr<gltfImporter>;
+using USDImporter_ptr		= std::unique_ptr<USDImporter>;
 using TextureImporter_ptr	= std::unique_ptr<EditorTextureImporter>;
 using GameResExporter_ptr	= std::unique_ptr<GameResExporter>;
 
@@ -45,7 +47,7 @@ public:
 	QApplication&					qtApp;
 
 #if DEBUG
-	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory(), { .GPUdebugMode = true } };
+	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory(), { .threadCount = 6, .GPUdebugMode = true } };
 #else
 	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory() };
 #endif
@@ -59,6 +61,7 @@ public:
 
 
 	gltfImporter_ptr				gltfImporter;
+	USDImporter_ptr					usdImporter;
 	TextureImporter_ptr				textureImporter;
 	TextureImporter_ptr				cubeMapImporter;
 
