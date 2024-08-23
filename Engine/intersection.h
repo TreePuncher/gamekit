@@ -167,26 +167,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float                   Intersects(const Ray& R, const Plane& P) noexcept;
-	bool                    Intersects(const Frustum& F, const BoundingSphere BS);
-	bool                    Intersects(const Frustum& frustum, const AABB aabb) noexcept;
-	bool                    Intersects(const AABB a, const AABB b) noexcept;
+	float							Intersects(const Ray& R, const Plane& P) noexcept;
+	bool							Intersects(const Frustum& F, const BoundingSphere BS);
+	bool							Intersects(const Frustum& frustum, const AABB aabb) noexcept;
+	bool							Intersects(const AABB a, const AABB b) noexcept;
 
-	float                   Intersects(const Plane& P,			const Ray& R) noexcept				{ return Intersects(R, P); }
-	bool                    Intersects(const BoundingSphere BS, const Frustum& f) noexcept			{ return Intersects(f, BS); }
-	bool                    Intersects(const AABB aabb,			const Frustum& f) noexcept			{ return Intersects(f, aabb); }
+	inline float					Intersects(const Plane& P,			const Ray& R) noexcept				{ return Intersects(R, P); }
+	inline bool						Intersects(const BoundingSphere BS, const Frustum& f) noexcept			{ return Intersects(f, BS); }
+	inline bool						Intersects(const AABB aabb,			const Frustum& f) noexcept			{ return Intersects(f, aabb); }
 
-	std::optional<float>    Intersects(const Ray r, const AABB b);
-	std::optional<float>    Intersects(const Ray r, const BoundingSphere b);
+	std::optional<float>			Intersects(const Ray r, const AABB b);
+	std::optional<float>			Intersects(const Ray r, const BoundingSphere b);
 
-	std::optional<float>    Intersects(const AABB b,			const Ray r) { return Intersects(r, b); }
-	std::optional<float>    Intersects(const BoundingSphere b,	const Ray r) { return Intersects(r, b); }
+	inline std::optional<float>		Intersects(const AABB b,			const Ray r) { return Intersects(r, b); }
+	inline std::optional<float>		Intersects(const BoundingSphere b,	const Ray r) { return Intersects(r, b); }
 
-	bool					Intersects(const Cone c, const AABB);
-	bool					Intersects(const AABB aabb, const Cone c) { return Intersects(c, aabb); }
+	bool							Intersects(const Cone c, const AABB);
+	inline bool						Intersects(const AABB aabb, const Cone c) { return Intersects(c, aabb); }
 
-	bool					Intersects(const BoundingSphere bs, const AABB);
-	bool					Intersects(const AABB aabb, const BoundingSphere bs) { return Intersects(bs, aabb); }
+	bool							Intersects(const BoundingSphere bs, const AABB);
+	inline bool						Intersects(const AABB aabb, const BoundingSphere bs) { return Intersects(bs, aabb); }
 
 
 	/************************************************************************************************/

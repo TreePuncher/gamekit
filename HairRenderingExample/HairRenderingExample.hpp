@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <expected>
 #include <DebugUI.h>
+#include <RMLRenderer.hpp>
 
 
 /************************************************************************************************/
@@ -125,6 +126,9 @@ public:
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
 	bool EventHandler(FlexKit::Event evt) final;
 
+
+	FlexKit::RmlIntegrator			ui;
+
 	FlexKit::CameraComponent		cameras;
 	FlexKit::SceneNodeComponent		sceneNodes;
 
@@ -142,7 +146,7 @@ public:
 	FlexKit::NodeHandle				cameraRig;
 	FlexKit::CameraHandle			camera;
 
-	FlexKit::Win32RenderWindow		renderWindow;
+	FlexKit::Win32RenderWindow*		renderWindow;
 	FlexKit::ResourceHandle			depthBuffer;
 
 	FlexKit::VertexBufferHandle		vertexBuffer;

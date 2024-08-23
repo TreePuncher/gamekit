@@ -8,6 +8,11 @@
 
 #include "HairRenderingExample.hpp"
 
+#ifndef STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#endif
+
 int main(const int args, const char* args_v[])
 {
 	try

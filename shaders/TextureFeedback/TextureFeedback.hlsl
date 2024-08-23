@@ -37,7 +37,7 @@ cbuffer PassConstants : register(b2)
 
 globallycoherent	RWStructuredBuffer<uint>	texturesFeedback	: register(u0);
 					Texture2D<float4>			textures[]			: register(t0);
-SamplerState									defaultSampler		: register(s1);
+SamplerState									defaultSampler		: register(s0);
 
 struct Forward_VS_OUT
 {

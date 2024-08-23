@@ -6,7 +6,3 @@
 #include <angelscript/scriptmath/scriptmathcomplex.cpp>
 #include <angelscript/scriptstdstring/scriptstdstring.cpp>
 #include <angelscript/scriptstdstring/scriptstdstring_utils.cpp>
-
-
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>

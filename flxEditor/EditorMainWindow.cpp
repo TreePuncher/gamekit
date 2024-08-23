@@ -94,8 +94,6 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowTabbedDocks | QMainWindow::AllowNestedDocks | QMainWindow::VerticalTabs);
 	tabPosition(Qt::TopDockWidgetArea);
 
-	showMaximized();
-
 	QTimer::singleShot(0, this, SLOT(showMaximized()));
 
 	frameEnd	= high_resolution_clock::now();
