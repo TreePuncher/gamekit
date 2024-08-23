@@ -267,6 +267,7 @@ namespace FlexKit
 			ar& objectPath;
 			ar& ID;
 			ar& TriMeshID;
+			ar& source;
 
 			Save();
 		}
@@ -346,7 +347,8 @@ namespace FlexKit
 		MeshResourceData& Object();
 
 		bool dirtyFlag = true;
-		std::unique_ptr<MeshResourceData> data;
+		std::unique_ptr<MeshResourceData>	data;
+		std::shared_ptr<IResourceSource>	source;
 	};
 
 

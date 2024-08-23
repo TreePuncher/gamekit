@@ -1,26 +1,31 @@
 #pragma once
-#include "EditorProject.h"
+#include "buildsettings.h"
+#include "EditorImport.h"
 
-#include <utility>
-#include <string>
+class EditorProject;
 
-class iEditorImportor
+namespace FlexKit
+{
+	class ThreadManager;
+}
+
+class USDImporter : public iEditorImportor
 {
 public:
-    virtual bool            Import(const std::string& fileDir)   = 0;
-    virtual std::string     GetFileTypeName()                   = 0;
-    virtual std::string     GetFileExt()                        = 0;
+	USDImporter(EditorProject& IN_project, class FlexKit::ThreadManager& IN_threads);
+
+	bool Import(const std::string& fileDir) override;
+
+	std::string GetFileTypeName()	override { return "USD"; }
+	std::string GetFileExt()		override { return "usd"; }
+
+	EditorProject& project;
+
+	class FlexKit::ThreadManager& threads;
 };
 
 
-class iEditorExporter
-{
-public:
-    virtual bool            Export(const std::string& fileDir, const FlexKit::ResourceList&)   = 0;
-    virtual std::string     GetFileTypeName()                   = 0;
-    virtual std::string     GetFileExt()                        = 0;
-};
-
+struct ObjectParserInterface_* GetAttributeParser(const std::string&);
 
 
 /**********************************************************************

@@ -38,11 +38,11 @@
     "simde",
     "slikenet",
     "stb",
-    "tinygltf", 
+    "tinygltf",
     "usd",
     "zlib-ng"
   ],
-  "builtin-baseline": "a34c873a9717a888f58dc05268dea15592c2f0ff",
+  "builtin-baseline": "ad25766aefb5313b6bc4e2a4b78a2946f84fbf66",
   "overrides": [
     {
       "name": "physx",

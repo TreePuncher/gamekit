@@ -55,7 +55,7 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 	FrameworkState		{ in_framework	},
 	shared				{ IN_shared		},
 	scene				{ IN_shared->blockAllocator },
-	renderWindow		{ IN_shared->blockAllocator.allocate<Win32RenderWindow>(std::move(FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), shared->targetWindow).first)) },
+	renderWindow		{ FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), shared->targetWindow) },
 	constantBuffer		{ in_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
 	vertexBuffer		{ in_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	textureStreaming	{ in_framework.GetRenderSystem(), in_framework.core.GetBlockMemory() },
@@ -69,7 +69,7 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 	sub.Notify	= &FlexKit::EventsWrapper;
 	sub._ptr	= &framework;
 
-	renderWindow.Handler->Subscribe(sub);
+	renderWindow->Handler.Subscribe(sub);
 
 	SetCameraNode(activeCamera, GetZeroedNode());
 
@@ -113,10 +113,10 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 
 	FlexKit::Pitch(FlexKit::GetCameraNode(activeCamera), dT * 3.14159f);
 
-	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), float4{ 0.0f, 0.0f, 1.0f, 1.0f });
+	ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), float4{ 0.0f, 0.0f, 1.0f, 1.0f });
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
-	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 	if (gameObject && !scene.sceneEntities.size())
 	{
@@ -146,7 +146,7 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 		.cameraDependency		= cameraUpdate
 	};
 
-	renderer.DrawScene(dispatcher, frameGraph, drawSceneDesc, { renderWindow.GetBackBuffer(), depthBuffer }, core.GetBlockMemory(), core.GetTempMemoryMT());
+	renderer.DrawScene(dispatcher, frameGraph, drawSceneDesc, { renderWindow->GetBackBuffer(), depthBuffer }, core.GetBlockMemory(), core.GetTempMemoryMT());
 
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetBlockMemory());
 
@@ -162,7 +162,7 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 void EditorPlayerState::PostDrawUpdate(EngineCore& core, double dT)
 {
 	depthBuffer.Increment();
-	renderWindow.Present(1, 0);
+	renderWindow->Present(1, 0);
 }
 
 

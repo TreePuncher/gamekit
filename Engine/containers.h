@@ -3186,6 +3186,20 @@ namespace FlexKit
 		TY_value*	values		= nullptr;
 		iAllocator* allocator	= nullptr;
 	};
+
+	struct NoCopy
+	{
+		NoCopy() = default;
+		NoCopy				(const NoCopy&) = delete;
+		NoCopy& operator =	(const NoCopy&) = delete;
+	};
+
+	struct NoMove
+	{
+		NoMove() = default;
+		NoMove				(const NoCopy&&) = delete;
+		NoMove& operator =	(const NoCopy&&) = delete;
+	};
 }	// namespace FlexKit;
 	/************************************************************************************************/
 #endif

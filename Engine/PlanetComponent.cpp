@@ -139,32 +139,84 @@ namespace FlexKit
 					ctx.BeginEvent_DEBUG("Planet Rendering Pass");
 
 					constexpr uint D = 4;
+					std::bitset<1024> CBT;
 
-					static_vector<uint32_t, 64> CBT;
-					CBT.SetFull();
+					//static_vector<uint32_t, 64> CBT;
+					//CBT.SetFull();
 
 					uint TriangleCount = 0;
 					CBT[0] = D;
 #if 1
-					CBT[ipow(2u, D) +  0] = 1;
-					CBT[ipow(2u, D) +  1] = 0;
-					CBT[ipow(2u, D) +  2] = 0;
-					CBT[ipow(2u, D) +  3] = 0;
-					CBT[ipow(2u, D) +  4] = 0;
-					CBT[ipow(2u, D) +  5] = 0;
-					CBT[ipow(2u, D) +  6] = 0;
-					CBT[ipow(2u, D) +  7] = 0;
-					CBT[ipow(2u, D) +  8] = 0;
-					CBT[ipow(2u, D) +  9] = 0;
-					CBT[ipow(2u, D) + 10] = 0;
-					CBT[ipow(2u, D) + 11] = 0;
-					CBT[ipow(2u, D) + 12] = 0;
-					CBT[ipow(2u, D) + 13] = 0;
-					CBT[ipow(2u, D) + 14] = 0;
-					CBT[ipow(2u, D) + 15] = 0;
 
-					for (auto& b : std::span(CBT.begin() + ipow(2u, D), CBT.end()))
-						TriangleCount += 1;
+					
+					auto temp = D * ipow(2u, D);
+
+					CBT[D * ipow(2u, D) +  0] = 1;
+					CBT[D * ipow(2u, D) +  1] = 1;
+					CBT[D * ipow(2u, D) +  2] = 1;
+					CBT[D * ipow(2u, D) +  3] = 1;
+					CBT[D * ipow(2u, D) +  4] = 1;
+					CBT[D * ipow(2u, D) +  5] = 1;
+					CBT[D * ipow(2u, D) +  6] = 1;
+					CBT[D * ipow(2u, D) +  7] = 1;
+					CBT[D * ipow(2u, D) +  8] = 1;
+					CBT[D * ipow(2u, D) +  9] = 1;
+					CBT[D * ipow(2u, D) + 10] = 1;
+					CBT[D * ipow(2u, D) + 11] = 1;
+					CBT[D * ipow(2u, D) + 12] = 1;
+					CBT[D * ipow(2u, D) + 13] = 1;
+					CBT[D * ipow(2u, D) + 14] = 1;
+					CBT[D * ipow(2u, D) + 15] = 1;
+
+
+					for (int k = 4; k > 0; k--)
+					{
+						auto temp = ipow(2u, 4u);
+						uint width = 0x01 << (4 - k);
+						
+						for (int i = 0; i < temp / (2 * width); i++)
+						{
+
+							uint x = 0;
+							uint y = 0;
+							for (int j = 0; j < width; j++)
+							{
+								int idx = k * ipow(2u, 4u) + 2 * i * width + j;
+								x = x << 1 | CBT[idx];
+							}
+
+							for (int j = 0; j < width; j++)
+							{
+								int idx = k * ipow(2u, 4u) + 2 * i * width + j + width;
+								y = y << 1 | CBT[idx];
+							}
+
+							uint z = x + y;
+							for (int j = 0; j < width * 2; j++)
+							{
+								int idx = (k - 1) * ipow(2u, 4u) + j + width * 2 * i;
+								CBT[idx] = (z >> (2 * width - j - 1)) & 1;
+							}
+						}
+						int x = 0;
+					}
+
+					int x = 0;
+
+					//for (int i = 0; i < 4; i++)
+					//{
+					//	uint x =
+					//		(CBT[3 * ipow(2u, D) + 4 * i + 0] << 1 | CBT[3 * ipow(2u, D) + 4 * i + 1]) +
+					//		(CBT[3 * ipow(2u, D) + 4 * i + 2] << 1 | CBT[3 * ipow(2u, D) + 4 * i + 3]);
+					//
+					//	CBT[2 * ipow(2u, D) + 0 + 4 * i] = (x >> 3) & 1;
+					//	CBT[2 * ipow(2u, D) + 1 + 4 * i] = (x >> 2) & 1;
+					//	CBT[2 * ipow(2u, D) + 2 + 4 * i] = (x >> 1) & 1;
+					//	CBT[2 * ipow(2u, D) + 3 + 4 * i] = (x >> 0) & 1;
+					//}
+
+					//for (auto& b : std::span(CBT.begin() + ipow(2u, D), CBT.end()))
+					TriangleCount = CBT.count();
 #else
 					CBT[ipow(2u, D) +  1] = 0;
 					CBT[ipow(2u, D) +  2] = 0;
@@ -182,8 +234,8 @@ namespace FlexKit
 					CBT[ipow(2u, D) + 14] = 0;
 					CBT[ipow(2u, D) + 15] = 0;
 #endif
-					auto reserve = ctx.ReserveDirectUploadSpace(CBT.ByteSize());
-					memcpy(reserve.buffer, CBT.data(), CBT.ByteSize());
+					auto reserve = ctx.ReserveDirectUploadSpace(sizeof(CBT));
+					memcpy(reserve.buffer, &CBT, sizeof(CBT));
 
 					ctx.CopyBuffer(reserve, frameResources.CopyDest(data.CBT, ctx, Sync_All_Shading, Sync_Copy));
 
@@ -193,7 +245,6 @@ namespace FlexKit
 					for (int i = D - 1; i >= 0; --i)
 					{
 						ctx.SetComputeConstantValue(0, 1, &i);
-						ctx.SetComputeConstantValue(0, 15, CBT.data(), 1);
 						ctx.Dispatch({ 1, 1, 1 });
 						ctx.AddUAVBarrier(frameResources.GetResource(data.CBT));
 					}

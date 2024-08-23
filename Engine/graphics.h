@@ -1357,6 +1357,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t			size			= 0;
 		size_t			offset			= 0;
 		char*			buffer			= 0;
+
+		operator bool() const { return size > 0; }
 	};
 
 
@@ -1412,6 +1414,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
 
 		UploadReservation   Reserve(const size_t reserveSize, const size_t reserveAignement = 256);
+		void                CopyBuffer(ResourceHandle , const size_t destinationOffset, UploadReservation);
 		void                CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, UploadReservation);
 		void                CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, ID3D12Resource* source, const size_t sourceOffset, const size_t copySize);
 		void                CopyTextureRegion(ID3D12Resource*, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format);
@@ -4182,6 +4185,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			uint2				WH,
 			DeviceFormat		format);
 
+		void CopyTextureRegion(
+			ResourceHandle		dest,
+			size_t				subResourceIdx,
+			uint3				XYZ,
+			UploadReservation	source);
+
 		void CopyTile(
 			ID3D12Resource*			dest,
 			const uint3				destTile,
@@ -4583,6 +4592,7 @@ private:
 		RenderTargetStateDesc	renderTarget[8];
 
 		static BlendState Default() { return {}; }
+		static BlendState Blend();
 	};
 
 
@@ -6039,8 +6049,8 @@ private:
 	/************************************************************************************************/
 
 	
-	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X)	   / Dimensions[0]), 1.0f - (float(Y)	  / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
-	inline float2 PixelToSS(uint2 XY, uint2 Dimensions)			  { return { -1.0f + (float(XY[0]) / Dimensions[0]), 1.0f - (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
+	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + 2 * (float(X)	   / Dimensions[0]), 1.0f - 2 * (float(Y)	  / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
+	inline float2 PixelToSS(int2 XY, uint2 Dimensions)			  { return { -1.0f + 2 * (float(XY[0]) / Dimensions[0]), 1.0f - 2 * (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
 
 
 	FLEXKITAPI void	Release						(RenderSystem* System);

@@ -1488,7 +1488,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 
 	struct DrawOverlay
 	{
-		const FlexKit::PVS&                     brushes;
+		const FlexKit::DrawList&                brushes;
 		const FlexKit::PointLightHandleList&    lights;
 
 		FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;

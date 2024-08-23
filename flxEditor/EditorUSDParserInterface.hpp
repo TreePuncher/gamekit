@@ -1,26 +1,44 @@
 #pragma once
-#include "EditorProject.h"
-
-#include <utility>
+#include <unordered_map>
+#include <pxr/pxr.h>
 #include <string>
 
-class iEditorImportor
+PXR_NAMESPACE_OPEN_SCOPE
+
+class UsdPrim;
+
+PXR_NAMESPACE_CLOSE_SCOPE
+
+struct PrimitiveParserInterface_* GetPrimitiveParser(const std::string&);
+
+struct PrimitiveParserInterface_
 {
-public:
-    virtual bool            Import(const std::string& fileDir)   = 0;
-    virtual std::string     GetFileTypeName()                   = 0;
-    virtual std::string     GetFileExt()                        = 0;
+	virtual ~PrimitiveParserInterface_() = default;
+
+	virtual void ParseObject(struct USDParseContext& ctx, pxr::UsdPrim& primitive) = 0;
+	virtual const char* GetTypeName()  const = 0;
+
+	template<typename TY>
+	static bool Register()
+	{
+		static TY t{};
+		parsers.emplace(t.GetTypeName(), &t);
+
+		return true;
+	}
+
+private:
+	inline static std::unordered_map<std::string, PrimitiveParserInterface_*> parsers;
+
+	friend PrimitiveParserInterface_* GetPrimitiveParser(const std::string&);
 };
 
 
-class iEditorExporter
+template<typename TY>
+struct PrimitiveParserInterface : PrimitiveParserInterface_
 {
-public:
-    virtual bool            Export(const std::string& fileDir, const FlexKit::ResourceList&)   = 0;
-    virtual std::string     GetFileTypeName()                   = 0;
-    virtual std::string     GetFileExt()                        = 0;
+	inline static bool register_ = Register<TY>();
 };
-
 
 
 /**********************************************************************

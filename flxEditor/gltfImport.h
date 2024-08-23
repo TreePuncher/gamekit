@@ -10,7 +10,7 @@ public:
 		project	{ IN_project },
 		threads	{ IN_threads } {}
 
-	bool Import(const std::string fileDir) override;
+	bool Import(const std::string& fileDir) override;
 
 	std::string GetFileTypeName()	override { return "glTF"; }
 	std::string GetFileExt()		override { return "glb"; }

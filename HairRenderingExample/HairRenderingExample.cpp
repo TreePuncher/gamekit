@@ -1,3 +1,4 @@
+
 #include "HairRenderingExample.hpp"
 #include <Win32Graphics.h>
 #include <FrameGraph.h>
@@ -8,6 +9,10 @@
 #include <scn/scan.h>
 #include <ranges>
 #include <imgui.h>
+#include <stacktrace>
+#include <filesystem>
+#include <stb_image.h>
+#include <RmlUi/Core.h>
 
 
 /************************************************************************************************/
@@ -347,10 +352,11 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
 	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() },
 	UAVPool						{ IN_framework.GetRenderSystem(), 1024 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() },
-	RTPool						{ IN_framework.GetRenderSystem(), 1024 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::RenderTarget, IN_framework.core.GetBlockMemory() }
+	RTPool						{ IN_framework.GetRenderSystem(), 1024 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::RenderTarget, IN_framework.core.GetBlockMemory() },
+	ui							{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() }
 {
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
-		renderWindow = std::move(res.value());
+		renderWindow = res;
 	else
 		throw std::runtime_error{ "Unable to create render window!" };
 
@@ -358,8 +364,8 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 	sub.Notify = &EventsWrapper;
 	sub._ptr = &framework;
 
-	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Hair Rendering - WIP");
+	renderWindow->Handler.Subscribe(sub);
+	renderWindow->SetWindowTitle("Hair Rendering - WIP");
 
 	framework.GetRenderSystem().RegisterPSOLoader(ApplyForces,					[this](auto, auto& allocator) { return CreateApplyForcesPSO(allocator); });
 	framework.GetRenderSystem().RegisterPSOLoader(ApplyShapeConstraints,		[this](auto, auto& allocator) { return CreateApplyShapeConstraintsPSO(allocator); });
@@ -388,6 +394,10 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 
 	if(enableWorkGraph)
 		CreateWorkGraphObjects();
+
+	auto uiContext = ui.GetMainContext();
+	auto document = uiContext->LoadDocument("hello.rml");
+	document->Show();
 }
 
 
@@ -544,12 +554,12 @@ void HairRenderingTest::ClearStyleBuffers(HairStyle& style)
 UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	UpdateInput();
-	renderWindow.UpdateCapturedMouseInput(dT);
+	renderWindow->UpdateCapturedMouseInput(dT);
 
 
 	auto cameraNode = cameras.GetCamera(camera).Node;
 	Yaw(cameraRig, pi / 8.0f * dT);
-	SetCameraAspectRatio(camera, renderWindow.GetAspectRatio());
+	SetCameraAspectRatio(camera, renderWindow->GetAspectRatio());
 	cameras.MarkDirty(camera);
 	
 	auto& transformUpdate	= QueueTransformUpdateTask(dispatcher);
@@ -557,7 +567,7 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	cameraUpdate.AddInput(transformUpdate);
 
-	debugUI.Update(renderWindow, core, dispatcher, dT);
+	debugUI.Update(*renderWindow, core, dispatcher, dT);
 
 	counter++;
 
@@ -584,6 +594,9 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 		fps = counter;
 		counter = 0;
 	}
+
+	if(auto uiUpdate = ui.Update(core, dispatcher, dT); uiUpdate)
+		cameraUpdate.AddInput(*uiUpdate);
 
 	return &cameraUpdate;
 }
@@ -613,7 +626,7 @@ void HairRenderingTest::Simulate(
 
 	static double T = 0.0f;
 
-	frameGraph.AddNode<RenderStrands>(
+	auto& drawStrands = frameGraph.AddNode<RenderStrands>(
 		RenderStrands{
 			.reserveVB = reserveVB,
 			.reserveCB = reserveCB 
@@ -711,11 +724,11 @@ void HairRenderingTest::DrawStrands(
 			builder.AddDataDependency(*update);
 			builder.Requires(StrandRenderPSO);
 
-			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
+			data.renderTarget	= builder.RenderTarget(renderWindow->GetBackBuffer());
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 			data.depthBuffer	= builder.DepthTarget(depthBuffer);
 		},
-		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		[=, backBuffer = renderWindow->GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			ctx.SetScissorAndViewports({ backBuffer });
 			ctx.SetRenderTargets({ backBuffer }, true, resources.GetResource(data.depthBuffer));
@@ -790,10 +803,10 @@ void HairRenderingTest::DrawStrandsOIT(
 			data.momentBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ 1920, 1080 }, DeviceFormat::R32G32B32A32_FLOAT),		DASUAV, VirtualResourceScope::Temporary);
 			data.accumBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget({ 1920, 1080 }, DeviceFormat::R16G16B16A16_FLOAT),	DASRenderTarget, VirtualResourceScope::Temporary);
 
-			data.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
+			data.renderTarget	= builder.RenderTarget(renderWindow->GetBackBuffer());
 			data.strandBuffer	= builder.NonPixelShaderResource(style.strandbuffer);
 		},
-		[=, backBuffer = renderWindow.GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+		[=, backBuffer = renderWindow->GetBackBuffer(), this](RenderStrands& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
 			ctx.BeginEvent_DEBUG("Draw Strands");
 
@@ -902,7 +915,7 @@ void HairRenderingTest::WorkGraph(
 			workGraphObjects.workGraphProperties->GetWorkGraphMemoryRequirements(workGraphObjects.mainID, &memoryRequirements);
 			
 			data.workGroupStorage	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(memoryRequirements.MaxSizeInBytes), FlexKit::DeviceAccessState::DASUAV);
-			data.renderTarget		= builder.RenderTarget(renderWindow.GetBackBuffer());
+			data.renderTarget		= builder.RenderTarget(renderWindow->GetBackBuffer());
 		},
 		[=, this](DataStruct& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
@@ -955,9 +968,9 @@ UpdateTask* HairRenderingTest::Draw(
 {
 	frameGraph.AddMemoryPool(&UAVPool);
 	frameGraph.AddMemoryPool(&RTPool);
-	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
-	ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
+	ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
 	ClearVertexBuffer(frameGraph, vertexBuffer);
 	ClearDepthBuffer(frameGraph, depthBuffer, 1.0f);
 
@@ -981,9 +994,17 @@ UpdateTask* HairRenderingTest::Draw(
 	}	break;
 	}
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
-	PresentBackBuffer(frameGraph, renderWindow);
+	RmlPassData passData{
+		.constantBuffer = reserveCB,
+		.vertexBuffer	= reserveVB,
+		.renderTarget	= renderWindow->GetBackBuffer()
+	};
+
+	ui.Draw(update, core, passData, dT, frameGraph);
+
+	PresentBackBuffer(frameGraph, *renderWindow);
 	return nullptr;
 }
 
@@ -993,7 +1014,7 @@ UpdateTask* HairRenderingTest::Draw(
 
 void HairRenderingTest::PostDrawUpdate(EngineCore& core, double dT)
 {
-	renderWindow.Present(core.vSync, 0);
+	renderWindow->Present(core.vSync, 0);
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
@@ -1045,13 +1066,22 @@ bool HairRenderingTest::EventHandler(Event evt)
 		framework.GetRenderSystem().QueuePSOLoad(ApplyEdgeLengthConstraint);
 		return true;
 	}
-	else return debugUI.HandleInput(evt);
+	else if (evt.InputSource == Event::E_SystemEvent && evt.Action == FlexKit::Event::Exit)
+	{
+		framework.quit = true;
+		return true;
+	}
+	else
+	{
+		ui.HandleEvent(evt);
+		return debugUI.HandleInput(evt);
+	}
 }
 
 
 /**********************************************************************
 
-Copyright (c) 2014-2023 Robert May
+Copyright (c) 2014-2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
