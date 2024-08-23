@@ -30,7 +30,7 @@ public:
 	void Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ThreadSafeAllocator& threadSafeAllocator);
 	void Present();
 
-	bool isValid() { return renderWindow.isValid(); }
+	bool isValid() { return renderWindow != nullptr; }
 	std::function<void (DXRenderWindow* renderWindow)> ResizeEventHandler;
 
 	void SetOnDraw(FNRender_t draw)
@@ -43,18 +43,18 @@ public:
 		onResize = resize;
 	}
 
-	FlexKit::uint2 WH() const { return renderWindow.GetWH(); }
+	FlexKit::uint2 WH() const { return renderWindow->GetWH(); }
 
 	void resizeEvent(QResizeEvent* evt);
 
 	void enterEvent(QMouseEvent* event)
 	{
-		renderWindow.PIX_SetActiveWindow();
+		renderWindow->PIX_SetActiveWindow();
 	}
 
 	void DEBUG_SetActiveWindow()
 	{
-		renderWindow.PIX_SetActiveWindow();
+		renderWindow->PIX_SetActiveWindow();
 	}
 
 	FlexKit::ResourceHandle GetBackBuffer() const;
@@ -77,7 +77,7 @@ private:
 	FNRender_t                  onDraw;
 	FNResize_t                  onResize;
 
-	FlexKit::Win32RenderWindow  renderWindow;
+	FlexKit::Win32RenderWindow* renderWindow;
 	FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle;
 };
 

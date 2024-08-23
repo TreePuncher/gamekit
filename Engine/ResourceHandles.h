@@ -39,6 +39,7 @@ namespace FlexKit
 	using MaterialHandle				= Handle_t<16u, GetTypeGUID(Material)>;
 	using NodeHandle					= Handle_t<32u, GetTypeGUID(SceneNode)>;
 	using PassHandle					= Handle_t<32u, GetTypeGUID(PassHandle)>;
+	using PSOHandle						= Handle_t<32u, GetTypeGUID(PSOHandle)>;
 	using QueryHandle					= Handle_t<32u, GetTypeGUID(QueryBuffer)>;
 	using ReadBackResourceHandle		= Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>;
 	using RigidBodyHandle				= Handle_t<16u, GetTypeGUID(RigidBodyHandle)>;

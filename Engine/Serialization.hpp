@@ -4,15 +4,18 @@
 #include <assert.h>
 #include <cstdio>
 #include <functional>
+#include <limits>
 #include <map>
+#include <optional>
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
-#include <any>
 #include <variant>
-#include <optional>
-#include <limits>
 #include "static_vector.h"
+
+#ifdef max
+#undef max
+#endif
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -136,6 +139,8 @@ namespace FlexKit
 	{
 	public:
 
+		virtual ~SerializableBase() {}
+
 		virtual void _Serialize(SaveArchiveContext& archive) {}
 		virtual void _Serialize(LoadFileArchiveContext& archive) {}
 		virtual void _Serialize(LoadBlobArchiveContext& archive) {}
@@ -177,6 +182,8 @@ namespace FlexKit
 
 		template<typename ... TY_ARGS>
 		Serializable(TY_ARGS ... args) : TY_Interface{ std::forward<TY_ARGS>(args)... } {}
+
+		virtual ~Serializable() {};
 
 		void _Serialize(SaveArchiveContext& archive) final
 		{
@@ -233,6 +240,8 @@ namespace FlexKit
 		public SerializableInterfaceBase
 	{
 	public:
+		virtual ~SerializableInterface() {}
+
 		TypeID_t GetInterfaceTypeID() const noexcept { return typeID; }
 	};
 

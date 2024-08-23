@@ -11,7 +11,7 @@ class EditorTextureImporter : public iEditorImportor
 public:
 	EditorTextureImporter(EditorProject&, EditorRenderer& renderer);
 
-	virtual bool            Import(const std::string fileDir);
+	virtual bool            Import(const std::string& fileDir) override;
 	virtual std::string     GetFileTypeName()	{ return "Image"; }
 	virtual std::string     GetFileExt()		{ return "JPEG (*.jpg *.jpeg);; TIFF (*.tif);; HDR (*.hdr)"; }
 

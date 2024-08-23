@@ -28,7 +28,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 613; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 614; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
 
 namespace FlexKit
@@ -3481,6 +3481,41 @@ namespace FlexKit
 			nullptr);
 	}
 
+	/************************************************************************************************/
+
+	void Context::CopyTextureRegion(
+		ResourceHandle		dest,
+		size_t				subResourceIdx,
+		uint3				XYZ,
+		UploadReservation	source)
+	{
+		FlushBarriers();
+
+		auto destination				= renderSystem->GetDeviceResource(dest);
+		const auto		WH				= renderSystem->GetTextureWH(dest);
+		const auto		deviceFormat	= renderSystem->GetTextureDeviceFormat(dest);
+		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
+		const bool		BCformat		= IsDDS(renderSystem->GetTextureFormat(dest));
+		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
+
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
+		SubRegion.Footprint.Depth		= 1;
+		SubRegion.Footprint.Format		= deviceFormat;
+		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
+		SubRegion.Footprint.Width		= WH[0];
+		SubRegion.Footprint.Height		= WH[1];
+		SubRegion.Offset				= source.offset;
+
+		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
+
+		DeviceContext->CopyTextureRegion(
+			&destinationLocation,
+			XYZ[0], XYZ[1], XYZ[2],
+			&sourceLocation,
+			nullptr);
+	}
+
 
 	/************************************************************************************************/
 
@@ -5121,6 +5156,24 @@ namespace FlexKit
 		}
 
 		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CopyContext::CopyBuffer(ResourceHandle handle, const size_t destOffset, UploadReservation source)
+	{
+		flushPendingBarriers();
+
+		auto dest = RenderSystem::globalInstance->GetDeviceResource(handle);
+
+		commandList->CopyBufferRegion(
+			dest,
+			destOffset,
+			source.resource,
+			source.offset,
+			source.size);
 	}
 
 
@@ -11901,6 +11954,26 @@ namespace FlexKit
 		return texture;
 	}
 
+
+	/************************************************************************************************/
+
+	BlendState BlendState::Blend()
+	{
+		return
+			BlendState{
+				.alphaToCoverageEnable		= false,
+				.independentBlendEnable		= false,
+				.renderTarget = {
+					RenderTargetStateDesc{
+						.blendEnable	= true,
+						.srcBlend		= EBlend::SRC_ALPHA,
+						.dstBlend		= EBlend::INV_SRC_ALPHA,
+						.blendOp		= EBlendOP::ADD,
+						.srcBlendAlpha	= EBlend::ONE,
+						.dstBlendAlpha	= EBlend::ONE
+					}
+				}};
+	}
 
 	/************************************************************************************************/
 

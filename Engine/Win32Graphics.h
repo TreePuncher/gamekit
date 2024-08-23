@@ -6,6 +6,7 @@
 #include "graphics.h"
 #include "ProfilingUtilities.h"
 #include <windows.h>
+#include <Windowsx.h>
 
 #pragma comment(lib, "Winmm.lib")
 
@@ -361,7 +362,6 @@ namespace FlexKit
 		}	break;
 		case WM_MOUSEMOVE:
 		{
-			/*
 			FlexKit::Event ev;
 			ev.mType = Event::Input;
 			ev.InputSource = Event::Mouse;
@@ -370,15 +370,7 @@ namespace FlexKit
 			ev.mData1.mINT[0] = GET_X_LPARAM(lParam);
 			ev.mData1.mINT[1] = GET_Y_LPARAM(lParam);
 
-			size_t itr = 0;
-
-			ev.mData2.mINT[0] = gLastMousePOS[0] - ev.mData1.mINT[0];
-			ev.mData2.mINT[1] = gLastMousePOS[1] - ev.mData1.mINT[1];
-
-			//gLastMousePOS = {ev.mData1.mINT[0], ev.mData1.mINT[1]};
-
-			//gInputWindow->Handler.NotifyEvent(ev);
-			*/
+			eventHandler->NotifyEvent(ev);
 		}	break;
 		case WM_LBUTTONDOWN:
 		{

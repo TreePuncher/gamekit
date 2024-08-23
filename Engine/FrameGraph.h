@@ -3051,7 +3051,7 @@ namespace FlexKit
 			ReserveVertexBufferFunction     reserveVB;
 			ReserveConstantBufferFunction   reserveCB;
 			PSOHandle				        state;
-			DrawList				        draws;
+			ShapeList				        draws;
 
 			FrameResourceHandle		        renderTarget;
 		};
@@ -3061,7 +3061,7 @@ namespace FlexKit
 				reserveVB,
 				reserveCB,
 				state,
-				DrawList{ allocator },
+				ShapeList{ allocator },
 			},
 			[&](FrameGraphNodeBuilder& Builder, ShapeParams& data)
 			{
@@ -3087,7 +3087,7 @@ namespace FlexKit
 
 				size_t TextureDrawCount = 0;
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
-				for (auto D : data.draws)
+				for (const auto& D : data.draws)
 				{
 
 					switch (D.Mode) {

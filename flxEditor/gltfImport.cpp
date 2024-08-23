@@ -1,4 +1,4 @@
-#include "ui_EditorImportGLTF.h"
+#include "ui_EditorImportSceneDialog.h"
 #include "EditorTaskManager.h"
 #include <gltfImport.h>
 #include <string>
@@ -91,7 +91,7 @@ public:
 /************************************************************************************************/
 
 
-bool gltfImporter::Import(const std::string fileDir)
+bool gltfImporter::Import(const std::string& fileDir)
 {
 	if (!std::filesystem::exists(fileDir))
 		return false;

@@ -96,6 +96,8 @@ namespace FlexKit
 
 		virtual void				SetResourceID   (const std::string& id) noexcept = 0;
 		virtual void				SetResourceGUID (uint64_t) noexcept = 0;
+
+		virtual void				NotifyOnChange(std::function<void (iResource&)>) noexcept {};
 	};
 
 
@@ -107,6 +109,17 @@ namespace FlexKit
 
 	inline std::string&	GetProjectResourceDir()							{ return projectResourceDir; }
 	inline void			SetProjectResourceDir(const std::string& dir)	{ projectResourceDir = dir; }
+
+
+	/************************************************************************************************/
+
+
+	struct IResourceSource : public FlexKit::SerializableInterface<GetTypeGUID(IResourceSource)>
+	{
+		virtual ~IResourceSource() {}
+
+		virtual Resource_ptr LoadResource() = 0;
+	};
 
 
 	/************************************************************************************************/

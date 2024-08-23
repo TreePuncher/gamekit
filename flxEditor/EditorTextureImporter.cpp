@@ -60,7 +60,7 @@ struct TextureImporterDialog
 	FlexKit::TextureBuffer	converted;// { {4096, 4096}, 4, FlexKit::SystemAllocator };
 };
 
-bool EditorTextureImporter::Import(const std::string fileDir)
+bool EditorTextureImporter::Import(const std::string& fileDir)
 {
 	using namespace std::filesystem;
 
