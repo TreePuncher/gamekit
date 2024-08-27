@@ -1,6 +1,6 @@
 #pragma once
 
-#include "MathUtils.h"
+#include "MathUtilities.hpp"
 #include "Serialization.hpp"
 
 namespace FlexKit

@@ -1,6 +1,6 @@
 #pragma once
 #include "ResourceHandles.h"
-#include "MathUtils.h"
+#include "MathUtilities.hpp"
 #include "MemoryUtilities.h"
 #include "Assets.h"
 #include "XMMathConversion.h"

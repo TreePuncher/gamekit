@@ -1,7 +1,7 @@
 #pragma once
 
 /**********************************************************************
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-#include "buildsettings.h"
-#include "containers.h"
+#include "BuildSettings.hpp"
+#include "Containers.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -41,9 +41,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <utility>
 
-#include <d3d12.h>
-//#include <d3dx12.h>
-#include <d3d12sdklayers.h>
+#include <directx/d3d12.h>
+#include <directx/d3dx12.h>
+#include <directx/d3d12sdklayers.h>
 #include <DirectXMath/DirectXMath.h>
 #include <dxgi1_6.h>
 #include <concepts>
@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <directx-dxc/dxcapi.h>
 
 #include <Windows.h>
-#include "MathUtils.h"
+#include "MathUtilities.hpp"
 
 #include <physx\PxPhysicsAPI.h>
 #include <physx\characterkinematic\PxController.h>

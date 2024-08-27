@@ -1,0 +1,521 @@
+#include "FrameGraph.hpp"
+#include "Materials.hpp"
+#include "Transparency.hpp"
+#include "WorldRender.hpp"
+
+
+namespace FlexKit
+{   /************************************************************************************************/
+
+
+	struct OITPass
+	{
+		ReserveConstantBufferFunction       reserveCB;
+
+		UpdateTaskTyped<GetDrawListTaskData>& drawList;
+
+		CameraHandle			camera;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct OITBlend
+	{
+		FrameResourceHandle		renderTargetObject;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct OIT_MLAB
+	{
+		FrameResourceHandle		renderTargetObject;
+		FrameResourceHandle		accumalatorObject;
+		FrameResourceHandle		counterObject;
+		FrameResourceHandle		depthTarget;
+	};
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes	CreateOITBlendPSO			(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawPSO			(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawAnimatedPSO	(RenderSystem* RS, iAllocator& allocator);
+
+	LoadPipelineStateRes	CreateMarkClustersPSO		(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateMLABDrawPSO			(RenderSystem* RS, iAllocator& allocator);
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes CreateOITDrawPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,		3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		Rast_Desc.CullMode						= D3D12_CULL_MODE_BACK;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable					= true;
+		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 2;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // count
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
+
+			PSO_Desc.BlendState.IndependentBlendEnable			= true;
+
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
+
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha	= D3D12_BLEND_ONE;
+
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha	= D3D12_BLEND_ONE;
+
+			PSO_Desc.BlendState.RenderTarget[1].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
+
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlend		= D3D12_BLEND_ZERO;
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlendAlpha	= D3D12_BLEND_ZERO;
+
+			PSO_Desc.BlendState.RenderTarget[1].DestBlend		= D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[1].DestBlendAlpha	= D3D12_BLEND_INV_SRC_ALPHA;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return { PSO, RS->Library.RSDefault };
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes CreateOITDrawAnimatedPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		auto VShader = RS->LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
+		auto PShader = RS->LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable					= false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 1;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { nullptr, 0 };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
+
+			PSO_Desc.BlendState.IndependentBlendEnable			= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
+
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend		= D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha	= D3D12_BLEND_ONE;
+
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend		= D3D12_BLEND_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha	= D3D12_BLEND_ONE;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return { PSO, RS->Library.RSDefault };
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes CreateMLABDrawPSO(RenderSystem* RS, iAllocator& allocator)
+	{
+		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,		3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		Rast_Desc.CullMode						= D3D12_CULL_MODE_BACK;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable					= true;
+		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.VS						= VShader;
+			PSO_Desc.PS						= PShader;
+			PSO_Desc.RasterizerState		= Rast_Desc;
+			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask				= UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets		= 2;
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // count
+			PSO_Desc.SampleDesc.Count		= 1;
+			PSO_Desc.SampleDesc.Quality		= 0;
+			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState		= Depth_Desc;
+
+			PSO_Desc.BlendState.IndependentBlendEnable			= true;
+
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
+
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha	= D3D12_BLEND_ONE;
+
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend		= D3D12_BLEND_ONE;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha	= D3D12_BLEND_ONE;
+
+			PSO_Desc.BlendState.RenderTarget[1].BlendEnable		= true;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOp			= D3D12_BLEND_OP_ADD;
+			PSO_Desc.BlendState.RenderTarget[1].BlendOpAlpha	= D3D12_BLEND_OP_ADD;
+
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlend		= D3D12_BLEND_ZERO;
+			PSO_Desc.BlendState.RenderTarget[1].SrcBlendAlpha	= D3D12_BLEND_ZERO;
+
+			PSO_Desc.BlendState.RenderTarget[1].DestBlend		= D3D12_BLEND_INV_SRC_ALPHA;
+			PSO_Desc.BlendState.RenderTarget[1].DestBlendAlpha	= D3D12_BLEND_INV_SRC_ALPHA;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return { PSO, RS->Library.RSDefault };
+	}
+
+
+	/************************************************************************************************/
+
+
+	Transparency::Transparency(RenderSystem& renderSystem, iAllocator& allocator) 
+		//MLABDrawSignature{ allocator }
+	{
+		renderSystem.RegisterPSOLoader(OITBLEND,		CreateOITBlendPSO);
+		renderSystem.RegisterPSOLoader(OITDRAW,			CreateOITDrawPSO);
+		renderSystem.RegisterPSOLoader(OITDRAWANIMATED,	CreateOITDrawAnimatedPSO);
+	}
+
+
+	/************************************************************************************************/
+
+
+	OITPass& Transparency::OIT_WB_Pass(
+		UpdateDispatcher&				dispatcher,
+		FrameGraph&						frameGraph,
+		GatherPassesTask&				passes,
+		CameraHandle					camera,
+		ResourceHandle					depthTarget,
+		ReserveConstantBufferFunction	reserveCB,
+		iAllocator*						allocator)
+	{
+		return frameGraph.AddNode<OITPass>(
+			OITPass{
+				reserveCB,
+
+				passes,
+				camera
+			},
+			[&](FrameGraphNodeBuilder& builder, OITPass& data)
+			{
+				builder.AddDataDependency(passes);
+
+				const auto WH = builder.GetRenderSystem().GetTextureWH(depthTarget);
+
+				const auto counterDesc =
+					[&] {
+					auto renderTarget = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT);
+					renderTarget.clearValue = D3D12_CLEAR_VALUE{
+						.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT,
+						.Color  = { 1.0f, 1.0f, 1.0f, 1.0f },
+					};
+
+					return renderTarget; }();
+
+				data.depthTarget		= builder.DepthRead(depthTarget);
+				data.accumalatorObject	= builder.AcquireVirtualResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT), DASRenderTarget, VirtualResourceScope::Frame);
+				data.counterObject		= builder.AcquireVirtualResource(counterDesc, DASRenderTarget, VirtualResourceScope::Frame);
+
+				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
+				builder.SetDebugName(data.counterObject,		"counterObject");
+			},
+			[=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+			{
+				ProfileFunction();
+
+				const RootSignature*	rootSig		= resources.renderSystem().Library.RSDefault;
+				auto&					materials	= MaterialComponent::GetComponent();
+
+
+				TriMeshHandle	previous		= InvalidHandle;
+				TriMesh*		triMesh			= nullptr;
+				MaterialHandle	prevMaterial	= InvalidHandle;
+				
+				ctx.ClearRenderTarget(resources.GetResource(data.accumalatorObject));
+				ctx.ClearRenderTarget(resources.GetResource(data.counterObject), float4{ 1, 1, 1, 1 });
+
+				auto& passes					= data.drawList.GetData().passes;
+				std::span<const DrawEntry> drawList;
+
+				if (auto res = std::find_if(passes.begin(), passes.end(),
+					[](auto& pass) -> bool
+					{
+						return pass.pass == PassHandle{GetCRCGUID(OIT_MCGUIRE)};
+					}); res != passes.end())
+				{
+					drawList = res->drawList;
+				}
+				else
+					return;
+
+				if (!drawList.size())
+					return;
+
+				ctx.BeginEvent_DEBUG("OIT - PASS");
+
+
+				ctx.SetRootSignature(rootSig);
+				ctx.SetPipelineState(resources.GetPipelineState(OITDRAW, tempAllocator));
+
+				CBPushBuffer constantBuffer{
+					data.reserveCB(
+						AlignedSize<Brush::VConstantsLayout>() * drawList.size() +
+						AlignedSize<Camera::ConstantBuffer>() )};
+
+				const auto cameraConstantValues = GetCameraConstants(data.camera);
+				const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
+
+
+				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
+
+				ctx.SetScissorAndViewports({
+						resources.GetResource(data.accumalatorObject),
+						resources.GetResource(data.counterObject),
+					});
+
+				ctx.SetRenderTargets(
+					{
+						resources.GetResource(data.accumalatorObject),
+						resources.GetResource(data.counterObject),
+					},
+					true,
+					resources.GetResource(data.depthTarget)
+				);
+
+				for (auto& draw : drawList)
+				{
+					const auto meshes		= draw.brush->meshes;
+					const auto material		= draw.brush->material;
+
+					for(uint32_t I = 0; I < meshes.size(); I++)
+					{
+						auto lodLevel = draw.LODlevel[I];
+						auto mesh = meshes[I];
+
+						if (mesh != previous)
+						{
+							previous	= mesh;
+							triMesh		= GetMeshResource(mesh);
+
+							auto& lod = triMesh->lods[lodLevel];
+						
+							ctx.AddIndexBuffer(
+								triMesh,
+								lodLevel);
+
+							ctx.AddVertexBuffers(
+								triMesh,
+								lodLevel,
+								{
+									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								}
+							);
+						}
+
+						if (material != prevMaterial)
+						{
+							const auto& textures = materials[material].textures;
+
+							DescriptorHeap heap;
+
+							heap.Init2(ctx, rootSig->GetDescHeap(0), textures.size(), &tempAllocator);
+
+							for (size_t I = 0; I < textures.size(); ++I)
+								heap.SetSRV(ctx, I, textures[I]);
+
+							ctx.SetGraphicsDescriptorTable(4, heap);
+						}
+
+						const auto textureCount     = materials[material].textures.size();
+						const auto constantValues   = draw.brush->GetConstants();
+
+						const ConstantBufferDataSet localConstants{ constantValues, constantBuffer };
+
+						ctx.SetGraphicsConstantBufferView(1, localConstants);
+
+						for (auto& subMesh : triMesh->lods[lodLevel].subMeshes)
+							ctx.DrawIndexed(
+								subMesh.IndexCount,
+								subMesh.BaseIndex);
+					}
+
+				}
+
+				ctx.EndEvent_DEBUG();
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	OITBlend& Transparency::OIT_WB_Blend(
+		UpdateDispatcher&		dispatcher,
+		FrameGraph&				frameGraph,
+		OITPass&				OITPass,
+		FrameResourceHandle		renderTarget,
+		iAllocator*				allocator)
+	{
+		return frameGraph.AddNode<OITBlend>(
+			OITBlend{},
+			[&](FrameGraphNodeBuilder& builder, OITBlend& data)
+			{
+				data.renderTargetObject	= builder.WriteTransition(renderTarget, DASRenderTarget);
+				data.accumalatorObject	= builder.ReadTransition(OITPass.accumalatorObject, DASPixelShaderResource);
+				data.counterObject		= builder.ReadTransition(OITPass.counterObject, DASPixelShaderResource);
+			},
+			[=](OITBlend& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+			{
+				ProfileFunction();
+
+				ctx.BeginEvent_DEBUG("OIT - Blend");
+
+				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND, tempAllocator));
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
+
+				const RootSignature* rootSig = resources.renderSystem().Library.RSDefault;
+				auto& descHeapLayout = rootSig->GetDescHeap(0);
+				DescriptorHeap descHeap;
+
+				descHeap.Init2(ctx, descHeapLayout, 2, &tempAllocator);
+				descHeap.SetSRV(ctx, 0, resources.PixelShaderResource(data.accumalatorObject, ctx));
+				descHeap.SetSRV(ctx, 1, resources.PixelShaderResource(data.counterObject, ctx));
+
+				ctx.SetRootSignature(rootSig);
+				ctx.SetGraphicsDescriptorTable(4, descHeap);
+
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTargetObject), });
+
+				ctx.SetRenderTargets(
+					{	resources.GetResource(data.renderTargetObject), },
+					false);
+
+				ctx.Draw(6);
+
+				ctx.EndEvent_DEBUG();
+			});
+	}
+
+
+}	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2016-2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

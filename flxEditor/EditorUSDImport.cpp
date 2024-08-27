@@ -26,7 +26,7 @@
 
 #include "EditorUSDParserInterface.hpp"
 
-#include <MathUtils.h>
+#include <MathUtilities.hpp>
 #include <fmt/printf.h>
 #include <fmt/format.h>
 #include <ThreadUtilities.h>
