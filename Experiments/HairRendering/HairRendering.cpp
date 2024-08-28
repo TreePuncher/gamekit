@@ -396,7 +396,7 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 		CreateWorkGraphObjects();
 
 	auto uiContext = ui.GetMainContext();
-	auto document = uiContext->LoadDocument("hello.rml");
+	auto document = uiContext->LoadDocument(R"(assets\hello.rml)");
 	document->Show();
 }
 

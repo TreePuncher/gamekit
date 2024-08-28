@@ -1,5 +1,7 @@
 #src
 
+project(flex)
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -17,7 +19,6 @@ find_package(RmlUi CONFIG REQUIRED)
 find_package(PkgConfig)
 
 pkg_check_modules(zlib-ng REQUIRED IMPORTED_TARGET GLOBAL zlib-ng>=2.0)
-
 
 add_library(flex
     "src/AnimationComponents.cpp"
@@ -181,15 +182,24 @@ target_link_libraries(flex PRIVATE range-v3::meta range-v3::concepts range-v3::r
 
 if(WIN32)
     find_path(LOGURU_INCLUDE_DIRS "loguru/loguru.cpp")
-    find_path(ZLIB_LOCATION "zlib-ng.lib")
     find_path(SIMDE_INCLUDE_DIRS "simde")
-    target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
-    target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 
+    message(${SIMDE_INCLUDE_DIRS})
+    message(${LOGURU_INCLUDE_DIRS})
+
+    ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
+    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
+
+    set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
+    ADD_LIBRARY(WINPIX SHARED IMPORTED)
+    SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
+    SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
+
+    target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
     target_include_directories(flex PRIVATE ${LOGURU_INCLUDE_DIRS} flex_includes)
     target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 
-    target_link_libraries(flex PRIVATE ${FLEX_ROOT}/ThirdParty/pix/bin/x64/WinPixEventRuntime.lib)
     target_link_libraries(flex PRIVATE unofficial::omniverse-physx-sdk::sdk)
     target_link_libraries(flex PRIVATE imgui::imgui)
     target_link_libraries(flex PRIVATE unofficial::imguizmo::imguizmo)
@@ -197,16 +207,16 @@ if(WIN32)
     target_link_libraries(flex PRIVATE implot::implot)
     target_link_libraries(flex PRIVATE scn::scn)
     target_link_libraries(flex PRIVATE RmlCore RmlDebugger)
-    target_link_libraries(flex PRIVATE ${ZLIB_LOCATION}/lib/zlib-ng.lib)
+    target_link_libraries(flex PRIVATE ZLIB-NG)
+    target_link_libraries(flex PRIVATE WINPIX)
+    target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
 
-    if(TARGET Microsoft::DirectX12-Agility)
-        file(MAKE_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/D3D12")
-        add_custom_command(TARGET flex POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:Microsoft::DirectX12-Core,IMPORTED_LOCATION_RELEASE> $<TARGET_FILE_DIR:flex>/D3D12
-            COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_PROPERTY:Microsoft::DirectX12-Layers,IMPORTED_LOCATION_DEBUG> $<TARGET_FILE_DIR:flex>/D3D12
-            COMMAND_EXPAND_LISTS)
-    endif()
+    add_custom_command(TARGET flex POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND_EXPAND_LISTS)
 
+    file(COPY ${D3D12CORE_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
+    file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
 elseif(NOT DEFINED ANDROID_ABI)
     find_package(glfw3 CONFIG REQUIRED)
 
@@ -221,3 +231,15 @@ set_target_properties(flex PROPERTIES UNITY_BUILD ON)
 
 install(TARGETS flex DESTINATION lib)
 install(TARGETS flex FILE_SET flex_headers)
+
+function(Flex_CopyAssets TARGET)
+add_custom_command(TARGET ${TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${TARGET}> $<TARGET_FILE_DIR:${TARGET}>
+    COMMAND_EXPAND_LISTS)
+
+add_custom_command(
+    TARGET ${TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+    COMMAND_EXPAND_LISTS)
+endfunction()

@@ -41,7 +41,7 @@ extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 614; }
-extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\D3D12\\"; }
+extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\"; }
 
 namespace FlexKit
 {

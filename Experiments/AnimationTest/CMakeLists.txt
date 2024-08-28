@@ -19,6 +19,7 @@ target_include_directories(
     flex_optional
     ${PROJECT_SOURCE_DIR})
 
+set_property(TARGET AnimationTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(AnimationTest PRIVATE flex flex_optional)
 
-file(CREATE_LINK ${FLEX_ROOT}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets SYMBOLIC)
+Flex_CopyAssets(AnimationTest)

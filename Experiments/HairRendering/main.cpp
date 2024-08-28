@@ -1,6 +1,7 @@
 #include <Application.hpp>
 #include <BuildSettings.hpp>
 #include "HairRendering.hpp"
+#include <filesystem>
 
 int main(const int args, const char* args_v[])
 {

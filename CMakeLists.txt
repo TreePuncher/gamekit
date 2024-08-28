@@ -10,11 +10,9 @@ option(BuildExperiments "Build BuildExperiments" ON)
 
 add_subdirectory(Core)
 add_subdirectory(Components)
-#add_subdirectory(VulkanGraphics)
 
 if(BuildExamples)
     message("Building Examples")
-    #add_subdirectory(SimpleExample)
 endif()
 
 if(BuildExperiments)

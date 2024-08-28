@@ -22,3 +22,5 @@ target_include_directories(
 target_link_libraries(PhysicsTest PRIVATE flex flex_optional)
 
 file(CREATE_LINK ${FLEX_ROOT}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets SYMBOLIC)
+
+Flex_CopyAssets(PhysicsTest)
