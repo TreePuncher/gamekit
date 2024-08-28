@@ -15,6 +15,4 @@ target_include_directories(HairRendering PUBLIC ${PROJECT_SOURCE_DIR})
 
 target_link_libraries(HairRendering PRIVATE flex)
 
-file(CREATE_LINK ${FLEX_ROOT}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets SYMBOLIC)
-
 Flex_CopyAssets(HairRendering)

@@ -104,7 +104,7 @@ namespace FlexKit
 			Vertex,
 		}TargetType;
 
-		byte			Pad[38];
+		uint8_t			Pad[38];
 
 	};
 
@@ -118,7 +118,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	enum WeightFunction : byte
+	enum WeightFunction : uint8_t
 	{
 		EWF_Power,
 		EWF_Sin,

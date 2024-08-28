@@ -169,7 +169,7 @@ namespace FlexKit
 		TriMeshHandle	mesh;
 		TriMeshHandle	occluder;
 		ObjectDrawState states;
-		byte*			constantBuffers[4];
+		uint8_t*		constantBuffers[4];
 	};
 
 

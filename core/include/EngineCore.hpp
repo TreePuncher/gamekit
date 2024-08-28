@@ -100,7 +100,7 @@ namespace FlexKit
 			TempAllocatorMT	{ TempAllocator }
 		{
 			BlockAllocator.Init(desc);
-			TempAllocator.Init((byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), tempAllocatorSize);
+			TempAllocator.Init((uint8_t*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), tempAllocatorSize);
 		}
 
 		BlockAllocator		BlockAllocator;

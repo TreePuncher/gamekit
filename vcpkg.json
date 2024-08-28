@@ -33,6 +33,7 @@
     "ois",
     "pkgconf",
     "physx",
+    "qtbase",
     "rmlui",
     "range-v3",
     "recastnavigation",

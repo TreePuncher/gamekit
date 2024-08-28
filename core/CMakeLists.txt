@@ -8,8 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Angelscript CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(range-v3 CONFIG REQUIRED)
-find_package(directx-headers CONFIG REQUIRED)
-find_package(directx12-agility CONFIG REQUIRED)
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(unofficial-imguizmo CONFIG REQUIRED)
@@ -184,6 +182,9 @@ if(WIN32)
     find_path(LOGURU_INCLUDE_DIRS "loguru/loguru.cpp")
     find_path(SIMDE_INCLUDE_DIRS "simde")
 
+    find_package(directx-headers CONFIG REQUIRED)
+    find_package(directx12-agility CONFIG REQUIRED)
+
     message(${SIMDE_INCLUDE_DIRS})
     message(${LOGURU_INCLUDE_DIRS})
 
@@ -220,11 +221,22 @@ if(WIN32)
 elseif(NOT DEFINED ANDROID_ABI)
     find_package(glfw3 CONFIG REQUIRED)
 
+    target_link_libraries(flex PRIVATE imgui::imgui)
+    target_link_libraries(flex PRIVATE unofficial::imguizmo::imguizmo)
+    target_link_libraries(flex PRIVATE Angelscript::angelscript)
+    target_link_libraries(flex PRIVATE implot::implot)
+    target_link_libraries(flex PRIVATE scn::scn)
+    target_link_libraries(flex PRIVATE RmlCore RmlDebugger)
+    target_link_libraries(flex PRIVATE ZLIB-NG)
+
     target_sources(flex
         PRIVATE
         PlatformLayer_GLFW.cpp)
 
     target_link_libraries(flex PRIVATE glfw)
+
+    target_compile_definitions(flex PUBLIC UNICODE)
+    target_compile_options(flex "/UTF-8")
 endif()
 
 set_target_properties(flex PROPERTIES UNITY_BUILD ON)
@@ -233,13 +245,15 @@ install(TARGETS flex DESTINATION lib)
 install(TARGETS flex FILE_SET flex_headers)
 
 function(Flex_CopyAssets TARGET)
-add_custom_command(TARGET ${TARGET} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${TARGET}> $<TARGET_FILE_DIR:${TARGET}>
-    COMMAND_EXPAND_LISTS)
+    add_custom_command(TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${TARGET}> $<TARGET_FILE_DIR:${TARGET}>
+        COMMAND_EXPAND_LISTS)
 
-add_custom_command(
-    TARGET ${TARGET} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
-    COMMAND_EXPAND_LISTS)
+    if(WIN32)
+    add_custom_command(
+        TARGET ${TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+        COMMAND_EXPAND_LISTS)
+    endif()
 endfunction()

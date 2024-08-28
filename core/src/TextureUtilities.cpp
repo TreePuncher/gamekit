@@ -47,13 +47,13 @@ namespace FlexKit
 		Memory		{ IN_Memory										},
 		Size		{ BufferSize									} {}
 
-	TextureBuffer::TextureBuffer(uint2 IN_WH, byte* buffer, size_t IN_elementSize) :
+	TextureBuffer::TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t IN_elementSize) :
 		Buffer		{ buffer								},
 		WH			{ IN_WH									},
 		ElementSize	{ IN_elementSize						},
 		Size		{ IN_WH.Product() * IN_elementSize		} {}
 
-	TextureBuffer::TextureBuffer(uint2 IN_WH, byte* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator) :
+	TextureBuffer::TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator) :
 		Buffer      { buffer			},
 		WH          { IN_WH				},
 		ElementSize { IN_elementSize	},

@@ -944,7 +944,7 @@ namespace FlexKit
 			physx::PxFilterObjectAttributes	attributes1,
 			physx::PxFilterData				filterData1,
 			physx::PxPairFlags&				pairFlags,
-			const byte*						constantBlock,
+			const uint8_t*					constantBlock,
 			physx::PxU32					constantBlockSize);
 
 

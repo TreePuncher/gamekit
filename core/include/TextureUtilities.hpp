@@ -73,8 +73,8 @@ namespace FlexKit
 
 		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory);
 		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, size_t BufferSize, iAllocator* IN_Memory);
-		TextureBuffer(uint2 IN_WH, byte* buffer, size_t IN_elementSize);
-		TextureBuffer(uint2 IN_WH, byte* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator);
+		TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t IN_elementSize);
+		TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator);
 
 		~TextureBuffer();
 
@@ -93,7 +93,7 @@ namespace FlexKit
 		size_t BufferSize() const   { return Size; }
 
 
-		byte*		Buffer			= nullptr;
+		uint8_t*	Buffer			= nullptr;
 		uint2		WH				= { 0, 0 };
 		size_t		Size			= 0;
 		size_t		ElementSize		= 0;
@@ -129,7 +129,7 @@ namespace FlexKit
 			return ((TY*)row)[XY[0]];
 		}
 
-		operator byte* ()	{ return Texture.Buffer;    }
+		operator uint8_t* ()	{ return Texture.Buffer;    }
 		size_t BufferSize()	{ return Texture.Size;      }
 
 		const TextureBuffer& Texture;

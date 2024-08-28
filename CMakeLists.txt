@@ -6,7 +6,8 @@ list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 set(FLEX_ROOT ${PROJECT_SOURCE_DIR})
 
 option(BuildExamples "Build Examples" ON)
-option(BuildExperiments "Build BuildExperiments" ON)
+option(BuildExperiments "Build Experiments" ON)
+option(BuildEditor "Build Editor" ON)
 
 add_subdirectory(Core)
 add_subdirectory(Components)
@@ -18,6 +19,11 @@ endif()
 if(BuildExperiments)
     message("Building Experiments")
     add_subdirectory(Experiments)
+endif()
+
+if(BuildEditor)
+    message("Building Editor")
+    add_subdirectory(Editor)
 endif()
 
 #Install
