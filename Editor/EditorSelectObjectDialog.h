@@ -1,7 +1,36 @@
 #pragma once
+#include <ui_EditorSelectObjectDialog.h>
+#include <functional>
+#include <Type.hpp>
+
+namespace FlexKit
+{
+	class SceneObject;
+}
+
+class EditorSelectObjectDialog : public QDialog
+{
+	Q_OBJECT
+public:
+	
+	EditorSelectObjectDialog(FlexKit::SceneObject*, QWidget* parent = Q_NULLPTR);
+	~EditorSelectObjectDialog();
+
+	void UpdateContents();
+
+	std::function<size_t()>				GetItemCount	= []{ return 0; };
+	std::function<std::string (size_t)>	GetItemLabel	= [](size_t){ return ""; };
+	std::function<void (size_t)>		OnSelection		= [](size_t) {};
+
+
+	Ui::SelectSceneObjectDialog		ui;
+	FlexKit::SceneObject*			scene;
+};
+
 
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2021 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,44 +51,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-
-
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
-
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
-
-#include <Windows.h>
-#include "MathUtilities.hpp"
-
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>
