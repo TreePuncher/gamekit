@@ -28,7 +28,7 @@ public:
 
 private:
 
-	//Ui::EditorAnimationInputTab ui;
+	Ui::EditorAnimationInputTab ui;
     OnCreationEventFN           callback    = [](auto, auto&){};
     ReadEntryDataFN             readData    = [](auto, auto&, auto&, auto&) {};
     WriteEntryDataFN            writeData   = [](auto, auto&, auto&, auto&){};

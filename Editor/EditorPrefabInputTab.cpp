@@ -8,7 +8,6 @@
 EditorPrefabInputTab::EditorPrefabInputTab(QWidget *parent)
 	: QWidget(parent)
 {
-    /*
 	ui.setupUi(this);
 
     auto verticalHeader     = ui.tableWidget->verticalHeader();
@@ -42,7 +41,6 @@ EditorPrefabInputTab::EditorPrefabInputTab(QWidget *parent)
                 writeData((size_t) row, nameString, valueString, defaultString);
             }
         });
-    */
 }
 
 
@@ -55,11 +53,9 @@ EditorPrefabInputTab::~EditorPrefabInputTab()
 
 void EditorPrefabInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetchData)
 {
-    /*
     ui.tableWidget->setRowCount(rowCount);
     ui.tableWidget->setColumnCount(3);
     ui.tableWidget->setHorizontalHeaderLabels({ "Name", "Immediate Value", "Default Value"});
-    */
 
     for (uint32_t row = 0; row < rowCount; row++)
     {
@@ -71,7 +67,6 @@ void EditorPrefabInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetch
         if (value.size() == 0)
             value = "0";
 
-            /*
         if (!ui.tableWidget->item(row, 1) || ui.tableWidget->item(row, 1)->text().size() == 0 || ui.tableWidget->item(row, 1)->text().toStdString() != value)
         {
             QTableWidgetItem* nameItem      = new QTableWidgetItem(name.c_str());
@@ -82,7 +77,6 @@ void EditorPrefabInputTab::Update(const uint32_t rowCount, ReadEntryDataFN fetch
             ui.tableWidget->setItem(row, 1, valueItem);
             ui.tableWidget->setItem(row, 2, defaultItem);
         }
-            */
     }
 }
 
