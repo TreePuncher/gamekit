@@ -2,18 +2,18 @@
 #include <fp16.h>
 
 
-#include <Application.h>
-#include <Scene.h>
-#include <physicsutilities.h>
-#include <TextureStreamingUtilities.h>
-#include <TriggerComponent.h>
-#include <WorldRender.h>
-#include <Win32Graphics.h>
-#include <DebugUI.h>
+#include <Application.hpp>
+#include <Scene.hpp>
+#include <PhysicsUtilities.hpp>
+#include <TextureStreamingUtilities.hpp>
+#include <TriggerComponent.hpp>
+#include <WorldRender.hpp>
+#include <Win32Graphics.hpp>
+#include <DebugUI.hpp>
 #include <imgui.h>
-#include <Signals.h>
-#include <CameraUtilities.h>
-#include <SceneLoadingContext.h>
+#include <Signals.hpp>
+#include <CameraUtilities.hpp>
+#include <SceneLoadingContext.hpp>
 #include <ranges>
 
 using namespace FlexKit;
@@ -76,14 +76,16 @@ public:
 		AddAssetFile(R"(assets\ShadowTestScene.gameres)");
 
 		if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
-			renderWindow = std::move(res.value());
+			renderWindow = res;
+		else
+			throw std::runtime_error{ "Failed to create render window!" };
 
 		EventNotifier<>::Subscriber sub;
 		sub.Notify = &FlexKit::EventsWrapper;
 		sub._ptr = &framework;
 
-		renderWindow.Handler->Subscribe(sub);
-		renderWindow.SetWindowTitle("Shape Key Test");
+		renderWindow->Handler.Subscribe(sub);
+		renderWindow->SetWindowTitle("Shape Key Test");
 
 		auto& orbitCameraView = orbitCamera.AddView<OrbitCameraBehavior>();
 		activeCamera = orbitCameraView;
@@ -147,7 +149,7 @@ public:
 
 		for (auto&& [idx, queryRes] : zip(std::views::iota(0),  res))
 		{
-			auto& [lightView, gameObject] = queryRes.value();
+			auto&& [lightView, gameObject] = queryRes;
 			lightView.SetRadius(50.0f);
 			lightView.SetIntensity(50000.0f);
 			lightView.SetOuterAngle((float)pi / 4.0f);
@@ -164,7 +166,7 @@ public:
 
 		if (res.size())
 		{
-			auto& [pointLightView, gameObject] = res.front().value();
+			auto& [pointLightView, gameObject] = res.front();
 			auto pos = GetPositionW(pointLightView.GetNode());
 			orbitCameraView.SetCameraPosition(pos);
 		}
@@ -180,11 +182,11 @@ public:
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT) final
 	{
 		UpdateInput();
-		renderWindow.UpdateCapturedMouseInput(dT);
+		renderWindow->UpdateCapturedMouseInput(dT);
 
 		for (auto& queryRes : scene.Query(framework.core.GetBlockMemory(), LightQuery{}))
 		{
-			const auto& [lightView] = queryRes.value();
+			const auto& [lightView] = queryRes;
 
 			//Pitch(lightView.GetNode(), dT * pi / 4);
 			//Yaw(lightView.GetNode(), dT * pi / 4);
@@ -196,10 +198,10 @@ public:
 
 		t += dT;
 
-		debugUI.Update(renderWindow, core, dispatcher, dT);
+		debugUI.Update(*renderWindow, core, dispatcher, dT);
 
 		ImGui::NewFrame();
-		ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 600.0f, 0 });
+		ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 600.0f, 0 });
 		ImGui::SetNextWindowSize({ 600, 400 });
 
 		//ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
@@ -215,12 +217,12 @@ public:
 
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) final
 	{
-		frameGraph.AddOutput(renderWindow.GetBackBuffer());
+		frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 		ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 		FlexKit::WorldRender_Targets targets{
-			.RenderTarget	= renderWindow.GetBackBuffer(),
+			.RenderTarget	= renderWindow->GetBackBuffer(),
 			.DepthTarget	= depthBuffer,
 		};
 
@@ -232,7 +234,7 @@ public:
 
 		auto& transformUpdate	= FlexKit::QueueTransformUpdateTask(dispatcher);
 		auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
-		auto& orbitCameraUpdate = QueueOrbitCameraUpdateTask(dispatcher, *orbitCamera.GetView<OrbitCameraBehavior>(), renderWindow.mouseState, dT);
+		auto& orbitCameraUpdate = QueueOrbitCameraUpdateTask(dispatcher, *orbitCamera.GetView<OrbitCameraBehavior>(), renderWindow->mouseState, dT);
 
 		transformUpdate.AddInput(orbitCameraUpdate);
 		cameraUpdate.AddInput(transformUpdate);
@@ -263,9 +265,9 @@ public:
 		
 		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
 
-		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
-		FlexKit::PresentBackBuffer(frameGraph, renderWindow);
+		FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
 
 		return nullptr;
 	}
@@ -273,7 +275,7 @@ public:
 
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) final
 	{
-		renderWindow.Present(1, 0);
+		renderWindow->Present(1, 0);
 
 		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	}
@@ -301,7 +303,7 @@ public:
 								framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPANIMATEDPASS);
 								return true;
 							case KC_M:
-								renderWindow.ToggleMouseCapture();
+								renderWindow->ToggleMouseCapture();
 								return true;
 							case KC_ESC:
 								framework.quit = true;
@@ -327,7 +329,7 @@ public:
 				}	break;
 			}
 
-			if(!renderWindow.mouseCapture)
+			if(!renderWindow->mouseCapture)
 				return debugUI.HandleInput(evt);
 			else
 				return false;
@@ -357,7 +359,7 @@ public:
 
 	FlexKit::GBuffer						gbuffer;
 	FlexKit::DepthBuffer					depthBuffer;
-	FlexKit::Win32RenderWindow				renderWindow;
+	FlexKit::Win32RenderWindow*				renderWindow;
 	FlexKit::ConstantBufferHandle			constantBuffer;
 	FlexKit::VertexBufferHandle				vertexBuffer;
 

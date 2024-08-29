@@ -2,7 +2,7 @@
 
 #include <QWidget>
 #include <functional>
-//#include "ui_EditorAnimationInputTab.h"
+#include "ui_EditorAnimationInputTab.h"
 
 
 /************************************************************************************************/

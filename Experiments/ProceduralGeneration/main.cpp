@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "ProceduralGenerationTest.h"
-#include <Application.h>
+#include <Application.hpp>
 
 int main()
 {

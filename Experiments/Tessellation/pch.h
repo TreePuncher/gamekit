@@ -1,5 +1,5 @@
 #pragma once
 
-#include "buildsettings.h"
+#include "BuildSettings.hpp"
 #include <fmt\printf.h>
 #include <fp16.h>

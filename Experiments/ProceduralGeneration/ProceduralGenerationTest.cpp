@@ -2,7 +2,7 @@
 #include "ProceduralGenerationTest.h"
 #include "Generator.h"
 
-#include <SceneLoadingContext.h>
+#include <SceneLoadingContext.hpp>
 #include <imgui.h>
 #include <angelscript.h>
 #include <ranges>
@@ -90,14 +90,16 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	layer = physx.CreateLayer();
 
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
-		renderWindow = std::move(res.value());
+		renderWindow = res;
+	else
+		throw std::runtime_error{ "Failed to create render window1" };
 
 	EventNotifier<>::Subscriber sub;
 	sub.Notify = &FlexKit::EventsWrapper;
 	sub._ptr = &framework;
 
-	renderWindow.Handler->Subscribe(sub);
-	renderWindow.SetWindowTitle("Procedural Generation");
+	renderWindow->Handler.Subscribe(sub);
+	renderWindow->SetWindowTitle("Procedural Generation");
 
 	// Load Test Scene
 	SceneLoadingContext loadCtx{
@@ -326,16 +328,16 @@ void GenerationTest::RegisterGenerationAPI()
 FlexKit::UpdateTask* GenerationTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	UpdateInput();
-	renderWindow.UpdateCapturedMouseInput(dT);
+	renderWindow->UpdateCapturedMouseInput(dT);
 
-	OrbitCameraUpdate(camera, renderWindow.mouseState, dT);
+	OrbitCameraUpdate(camera, renderWindow->mouseState, dT);
 
 	cameras.MarkDirty(activeCamera);
 
-	debugUI.Update(renderWindow, core, dispatcher, dT);
+	debugUI.Update(*renderWindow, core, dispatcher, dT);
 
 	ImGui::NewFrame();
-	ImGui::SetNextWindowPos({ (float)renderWindow.WH[0] - 400.0f, 0});
+	ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 400.0f, 0});
 	ImGui::SetNextWindowSize({ 400, 400 });
 
 	ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
@@ -376,12 +378,12 @@ FlexKit::UpdateTask* GenerationTest::Update(FlexKit::EngineCore& core, FlexKit::
 
 FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	frameGraph.AddOutput(renderWindow.GetBackBuffer());
+	frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 	FlexKit::WorldRender_Targets targets{
-		.RenderTarget = renderWindow.GetBackBuffer(),
+		.RenderTarget = renderWindow->GetBackBuffer(),
 		.DepthTarget = depthBuffer,
 	};
 	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
@@ -426,9 +428,9 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 	*/
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow.GetBackBuffer());
+	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
-	FlexKit::PresentBackBuffer(frameGraph, renderWindow);
+	FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
 
 	return nullptr;
 }
@@ -439,7 +441,7 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 
 void GenerationTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
-	renderWindow.Present(0, 0);
+	renderWindow->Present(0, 0);
 
 	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
@@ -461,7 +463,7 @@ bool GenerationTest::EventHandler(FlexKit::Event evt)
 				switch (evt.mData1.mKC[0])
 				{
 				case KC_M:
-					renderWindow.ToggleMouseCapture();
+					renderWindow->ToggleMouseCapture();
 
 					return true;
 				}

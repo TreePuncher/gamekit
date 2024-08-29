@@ -1,7 +1,7 @@
 #pragma once
 #include <MathUtilities.hpp>
-#include <static_vector.h>
-#include <containers.h>
+#include <static_vector.hpp>
+#include <Containers.hpp>
 #include <span>
 
 using FlexKit::int3;

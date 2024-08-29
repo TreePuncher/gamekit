@@ -7,12 +7,18 @@ if(WIN32)
 	set(CMAKE_CXX_STANDARD 23)
 	set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+	set(CMAKE_AUTOMOC ON)
+	set(CMAKE_AUTORCC ON)
+	set(CMAKE_AUTOUIC ON)
+
 	find_package(pxr CONFIG REQUIRED)
-	find_package(Qt6 REQUIRED COMPONENTS Widgets)
+	find_package(Qt6 REQUIRED COMPONENTS Core Widgets GUI)
 
 	qt_standard_project_setup()
 
-	qt_add_executable(editor
+	file (GLOB CPP_FILES "*.cpp")
+
+	add_executable(editor
 		CSGComponent.cpp
 		CSGRendering.cpp
 		DXRenderWindow.cpp
@@ -66,33 +72,20 @@ if(WIN32)
 		TaskManager.cpp
 		TTFontLoader.cpp
 		ViewportScene.cpp
-
-		DXRenderWindow.ui
-		EditorAnimationEditor.ui
-		EditorAnimationInputTab.ui
-		EditorCodeEditor.ui
-		EditorImportGLTF.ui
-		EditorImportSceneDialog.ui
-		EditorInspectorView.ui
-		EditorMeshResourceForm.ui
-		EditorOutputWindow.ui
-		EditorResourcePickerDialog.ui
-		EditorSelectObjectDialog.ui
-		EditorTaskList.ui
-		EditorTextureImport.ui
-		EditorViewport.ui
-		ModelViewerWidget.ui
-		ResourceBrowserWidget.ui
-		SceneOutliner.ui
-		TaskManager.ui
-		TextureViewer.ui
 	)
+
+
+	set(CMAKE_AUTOMOC ON)
+	set(CMAKE_AUTOUIC ON)
+	set(CMAKE_AUTORCC ON)
 
 	target_include_directories(editor PRIVATE ${PROJECT_SOURCE_DIR})
 	target_include_directories(editor PRIVATE "${FLEX_ROOT}/ThirdParty/cmp/include")
-	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets)
-	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
+	target_include_directories(editor PRIVATE $<BUILD_INTERFACE:${AUTOGEN_INCLUDE_DIR}>)
 
+	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
+	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
+	
 	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
 
 	target_compile_definitions(editor PUBLIC UNICODE)

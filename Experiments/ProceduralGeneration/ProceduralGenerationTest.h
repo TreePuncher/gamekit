@@ -1,14 +1,14 @@
 #pragma once
 
-#include <Application.h>
-#include <Scene.h>
-#include <physicsutilities.h>
-#include <TextureStreamingUtilities.h>
-#include <WorldRender.h>
-#include <Win32Graphics.h>
-#include <DebugUI.h>
-#include <Signals.h>
-#include <ScriptingRuntime.h>
+#include <Application.hpp>
+#include <Scene.hpp>
+#include <PhysicsUtilities.hpp>
+#include <TextureStreamingUtilities.hpp>
+#include <WorldRender.hpp>
+#include <Win32Graphics.hpp>
+#include <DebugUI.hpp>
+#include <Signals.hpp>
+#include <ScriptingRuntime.hpp>
 
 #include "Generator.h"
 
@@ -50,7 +50,7 @@ public:
 
 	FlexKit::GBuffer						gbuffer;
 	FlexKit::DepthBuffer					depthBuffer;
-	FlexKit::Win32RenderWindow				renderWindow;
+	FlexKit::Win32RenderWindow*				renderWindow;
 	FlexKit::ConstantBufferHandle			constantBuffer;
 	FlexKit::VertexBufferHandle				vertexBuffer;
 

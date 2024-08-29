@@ -1,10 +1,10 @@
 #pragma once
 
-#include <CameraUtilities.h>
+#include <CameraUtilities.hpp>
 #include <MathUtilities.hpp>
-#include <ModifiableShape.h>
-#include <Scene.h>
-#include <Win32Graphics.h>
+#include <ModifiableShape.hpp>
+#include <Scene.hpp>
+#include <Win32Graphics.hpp>
 
 #include <fmt\printf.h>
 #include <fp16.h>

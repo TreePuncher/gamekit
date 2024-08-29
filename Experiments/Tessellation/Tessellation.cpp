@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "Application.h"
-#include "CameraUtilities.h"
+#include "Application.hpp"
+#include "CameraUtilities.hpp"
 #include "Gregory.h"
-#include "PipelineState.h"
-#include "Win32Graphics.h"
+#include "PipelineState.hpp"
+#include "Win32Graphics.hpp"
 
 constexpr FlexKit::PSOHandle ACCQuad				= FlexKit::PSOHandle(GetTypeGUID(ACCQuad));
 constexpr FlexKit::PSOHandle ACCQuadWireframe		= FlexKit::PSOHandle(GetTypeGUID(ACCQuadWireframe));
@@ -24,7 +24,8 @@ public:
 		renderWindow	{
 			CreateWin32RenderWindow(
 				IN_framework.GetRenderSystem(),
-				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 })).value() },
+				FlexKit::DefaultWindowDesc(uint2{ 1920, 1080 })) },
+
 		vertexBuffer	{ IN_framework.GetRenderSystem().CreateVertexBuffer(MEGABYTE, false) },
 		constantBuffer	{ IN_framework.GetRenderSystem().CreateConstantBuffer(MEGABYTE, false) },
 		cameras			{ IN_framework.core.GetBlockMemory() },
@@ -63,9 +64,9 @@ public:
 		sub.Notify	= &FlexKit::EventsWrapper;
 		sub._ptr	= &framework;
 
-		renderWindow.Handler->Subscribe(sub);
-		renderWindow.SetWindowTitle("[Tessellation Test]");
-		renderWindow.EnableCaptureMouse(true);
+		renderWindow->Handler.Subscribe(sub);
+		renderWindow->SetWindowTitle("[Tessellation Test]");
+		renderWindow->EnableCaptureMouse(true);
 		//activeCamera	= CameraComponent::GetComponent().CreateCamera((float)pi/3.0f, 1920.0f / 1080.0f);
 		node			= GetZeroedNode();
 		orbitCamera.SetCameraAspectRatio(1920.0f / 1080.0f);
@@ -244,14 +245,14 @@ public:
 
 		auto& cameraUpdate = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
-		frameGraph.AddOutput(renderWindow.GetBackBuffer());
+		frameGraph.AddOutput(renderWindow->GetBackBuffer());
 
 		frameGraph.AddNode<DrawPatch>(
 			DrawPatch{},
 			[&](FrameGraphNodeBuilder& builder, DrawPatch& draw)
 			{
 				builder.AddDataDependency(cameraUpdate);
-				draw.renderTarget	= builder.RenderTarget(renderWindow.GetBackBuffer());
+				draw.renderTarget	= builder.RenderTarget(renderWindow->GetBackBuffer());
 				draw.depthTarget	= builder.DepthTarget(depthBuffer);
 				draw.debug1Buffer	= builder.UnorderedAccess(debug1Buffer);
 				draw.debug2Buffer	= builder.UnorderedAccess(debug2Buffer);
@@ -329,11 +330,11 @@ public:
 
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* updateTask, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 	{
-		ClearBackBuffer(frameGraph, renderWindow.GetBackBuffer(), { 0.1f, 0.1f, 0.1f, 1.0f });
+		ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
-		renderWindow.UpdateCapturedMouseInput(dT);
+		renderWindow->UpdateCapturedMouseInput(dT);
 
-		auto& orbitCameraUpdate = QueueOrbitCameraUpdateTask(dispatcher, orbitCamera, renderWindow.mouseState, dT);
+		auto& orbitCameraUpdate = QueueOrbitCameraUpdateTask(dispatcher, orbitCamera, renderWindow->mouseState, dT);
 		auto& transformUpdate   = QueueTransformUpdateTask(dispatcher);
 		auto& cameraUpdate      = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 
@@ -341,7 +342,7 @@ public:
 
 		DrawPatch(dispatcher, frameGraph);
 
-		PresentBackBuffer(frameGraph, renderWindow.GetBackBuffer());
+		PresentBackBuffer(frameGraph, renderWindow->GetBackBuffer());
 
 		t += dT;
 
@@ -355,7 +356,7 @@ public:
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{ 
 		FlexKit::UpdateInput();
-		renderWindow.UpdateCapturedMouseInput(dT);
+		renderWindow->UpdateCapturedMouseInput(dT);
 
 		return nullptr;
 	}
@@ -366,7 +367,7 @@ public:
 
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override
 	{
-		renderWindow.Present(core.vSync ? 1 : 0, 0);
+		renderWindow->Present(core.vSync ? 1 : 0, 0);
 
 		core.RenderSystem.ResetConstantBuffer(constantBuffer);
 	}
@@ -401,7 +402,7 @@ public:
 				break;
 			case KC_M:
 				if(evt.Action == Event::Release)
-					renderWindow.ToggleMouseCapture();
+					renderWindow->ToggleMouseCapture();
 				break;
 			case KC_T:
 				if (evt.Action == Event::Release)
@@ -651,7 +652,7 @@ public:
 	VertexBufferHandle		vertexBuffer;
 	ConstantBufferHandle	constantBuffer;
 	const RootSignature*	rootSig = nullptr;
-	Win32RenderWindow		renderWindow;
+	Win32RenderWindow*		renderWindow;
 	ResourceHandle			depthBuffer;
 	ResourceHandle			debug1Buffer;
 	ResourceHandle			debug2Buffer;
@@ -694,7 +695,17 @@ int main()
 		app.GetCore().vSync     = false;
 		app.Run();
 	}
-	catch (...) { }
+	catch (std::runtime_error runtimeError)
+	{
+		FK_LOG_ERROR("Exception Caught!\n%s", runtimeError.what());
+		return -1;
+	}
+	catch (...)
+	{
+		FK_LOG_ERROR("Unknown Exception Caught!\n");
+		return -1;
+	}
+
 
 	return 0;
 }
