@@ -1,7 +1,6 @@
-#pragma once
-
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2015 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,42 +23,57 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
+#ifndef FKAPPLICATION_H
+#define FKAPPLICATION_H
 
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
+#include "buildsettings.hpp"
 
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
+#include "EngineCore.hpp"
+#include "GameFramework.hpp"
+
 #include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
 
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
+namespace FlexKit
+{
+	class FKApplication
+	{
+	public:
+		FKApplication(EngineMemory* Memory, const CoreOptions& options = {});
 
-#include <Windows.h>
-#include "MathUtilities.hpp"
+		~FKApplication();
 
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>
+		void PopState() noexcept
+		{
+			framework.PopState();
+		}
+
+		template<typename TY_STATE, typename ... TY_ARGS>
+		TY_STATE& PushState(TY_ARGS&& ... ARGS) noexcept
+		{
+			return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
+		}
+
+
+		void DrawOneFrame(float dT)
+		{
+			framework.DrawFrame(dT);
+		}
+
+		void Run();
+		void Release();
+
+		void PushArgument(const char* Str);
+
+		GameFramework&	GetFramework()  { return framework; }
+		EngineCore&		GetCore()       { return Core;      }
+
+		bool running() { return framework.Running();  }
+	private:
+		EngineMemory*	Memory;
+		EngineCore		Core;
+		GameFramework	framework;
+	};
+
+}
+
+#endif
