@@ -47,11 +47,9 @@ vcpkg_installed
 *.recipe
 *.enc
 *.ilk
-/TextureStreamingTest/x64/Debug/TextureStreamingTest.vcxproj.FileListAbsolute.txt
-/TextureStreamingTest/x64/Release/TextureStreamingTest.vcxproj.FileListAbsolute.txt
-/TextureStreamingTest/x64/Release/TextureStreamingTest.vcxproj.FileListAbsolute.txt
-/MergePathSortTest/x64/Release/MergePathSortTest.vcxproj.FileListAbsolute.txt
-/MergePathSortTest/x64/Debug/MergePathSortTest.vcxproj.FileListAbsolute.txt
-/GPUCache
-/DawnCache
-/HairRenderingExample/Intel® VTune™ Profiler Results/HairRenderingExample
+*/TextureStreamingTest/*
+*/MergePathSortTest/*
+*/GPUCache/*
+*/DawnCache/*
+**/Intel® VTune™ Profiler Results/*
+/out/*

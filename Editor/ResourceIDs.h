@@ -1,7 +1,23 @@
 #pragma once
 
+#include "Type.hpp"
+
+using ResourceID_t = uint64_t;
+
+static const ResourceID_t CubeMapResourceTypeID     = GetCRCGUID(CubeMapResource);
+static const ResourceID_t MeshResourceTypeID        = GetCRCGUID(MeshResource);
+static const ResourceID_t TextureResourceTypeID     = GetCRCGUID(TextureResource);
+static const ResourceID_t SceneResourceTypeID       = GetTypeGUID(SceneResource);
+static const ResourceID_t SkeletonResourceTypeID    = GetTypeGUID(SkeletonResource);
+static const ResourceID_t AnimationResourceTypeID   = GetTypeGUID(AnimationResourceTypeID);
+static const ResourceID_t TriMeshColliderTypeID     = GetTypeGUID(TriMeshColliderTypeID);
+static const ResourceID_t ScriptResourceTypeID      = GetTypeGUID(ScriptResourceTypeID);
+static const ResourceID_t PrefabObjectTypeID        = GetTypeGUID(PrefabObjectTypeID);
+
+
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2019-2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,44 +38,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-
-
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
-
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
-
-#include <Windows.h>
-#include "MathUtilities.hpp"
-
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>

@@ -1,7 +1,41 @@
 #pragma once
+#include <Components.hpp>
+
+#include "EditorPrefabObject.h"
+#include "EditorScriptEngine.h"
+
+class AnimatorComponent;
+class EditorScriptEngine;
+
+struct EditorSelectedPrefabObject
+{
+	FlexKit::GameObject			gameObject;
+	uint64_t					ID			= (uint64_t)-1;
+	uint64_t					resourceID;
+
+	::AnimatorComponent*			animator;
+	ScriptResource_ptr				resource;
+	PrefabGameObjectResource_ptr	prefab;
+	FlexKit::LayerHandle			layer;
+
+	void		Reset();
+	void		ReloadScript(EditorScriptEngine& engine);
+
+	uint32_t	AddInputValue(const std::string& name, uint32_t valueType);
+
+	void		UpdateDefaultValue(uint32_t idx, const std::string& str);
+	std::string	DefaultValueString(uint32_t idx);
+
+	std::string	ValueString(uint32_t idx, uint32_t valueType);
+	void		UpdateValue(uint32_t idx, const std::string& value);
+
+	void		Release();
+};
+
 
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2021 - 2022 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,44 +56,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-
-
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
-
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
-
-#include <Windows.h>
-#include "MathUtilities.hpp"
-
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>
