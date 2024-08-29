@@ -1,7 +1,6 @@
-#pragma once
-
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,43 +22,47 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#ifndef GUIINPUTSTATE_H
+#define GUIINPUTSTATE_H
 
+#include "GameFramework.hpp"
+#include "GuiUtilities.hpp"
+#include "Events.hpp"
 
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
+namespace FlexKit
+{
+	struct InputState;
 
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
+	struct ARROW_DIRECTION
+	{
+		enum : char
+		{
+			UP,
+			DOWN,
+			LEFT,
+			RIGHT
+		};
+	};
 
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
+	typedef char ARROW_DIR;
 
-#include <Windows.h>
-#include "MathUtilities.hpp"
+	typedef void (*InputStateCallback_ARROW)		(InputState* InputState, ARROW_DIR);
+	typedef void (*InputStateCallback_CHARACTER)	(InputState* InputState, char c);
+	typedef void (*InputStateCallback_KEY)			(InputState* InputState);
 
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>
+	struct InputState : public FlexKit::FrameworkState
+	{
+		InputStateCallback_ARROW		OnArrow		= nullptr;	
+		InputStateCallback_CHARACTER	OnChar		= nullptr;
+		InputStateCallback_KEY			OnEnter		= nullptr;
+		InputStateCallback_KEY			OnBackSpace	= nullptr;
+
+		void* USR;
+	};
+
+	//InputState*	CreateTextBoxInputState(GameFramework* framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize);
+
+	bool GUIInputEventHandler_Helper(FrameworkState* StateMemory, Event evt);
+}
+
+#endif

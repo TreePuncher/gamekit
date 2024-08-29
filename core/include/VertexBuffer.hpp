@@ -1,7 +1,9 @@
-#pragma once
+#ifndef VERTEXBUFFER_H
+#define VERTEXBUFFER_H
 
 /**********************************************************************
-Copyright (c) 2015 - 2024 Robert May
+
+Copyright (c) 2015 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,43 +25,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-
-
-#include "BuildSettings.hpp"
-#include "Containers.hpp"
-
-#include <algorithm>
-#include <filesystem>
-#include <fmt\format.h>
-#include <fstream>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <ranges>
-#include <chrono>
-#include <stdint.h>
-#include <thread>
-#include <utility>
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
-#include <dxgi1_6.h>
-#include <concepts>
-#include <expected>
-#include <tuple>
-#include <variant>
-#include <optional>
-#include <directx-dxc/dxcapi.h>
-
-#include <Windows.h>
+#include "containers.h"
 #include "MathUtilities.hpp"
+#include <stdint.h>
 
-#include <physx\PxPhysicsAPI.h>
-#include <physx\characterkinematic\PxController.h>
-#include <physx\extensions\PxDefaultAllocator.h>
-#include <physx\pvd\PxPvd.h>
-#include <physx\pvd\PxPvdTransport.h>
-#include <physx\characterkinematic\PxControllerManager.h>
-#include <physx\PxQueryReport.h>
+namespace FlexKit
+{
+
+	
+
+}
+//inline bool operator == ( const VertexBuffer::Typed_Iteration<Vect3>::itr_t& lhs, const VertexBuffer::Typed_Iteration<Vect3>::itr_t& rhs ) { return  ( *lhs == *rhs ); }
+//inline bool operator != ( const VertexBuffer::Typed_Iteration<Vect3>::itr_t& lhs, const VertexBuffer::Typed_Iteration<Vect3>::itr_t& rhs ) { return !( *lhs == *rhs ); }
+
+#endif
