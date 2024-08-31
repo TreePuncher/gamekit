@@ -9,6 +9,10 @@
 #include "Serialization.hpp"
 
 /************************************************************************************************/
+// Project Global Parameters
+inline static std::string objectsDirectory = "Objects/";
+
+/************************************************************************************************/
 
 
 ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
@@ -203,6 +207,12 @@ ProjectResource_ptr EditorProject::FindProjectResource(const std::string& id)
 		return (*res);
 	else
 		return nullptr;
+}
+
+
+std::string ProjectGetObjectDirectory()
+{
+	return objectsDirectory;
 }
 
 

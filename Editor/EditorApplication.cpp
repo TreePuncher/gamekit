@@ -127,7 +127,8 @@ struct TextureResourceViewer : public IResourceViewer
 
 	void operator () (FlexKit::Resource_ptr resource) override
 	{
-		auto& textureResource	= std::static_pointer_cast<FlexKit::TextureResource>(resource)->Object();
+		auto textureResource	= std::static_pointer_cast<FlexKit::TextureResource>(resource);
+		textureResource->MakeLoaded();
 
 		void* textureBuffer		= textureResource->MIPlevels[0].buffer;
 		const auto WH			= textureResource->WH;

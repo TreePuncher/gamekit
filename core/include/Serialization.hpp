@@ -495,6 +495,13 @@ namespace FlexKit
 
 
 		template<typename TY>
+		void _Serialize(TY& value) requires requires(TY t, SaveArchiveContext& ctx) { Serialize(t, ctx); }
+		{
+			Serialize(value, *this);
+		}
+
+
+		template<typename TY>
 		void SerializePointer(TY& value)
 		{
 			if constexpr (is_serializable_ptr<TY>)

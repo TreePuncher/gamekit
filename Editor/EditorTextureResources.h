@@ -6,6 +6,7 @@
 
 #include <Compressonator.h>
 #include <filesystem>
+#include <MathUtilities.hpp>
 #include <Serialization.hpp>
 #include <TextureUtilities.hpp>
 #include <vector>
@@ -114,27 +115,45 @@ namespace FlexKit
 
 
 
-	class TextureResource_IMPL : public Serializable<TextureResource_IMPL, iResource, GetTypeGUID(TextureResource)>
+	class TextureResource : public Serializable<TextureResource, iResource, GetTypeGUID(TextureResource)>
 	{
 	public:
+		struct MIPLevel
+		{
+			std::string		format;
+
+			uint8_t*		buffer = nullptr;
+			size_t			bufferSize = 0;
+
+			void Serialize(auto& ar)
+			{
+				void* _ptr = buffer;
+				ar& format;
+				ar& RawBuffer{ _ptr, bufferSize };
+
+				buffer = (uint8_t*)_ptr;
+			}
+		};
+
 		void Serialize(auto& ar)
 		{
-			uint32_t version = 01;
+			Save();
+
+			uint32_t version = 02;
 			ar& version;
 
-			FK_ASSERT(version == 01, "Texture resource version mismatch!");
+			FK_ASSERT(version == 02, "Texture resource version mismatch!");
 
-			ar& ID;
-			ar& assetHandle;
 			ar& targetFormat;
-			ar& WH;
-			ar& MIPlevels;
-			ar& channelCount;
-
-			ar& exportedMIPCount;
+			ar& ID;
+			ar& time;
 			ar& offsets;
-			ar& RawBuffer{ cachedBuffer, cachedBufferSize };
+			ar& channelCount;
+			ar& WH;
+			ar& assetHandle;
+			ar& MIPFileObjects;
 		}
+
 
 		const	std::string&	GetResourceID()		const noexcept final { return ID; }
 				uint64_t		GetResourceGUID()	const noexcept final { return assetHandle; }
@@ -145,38 +164,58 @@ namespace FlexKit
 
 		ResourceBlob			CreateBlob() const override;
 
-		bool DirtyFlag()		{ return dirtyFlag; }
-		void ClearDirtyFlag()	{ dirtyFlag = false; }
+		void					SetSource(std::shared_ptr<IResourceSource> IN_source) { source = IN_source; }
 
-		std::string				ID					= "";
-		GUID_t					assetHandle			= -1;
+		bool					Compressed() const;
+		uint8_t					GetElementSize() const;
+
+		void					ReloadFromSource();
+		void					MakeLoaded();
+
+		void					SetDimensions(FlexKit::uint2 IN_WH);
+		void					SetChannelCount(uint8_t channelCount)
+		{
+		}
+
+		void					PushMIPLevel(const uint8_t* src, const size_t srcSize)
+		{
+			MIPlevels.push_back(
+				TextureResource::MIPLevel{
+					.format		= "",
+					.buffer		= (uint8_t*)src,
+					.bufferSize = srcSize
+				});
+		}
+
+		bool					IsStale() const
+		{
+			if (source)
+				return !(source->GetTime() != time);
+			else
+				return false;
+		}
+
+		void Save();
+
 		std::string				targetFormat		= "";
-		uint2					WH					= { 0, 0 };
-		uint32_t				channelCount		= 0;
+		std::string				ID					= fmt::format("{}", rand());
+		std::time_t				time;
 
-		size_t					exportedMIPCount	= 0;
 		std::vector<uint32_t>	offsets;
 
-		bool					dirtyFlag			= false;
-		void*					cachedBuffer		= nullptr;
-		size_t					cachedBufferSize	= 0;
-		
-		struct MIPLevel
-		{
-			void*	buffer		= nullptr;
-			size_t	bufferSize	= 0;
+		uint8_t					channelCount		= 0;
+		uint2					WH					= { 0, 0 };
+		GUID_t					assetHandle			= -1;
 
-			void Serialize(auto& ar)
-			{
-				ar& RawBuffer{ buffer, bufferSize };
-			}
-		};
+		std::vector<std::string>	MIPFileObjects;
 
-		std::vector<MIPLevel> MIPlevels;
+		// Loaded lazily
+		std::shared_ptr<IResourceSource>	source;
+		std::vector<MIPLevel>				MIPlevels;
+
+		mutable std::string				cacheObject;
+		mutable FlexKit::TextureBuffer	cachedBuffer;
 	};
-
-
-	using TextureResource = FileObjectResource<TextureResource_IMPL, GetTypeGUID(TextureResource)>;
 
 
 	/************************************************************************************************/

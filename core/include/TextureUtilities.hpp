@@ -89,9 +89,11 @@ namespace FlexKit
 
 		void Release();
 
-		operator byte* ()	        { return Buffer; }
+		operator byte* () { return Buffer; }
+		operator void* () { return Buffer; }
 		size_t BufferSize() const   { return Size; }
 
+		void Copy(uint8_t* src, size_t size)	{ memcpy(Buffer, src, size); }
 
 		uint8_t*	Buffer			= nullptr;
 		uint2		WH				= { 0, 0 };

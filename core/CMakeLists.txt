@@ -212,6 +212,9 @@ if(WIN32)
     target_link_libraries(flex PRIVATE WINPIX)
     target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
 
+    target_compile_definitions(flex PUBLIC UNICODE)
+    target_compile_options(flex PUBLIC /UTF-8)
+
     add_custom_command(TARGET flex POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
         COMMAND_EXPAND_LISTS)
@@ -234,9 +237,6 @@ elseif(NOT DEFINED ANDROID_ABI)
         PlatformLayer_GLFW.cpp)
 
     target_link_libraries(flex PRIVATE glfw)
-
-    target_compile_definitions(flex PUBLIC UNICODE)
-    target_compile_options(flex "/UTF-8")
 endif()
 
 set_target_properties(flex PROPERTIES UNITY_BUILD ON)
@@ -250,10 +250,18 @@ function(Flex_CopyAssets TARGET)
         COMMAND_EXPAND_LISTS)
 
     if(WIN32)
-    add_custom_command(
-        TARGET ${TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
-        COMMAND_EXPAND_LISTS)
+        file(TO_NATIVE_PATH ${FLEX_ROOT}/assets SOURCEPATH)
+        file(TO_NATIVE_PATH ${PROJECT_BINARY_DIR}/assets TARGETPATH)
+
+        add_custom_command(TARGET ${TARGET} POST_BUILD
+            COMMAND @ECHO OFF || mklink /j ${TARGETPATH} ${SOURCEPATH} > nul 2> nul || echo ""
+            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+            COMMAND_EXPAND_LISTS)
+    else()
+        add_custom_command(
+            TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
+            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+            COMMAND_EXPAND_LISTS)
     endif()
 endfunction()
