@@ -47,8 +47,6 @@ vcpkg_installed
 *.recipe
 *.enc
 *.ilk
-*/TextureStreamingTest/*
-*/MergePathSortTest/*
 */GPUCache/*
 */DawnCache/*
 **/Intel® VTune™ Profiler Results/*

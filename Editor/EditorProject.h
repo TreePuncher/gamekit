@@ -127,6 +127,8 @@ public:
 	ProjectLayout						layout;
 };
 
+std::string ProjectGetObjectDirectory();
+
 
 /************************************************************************************************/
 

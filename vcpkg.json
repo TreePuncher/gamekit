@@ -29,6 +29,12 @@
     "imgui",
     "implot",
     "imguizmo",
+    {
+      "name": "llvm",
+      "features": [
+        "clang"
+      ]
+    },
     "loguru",
     "ois",
     "pkgconf",

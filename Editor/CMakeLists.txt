@@ -16,7 +16,7 @@ if(WIN32)
 
 	qt_standard_project_setup()
 
-	file (GLOB CPP_FILES "*.cpp")
+	file (GLOB CPP_FILES "*.h")
 
 	add_executable(editor
 		CSGComponent.cpp
@@ -72,8 +72,9 @@ if(WIN32)
 		TaskManager.cpp
 		TTFontLoader.cpp
 		ViewportScene.cpp
-	)
 
+		${CPP_FILES}
+	)
 
 	set(CMAKE_AUTOMOC ON)
 	set(CMAKE_AUTOUIC ON)
@@ -98,4 +99,8 @@ if(WIN32)
 	endif()
 
 	FLEX_COPYASSETS(editor)
+
+	add_custom_command(
+		TARGET editor POST_BUILD
+		COMMAND Qt6::windeployqt ARGS $<TARGET_FILE:editor>)
 endif()

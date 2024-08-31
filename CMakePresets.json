@@ -11,7 +11,8 @@
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "VERBOSE":  "ON"
+                "VCPKG_INSTALL_OPTIONS": "--clean-buildtrees-after-build",
+                "VERBOSE": "ON"
             },
             "condition": {
                 "type": "equals",

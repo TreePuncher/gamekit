@@ -1,5 +1,7 @@
 #include "PCH.h"
+#include "EditorProject.h"
 #include "EditorTextureResources.h"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -293,9 +295,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceBlob TextureResource_IMPL::CreateBlob() const
+	ResourceBlob TextureResource::CreateBlob() const
 	{
-		if(!cachedBuffer || dirtyFlag)
+		const_cast<TextureResource&>(*this).MakeLoaded();
+
+		if(!cachedBuffer.BufferSize())
 		{
 			uint32_t mipCount = std::ceilf(std::log2(FlexKit::Max(WH[0], WH[1]))) + 1;
 
@@ -321,48 +325,66 @@ namespace FlexKit
 				outputSize += MipLevelSize;
 			}
 
-			char*			compressed	= (char*)malloc(outputSize);
-			const auto		format		= FormatStringToFormatID(targetFormat);
-			const char*		buffer		= (char*)MIPlevels[0].buffer;
-
-			std::vector<TextureBuffer> mipLevels;
-			mipLevels.push_back(FlexKit::TextureBuffer{ WH, (uint8_t*)buffer, channelCount });
-
-			fmt::print("Building Mip Levels\n");
-
-			switch (channelCount)
+			if (Compressed())
 			{
-			case 3:
-				for (size_t I = 1; I < mipCount; I++)
-					mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<3, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<3, uint8_t>>>));
-				break;
-			case 4:
-				for (size_t I = 1; I < mipCount; I++)
-					mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<4, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<4, uint8_t>>>));
-				break;
+				char*		compressed	= (char*)malloc(outputSize);
+				const auto	format		= FormatStringToFormatID(targetFormat);
+				const char* buffer		= (char*)MIPlevels[0].buffer;
+
+				std::vector<TextureBuffer> mipLevels;
+				mipLevels.push_back(FlexKit::TextureBuffer{ WH, (uint8_t*)buffer, channelCount });
+
+				fmt::print("Building Mip Levels\n");
+
+				switch (channelCount)
+				{
+				case 3:
+					for (size_t I = 1; I < mipCount; I++)
+						mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<3, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<3, uint8_t>>>));
+					break;
+				case 4:
+					for (size_t I = 1; I < mipCount; I++)
+						mipLevels.emplace_back(FlexKit::BuildMipMap<Vect<4, uint8_t>, false>(mipLevels[I - 1], &FlexKit::SystemAllocator, AverageSampler<FlexKit::TextureBufferView<Vect<4, uint8_t>>>));
+					break;
+				}
+
+				/*
+					fmt::print("Compressing\n");
+
+					for (size_t I = 0; I < mipCount; I++)
+					{
+						CompressLevel(format, channelCount, mipLevels[I].WH, compressed + offsets[I], (char*)mipLevels[I].Buffer);
+
+						fmt::print("MipLevel:{} Completed\n", I);
+					}
+
+					fmt::print("Compression Completed\n");
+				*/
+			}
+			else if(MIPlevels.size() > 1)
+			{
+
+			}
+			else if (MIPlevels.size() == 1)
+			{
+				FlexKit::TextureBuffer buffer{ WH, GetElementSize(), FlexKit::SystemAllocator };
+				buffer.Copy(MIPlevels[0].buffer, MIPlevels[0].bufferSize);
+
+				cachedBuffer = std::move(buffer);
 			}
 
-			fmt::print("Compressing\n");
-
-			for (size_t I = 0; I < mipCount; I++)
-			{
-				CompressLevel(format, channelCount, mipLevels[I].WH, compressed + offsets[I], (char*)mipLevels[I].Buffer);
-
-				fmt::print("MipLevel:{} Completed\n", I);
-			}
-
-			fmt::print("Compression Completed\n");
-
+			/*
 			const_cast<std::vector<uint32_t>&>(this->offsets)	= offsets;
 			const_cast<void*&>(cachedBuffer)					= compressed;
 			const_cast<size_t&>(cachedBufferSize)				= outputSize;
 			const_cast<size_t&>(exportedMIPCount)				= mipCount;
 			const_cast<bool&>(dirtyFlag)						= true;
+			*/
 		}
 
 
 		TextureResourceBlob headerData;
-
+		/*
 		headerData.format		= FormatStringToDeviceFormat(targetFormat);
 		headerData.ResourceSize	= sizeof(headerData) + cachedBufferSize;
 		headerData.GUID			= assetHandle;
@@ -387,10 +409,163 @@ namespace FlexKit
 
 		std::cout << "_DEBUG: " __FUNCTION__ << " : Size : "		<< out.bufferSize << "\n";
 		std::cout << "_DEBUG: " __FUNCTION__ << " : MipCount : "	<< exportedMIPCount << "\n";
-
-		return out;
+		*/
+		return {};// out;
 	}
 
+
+	/************************************************************************************************/
+
+
+	bool TextureResource::Compressed() const
+	{
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint8_t	TextureResource::GetElementSize() const
+	{
+		return 1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureResource::ReloadFromSource()
+	{
+		if (!source)
+			return;
+
+		if (time < source->GetTime())
+		{	
+			auto textureResource = std::static_pointer_cast<TextureResource>(source->LoadResource());
+
+			time			= textureResource->time;
+			offsets			= textureResource->offsets;
+			channelCount	= textureResource->channelCount;
+			WH				= textureResource->WH;
+
+			MIPlevels		= std::move(textureResource->MIPlevels);
+			MIPFileObjects	= std::move(textureResource->MIPFileObjects);
+
+			cachedBuffer.Release();
+		}
+	}
+
+
+	void TextureResource::MakeLoaded()
+	{
+		if (IsStale())
+			ReloadFromSource();
+
+		MIPlevels.resize(MIPFileObjects.size());
+
+		for (auto&& [idx, filePath] : enumerate(MIPFileObjects))
+		{
+			std::filesystem::path p{ filePath };
+			if (!std::filesystem::exists(p))
+			{
+				FK_LOG_ERROR("Texture File Object Missing!: %s", filePath.c_str());
+				throw std::runtime_error{ "Texture File Object Missing!" };
+			}
+
+			auto f = fopen(filePath.c_str(), "rb");
+			if (!f)
+			{
+				FK_LOG_ERROR("Texture File Object Missing!: %s", filePath.c_str());
+				throw std::runtime_error{ "Texture File Object Missing!" };
+			}
+
+			FlexKit::LoadFileArchiveContext fileArchive{f};
+			MIPLevel loadMe;
+			fileArchive& loadMe;
+
+			MIPlevels[idx] = std::move(loadMe);
+			fclose(f);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Serialize(FlexKit::TextureBuffer& buffer, auto& ar)
+	{
+		void* _ptr = buffer;
+		size_t size = buffer.BufferSize();
+
+		RawBuffer b{ _ptr, size };
+		ar& b;
+		ar& buffer.WH;
+		ar& buffer.ElementSize;
+		ar& buffer.Memory;
+
+		buffer.Buffer	= (uint8_t*)_ptr;
+		buffer.Size		= size;
+
+		if(ar.Loading())
+			buffer.Memory = FlexKit::SystemAllocator;
+	}
+
+
+	void TextureResource::Save()
+	{
+		if (MIPFileObjects.size() < MIPlevels.size())
+			MIPFileObjects.resize(MIPlevels.size());
+
+		for (auto&& [idx, mipLevel] : enumerate(MIPlevels))
+		{
+			if (MIPFileObjects.size() < idx && MIPFileObjects[idx] == "")
+			{
+				auto fileObjectID = ProjectGetObjectDirectory() + fmt::format("{}:{}", ID, (size_t)idx);
+				MIPFileObjects[idx] = fileObjectID;
+			}
+
+			FlexKit::SaveArchiveContext context{};
+			context& mipLevel;
+
+			auto f = fopen(MIPFileObjects[idx].c_str(), "wb");
+			FlexKit::WriteBlob(context.GetBlob(), f);
+			fclose(f);
+		}
+
+		if (cachedBuffer.BufferSize())
+		{
+			FlexKit::SaveArchiveContext context{};
+			context& cachedBuffer;
+
+			cacheObject = ProjectGetObjectDirectory() + fmt::format("{}:{}", ID, "CacheBuffer");
+			auto f = fopen(cacheObject.c_str(), "wb");
+			FlexKit::WriteBlob(context.GetBlob(), f);
+			fclose(f);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureResource::SetDimensions(FlexKit::uint2 IN_WH)
+	{
+		if (WH != IN_WH)
+		{
+			MIPlevels.clear();
+
+			for (auto& filePath : MIPFileObjects)
+			{
+				std::filesystem::path p{ filePath };
+				std::filesystem::remove(filePath);
+			}
+
+			MIPFileObjects.clear();
+		}
+
+		WH = IN_WH;
+	}
 
 	/************************************************************************************************/
 
@@ -415,23 +590,22 @@ namespace FlexKit
 
 	std::shared_ptr<iResource> CreateTextureResource(float* imageBuffer, size_t imageBufferSize, uint2 WH, uint8_t channelCount, const std::string& name, const std::string& formatString)
 	{
-		auto resource = std::make_shared<TextureResource>();
-		auto& texture = resource->Object();
+		auto texture = std::make_shared<TextureResource>();
 
 		texture->channelCount	= channelCount;
 		texture->WH				= WH;
 		texture->targetFormat	= formatString;
 
 		texture->MIPlevels.push_back(
-			TextureResource_IMPL::MIPLevel{
-				.buffer			= (char*)imageBuffer,
+			TextureResource::MIPLevel{
+				.buffer			= (uint8_t*)imageBuffer,
 				.bufferSize		= imageBufferSize,
 			});
 
-		resource->SetResourceID(name);
-		resource->SetResourceGUID(rand());
+		texture->SetResourceID(name);
+		texture->SetResourceGUID(rand());
 
-		return resource;
+		return texture;
 	}
 
 
@@ -467,7 +641,8 @@ namespace FlexKit
 			return {};
 		}
 
-		auto resource = std::make_shared<TextureResource_IMPL>();
+		auto texture = std::make_shared<TextureResource>();
+		texture->SetDimensions({ mipSet.m_nWidth, mipSet.m_nHeight });
 
 		for (int I = 0, offset = 0; I < mipSet.m_nMipLevels; I++)
 		{
@@ -476,22 +651,16 @@ namespace FlexKit
 			CMP_MipLevel* mipLevel = nullptr;
 			CMP_GetMipLevel(&mipLevel, &mipSet, I, 0);
 
-			auto buffer = malloc(mipLevel->m_dwLinearSize);
-			memcpy(buffer, mipLevel->m_pbData, mipLevel->m_dwLinearSize);
-
-			resource->MIPlevels.push_back(TextureResource_IMPL::MIPLevel{
-				.buffer			= buffer,
-				.bufferSize		= mipLevel->m_dwLinearSize });
+			texture->PushMIPLevel((uint8_t*)mipLevel->m_pbData, mipLevel->m_dwLinearSize);
 		}
 
-		resource->ID			= metaData->stringID;
-		resource->WH			= { mipSet.m_nWidth, mipSet.m_nHeight };
-		resource->assetHandle	= metaData->assetID;
-		resource->targetFormat	= metaData->format;
+		texture->ID				= metaData->stringID;
+		texture->assetHandle	= metaData->assetID;
+		texture->targetFormat	= metaData->format;
 
 		CMP_FreeMipSet(&mipSet);
 
-		return resource;
+		return texture;
 	}
 
 
@@ -506,28 +675,19 @@ namespace FlexKit
 			return {};
 		}
 
-		auto resource		= std::make_unique<TextureResource>();
+		auto texture		= std::make_unique<TextureResource>();
 		const uint64_t ID	= rand();
 
-		resource->SetResourceGUID(ID);
-		resource->SetResourceID(std::format("{}", ID));
-
-		auto& texture	= resource->Object();
-		void* buffer = malloc(textureBuffer.BufferSize());
-		memcpy(buffer, textureBuffer.Buffer, textureBuffer.BufferSize());
-
-		texture->WH	= textureBuffer.WH;
-
-		texture->MIPlevels.push_back(
-			TextureResource_IMPL::MIPLevel{
-				.buffer		= buffer,
-				.bufferSize	= textureBuffer.BufferSize()
-			});
+		texture->SetResourceGUID(ID);
+		texture->SetResourceID(std::format("{}", ID));
+		texture->SetDimensions(textureBuffer.WH);
+		texture->SetChannelCount(3);
+		texture->PushMIPLevel((uint8_t*)textureBuffer.Buffer, textureBuffer.BufferSize());
 
 		texture->channelCount	= 3;
 		texture->targetFormat	= formatStr;
 
-		return resource;
+		return texture;
 	}
 
 

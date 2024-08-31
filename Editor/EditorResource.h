@@ -118,7 +118,8 @@ namespace FlexKit
 	{
 		virtual ~IResourceSource() {}
 
-		virtual Resource_ptr LoadResource() = 0;
+		virtual Resource_ptr	LoadResource() = 0;
+		virtual std::time_t		GetTime() const { return 0; }
 	};
 
 
