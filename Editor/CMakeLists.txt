@@ -95,7 +95,7 @@ if(WIN32)
 	if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MDd.lib)
 	elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MT.lib)
+		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MD.lib)
 	endif()
 
 	FLEX_COPYASSETS(editor)
