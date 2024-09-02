@@ -12,6 +12,12 @@ option(BuildEditor "Build Editor" ON)
 add_subdirectory(Core)
 add_subdirectory(Components)
 
+if(BuildEditor)
+    message("Building Editor")
+    add_subdirectory(EditorReflection)
+    add_subdirectory(Editor)
+endif()
+
 if(BuildExamples)
     message("Building Examples")
 endif()
@@ -21,10 +27,6 @@ if(BuildExperiments)
     add_subdirectory(Experiments)
 endif()
 
-if(BuildEditor)
-    message("Building Editor")
-    add_subdirectory(Editor)
-endif()
 
 #Install
 include(GNUInstallDirs)

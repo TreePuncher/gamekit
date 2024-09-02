@@ -1,7 +1,7 @@
 #Reflection Test
 cmake_minimum_required(VERSION 3.23)
 
-if(WIN32)
+if(WIN32 AND BuildEditor)
     project(Reflection)
 
     set(CMAKE_CXX_STANDARD 23)
@@ -24,20 +24,16 @@ if(WIN32)
     cmake_path(GET clangToolingLibDir PARENT_PATH libClangLibDir)
     llvm_map_components_to_libnames(llvm_libs support core irreader)
 
-    #file(GLOB clangLibs ${libClangLibDir}/clang*.lib)
-    #file(GLOB llvmLibs ${libClangLibDir}/LLVM*.lib)
     file(GLOB sourceFiles *.cpp)
 
     add_executable(ReflectionTest ${sourceFiles})
     target_link_directories(ReflectionTest PRIVATE ${libClangLibDir})
-    target_link_libraries(ReflectionTest PRIVATE fmt::fmt ${zlib_lib} ${zstd_lib} ws2_32.lib Version.lib)
-    #target_link_libraries(ReflectionTest PRIVATE ${llvmLibs} ${clangLibs})
+    target_link_libraries(ReflectionTest PRIVATE fmt::fmt ${zlib_lib} ${zstd_lib} ws2_32.lib Version.lib EditorReflection)
     target_link_libraries(ReflectionTest PRIVATE
         libclang clangAST clangBasic LLVMFrontendOpenMP
         clangParse clangLex LLVM-C
         clangToolingCore)
 
-    message("libs: ${clangLibs}")
     file(TO_NATIVE_PATH ${FLEX_ROOT}/core/include SOURCEPATH)
     file(TO_NATIVE_PATH ${PROJECT_BINARY_DIR}/assets TARGETPATH)
 
