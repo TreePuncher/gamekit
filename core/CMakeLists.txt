@@ -209,7 +209,7 @@ if(WIN32)
     target_link_libraries(flex PRIVATE scn::scn)
     target_link_libraries(flex PRIVATE RmlCore RmlDebugger)
     target_link_libraries(flex PRIVATE ZLIB-NG)
-    target_link_libraries(flex PRIVATE WINPIX)
+    target_link_libraries(flex PRIVATE WINPIX) 
     target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
 
     target_compile_definitions(flex PUBLIC UNICODE)

@@ -29,12 +29,12 @@ void PortalComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, 
 
 	triggers->CreateTrigger(FlexKit::ActivateTrigger);
 	triggers->CreateSlot(FlexKit::PortalSlot,
-		[&gameObject](void* _args, uint64_t)
+		[&gameObject](void* _args, uint64_t sceneID)
 		{
 			FlexKit::Apply(gameObject,
-			[](EditorPortalView& portalView)
+			[&](EditorPortalView& portalView)
 			{
-				portalView->sceneID;
+				portalView->sceneID = sceneID;
 			});
 		});
 
