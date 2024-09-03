@@ -17,16 +17,26 @@
 
 int main(int argc, const char* argv[])
 {
+	std::vector<std::filesystem::path> paths;
+
 	for (size_t i = 1; i < argc; i++)
 	{
-		auto results = FlexKit::ParseHeader(argv[i]);
-		if (results.has_value())
-		{
-
-		}
-		else
-			return -1;
+		std::filesystem::path p{ argv[i] };
+		if (std::filesystem::exists(p))
+			paths.push_back(p);
 	}
+
+	//paths.push_back({ "TestHeaders/Header.hpp" });
+	paths.push_back({ "TestHeaders/Clang.hpp" });
+
+	auto results = FlexKit::ParseHeaders(paths);
+
+	if (results.has_value())
+	{
+
+	}
+	else
+		return -1;
 
 	return 0;
 }

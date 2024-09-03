@@ -1,5 +1,5 @@
 #include "EditorReflection.hpp"
-
+#include <print>
 
 /************************************************************************************************/
 
@@ -10,10 +10,14 @@ namespace FlexKit
 		auto		type		= clang_getCursorType(cursor);
 		ClangString name		= clang_getCursorSpelling(cursor);
 		ClangString typeName	= clang_getTypeSpelling(type);
+		uint32_t	offset		= clang_Cursor_getOffsetOfField(cursor) / 8;
+		uint32_t	size		= clang_Type_getSizeOf(type);
 
 		Field field{
-			.type = typeName,
-			.name = name,
+			.type	= typeName,
+			.name	= name,
+			.size	= size,
+			.offset	= offset
 		};
 
 		clang_visitChildren(cursor,
@@ -26,9 +30,9 @@ namespace FlexKit
 				{
 				case CXCursor_AnnotateAttr:
 				{
-					auto type = clang_getCursorType(cursor);
-					ClangString annoation = clang_getCursorSpelling(cursor);
-					field->annotation = annoation.ToString();
+					auto type				= clang_getCursorType(cursor);
+					ClangString annoation	= clang_getCursorSpelling(cursor);
+					field->annotation		= annoation.ToString();
 				}	break;
 				default:
 					break;
@@ -66,18 +70,20 @@ namespace FlexKit
 				}	break;
 				case CXCursor_TypeRef:
 				{
-					auto spelling = ClangString(clang_getCursorSpelling(cursor)).ToString();
+					auto spelling	= ClangString(clang_getCursorSpelling(cursor)).ToString();
 					auto referenced = clang_getCursorReferenced(cursor);
 
 					struct StructInformation info;
 					info.component = true;
 					TraverseStruct(referenced, info);
+
+					data.structInfo = info;
 				}	break;
 				case CXCursor_IntegerLiteral:
 				{
-					auto tu = clang_Cursor_getTranslationUnit(cursor);
-					auto extent = clang_getCursorExtent(cursor);
-					ClangString name = clang_getCursorSpelling(cursor);
+					auto tu				= clang_Cursor_getTranslationUnit(cursor);
+					auto extent			= clang_getCursorExtent(cursor);
+					ClangString name	= clang_getCursorSpelling(cursor);
 
 					CXToken* tokens = nullptr;
 					unsigned int tokenCount;
@@ -86,9 +92,45 @@ namespace FlexKit
 					std::string str = ClangString{ clang_getTokenSpelling(tu, tokens[0]) };
 
 					IntegerLiteral integerLiteral;
-					integerLiteral.value = std::stoi(str);
-					integerLiteral.name = name.ToString();
+					integerLiteral.value	= std::stoi(str);
+					integerLiteral.name		= name.ToString();
 					data.templateArguments.push_back(integerLiteral);
+					clang_disposeTokens(tu, tokens, tokenCount);
+				}	break;
+				case CXCursor_FloatingLiteral:
+				{
+					auto tu				= clang_Cursor_getTranslationUnit(cursor);
+					auto extent			= clang_getCursorExtent(cursor);
+					ClangString name	= clang_getCursorSpelling(cursor);
+
+					CXToken* tokens = nullptr;
+					unsigned int tokenCount;
+					clang_tokenize(tu, extent, &tokens, &tokenCount);
+
+					std::string str = ClangString{ clang_getTokenSpelling(tu, tokens[0]) };
+
+					FloatLiteral literal;
+					literal.value	= std::stof(str);
+					literal.name	= name.ToString();
+					data.templateArguments.push_back(literal);
+					clang_disposeTokens(tu, tokens, tokenCount);
+				}	break;
+				case CXCursor_StringLiteral:
+				{
+					auto tu				= clang_Cursor_getTranslationUnit(cursor);
+					auto extent			= clang_getCursorExtent(cursor);
+					ClangString name	= clang_getCursorSpelling(cursor);
+
+					CXToken* tokens = nullptr;
+					unsigned int tokenCount;
+					clang_tokenize(tu, extent, &tokens, &tokenCount);
+
+					std::string str = ClangString{ clang_getTokenSpelling(tu, tokens[0]) };
+
+					StringLiteral literal;
+					literal.value	= str;
+					literal.name	= name.ToString();
+					data.templateArguments.push_back(literal);
 					clang_disposeTokens(tu, tokens, tokenCount);
 				}	break;
 				default:
@@ -99,6 +141,59 @@ namespace FlexKit
 			}, &aliasDecl);
 
 		return aliasDecl;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TypedefDecl HandleTypedefDeclaration(CXCursor cursor)
+	{
+		TypedefDecl out;
+		auto referenced = clang_getCursorReferenced(cursor);
+
+		auto cursorKind		= clang_getCursorKind(cursor);
+		auto cursorSpelling = ClangString(clang_getCursorSpelling(cursor)).ToString();
+		auto underlyingType	= clang_getTypedefDeclUnderlyingType(cursor);
+
+		out.typeSize = clang_Type_getSizeOf(underlyingType);
+		out.typeName = cursorSpelling;
+
+		switch (underlyingType.kind)
+		{
+		case CXType_Int:
+		{
+			out.kind = ObjectKind::Int;
+		}	break;
+		case CXType_UInt:
+		{
+			out.kind = ObjectKind::UInt;
+		}	break;
+		case CXType_Record:
+		{
+			out.kind = ObjectKind::Record;
+		}	break;
+		case CXType_Bool:
+		{
+			out.kind = ObjectKind::Bool;
+		}	break;
+		case CXType_Pointer:
+		{
+			out.kind = ObjectKind::Pointer;
+		}	break;
+		case CXType_Double:
+		{
+			out.kind = ObjectKind::Double;
+		}	break;
+		case CXType_Enum:
+		{
+			out.kind = ObjectKind::Enum;
+		}	break;
+		default:
+			break;
+		}
+
+		return out;
 	}
 
 
@@ -217,7 +312,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ReflectionObjects TraverseTranslationUnit(CXCursor cursor)
+	std::expected<ReflectionObjects, ParseError> TraverseTranslationUnit(CXCursor cursor)
 	{
 		ReflectionObjects objects;
 
@@ -225,15 +320,22 @@ namespace FlexKit
 			cursor,
 			[](CXCursor cursor, CXCursor parent, CXClientData client_data)
 			{
-				ReflectionObjects& objects = reinterpret_cast<ReflectionObjects&>(client_data);
+				ReflectionObjects& objects = *reinterpret_cast<ReflectionObjects*>(client_data);
 
 				auto kind = clang_getCursorKind(cursor);
 				switch (kind)
 				{
+				case CXCursor_TypedefDecl:
+				{
+					ClangString name		= clang_getCursorSpelling(cursor);
+					auto		typedefDecl	= HandleTypedefDeclaration(cursor);
+
+					objects.types.emplace_back(std::move(typedefDecl));
+				}	break;
 				case CXCursor_TypeAliasDecl:
 				{
-					ClangString name = clang_getCursorSpelling(cursor);
-					auto aliasDecl = HandleAliasDeclaration(cursor);
+					ClangString name	= clang_getCursorSpelling(cursor);
+					auto aliasDecl		= HandleAliasDeclaration(cursor);
 
 					if (aliasDecl.isComponent)
 					{
@@ -264,34 +366,61 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::expected<ParsingResults, ParseError> ParseHeader(std::filesystem::path path)
+	std::expected<ReflectionObjects, ParseError> ParseHeaders(std::span<const std::filesystem::path> paths)
 	{
-		if (!std::filesystem::exists(path) || std::filesystem::is_directory(path))
-			return std::unexpected{ ParseError::InvalidFileInput };
+		if(!paths.size())
+			return std::unexpected{ ParseError::InvalidArgument };
 
 		const char* args[] = {
 		"-std = c++23"
 		};
 
-		auto strPath = path.string();
-
 		CXIndex index = clang_createIndex(0, 0); //Create index
-		CXTranslationUnit unit = clang_parseTranslationUnit(
-			index,
-			strPath.c_str(),
-			args, 1,
-			nullptr, 0,
-			CXTranslationUnit_None); //Parse "file.cpp"
 
-		if (unit == nullptr) {
-			return std::unexpected{ ParseError::FailedToParseTranslationUnit };
+		std::vector<CXTranslationUnit> translationUnits;
+		ReflectionObjects out;
+
+		for (auto path : paths)
+		{
+			if (!std::filesystem::exists(path) || std::filesystem::is_directory(path))
+				return std::unexpected{ ParseError::InvalidArgument };
+
+			auto strPath = path.string();
+
+			CXTranslationUnit unit = clang_parseTranslationUnit(
+				index,
+				strPath.c_str(),
+				args, 1,
+				nullptr, 0,
+				CXTranslationUnit_None); //Parse "file.cpp"
+
+			if (unit == nullptr) {
+				return std::unexpected{ ParseError::FailedToParseTranslationUnit };
+			}
+			else
+			{
+				translationUnits.push_back(unit);
+
+				auto cursor = clang_getTranslationUnitCursor(unit);
+				if (auto results = TraverseTranslationUnit(cursor); results.has_value())
+				{
+					auto& [types, reflectionObjects] = results.value();
+
+					for (auto& type : types)
+						out.types.push_back(std::move(type));
+
+					for (auto& object : reflectionObjects)
+						out.components.push_back(std::move(object));
+				}
+			}
 		}
 
-		auto cursor = clang_getTranslationUnitCursor(unit);
-		TraverseTranslationUnit(cursor);
+		for(auto& unit : translationUnits)
+			clang_disposeTranslationUnit(unit);
 
-		clang_disposeTranslationUnit(unit);
 		clang_disposeIndex(index);
+
+		return out;
 	}
 
 
