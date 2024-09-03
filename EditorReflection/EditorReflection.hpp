@@ -4,7 +4,7 @@
 #include <expected>
 #include <filesystem>
 #include <variant>
-
+#include <span>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -14,10 +14,10 @@ namespace FlexKit
 	{
 		ClangString(CXString IN_str) : str{ IN_str } {}
 
-		~ClangString()					{ clang_disposeString(str); }
-		operator const char* () const	{ return clang_getCString(str); }
-		operator std::string()	const	{ return std::string{ clang_getCString(str) }; }
-		std::string ToString()	const	{ return std::string{ clang_getCString(str) }; }
+		~ClangString() { clang_disposeString(str); }
+		operator const char* () const { return clang_getCString(str); }
+		operator std::string()	const { return std::string{ clang_getCString(str) }; }
+		std::string ToString()	const { return std::string{ clang_getCString(str) }; }
 
 		CXString str;
 	};
@@ -49,6 +49,7 @@ namespace FlexKit
 		std::vector<std::string>	functions;
 		std::vector<std::string>	staticfunctions;
 		std::vector<Field>			fields;
+		size_t						size;
 	};
 
 
@@ -65,12 +66,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct ReflectionObjects
-	{
-		std::vector<ComponentDefinition> components;
-	};
-
-
 	struct TemplateType
 	{
 		std::string name;
@@ -85,8 +80,31 @@ namespace FlexKit
 	};
 
 
-	using TemplateArgument = std::variant<TemplateType, IntegerLiteral>;
+	struct FloatLiteral
+	{
+		std::string name;
+		float value;
+	};
 
+
+	struct StringLiteral
+	{
+		std::string name;
+		std::string value;
+	};
+
+	using TemplateArgument = std::variant<TemplateType, IntegerLiteral, FloatLiteral, StringLiteral>;
+
+	enum class ObjectKind
+	{
+		Int,
+		UInt,
+		Record,
+		Bool,
+		Pointer,
+		Double,
+		Enum,
+	};
 
 	struct AliasDecl
 	{
@@ -96,14 +114,23 @@ namespace FlexKit
 		std::vector<TemplateArgument>	templateArguments;
 	};
 
+	struct TypedefDecl
+	{
+		std::string							typeName;
+		ObjectKind							kind;
+		uint32_t							typeSize;
+		std::unique_ptr<StructInformation>	structDefinition;
+	};
+
 
 	/************************************************************************************************/
 
 
-	AliasDecl			HandleAliasDeclaration(CXCursor cursor);
-	Field				HandleField(CXCursor cursor);
-	void				TraverseStruct(CXCursor cursor, StructInformation& structInfo);
-	ReflectionObjects	TraverseTranslationUnit(CXCursor cursor);
+	struct ReflectionObjects
+	{
+		std::vector<TypedefDecl>			types;
+		std::vector<ComponentDefinition>	components;
+	};
 
 
 	/************************************************************************************************/
@@ -112,20 +139,19 @@ namespace FlexKit
 	enum class ParseError
 	{
 		UNKNOWN,
-		InvalidFileInput,
+		InvalidArgument,
 		FailedToParseTranslationUnit
-	};
-
-	struct ParsingResults
-	{
-
 	};
 
 
 	/************************************************************************************************/
 
 
-	std::expected<ParsingResults, ParseError> ParseHeader(std::filesystem::path path);
+	AliasDecl										HandleAliasDeclaration(CXCursor cursor);
+	Field											HandleField(CXCursor cursor);
+	void											TraverseStruct(CXCursor cursor, StructInformation& structInfo);
+	std::expected<ReflectionObjects, ParseError>	TraverseTranslationUnit(CXCursor cursor);
+	std::expected<ReflectionObjects, ParseError>	ParseHeaders(std::span<const std::filesystem::path> paths);
 
 
 }	/************************************************************************************************/

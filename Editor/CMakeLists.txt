@@ -84,6 +84,7 @@ if(WIN32)
 	target_include_directories(editor PRIVATE "${FLEX_ROOT}/ThirdParty/cmp/include")
 	target_include_directories(editor PRIVATE $<BUILD_INTERFACE:${AUTOGEN_INCLUDE_DIR}>)
 
+	target_link_libraries(editor PRIVATE EditorReflection)
 	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
 	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
 	
