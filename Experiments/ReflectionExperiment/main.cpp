@@ -1,12 +1,3 @@
-#include <llvm/IR/Module.h>
-#include <llvm/IR/PassManager.h>
-#include <llvm/IR/IRBuilder.h>
-// Declares clang::SyntaxOnlyAction.
-#include "clang/Frontend/FrontendActions.h"
-#include "clang/Tooling/CommonOptionsParser.h"
-#include "clang/Tooling/Tooling.h"
-// Declares llvm::cl::extrahelp.
-#include "llvm/Support/CommandLine.h"
 #include <clang-c/Index.h>
 #include <iostream>
 #include <string>

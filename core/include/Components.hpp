@@ -252,7 +252,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	#pragma pack(push, 1)
+
+#ifdef WIN32
+#pragma pack(push, 1)
+#endif
+
 	struct ComponentViewContainer
 	{
 		ComponentViewContainer() = default;
@@ -309,7 +313,13 @@ namespace FlexKit
 
 		uint8_t		componentSize = 0;
 	};
-	#pragma pack(pop)
+
+#ifdef WIN32
+#pragma pack(pop)
+#endif
+
+
+	/************************************************************************************************/
 
 
 	class GameObject

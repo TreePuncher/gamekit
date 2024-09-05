@@ -138,7 +138,7 @@ namespace FlexKit
 
 	enum class ParseError
 	{
-		UNKNOWN,
+		Unknown,
 		InvalidArgument,
 		FailedToParseTranslationUnit
 	};
@@ -151,7 +151,7 @@ namespace FlexKit
 	Field											HandleField(CXCursor cursor);
 	void											TraverseStruct(CXCursor cursor, StructInformation& structInfo);
 	std::expected<ReflectionObjects, ParseError>	TraverseTranslationUnit(CXCursor cursor);
-	std::expected<ReflectionObjects, ParseError>	ParseHeaders(std::span<const std::filesystem::path> paths);
+	std::expected<ReflectionObjects, ParseError>	ParseHeaders(std::span<const std::filesystem::path> paths, std::span<const std::filesystem::path> includePaths = {});
 
 
 }	/************************************************************************************************/

@@ -29,12 +29,6 @@
     "imgui",
     "implot",
     "imguizmo",
-    {
-      "name": "llvm",
-      "features": [
-        "clang"
-      ]
-    },
     "loguru",
     "ois",
     "pkgconf",
@@ -51,7 +45,7 @@
     "usd",
     "zlib-ng"
   ],
-  "builtin-baseline": "ad25766aefb5313b6bc4e2a4b78a2946f84fbf66",
+  "builtin-baseline": "91d888703f251c13111c1b889be1f350c4ceb7ab",
   "overrides": [
     {
       "name": "physx",
