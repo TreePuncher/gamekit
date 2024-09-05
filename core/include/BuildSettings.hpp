@@ -118,7 +118,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FLEXKITINTERNAL
 
+
+#ifdef WIN32
 #include <assert.h>
+#endif
+#ifdef REFLECTOR
+#define assert(A)
+#endif
+
 #include <cstdint>
 
 #ifdef _DEBUG
@@ -218,6 +225,7 @@ template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
 #define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 
+#if WIN32
 #define NOMINMAX
 #define WINDOWS_LEAN_AND_MEAN
 #include <Windows.h>
@@ -230,6 +238,7 @@ template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
 #ifdef GetFirstChild
 #undef GetFirstChild
+#endif
 #endif
 
 #endif//BUILDSETTING_H

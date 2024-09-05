@@ -351,6 +351,19 @@ namespace FlexKit
 					StructInformation	structInfo;
 					TraverseStruct(cursor, structInfo);
 				}	break;
+
+				case CXCursor_FunctionTemplate:
+				{
+					ClangString name = clang_getCursorSpelling(cursor);
+					std::string nameStr = name;
+					int x = 0;
+				}	break;
+				case CXCursor_ClassTemplate:
+				{
+					ClangString name = clang_getCursorSpelling(cursor);
+					std::string nameStr = name;
+					int x = 0;
+				}	break;
 				default:
 					int x = 0;
 					break;
@@ -366,14 +379,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::expected<ReflectionObjects, ParseError> ParseHeaders(std::span<const std::filesystem::path> paths)
+	std::expected<ReflectionObjects, ParseError> ParseHeaders(std::span<const std::filesystem::path> paths, std::span<const std::filesystem::path> includePaths)
 	{
 		if(!paths.size())
 			return std::unexpected{ ParseError::InvalidArgument };
 
-		const char* args[] = {
-		"-std = c++23"
+		std::vector<const char*> args = {
+			"-std=c++23",
+			"-DREFLECTOR=1",
+			"-D__cplusplus",
+			"-D_HAS_CXX23",
+			"--include-directory=stl/",
+			"--include-directory=core/"
 		};
+
+		std::vector<std::string> strings = {};
+
+		for(auto&& include : includePaths)
+			strings.emplace_back(std::format("--include-directory={}", include.string()));
+
+		for (const std::string& string : strings)
+			args.push_back(string.c_str());
 
 		CXIndex index = clang_createIndex(0, 0); //Create index
 
@@ -390,7 +416,7 @@ namespace FlexKit
 			CXTranslationUnit unit = clang_parseTranslationUnit(
 				index,
 				strPath.c_str(),
-				args, 1,
+				args.data(), args.size(),
 				nullptr, 0,
 				CXTranslationUnit_None); //Parse "file.cpp"
 
