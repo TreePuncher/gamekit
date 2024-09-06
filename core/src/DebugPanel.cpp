@@ -112,8 +112,6 @@ namespace FlexKit
 
 	bool DebugPanel::EventHandler(Event evt)
 	{
-
-
 		if (evt.InputSource == Event::Keyboard)
 		{
 			switch (evt.Action)
@@ -157,8 +155,7 @@ namespace FlexKit
 			}
 		}
 
-		if (auto res = framework.debugUI->HandleInput(evt); res)
-			return true;
+		return framework.debugUI->HandleInput(evt);
 	}
 
 

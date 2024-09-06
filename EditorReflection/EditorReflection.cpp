@@ -389,8 +389,11 @@ namespace FlexKit
 			"-DREFLECTOR=1",
 			"-D__cplusplus",
 			"-D_HAS_CXX23",
+			"-D__x86_64__",
 			"--include-directory=stl/",
-			"--include-directory=core/"
+			//"--include-directory=cxx/",
+			"--include-directory=core/",
+			"--include-directory=include/"
 		};
 
 		std::vector<std::string> strings = {};
@@ -413,12 +416,14 @@ namespace FlexKit
 
 			auto strPath = path.string();
 
-			CXTranslationUnit unit = clang_parseTranslationUnit(
+			CXTranslationUnit unit = nullptr;
+			auto res = clang_parseTranslationUnit2(
 				index,
 				strPath.c_str(),
 				args.data(), args.size(),
 				nullptr, 0,
-				CXTranslationUnit_None); //Parse "file.cpp"
+				CXTranslationUnit_None,
+				&unit); //Parse "file.cpp"
 
 			if (unit == nullptr) {
 				return std::unexpected{ ParseError::FailedToParseTranslationUnit };
@@ -426,6 +431,16 @@ namespace FlexKit
 			else
 			{
 				translationUnits.push_back(unit);
+
+				auto numDiagnostics = clang_getNumDiagnostics(unit);
+				for (unsigned int i = 0; i < numDiagnostics; i++)
+				{
+					auto diagnostic = clang_getDiagnostic(unit, i);
+					auto message = clang_formatDiagnostic(diagnostic, CXDiagnostic_DisplaySourceLocation | CXDiagnostic_DisplayColumn | CXDiagnostic_DisplayCategoryName);
+
+					std::print("{}\n", clang_getCString(message));
+				}
+
 
 				auto cursor = clang_getTranslationUnitCursor(unit);
 				if (auto results = TraverseTranslationUnit(cursor); results.has_value())

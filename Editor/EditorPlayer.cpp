@@ -3,7 +3,7 @@
 #include <boost/interprocess/mapped_region.hpp>
 #include <SharedEngineMemory.hpp>
 
-#include <scn/all.h>
+#include <scn/scan.h>
 #include <string_view>
 
 #include "Win32Graphics.hpp"

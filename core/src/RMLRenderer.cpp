@@ -37,18 +37,20 @@ namespace FlexKit
 
 		void End();
 
-		void RenderGeometry(struct Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override;
+		Rml::CompiledGeometryHandle	CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override { return 0u; }
+		void						RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override;
+		void						ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override {}
+
 
 		void EnableScissorRegion(bool enable) override;
 
-		void SetScissorRegion(int x, int y, int width, int height) override;
+		void SetScissorRegion(Rml::Rectanglei region);
 		void SetTransform(const Rml::Matrix4f* IN_transform) override;
 
-		bool LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source) override;
-		bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source, const Rml::Vector2i& source_dimensions) override;
-		void ReleaseTexture(Rml::TextureHandle texture) override;
+		Rml::TextureHandle	LoadTexture		(Rml::Vector2i& texture_dimensions, const Rml::String& source) override;
+		Rml::TextureHandle	GenerateTexture	(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions) override;
+		void				ReleaseTexture	(Rml::TextureHandle texture) override;
 
-	
 		BeginResources*		pass			= nullptr;
 		Context*			ctx				= nullptr;
 		iAllocator*			allocator		= nullptr;
@@ -227,8 +229,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RmlRenderer::RenderGeometry(Rml::Vertex* vertices, int num_vertices, int* indices, int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation)
+	void RmlRenderer::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture)
 	{
+		/*
 		if (!ctx)
 			return;
 
@@ -288,6 +291,7 @@ namespace FlexKit
 		ctx->SetGraphicsConstantValue(0, 2, &wh, 16);
 		ctx->SetGraphicsConstantValue(0, 2, &translation, 18);
 		ctx->DrawIndexed(num_indices);
+		*/
 	}
 
 
@@ -318,7 +322,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RmlRenderer::SetScissorRegion(int x, int y, int width, int height) 
+	void RmlRenderer::SetScissorRegion(Rml::Rectanglei region)
 	{
 		if (!ctx)
 			return;
@@ -326,10 +330,10 @@ namespace FlexKit
 		ctx->SetScissorRects(
 			{
 				D3D12_RECT{
-					.left	= abs(x),
-					.top	= abs(y),
-					.right	= width,
-					.bottom = height
+					.left	= region.Left(),
+					.top	= region.Top(),
+					.right	= region.Right(),
+					.bottom = region.Bottom()
 				}
 			});
 	}
@@ -354,7 +358,7 @@ namespace FlexKit
 
 	extern "C" { unsigned char* stbi_load(const char*, int*, int*, int*, int); };
 
-	bool RmlRenderer::LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions, const Rml::String& source)
+	Rml::TextureHandle RmlRenderer::LoadTexture(Rml::Vector2i& texture_dimensions, const Rml::String& source)
 	{
 		if(std::filesystem::exists(source))
 		{
@@ -448,9 +452,10 @@ namespace FlexKit
 
 			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
-			texture_handle = std::hash<uint64_t>{}(resource);
-			textures.insert(texture_handle, { res.value(), resource });
-			return true;
+			uint64_t textureHandle = std::hash<uint64_t>{}(resource);
+			textures.insert(textureHandle, { res.value(), resource });
+
+			return textureHandle;
 		}
 
 		return false;
@@ -460,7 +465,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool RmlRenderer::GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source, const Rml::Vector2i& source_dimensions)
+	Rml::TextureHandle RmlRenderer::GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i source_dimensions)
 	{
 		if (!ctx)
 		{
@@ -473,7 +478,7 @@ namespace FlexKit
 			if (uploadSpace)
 				return false;
 
-			memcpy(uploadSpace.buffer, source, bufferSize);
+			memcpy(uploadSpace.buffer, source.data(), source.size());
 			ctx->AddCopyResourceBarrier(resource, FlexKit::DASCommon, FlexKit::DASCopyDest);
 			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
 			ctx->AddCopyResourceBarrier(resource, FlexKit::DASCopyDest, FlexKit::DASCommon);
@@ -484,10 +489,10 @@ namespace FlexKit
 
 			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
-			texture_handle = std::hash<uint64_t>{}(resource);
+			uint64_t texture_handle = std::hash<uint64_t>{}(resource);
 			textures.insert(texture_handle, { res.value(), resource });
 
-			return true;
+			return texture_handle;
 		}
 		else
 		{
@@ -499,7 +504,7 @@ namespace FlexKit
 			auto& copyContext	= renderSystem._GetCopyContext(copyHandle);
 
 			auto uploadSpace = copyContext.Reserve(bufferSize);
-			memcpy(uploadSpace.buffer, source, bufferSize);
+			memcpy(uploadSpace.buffer, source.data(), source.size());
 			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
 
 			const auto res = renderSystem._AllocateDescriptorRange(1);
@@ -508,11 +513,13 @@ namespace FlexKit
 
 			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
-			texture_handle = std::hash<uint64_t>{}(resource);
+			uint64_t texture_handle = std::hash<uint64_t>{}(resource);
 			textures.insert(texture_handle, { res.value(), resource });
 
-			return true;
+			return texture_handle;
 		}
+
+		return 0u;
 	}
 
 

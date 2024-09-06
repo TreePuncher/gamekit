@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <expected>
 #include <EditorReflection.hpp>
+#include <containers.hpp>
 
 int main(int argc, const char* argv[])
 {
@@ -17,8 +18,9 @@ int main(int argc, const char* argv[])
 			paths.push_back(p);
 	}
 
-	//paths.push_back({ "TestHeaders/Header.hpp" });
-	paths.push_back({ "TestHeaders/Clang.hpp" });
+	int x = sizeof(FlexKit::Vector<int>);
+
+	paths.push_back("testHeaders/clang.hpp");
 
 	auto results = FlexKit::ParseHeaders(paths);
 

@@ -3,7 +3,6 @@
 #include "Logging.hpp"
 #include <cstring>
 #include <loguru/loguru.hpp>
-#include <loguru/loguru.cpp>
 #include <stdarg.h>
 #include <string>
 #include <stacktrace>
