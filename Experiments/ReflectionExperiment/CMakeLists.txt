@@ -15,7 +15,7 @@ if(WIN32 AND BuildEditor)
 
     add_executable(ReflectionTest ${sourceFiles})
     target_link_directories(ReflectionTest PRIVATE ${libClangLibDir})
-    target_link_libraries(ReflectionTest PRIVATE fmt::fmt ${zlib_lib} ${zstd_lib} ws2_32.lib Version.lib EditorReflection)
+    target_link_libraries(ReflectionTest PRIVATE fmt::fmt ${zlib_lib} ${zstd_lib} ws2_32.lib Version.lib EditorReflection flex)
 
     file(TO_NATIVE_PATH ${FLEX_ROOT}/core/include SOURCEPATH)
     file(TO_NATIVE_PATH ${PROJECT_BINARY_DIR}/assets TARGETPATH)
@@ -28,5 +28,9 @@ if(WIN32 AND BuildEditor)
 
     add_custom_command(TARGET ReflectionTest POST_BUILD
         COMMAND @ECHO OFF || mklink /j ${TARGETPATH} ${SOURCEPATH} > nul 2> nul || echo "")
+
+    add_custom_command(TARGET ReflectionTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:ReflectionTest> $<TARGET_FILE_DIR:ReflectionTest>
+        COMMAND_EXPAND_LISTS)
 endif()
 

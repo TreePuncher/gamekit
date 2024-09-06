@@ -8,6 +8,8 @@
 
 #if USING(USESTL)
 
+typedef int CONTAINERS_HPP_0;
+
 #include <atomic>
 #include <deque>
 #include <list>
@@ -23,6 +25,7 @@
 #include <type_traits>
 #include <concepts>
 
+typedef int CONTAINERS_HPP_1;
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -868,7 +871,7 @@ namespace FlexKit
 
 		iAllocator* Allocator	= 0;
 
-		[[no_unique_address]] _VectorBuffer<Ty, InternalBufferSize> internalBuffer;
+		NO_UNIQUE_ADDRESS _VectorBuffer<Ty, InternalBufferSize> internalBuffer;
 
 
 	};	/************************************************************************************************/

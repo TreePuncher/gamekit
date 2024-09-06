@@ -2,7 +2,12 @@
 #pragma warning(disable : 4201)
 
 // Includes
+
+typedef int MATHUTILITIES_HPP_0;
+
 #include "BuildSettings.hpp"
+
+typedef int MATHUTILITIES_HPP_1;
 
 #include <bit>
 #include <bitset>
@@ -15,6 +20,8 @@
 #include <tuple>
 #include <type_traits>
 
+typedef int MATHUTILITIES_HPP_2;
+
 #include <simde/simde-common.h>
 #if defined(__x86_64__) || defined(_M_X64)
 #include <immintrin.h>
@@ -22,6 +29,8 @@
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #include <simde/arm/neon.h>
 #endif
+
+typedef int MATHUTILITIES_HPP_3;
 
 #ifdef __clang__
 #include <range/v3/view/iota.hpp>

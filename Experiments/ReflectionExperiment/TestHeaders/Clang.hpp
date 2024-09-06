@@ -1,5 +1,8 @@
-#include <vector>
 #include <cstdint>
+#include <vector>
+
+#include "BuildSettings.hpp"
+#include <Containers.hpp>
 
 template<typename TY, int i = 0>
 struct ComponentBase {};
@@ -7,15 +10,16 @@ struct ComponentBase {};
 template<typename TY, int i = 0>
 struct BasicComponent_t {};
 
-#define PROPERTY(AA)		__attribute__((annotate("Property(" ##AA ")")))
+#define PROPERTY(AA)		__attribute__((annotate(##AA)))
 #define PROPERTYFIELD		__attribute__((annotate("Field")))
 #define PROPERTYFIELDTYPE	__attribute__((annotate("Field")))
 
 struct HelloWorld
 {   //asdf
-	PROPERTY("Min: 0.0f; Max: 0.0f")	uint32_t				width;
-	PROPERTY("Max: 0.0f; Max: 0.0f")	uint32_t				height;
-	PROPERTY("MaxSize 1024")			std::vector<uint32_t>	items;
+	PROPERTY("Min: 0.0f; Max: 0.0f")	uint32_t			width;
+	PROPERTY("Max: 0.0f; Max: 0.0f")	uint32_t			height;
+	PROPERTY("MaxSize 1024")			std::vector<int>		items0;
+	PROPERTY("MaxSize 1024")			FlexKit::Vector<int>	items1;
 };
 
 using HelloWorldComponent = BasicComponent_t<HelloWorld, 1>;
