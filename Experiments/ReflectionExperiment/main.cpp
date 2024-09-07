@@ -1,6 +1,6 @@
 #include <clang-c/Index.h>
-#include <iostream>
 #include <string>
+#include <print>
 #include <cstdint>
 #include <filesystem>
 #include <expected>
@@ -26,7 +26,16 @@ int main(int argc, const char* argv[])
 
 	if (results.has_value())
 	{
+		auto&& [types, componentObjects] = results.value();
 
+		std::print("Components found!\n");
+
+		for (auto& object : componentObjects)
+		{
+			std::print("Component Name: {}\n", object.componentName);
+			for(auto& field : object.fields)
+				std::print("\t Field Name: {}, Type: {}, Options: {}\n", field.name, field.type, field.annotation);
+		}
 	}
 	else
 		return -1;

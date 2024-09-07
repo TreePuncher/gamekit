@@ -186,8 +186,20 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
 
 	gameResExporter		{ std::make_unique<GameResExporter>( project ) },
-	projectConnector	{ std::make_unique<EditorProjectScriptConnector>(&mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project) }
+	projectConnector	{ std::make_unique<EditorProjectScriptConnector>(&mainWindow.Get3DView(), mainWindow.GetSelectionCtx(), project) },
+	settings			{ "MonotoneZombie", "Flex" },
+	components			{ project }
 {
+	QApplication::setApplicationName("Flex");
+	QApplication::setOrganizationName("MonotoneZombie");
+
+	auto previousPath = settings.value("project_directory", QDir::currentPath()).toString().toStdString();
+
+	project.onHeaderAdded.Connect(components.onHeaderAdded);
+
+	if(previousPath != std::filesystem::current_path())
+		project.LoadProject(previousPath);
+
 	currentProject = &project;
 
 	SceneBrushEditorComponent::Register(project, mainWindow.Get3DView());
@@ -199,14 +211,23 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 	qApp->setStyle(QStyleFactory::create("fusion"));
 
-	mainWindow.AddImporter(gltfImporter.get());
-	mainWindow.AddImporter(usdImporter.get());
-	mainWindow.AddImporter(textureImporter.get());
+	mainWindow.AddFileAction(
+		"New Project",
+		[&]()
+		{
+			const auto saveText			= std::string{ "Create Project" };
+			const auto fileMenuText		= std::string{ "Files (*.proj)" };
+			const auto fileDir			= QFileDialog::getExistingDirectory(nullptr, saveText.c_str(), settings.value("project_directory").toString());
 
-	mainWindow.AddExporter(gameResExporter.get());
+			auto newProjectFileDirectory = fileDir.toStdString();
+			if(std::filesystem::exists(newProjectFileDirectory + R"(\flex.proj)"))
+				project.LoadProject(currentProjectFile);
+			else
+				project.CreateProjectFileStructure(newProjectFileDirectory);
 
-	projectConnector->Register(*scripts);
-	scripts->LoadModules();
+			currentProjectFile = newProjectFileDirectory + R"(\flex.proj)";
+			settings.setValue("project_directory", QString{ currentProjectFile.c_str() });
+		});
 
 	mainWindow.AddFileAction(
 		"Save",
@@ -219,7 +240,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 			{
 				const auto saveText		= std::string{ "Save Project" };
 				const auto fileMenuText	= std::string{ "Files (*.proj)" };
-				const auto fileDir		= QFileDialog::getSaveFileName(nullptr, saveText.c_str(), QDir::currentPath(), fileMenuText.c_str());
+				const auto fileDir		= QFileDialog::getSaveFileName(nullptr, saveText.c_str(), QString{ currentProjectFile.c_str() }, fileMenuText.c_str());
 
 				currentProjectFile = fileDir.toStdString();
 			}
@@ -238,6 +259,16 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 
 			project.LoadProject(currentProjectFile);
 		});
+
+	mainWindow.SetupMenus();
+	mainWindow.AddImporter(gltfImporter.get());
+	mainWindow.AddImporter(usdImporter.get());
+	mainWindow.AddImporter(textureImporter.get());
+	mainWindow.AddExporter(gameResExporter.get());
+
+	projectConnector->Register(*scripts);
+	scripts->LoadModules();
+
 
 	auto quitAction = mainWindow.GetFileMenu()->addAction("Quit");
 	quitAction->setShortcut(QKeySequence::Quit);

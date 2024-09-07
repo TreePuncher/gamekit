@@ -27,6 +27,7 @@ if(WIN32)
 		EditorApplication.cpp
 		EditorCodeEditor.cpp
 		EditorColliderComponent.cpp
+		EditorComponentTable.cpp
 		EditorGameplayComponents.cpp
 		EditorInspectors.cpp
 		EditorInspectorView.cpp
@@ -72,9 +73,7 @@ if(WIN32)
 		TaskManager.cpp
 		TTFontLoader.cpp
 		ViewportScene.cpp
-
-		${CPP_FILES}
-	)
+		${CPP_FILES})
 
 	set(CMAKE_AUTOMOC ON)
 	set(CMAKE_AUTOUIC ON)

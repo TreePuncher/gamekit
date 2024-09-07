@@ -55,6 +55,8 @@ public:
 
 	void Release();
 
+	void					SetupMenus();
+
 	void					AddImporter(iEditorImportor* importer);
 	void					AddExporter(iEditorExporter* exporter);
 

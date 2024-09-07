@@ -33,58 +33,8 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	viewport		{ std::make_unique<EditorViewport>( IN_renderer, selectionContext, this ) },
 	tabBar			{ new QTabWidget{} }
 {
-	fileMenu	= menuBar()->addMenu("File");
-	editMenu	= menuBar()->addMenu("Edit");
-	importMenu	= fileMenu->addMenu("Import");
-	exportMenu	= fileMenu->addMenu("Export");
-
-	tabBar->addTab(viewport.get(), "Scene");
-	tabBar->addTab(prefabEditor.get(), "Prefab");
-
-	setCentralWidget(tabBar);
-
-	auto viewMenu	= menuBar()->addMenu("View");
-	auto Add3DView	= viewMenu->addAction("ViewPort");
-	connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
-
-	auto AddTextView = viewMenu->addAction("Text Editor");
-	connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
-
-	auto addResourceView = viewMenu->addAction("Resource Browser");
-	connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
-
-	auto addTextureView = viewMenu->addAction("Texture View");
-	connect(addTextureView, &QAction::triggered, this, [&] { AddTextureViewer(); });
-
-	auto addCodeEditor = viewMenu->addAction("Code Editor");
-	connect(addCodeEditor, &QAction::triggered, this, [&] { AddEditorView(); });
-
-	auto addTextOutput = viewMenu->addAction("Log Viewer");
-	connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
-
-	auto addInspector = viewMenu->addAction("Inspector");
-	connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
-
-	auto addOutliner = viewMenu->addAction("Scene Outliner");
-	connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
-
-	auto addTaskManager = viewMenu->addAction("Task Manager");
-	connect(addTaskManager, &QAction::triggered, this, [&] { AddTaskManager(); });
-
-	auto tools = menuBar()->addMenu("Tools");
-	gadgetMenu = tools->addMenu("Scripts");
-
-	auto undo = editMenu->addAction("Undo");
-	connect(undo, &QAction::triggered, []() { Undo(); });
-
-	auto redo = editMenu->addAction("Redo");
-	connect(redo, &QAction::triggered, []() { Redo(); });
-
-	auto undoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Z", "Edit|Undo")), this);
-	connect(undoHotKey, &QShortcut::activated, [&]() { Undo(); });
-
-	auto redoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Y", "Edit|Redo")), this);
-	connect(redoHotKey, &QShortcut::activated, []() { Redo(); });
+	fileMenu = menuBar()->addMenu("File");
+	editMenu = menuBar()->addMenu("Edit");
 
 	auto timer = new QTimer{ this };
 	connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);
@@ -151,6 +101,64 @@ void EditorMainWindow::AddOutputView()
 	output->SetInputSource([&]() -> const std::string& { return scriptEngine.GetTextBuffer(); }, 0);
 
 	addDockWidget(Qt::RightDockWidgetArea, docklet);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorMainWindow::SetupMenus()
+{
+	importMenu	= fileMenu->addMenu("Import");
+	exportMenu	= fileMenu->addMenu("Export");
+
+	tabBar->addTab(viewport.get(), "Scene");
+	tabBar->addTab(prefabEditor.get(), "Prefab");
+
+	setCentralWidget(tabBar);
+
+	auto viewMenu	= menuBar()->addMenu("View");
+	auto Add3DView	= viewMenu->addAction("ViewPort");
+	connect(Add3DView, &QAction::triggered, this, &EditorMainWindow::AddViewPort);
+
+	auto AddTextView = viewMenu->addAction("Text Editor");
+	connect(AddTextView, &QAction::triggered, this, &EditorMainWindow::AddTextView);
+
+	auto addResourceView = viewMenu->addAction("Resource Browser");
+	connect(addResourceView, &QAction::triggered, this, &EditorMainWindow::AddResourceList);
+
+	auto addTextureView = viewMenu->addAction("Texture View");
+	connect(addTextureView, &QAction::triggered, this, [&] { AddTextureViewer(); });
+
+	auto addCodeEditor = viewMenu->addAction("Code Editor");
+	connect(addCodeEditor, &QAction::triggered, this, [&] { AddEditorView(); });
+
+	auto addTextOutput = viewMenu->addAction("Log Viewer");
+	connect(addTextOutput, &QAction::triggered, this, [&] { AddOutputView(); });
+
+	auto addInspector = viewMenu->addAction("Inspector");
+	connect(addInspector, &QAction::triggered, this, [&] { AddInspector(); });
+
+	auto addOutliner = viewMenu->addAction("Scene Outliner");
+	connect(addOutliner, &QAction::triggered, this, [&] { AddSceneOutliner(); });
+
+	auto addTaskManager = viewMenu->addAction("Task Manager");
+	connect(addTaskManager, &QAction::triggered, this, [&] { AddTaskManager(); });
+
+	auto tools = menuBar()->addMenu("Tools");
+	gadgetMenu = tools->addMenu("Scripts");
+
+	auto undo = editMenu->addAction("Undo");
+	connect(undo, &QAction::triggered, []() { Undo(); });
+
+	auto redo = editMenu->addAction("Redo");
+	connect(redo, &QAction::triggered, []() { Redo(); });
+
+	auto undoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Z", "Edit|Undo")), this);
+	connect(undoHotKey, &QShortcut::activated, [&]() { Undo(); });
+
+	auto redoHotKey = new QShortcut(QKeySequence(tr("Ctrl+Y", "Edit|Redo")), this);
+	connect(redoHotKey, &QShortcut::activated, []() { Redo(); });
 }
 
 

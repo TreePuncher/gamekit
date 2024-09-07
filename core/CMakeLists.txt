@@ -255,7 +255,7 @@ function(Flex_CopyAssets TARGET)
         file(TO_NATIVE_PATH ${PROJECT_BINARY_DIR}/assets TARGETPATH)
 
         add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND @ECHO OFF || mklink /j ${TARGETPATH} ${SOURCEPATH} > nul 2> nul || echo ""
+            COMMAND mklink /j ${TARGETPATH} ${SOURCEPATH} || echo ""
             COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
             COMMAND_EXPAND_LISTS)
     else()

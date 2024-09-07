@@ -391,7 +391,6 @@ namespace FlexKit
 			"-D_HAS_CXX23",
 			"-D__x86_64__",
 			"--include-directory=stl/",
-			//"--include-directory=cxx/",
 			"--include-directory=core/",
 			"--include-directory=include/"
 		};
