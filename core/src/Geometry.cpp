@@ -47,7 +47,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView::VertexBufferView(char* _ptr, size_t size )
+	VertexBufferView::VertexBufferView(std::byte* _ptr, size_t size )
 	{
 		mBufferinError     = true;
 		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
@@ -60,7 +60,7 @@ namespace FlexKit
 	}
 
 
-    VertexBufferView::VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type)
+    VertexBufferView::VertexBufferView(std::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type)
     {
         mBufferinError     = false;
 		mBufferFormat      = format;
@@ -76,7 +76,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView::~VertexBufferView( void )
+	VertexBufferView::~VertexBufferView()
 	{}
 
 
@@ -98,7 +98,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView& VertexBufferView::operator = ( const VertexBufferView& RHS )
+	VertexBufferView& VertexBufferView::operator = (const VertexBufferView& RHS)
 	{
 		if( &RHS != this )
 		{
@@ -141,7 +141,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void VertexBufferView::Begin( VERTEXBUFFER_TYPE Type, VERTEXBUFFER_FORMAT Format )
+	void VertexBufferView::Begin(VERTEXBUFFER_TYPE Type, VERTEXBUFFER_FORMAT Format)
 	{
 		mBufferinError         = false;
 		mBufferType            = Type;
@@ -173,7 +173,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	char* VertexBufferView::GetBuffer() const
+	std::byte* VertexBufferView::GetBuffer() const
 	{
 		return mBuffer;
 	}
@@ -251,8 +251,8 @@ namespace FlexKit
 
 	FLEXKITAPI VertexBufferView* CreateVertexBufferView(iAllocator* allocator, const size_t BufferLength )
 	{
-        auto Memory = (char*)allocator->_aligned_malloc(BufferLength);
-		return new (Memory) VertexBufferView( Memory + sizeof(VertexBufferView), BufferLength - sizeof(VertexBufferView));
+        auto Memory = (std::byte*)allocator->_aligned_malloc(BufferLength);
+		return new (Memory) VertexBufferView(Memory + sizeof(VertexBufferView), BufferLength - sizeof(VertexBufferView));
 	}
 	
 

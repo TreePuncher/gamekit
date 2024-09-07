@@ -376,11 +376,11 @@ namespace FlexKit
 			const size_t rowPitch	= FlexKit::AlignedSize(w * sizeof(FlexKit::RGBA), 256);
 			const size_t bufferSize = rowPitch * h;
 
-			FlexKit::TextureBuffer sourceBuffer{ { w, h }, (byte*)img, (size_t)FlexKit::Max(channels, 3)};
+			FlexKit::TextureBuffer sourceBuffer{ { w, h }, (std::byte*)img, (size_t)FlexKit::Max(channels, 3)};
 
 			FlexKit::TextureBuffer buffer{
 				FlexKit::uint2{ (uint32_t)w, (uint32_t)h },
-				(byte*)renderSystem.Memory->_aligned_malloc(rowPitch * h, 256),
+				(std::byte*)renderSystem.Memory->_aligned_malloc(rowPitch * h, 256),
 				bufferSize,
 				sizeof(FlexKit::RGBA),
 				renderSystem.Memory
@@ -400,10 +400,10 @@ namespace FlexKit
 					{
 						auto r = inputView[{ x, y }].Red;
 						outputView[{x, y}] = {
-							.Red	= unsigned char(r),
-							.Green	= unsigned char(r),
-							.Blue	= unsigned char(r),
-							.Alpha	= 0xff
+							.Red	= std::byte(r),
+							.Green	= std::byte(r),
+							.Blue	= std::byte(r),
+							.Alpha	= std::byte(0xff)
 						};
 					}	break;
 					case 2:
@@ -411,10 +411,10 @@ namespace FlexKit
 						auto r = inputView[{ x, y }].Red;
 						auto g = inputView[{ x, y }].Green;
 						outputView[{x, y}] = {
-							.Red	= unsigned char(r),
-							.Green	= unsigned char(g),
-							.Blue	= 0x00,
-							.Alpha	= 0xff
+							.Red	= std::byte(r),
+							.Green	= std::byte(g),
+							.Blue	= std::byte(0x00),
+							.Alpha	= std::byte(0xff)
 						};
 					}	break;
 					case 3:
@@ -423,10 +423,10 @@ namespace FlexKit
 						auto g = inputView[{ x, y }].Green;
 						auto b = inputView[{ x, y }].Blue;
 						outputView[{x, y}] = {
-							.Red	= unsigned char(r),
-							.Green	= unsigned char(g),
-							.Blue	= unsigned char(b),
-							.Alpha	= 0xff
+							.Red	= std::byte(r),
+							.Green	= std::byte(g),
+							.Blue	= std::byte(b),
+							.Alpha	= std::byte(0xff)
 						};
 					}	break;
 					case 4:

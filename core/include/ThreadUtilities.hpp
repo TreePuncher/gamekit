@@ -612,9 +612,9 @@ namespace FlexKit
 
 		CircularStealingQueue<iWork*>	mainThreadQueue;
 
-		Vector<CircularStealingQueue<iWork*>*>			workQueues;
-		StackAllocator									localAllocator;
-		std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
+		Vector<CircularStealingQueue<iWork*>*>					workQueues;
+		StackAllocator											localAllocator;
+		std::unique_ptr<std::array<std::byte, MEGABYTE * 16>>	buffer;
 	};
 
 

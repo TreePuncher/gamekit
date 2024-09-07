@@ -52,7 +52,7 @@ namespace FlexKit
 		if (localAllocators.empty())
 		{
 			allocator = std::make_unique<StackAllocator>();
-			allocator->Init((byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
+			allocator->Init((std::byte*)malloc(16 * MEGABYTE), 16 * MEGABYTE);
 		}
 		else
 		{
@@ -483,7 +483,7 @@ namespace FlexKit
 		_SetThreadLocalQueue(mainThreadQueue);
 		workQueues.push_back(&mainThreadQueue);
 
-		buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
+		buffer = std::make_unique<std::array<std::byte, MEGABYTE * 16>>();
 		localAllocator.Init(buffer->data(), MEGABYTE * 16);
 		_localAllocator = localAllocator;
 

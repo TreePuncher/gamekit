@@ -793,9 +793,9 @@ namespace FlexKit
 		{
 			if (vertexBuffer.size)
 			{
-				float* temp = (float*)(buffer + vertexBuffer.Begin);
-				char* viewBuffer	= (char*)memory._aligned_malloc(sizeof(VertexBufferView) + vertexBuffer.size);
-				auto view			= new (viewBuffer) VertexBufferView(viewBuffer + sizeof(VertexBufferView), vertexBuffer.size);
+				float* temp				= (float*)(buffer + vertexBuffer.Begin);
+				std::byte* viewBuffer	= (std::byte*)memory._aligned_malloc(sizeof(VertexBufferView) + vertexBuffer.size);
+				auto view				= new (viewBuffer) VertexBufferView(viewBuffer + sizeof(VertexBufferView), vertexBuffer.size);
 
 				memcpy(view->GetBuffer(), vertexBuffer.Begin + buffer, vertexBuffer.size);
 
@@ -859,12 +859,12 @@ namespace FlexKit
 			if (!lod.state.compare_exchange_strong(lodState, TriMesh::LOD_Runtime::LOD_State::Loading))
 				return false;
 
-			auto lodBuffer  = (char*)memory.malloc(lod.lodSize);
+			auto lodBuffer  = (std::byte*)memory.malloc(lod.lodSize);
 
 			FlexKit::LODlevel lodHeader;
 			memcpy(&lodHeader, buffer + lod.lodFileOffset, sizeof(LODlevel));
 
-			auto buffer2 = (char*)memory.malloc(lod.lodSize);
+			auto buffer2 = (std::byte*)memory.malloc(lod.lodSize);
 			memcpy(buffer2, buffer + lod.lodFileOffset, lod.lodSize);
 
 
@@ -1006,7 +1006,7 @@ namespace FlexKit
 				textureArray.emplace_back(
 					TextureBuffer{
 						uint2{(uint32_t)resource->Width >> MIPLevel, (uint32_t)resource->Height >> MIPLevel},
-						(byte*)buffer,
+						(std::byte*)buffer,
 						bufferSize,
 						sizeof(float4),
 						nullptr });
@@ -1308,8 +1308,8 @@ namespace FlexKit
 		strcat_s(TEMP, file);
 
 		size_t Size = 1 + GetFileSize(TEMP);
-		byte* mem = (byte*)tempMem->malloc(Size);
-		if (!LoadFileIntoBuffer(TEMP, mem, Size, false))
+		char* mem = (char*)tempMem->malloc(Size);
+		if (!LoadFileIntoBuffer(TEMP, (std::byte*)mem, Size, false))
 			return { 0, nullptr };
 
 		char*	FontPath   = nullptr;

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <QFileSystemWatcher>
 
+
 #include "Serialization.hpp"
 
 /************************************************************************************************/
@@ -347,6 +348,17 @@ void EditorProject::ResetProject()
 	resources.clear();
 	headerFiles.clear();
 	sourceFiles.clear();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::BuildDebug() const
+{
+	//boost::process::system("cmake --help");
+
+	int x = 0;
 }
 
 

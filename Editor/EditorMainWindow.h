@@ -78,6 +78,12 @@ public:
 		connect(action, &QAction::triggered, this, callable);
 	}
 
+	void AddBuildAction(const std::string& name, auto&& callable)
+	{
+		auto action = buildMenu->addAction(name.c_str());
+		connect(action, &QAction::triggered, this, callable);
+	}
+
 	EditorViewport&			Get3DView()			{ return *viewport; }
 	SelectionContext&		GetSelectionCtx()	{ return selectionContext; };
 	EditorPrefabEditor*		GetPrefabEditor()	{ return prefabEditor.get(); };
@@ -119,6 +125,7 @@ private:
 
 	QMenu*				fileMenu	= nullptr;
 	QMenu*				editMenu	= nullptr;
+	QMenu*				buildMenu	= nullptr;
 	QMenu*				importMenu	= nullptr;
 	QMenu*				exportMenu	= nullptr;
 	QMenu*				gadgetMenu	= nullptr;

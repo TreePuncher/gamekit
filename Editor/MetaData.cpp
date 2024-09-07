@@ -843,7 +843,7 @@ namespace FlexKit
 #endif
 
 		char* Buffer = (char*)TempMemory->malloc(BufferSize);
-		LoadFileIntoBuffer(Location, (byte*)Buffer, BufferSize);
+		LoadFileIntoBuffer(Location, (std::byte*)Buffer, BufferSize);
 
 		auto Tokens = GetMetaDataTokens(Buffer, BufferSize, TempMemory);
 		auto res	= ParseTokens(DefaultParser, Tokens, MD_Out, 0, Tokens.size());

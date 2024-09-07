@@ -33,8 +33,9 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	viewport		{ std::make_unique<EditorViewport>( IN_renderer, selectionContext, this ) },
 	tabBar			{ new QTabWidget{} }
 {
-	fileMenu = menuBar()->addMenu("File");
-	editMenu = menuBar()->addMenu("Edit");
+	fileMenu	= menuBar()->addMenu("File");
+	editMenu	= menuBar()->addMenu("Edit");
+	buildMenu	= menuBar()->addMenu("Build");
 
 	auto timer = new QTimer{ this };
 	connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);

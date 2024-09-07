@@ -33,7 +33,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StackAllocator::Init(byte* _ptr, size_t s)
+	void StackAllocator::Init(std::byte* _ptr, size_t s)
 	{
 		used   = 0;
 		size   = s;
@@ -98,7 +98,7 @@ namespace FlexKit
 /************************************************************************************************/
 	
 // Generic Utiliteies
-	bool LoadFileIntoBuffer(const char* strLoc, byte* buffer, size_t bufferSize, bool TextFile )
+	bool LoadFileIntoBuffer(const char* strLoc, std::byte* buffer, size_t bufferSize, bool TextFile )
 	{
 		size_t newSize = 0;
 		WCHAR Temp[512];
@@ -241,7 +241,7 @@ namespace FlexKit
 
 				if (MB[I].state & FlexKit::MediumBlockAllocator::BlockData::DebugMD) {
 					std::cout << "Meta Data Found: \n";
-					BlockAlloc->MediumBlockAlloc.Blocks[I].data[0x41] = '\0';
+					BlockAlloc->MediumBlockAlloc.Blocks[I].data[0x41] = (std::byte)'\0';
 					std::cout << BlockAlloc->MediumBlockAlloc.Blocks[I].data << "\n";
 				}
 			}

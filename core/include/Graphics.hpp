@@ -2397,7 +2397,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			struct
 			{
 				ID3D12Resource**	resources;
-				byte*				initial;
+				std::byte*			initial;
 			};
 		};
 
@@ -3744,7 +3744,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		TextureDimension	GetTextureDimension(ResourceHandle handle) const;
 		size_t				GetTextureArraySize(ResourceHandle handle) const;
 
-		void			UploadTexture(ResourceHandle, CopyContextHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
+		void			UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize); // Uses Upload Queue
 		void			UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState);
 

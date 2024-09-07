@@ -19,7 +19,7 @@ SharedEngineMemory* InitiateSharedMemory(shared_memory_object& obj)
 
 	mapped_region region{ obj, read_write };
 
-	auto buffer = (byte*)region.get_address();
+	auto buffer = (std::byte*)region.get_address();
 
 	auto sharedMemory = new(buffer) SharedEngineMemory{};
 	sharedMemory->mapped = std::move(region);

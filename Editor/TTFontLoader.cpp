@@ -312,7 +312,7 @@ namespace FlexKit
         USHORT		Version;
         USHORT		TableSize;
         CMAP_Entry*	Tables;
-        byte*	    Buffer;
+        std::byte*	Buffer;
         
         bool HasWindowsEntry()
         {
@@ -351,7 +351,7 @@ namespace FlexKit
             return reinterpret_cast<_Format4Encoding*>(Buffer + Offset)->GetEndianConverted();
         }
 
-        byte* GetSubTable(size_t Offset)
+        std::byte* GetSubTable(size_t Offset)
         {
             return Buffer + Offset;
         }
@@ -419,7 +419,7 @@ namespace FlexKit
         GlyphEntry(
             const TTF_USHORT            IN_contourCount,
             const bool                  IN_compound,
-            const byte* const  IN_buffer) :
+            const std::byte* const      IN_buffer) :
                 contourCount    { IN_contourCount   },
                 compound        { IN_compound       },
                 buffer          { IN_buffer         } {}
@@ -435,7 +435,7 @@ namespace FlexKit
         {
             Curve Out;
 
-            const byte* const Begin = buffer + sizeof(Glyph);
+            const std::byte* const Begin = buffer + sizeof(Glyph);
 
             if (compound)
             {
@@ -464,13 +464,13 @@ namespace FlexKit
             return Out;
         }
 
-        const TTF_USHORT	contourCount    = 0;
-        const bool		   compound        = false;
-        const byte* const  buffer          = nullptr;
+        const TTF_USHORT	    contourCount    = 0;
+        const bool		        compound        = false;
+        const std::byte* const  buffer          = nullptr;
     };
 
 
-    GlyphEntry GetGlyphEntry(byte* buffer)
+    GlyphEntry GetGlyphEntry(std::byte* buffer)
     {
         Glyph glyph;
         memcpy(&glyph, buffer, sizeof(Glyph));
@@ -528,7 +528,7 @@ namespace FlexKit
     {
         Head() = default;
 
-        Head(byte* Buffer) noexcept
+        Head(std::byte* Buffer) noexcept
         {
             Head* Temp = reinterpret_cast<Head*>(Buffer);
             Version				= ConvertEndianness(Temp->Version);
@@ -591,7 +591,7 @@ namespace FlexKit
 
     struct Loca
     {
-        Loca(byte* LocaBuffer, bool LongVersion)
+        Loca(std::byte* LocaBuffer, bool LongVersion)
         {
             LONG	= reinterpret_cast<TTF_ULONG*>(LocaBuffer);
             Length	= LongVersion;
@@ -657,7 +657,7 @@ namespace FlexKit
         TTF_File(std::string& File, iAllocator* Memory)
         {
             auto FileSize	= GetFileSize(File.c_str());
-            Buffer			= (byte*)Memory->_aligned_malloc(FileSize + 1);
+            Buffer			= (std::byte*)Memory->_aligned_malloc(FileSize + 1);
             auto res		= LoadFileIntoBuffer(File.c_str(), Buffer, FileSize, false);
             FK_ASSERT(res, "failed to Load File!");
 
@@ -848,7 +848,7 @@ namespace FlexKit
         TTF_DirectoryEntry*		Entries;
 
         size_t					BufferSize;
-        byte*			        Buffer;
+        std::byte*			    Buffer;
     };
 
 

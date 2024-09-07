@@ -33,7 +33,7 @@ namespace FlexKit
 
 
 	TextureBuffer::TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory) :
-		Buffer		{ (byte*)IN_Memory->_aligned_malloc(IN_WH.Product() * IN_elementSize)	},
+		Buffer		{ (std::byte*)IN_Memory->_aligned_malloc(IN_WH.Product() * IN_elementSize)	},
 		WH			{ IN_WH									},
 		ElementSize	{ IN_elementSize						},
 		Memory		{ IN_Memory								},
@@ -41,19 +41,19 @@ namespace FlexKit
 
 
 	TextureBuffer::TextureBuffer(uint2 IN_WH, size_t IN_elementSize, size_t BufferSize, iAllocator* IN_Memory) :
-		Buffer		{ (byte*)IN_Memory->_aligned_malloc(BufferSize)	},
+		Buffer		{ (std::byte*)IN_Memory->_aligned_malloc(BufferSize)	},
 		WH			{ IN_WH											},
 		ElementSize	{ IN_elementSize								},
 		Memory		{ IN_Memory										},
 		Size		{ BufferSize									} {}
 
-	TextureBuffer::TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t IN_elementSize) :
+	TextureBuffer::TextureBuffer(uint2 IN_WH, std::byte* buffer, size_t IN_elementSize) :
 		Buffer		{ buffer								},
 		WH			{ IN_WH									},
 		ElementSize	{ IN_elementSize						},
 		Size		{ IN_WH.Product() * IN_elementSize		} {}
 
-	TextureBuffer::TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator) :
+	TextureBuffer::TextureBuffer(uint2 IN_WH, std::byte* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator) :
 		Buffer      { buffer			},
 		WH          { IN_WH				},
 		ElementSize { IN_elementSize	},
@@ -77,7 +77,7 @@ namespace FlexKit
 		Size            = rhs.Size;
 		WH				= rhs.WH;
 		ElementSize		= rhs.ElementSize;
-		Buffer			= (byte*)Memory->_aligned_malloc(Size);
+		Buffer			= (std::byte*)Memory->_aligned_malloc(Size);
 
 		memcpy(Buffer, rhs.Buffer, Size);
 	}
@@ -92,7 +92,7 @@ namespace FlexKit
 		WH			= rhs.WH;
 		Size		= rhs.Size;
 		ElementSize = rhs.ElementSize;
-		Buffer		= (byte*)Memory->_aligned_malloc(Size);
+		Buffer		= (std::byte*)Memory->_aligned_malloc(Size);
 
 		memcpy(Buffer, rhs.Buffer, Size);
 
@@ -182,15 +182,15 @@ namespace FlexKit
 #pragma pack(pop)
 		struct RGBA
 		{
-			byte Red;
-			byte Green;
-			byte Blue;
-			byte Reserved;
+			std::byte Red;
+			std::byte Green;
+			std::byte Blue;
+			std::byte Reserved;
 		};
 
 		size_t FileSize = GetFileSize(File);
 
-		byte* Buffer = (byte*)Memory->_aligned_malloc(FileSize + 1);
+		std::byte* Buffer = (std::byte*)Memory->_aligned_malloc(FileSize + 1);
 		if (LoadFileIntoBuffer(File, Buffer, FileSize + 1))
 		{
 			Header	= (HeaderStruct*)Buffer;
@@ -208,7 +208,7 @@ namespace FlexKit
 			{
 				// Convert to RGBA
 				// Slow Path
-				byte *PixelsBGR = (byte*)(Buffer + Header->OffBits);
+				std::byte* PixelsBGR = (std::byte*)(Buffer + Header->OffBits);
 
 				for (size_t y = 0; y < Height; ++y)
 					for (size_t x = 0; x < Width; ++x) {
@@ -226,9 +226,9 @@ namespace FlexKit
 					// Slow Path
 					struct BGRA
 					{
-						byte Blue;
-						byte Green;
-						byte Red;
+						std::byte Blue;
+						std::byte Green;
+						std::byte Red;
 					}*PixelsBGR = (BGRA*)(Buffer + Header->OffBits);
 
 					for (size_t y = 0; y < Height; ++y)
@@ -247,10 +247,10 @@ namespace FlexKit
 				// Slow Path
 				struct BGRA
 				{
-					byte Blue;
-					byte Green;
-					byte Red;
-					byte A;
+					std::byte Blue;
+					std::byte Green;
+					std::byte Red;
+					std::byte A;
 				}*PixelsBGRA = (BGRA*)(Buffer + Header->OffBits);
 
 				
@@ -268,7 +268,7 @@ namespace FlexKit
 			}
 			Out->ElementSize  = 4;
 			Out->WH		      = { Info->Width, Info->Height };
-			Out->Buffer       = (byte*)OutBuffer;
+			Out->Buffer       = (std::byte*)OutBuffer;
 			Out->Size		  = PixelCount * sizeof(RGBA);
 			Out->Memory       = Memory;
 			return true;
@@ -343,7 +343,7 @@ namespace FlexKit
 
 		MIPChain.emplace_back(
 			uint2{ (uint32_t)width, (uint32_t)height },
-			(byte*)scratchSpace->_aligned_malloc(rowPitch * height, 256),
+			(std::byte*)scratchSpace->_aligned_malloc(rowPitch * height, 256),
 			bufferSize,
 			sizeof(RGBA),
 			scratchSpace);

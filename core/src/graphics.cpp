@@ -6463,7 +6463,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, byte* buffer, size_t bufferSize)
+	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
 	{
 		auto resource	= GetDeviceResource(handle);
 		auto wh			= GetTextureWH(handle);
@@ -10391,7 +10391,7 @@ namespace FlexKit
 
 		auto upload = OpenUploadQueue();
 
-		TextureBuffer textureBuffer{ { 1,  1 }, (byte*)tempBuffer, 256, 4, nullptr };
+		TextureBuffer textureBuffer{ { 1,  1 }, (std::byte*)tempBuffer, 256, 4, nullptr };
 
 		auto defaultTexture = MoveTextureBuffersToVRAM(
 			this,
@@ -11592,7 +11592,7 @@ namespace FlexKit
 		char	current_line[512];
 
 		memset(strBuffer, 0, buffersize);
-		bool Loaded = FlexKit::LoadFileIntoBuffer(File_Loc, (byte*)strBuffer, size);// TODO: Make Thread Safe
+		bool Loaded = FlexKit::LoadFileIntoBuffer(File_Loc, (std::byte*)strBuffer, size);// TODO: Make Thread Safe
 		if (!Loaded)
 		{
 			TempSpace.clear();

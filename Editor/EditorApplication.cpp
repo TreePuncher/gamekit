@@ -133,7 +133,7 @@ struct TextureResourceViewer : public IResourceViewer
 		void* textureBuffer		= textureResource->MIPlevels[0].buffer;
 		const auto WH			= textureResource->WH;
 
-		FlexKit::TextureBuffer  uploadBuffer{ WH, (byte*)textureBuffer, textureResource->MIPlevels[0].bufferSize, 16, nullptr };
+		FlexKit::TextureBuffer  uploadBuffer{ WH, (std::byte*)textureBuffer, textureResource->MIPlevels[0].bufferSize, 16, nullptr };
 
 		auto& renderSystem	= renderer.framework.GetRenderSystem();
 		auto queue			= renderSystem.GetImmediateCopyQueue();
@@ -258,6 +258,13 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 			currentProjectFile		= fileDir.toStdString();
 
 			project.LoadProject(currentProjectFile);
+		});
+
+	mainWindow.AddBuildAction(
+		"Build Debug",
+		[&]()
+		{
+			project.BuildDebug();
 		});
 
 	mainWindow.SetupMenus();

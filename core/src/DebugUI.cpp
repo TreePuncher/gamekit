@@ -99,7 +99,7 @@ namespace FlexKit
 		int             tex_h;
 
 		io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
-		FlexKit::TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (byte*)tex_pixels, 4 };
+		FlexKit::TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (std::byte*)tex_pixels, 4 };
 
 
 		imGuiFont = MoveTextureBuffersToVRAM(

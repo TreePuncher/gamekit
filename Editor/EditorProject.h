@@ -133,10 +133,13 @@ public:
 
 	void ResetProject();
 
+	void BuildDebug() const;
+
 	std::string GetHeadersPath() const;
 	std::string GetSourcesPath() const;
 	std::string GetAssetsPath() const;
 	std::string GetGeneratedPath() const;
+
 
 	std::shared_mutex m;
 

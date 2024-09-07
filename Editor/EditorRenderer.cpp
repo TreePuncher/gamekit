@@ -34,7 +34,7 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
 	renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
 
-	allocator.Init((byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
+	allocator.Init((std::byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
 
 	static shared_memory_object shm_obj(
 		open_or_create,
