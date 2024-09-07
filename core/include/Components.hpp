@@ -16,6 +16,16 @@
 #include <span>
 #include <regex>
 
+#if WIN32
+#define PROPERTY(AA)
+#define PROPERTYFIELD
+#define PROPERTYFIELDTYPE
+#else
+#define PROPERTY(AA)		__attribute__((annotate(##AA)))
+#define PROPERTYFIELD		__attribute__((annotate("Field")))
+#define PROPERTYFIELDTYPE	__attribute__((annotate("Field")))
+#endif
+
 namespace FlexKit
 {	/************************************************************************************************/
 

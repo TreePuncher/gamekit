@@ -1,14 +1,16 @@
 #pragma once
 
+#include <any>
+#include <filesystem>
+#include <memory>
+#include <unordered_set>
 #include <string>
 #include <vector>
-#include <memory>
-#include <any>
 
 #include "EditorSceneResource.h"
 #include <Scene.hpp>
 #include <Serialization.hpp>
-
+#include <Signals.hpp>
 
 class ProjectWidget
 {
@@ -105,6 +107,9 @@ using EditorScene_ptr = std::shared_ptr<EditorScene>;
 class EditorProject
 {
 public:
+	EditorProject();
+	~EditorProject();
+
 	void					AddScene	(EditorScene_ptr scene);
 	ProjectResource_ptr		AddResource	(FlexKit::Resource_ptr resource);
 
@@ -114,28 +119,48 @@ public:
 	ProjectResource_ptr		FindProjectResource(uint64_t assetID);
 	ProjectResource_ptr		FindProjectResource(const std::string& id);
 
+	void CreateProjectFileStructure(const std::string& projectDir);
+
 	bool LoadProject(const std::string& projectDir);
 	bool SaveProject(const std::string& projectDir);
 
 	void lock();
 	void unlock();
 
+	void StartWatchingDirectories();
+	void HeaderChanged(const std::string& changedFile);
+	void HeaderAddedRemoved(const std::string& changedFile);
+
+	void ResetProject();
+
+	std::string GetHeadersPath() const;
+	std::string GetSourcesPath() const;
+	std::string GetAssetsPath() const;
+	std::string GetGeneratedPath() const;
+
 	std::shared_mutex m;
 
+	std::filesystem::path				projectDirectory;
 	std::vector<EditorScene_ptr>		scenes;
 	std::vector<ProjectResource_ptr>	resources;
+
+	std::unordered_set<std::string>		headerFiles;
+	std::unordered_set<std::string>		sourceFiles;
+
 	ProjectLayout						layout;
+	class QFileSystemWatcher*			fileWatcher = nullptr;
+
+	FlexKit::Signal<void (const std::string&)>	onHeaderRemoved;
+	FlexKit::Signal<void (const std::string&)>	onHeaderAdded;
+	FlexKit::Signal<void (const std::string&)>	onHeaderChanged;
 };
 
 std::string ProjectGetObjectDirectory();
 
 
-/************************************************************************************************/
-
-
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
