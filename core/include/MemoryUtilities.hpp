@@ -241,7 +241,7 @@ namespace FlexKit
 			size	= 0;
 			Buffer	= 0;
 
-			Init((byte*)allocator->_aligned_malloc(bufferSize), bufferSize);
+			Init((std::byte*)allocator->_aligned_malloc(bufferSize), bufferSize);
 		}
 
 		StackAllocator(StackAllocator&& rhs) noexcept :
@@ -276,7 +276,7 @@ namespace FlexKit
 			return rhs.Buffer == Buffer;
 		}
 
-		void	Init				(byte* memory, size_t);
+		void	Init				(std::byte* memory, size_t);
 		void*	malloc				(size_t s);
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void	clear				();
@@ -287,9 +287,9 @@ namespace FlexKit
 		operator iAllocator& () { return  AllocatorInterface; }
 	private:
 
-		size_t  used	= 0;
-		size_t  size	= 0;
-		byte*   Buffer	= 0;
+		size_t		used	= 0;
+		size_t		size	= 0;
+		std::byte*  Buffer	= 0;
 
 
 		struct AllocatorAdapter : public iAllocator
@@ -335,7 +335,7 @@ namespace FlexKit
 
 		static int MaxAllocationSize() { return Block::BlockSize; }
 
-		void Initialise( size_t BufferSize, byte* Buffer )// Size in Bytes
+		void Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
 		{
 			size_t AllocationFootPrint = sizeof(Block);
 			Size = BufferSize / AllocationFootPrint;
@@ -352,7 +352,7 @@ namespace FlexKit
 		}
 
 		// TODO: maybe Multi-Thread?
-		byte* malloc(size_t, bool Aligned = false)
+		std::byte* malloc(size_t, bool Aligned = false)
 		{
 			for (size_t itr = 0; itr < Size; ++itr)
 			{
@@ -366,7 +366,7 @@ namespace FlexKit
 							Blocks[itr].state[itr2] = (Block::Allocated || Aligned) ? Block::Aligned : 0;
 							//if(itr2 == Block::BlockCount) Blocks[itr].BlockFull = true;
 							allocated++;
-							return (byte*)&Blocks[itr].data[itr2];
+							return (std::byte*)&Blocks[itr].data[itr2];
 						}
 					}
 					Blocks[itr].BlockFull = true;
@@ -423,7 +423,7 @@ namespace FlexKit
 
 			struct c
 			{
-				byte v[BlockSize];
+				std::byte v[BlockSize];
 			}data[BlockCount];
 
 			enum Flags : char
@@ -447,7 +447,7 @@ namespace FlexKit
 
 	struct MediumBlockAllocator
 	{
-		void Initialise(size_t BufferSize, byte* Buffer)// Size in Bytes
+		void Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
 		{
 			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
 			Size		= (BufferSize / AllocationFootPrint) - 1;
@@ -461,7 +461,7 @@ namespace FlexKit
 		}
 
 		// TODO: maybe Multi-Thread?
-		byte* malloc(size_t size, bool ALIGNED = false, bool DebugMetaData = false)
+		std::byte* malloc(size_t size, bool ALIGNED = false, bool DebugMetaData = false)
 		{
 #ifdef _DEBUG
 			if (size > MaxBlockSize())
@@ -480,7 +480,7 @@ namespace FlexKit
 						(DebugMetaData	? BlockData::DebugMD : 0);
 
 					blocksAllocated++;
-					return (byte*)&Blocks[i];
+					return (std::byte*)&Blocks[i];
 				}
 
 			throw(std::bad_alloc());
@@ -526,7 +526,7 @@ namespace FlexKit
 
 		struct Block
 		{
-			byte data[2048];
+			std::byte data[2048];
 		}*Blocks;
 
 		struct BlockData
@@ -551,7 +551,7 @@ namespace FlexKit
 
 	struct LargeBlockAllocator
 	{
-		void Initialise(size_t BufferSize, byte* Buffer)// Size in Bytes
+		void Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
 		{
 			FK_ASSERT(BufferSize < (size_t)uint32_t(-1));
 
@@ -571,9 +571,9 @@ namespace FlexKit
 		}
 
 		// TODO: maybe Multi-Thread?
-		byte* malloc(size_t requestsize, bool aligned = false)
+		std::byte* malloc(size_t requestsize, bool aligned = false)
 		{
-			size_t BlocksNeeded = requestsize / sizeof( Block ) + ( ( requestsize%sizeof( Block ) ) > 0 );
+			size_t BlocksNeeded = requestsize / sizeof(Block) + ( ( requestsize % sizeof(Block) ) > 0 );
 			FK_ASSERT(BlocksNeeded);
 
 			for (size_t i = 0; i < Size;i += BlockTable[i].AllocationSize)
@@ -603,7 +603,7 @@ namespace FlexKit
 					}
 
 					allocatedBlockCount += BlocksNeeded;
-					return (byte*)Blocks[i].data;
+					return (std::byte*)Blocks[i].data;
 				}
 			}
 
@@ -673,7 +673,7 @@ namespace FlexKit
 
 		struct Block
 		{
-			char data[KILOBYTE * 128];
+			std::byte data[KILOBYTE * 128];
 		}*Blocks;
 
 		struct BlockData
@@ -688,7 +688,7 @@ namespace FlexKit
 			}state;
 			uint16_t Parent;
 			uint16_t AllocationSize;
-			char	 Padding_2[0x40 - 0x06]; // To Put Data Blocks on 64byte Lines for Multi-Threading
+			std::byte Padding_2[0x40 - 0x06]; // To Put Data Blocks on 64byte Lines for Multi-Threading
 		}*BlockTable;
 
 		size_t Size;
@@ -698,8 +698,8 @@ namespace FlexKit
 
 	struct BlockAllocator_desc
 	{
-		byte* _ptr = nullptr;
-		size_t PoolSize;
+		std::byte*	_ptr = nullptr;
+		size_t		PoolSize;
 
 		size_t SmallBlock;
 		size_t MediumBlock;
@@ -743,9 +743,9 @@ namespace FlexKit
 			Large	= in.LargeBlock;
 
 			if (in._ptr == nullptr)
-				in._ptr = (byte*)::_aligned_malloc(Small + Medium + Large, 16);
+				in._ptr = (std::byte*)::_aligned_malloc(Small + Medium + Large, 16);
 
-			Buffer_ptr = (char*)in._ptr;
+			Buffer_ptr = (std::byte*)in._ptr;
 
 			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
 			MediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + Small);
@@ -754,11 +754,11 @@ namespace FlexKit
 			new(&AllocatorInterface) iBlockAllocator(this);
 		}
 
-		byte* malloc(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false)
+		std::byte* malloc(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false)
 		{
 			std::unique_lock ul{ mu };
 
-			byte* ret = nullptr;
+			std::byte* ret = nullptr;
 
 			if (size <= SmallBlockAllocator::MaxAllocationSize())
 				ret = SmallBlockAlloc.malloc(size, MarkAligned);
@@ -776,7 +776,7 @@ namespace FlexKit
 		}
 
 		// Debug String Must be below 64 Bytes
-		byte* malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
+		std::byte* malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
 		{
 			if (Debug != nullptr && DebugSize != 0)
 			{
@@ -784,15 +784,15 @@ namespace FlexKit
 				throw std::invalid_argument("Invalid Debug Section Header passed into allocator!");
 			}
 
-			byte* ret = nullptr;
+			std::byte* ret = nullptr;
 			const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
 
 			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
-				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40, true);
+				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40, true);
 			if (!ret)
-				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
 
 			if (	
 				size > SmallBlockAllocator::MaxAllocationSize() && 
@@ -806,13 +806,13 @@ namespace FlexKit
 			return ret + MetaDataSectionSize;
 		}
 
-		char*	_aligned_malloc(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false)
+		std::byte* _aligned_malloc(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false)
 		{
-			const char* NewBuffer		= (char*)malloc(s + alignment, true, MarkDebugMetaData);
+			std::byte* NewBuffer		= (std::byte*)malloc(s + alignment, true, MarkDebugMetaData);
 			const size_t alignoffset	= (size_t)(NewBuffer) % alignment;
 			const size_t Offset			= alignment - alignoffset;
 
-			return (char*)(NewBuffer + Offset);
+			return NewBuffer + Offset;
 		}
 		
 		void free(void* _ptr)
@@ -822,11 +822,11 @@ namespace FlexKit
 
 			std::unique_lock ul(mu);
 
-			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))
+			if (InSmallRange(reinterpret_cast<std::byte*>(_ptr)))
 				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-			if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
+			if (InMediumRange(reinterpret_cast<std::byte*>(_ptr)))
 				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-			else if (InLargeRange(reinterpret_cast<byte*>(_ptr)))
+			else if (InLargeRange(reinterpret_cast<std::byte*>(_ptr)))
 				LargeBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 		}
 
@@ -847,11 +847,11 @@ namespace FlexKit
 
 			std::unique_lock ul(mu);
 
-			if (InSmallRange((byte*)_ptr))
+			if (InSmallRange((std::byte*)_ptr))
 				SmallBlockAlloc._aligned_free(_ptr);
-			if (InMediumRange(static_cast<byte*>(_ptr)))
+			if (InMediumRange(static_cast<std::byte*>(_ptr)))
 				MediumBlockAlloc._aligned_free(_ptr);
-			else if (InLargeRange(static_cast<byte*>(_ptr)))
+			else if (InLargeRange(static_cast<std::byte*>(_ptr)))
 				LargeBlockAlloc._aligned_free(_ptr);
 		}
 
@@ -903,10 +903,10 @@ namespace FlexKit
 		LargeBlockAllocator		LargeBlockAlloc;
 		std::mutex				mu;
 
-		char*	Buffer_ptr;
+		std::byte* Buffer_ptr = nullptr;
 		size_t	Small, Medium, Large;
 
-		bool InSmallRange(byte* a_ptr)
+		bool InSmallRange(std::byte* a_ptr)
 		{
 			size_t bottom = (size_t)(Buffer_ptr);
 			size_t top    = (size_t)(Buffer_ptr) + Small;
@@ -914,7 +914,7 @@ namespace FlexKit
 			return (bottom <= (size_t)a_ptr) && ((size_t)a_ptr < top);
 		}
 
-		bool InMediumRange(byte* a_ptr)
+		bool InMediumRange(std::byte* a_ptr)
 		{
 			size_t bottom = ((size_t)Buffer_ptr) + Small;
 			size_t top    = ((size_t)Buffer_ptr) + Small + Medium;
@@ -922,7 +922,7 @@ namespace FlexKit
 			return(bottom <= (size_t)a_ptr && (size_t)a_ptr < top);
 		}
 
-		bool InLargeRange(byte* a_ptr)
+		bool InLargeRange(std::byte* a_ptr)
 		{
 			size_t bottom = ((size_t)Buffer_ptr) + Small + Medium;
 			size_t top    = ((size_t)Buffer_ptr) + Small + Medium + Large;
@@ -996,7 +996,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void		PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
-	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax, bool textfile = true);
+	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, std::byte* out, size_t strlenmax, bool textfile = true);
 	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
 	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
 

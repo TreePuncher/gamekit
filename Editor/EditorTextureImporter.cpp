@@ -24,7 +24,7 @@ struct TextureImporterDialog
 		converted = FlexKit::TextureBuffer{ wh, 4, bufferSize , FlexKit::SystemAllocator };
 
 		//FlexKit::TextureBuffer buffer							{ wh, 4, bufferSize , FlexKit::SystemAllocator };
-		FlexKit::TextureBuffer buffer							{ wh, (uint8_t*)_ptr, 3 };
+		FlexKit::TextureBuffer buffer							{ wh, (std::byte*)_ptr, 3 };
 		FlexKit::TextureBufferView<FlexKit::RGB>	inputView	{ buffer };
 		FlexKit::TextureBufferView<FlexKit::RGBA>	outputView	{ converted, rowPitch };
 

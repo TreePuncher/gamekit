@@ -899,7 +899,7 @@ namespace FlexKit
 			[&](auto& builder, GatherSkinnedTaskData& data)
 			{
 				size_t taskMemorySize = KILOBYTE * 2048;
-				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
+				data.taskMemory.Init((std::byte*)allocator->malloc(taskMemorySize), taskMemorySize);
 				data.scene			= scene;
 				data.skinned        = PosedBrushList{ data.taskMemory };
 				data.camera			= C;

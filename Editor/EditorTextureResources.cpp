@@ -327,12 +327,12 @@ namespace FlexKit
 
 			if (Compressed())
 			{
-				char*		compressed	= (char*)malloc(outputSize);
-				const auto	format		= FormatStringToFormatID(targetFormat);
-				const char* buffer		= (char*)MIPlevels[0].buffer;
+				std::byte*			compressed	= (std::byte*)malloc(outputSize);
+				const auto			format		= FormatStringToFormatID(targetFormat);
+				const std::byte*	buffer		= (std::byte*)MIPlevels[0].buffer;
 
 				std::vector<TextureBuffer> mipLevels;
-				mipLevels.push_back(FlexKit::TextureBuffer{ WH, (uint8_t*)buffer, channelCount });
+				mipLevels.push_back(FlexKit::TextureBuffer{ WH, (std::byte*)buffer, channelCount });
 
 				fmt::print("Building Mip Levels\n");
 
@@ -504,7 +504,7 @@ namespace FlexKit
 		ar& buffer.ElementSize;
 		ar& buffer.Memory;
 
-		buffer.Buffer	= (uint8_t*)_ptr;
+		buffer.Buffer	= (std::byte*)_ptr;
 		buffer.Size		= size;
 
 		if(ar.Loading())
@@ -598,7 +598,7 @@ namespace FlexKit
 
 		texture->MIPlevels.push_back(
 			TextureResource::MIPLevel{
-				.buffer			= (uint8_t*)imageBuffer,
+				.buffer			= (std::byte*)imageBuffer,
 				.bufferSize		= imageBufferSize,
 			});
 

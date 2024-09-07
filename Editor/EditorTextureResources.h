@@ -122,7 +122,7 @@ namespace FlexKit
 		{
 			std::string		format;
 
-			uint8_t*		buffer = nullptr;
+			std::byte*		buffer = nullptr;
 			size_t			bufferSize = 0;
 
 			void Serialize(auto& ar)
@@ -131,7 +131,7 @@ namespace FlexKit
 				ar& format;
 				ar& RawBuffer{ _ptr, bufferSize };
 
-				buffer = (uint8_t*)_ptr;
+				buffer = (std::byte*)_ptr;
 			}
 		};
 
@@ -182,7 +182,7 @@ namespace FlexKit
 			MIPlevels.push_back(
 				TextureResource::MIPLevel{
 					.format		= "",
-					.buffer		= (uint8_t*)src,
+					.buffer		= (std::byte*)src,
 					.bufferSize = srcSize
 				});
 		}

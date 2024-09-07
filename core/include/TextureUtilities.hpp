@@ -73,8 +73,8 @@ namespace FlexKit
 
 		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory);
 		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, size_t BufferSize, iAllocator* IN_Memory);
-		TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t IN_elementSize);
-		TextureBuffer(uint2 IN_WH, uint8_t* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator);
+		TextureBuffer(uint2 IN_WH, std::byte* buffer, size_t IN_elementSize);
+		TextureBuffer(uint2 IN_WH, std::byte* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator);
 
 		~TextureBuffer();
 
@@ -89,13 +89,13 @@ namespace FlexKit
 
 		void Release();
 
-		operator byte* () { return Buffer; }
+		operator std::byte* () { return Buffer; }
 		operator void* () { return Buffer; }
 		size_t BufferSize() const   { return Size; }
 
-		void Copy(uint8_t* src, size_t size)	{ memcpy(Buffer, src, size); }
+		void Copy(std::byte* src, size_t size)	{ memcpy(Buffer, src, size); }
 
-		uint8_t*	Buffer			= nullptr;
+		std::byte*	Buffer			= nullptr;
 		uint2		WH				= { 0, 0 };
 		size_t		Size			= 0;
 		size_t		ElementSize		= 0;
@@ -121,18 +121,18 @@ namespace FlexKit
 
 		TY& operator [](uint2 XY)
 		{
-			byte* row = Texture.Buffer + rowPitch * XY[1];
+			std::byte* row = Texture.Buffer + rowPitch * XY[1];
 			return ((TY*)row)[XY[0]];
 		}
 
 		TY operator [](uint2 XY) const
 		{
-			byte* row = Texture.Buffer + rowPitch * XY[1];
+			std::byte* row = Texture.Buffer + rowPitch * XY[1];
 			return ((TY*)row)[XY[0]];
 		}
 
-		operator uint8_t* ()	{ return Texture.Buffer;    }
-		size_t BufferSize()	{ return Texture.Size;      }
+		operator std::byte* ()	{ return Texture.Buffer;    }
+		size_t BufferSize()		{ return Texture.Size;      }
 
 		const TextureBuffer& Texture;
 		const size_t rowPitch;
@@ -191,19 +191,19 @@ namespace FlexKit
 
 	struct RGB
 	{
-		byte Red;
-		byte Green;
-		byte Blue;
-		byte Reserved;
+		std::byte Red;
+		std::byte Green;
+		std::byte Blue;
+		std::byte Reserved;
 	};
 
 
 	struct RGBA
 	{
-		byte Red;
-		byte Green;
-		byte Blue;
-		byte Alpha;
+		std::byte Red;
+		std::byte Green;
+		std::byte Blue;
+		std::byte Alpha;
 
 		RGBA& operator = (const RGB& rhs) noexcept
 		{

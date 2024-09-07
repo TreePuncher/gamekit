@@ -6,6 +6,7 @@
 #include "Graphics.hpp"
 #include "ProfilingUtilities.hpp"
 #include <windows.h>
+#include <timeapi.h>
 #include <Windowsx.h>
 
 #pragma comment(lib, "Winmm.lib")

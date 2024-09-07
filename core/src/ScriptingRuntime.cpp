@@ -1008,7 +1008,7 @@ namespace FlexKit
 			return nullptr;
 
 		const auto fileSize = std::filesystem::file_size(path);
-		auto fileBuffer = (byte*)tempAllocator.malloc(fileSize);
+		auto fileBuffer = (std::byte*)tempAllocator.malloc(fileSize);
 
 		auto cPath = path.string();
 		if (!FlexKit::LoadFileIntoBuffer(cPath.c_str(), fileBuffer, fileSize))

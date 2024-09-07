@@ -196,6 +196,7 @@ if(WIN32)
     SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
     SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
 
+    target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
     target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
     target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 

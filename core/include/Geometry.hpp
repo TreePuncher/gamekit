@@ -94,8 +94,8 @@ namespace FlexKit
 		VertexBufferView(const VertexBufferView&) = delete;
 		VertexBufferView(VertexBufferView&&) = delete;
 
-		VertexBufferView(char* _ptr, size_t size);
-		VertexBufferView(char* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
+		VertexBufferView(std::byte* _ptr, size_t size);
+		VertexBufferView(std::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
 
 		~VertexBufferView();
 
@@ -110,7 +110,7 @@ namespace FlexKit
 		{
 			typedef Typed_Iteration<Ty> This_Type;
 		public:
-			Typed_Iteration(char* _ptr, size_t Size) : m_position((Ty*)(_ptr)), m_size(Size) {}
+			Typed_Iteration(std::byte* _ptr, size_t Size) : m_position((Ty*)(_ptr)), m_size(Size) {}
 
 			class Typed_iterator
 			{
@@ -273,7 +273,7 @@ namespace FlexKit
 		bool				LoadBuffer();
 		bool				UnloadBuffer();
 
-		char*				GetBuffer()			const;
+		std::byte*			GetBuffer()			const;
 		size_t				GetElementSize()	const;
 		size_t				GetBufferSize()		const;
 		size_t				GetBufferSizeUsed()	const;
@@ -286,7 +286,7 @@ namespace FlexKit
 
 		void Serialize(auto& ar)
 		{
-			void* temp = mBuffer;
+			void* temp = (void*)mBuffer;
 			ar& RawBuffer{ temp, mBufferSize };
 			ar& mBufferUsed;
 			ar& mBufferElementSize;
@@ -295,14 +295,14 @@ namespace FlexKit
 			ar& mBufferinError;
 			ar& mBufferLock;
 
-			mBuffer = reinterpret_cast<char*>(temp);
+			mBuffer = reinterpret_cast<std::byte*>(temp);
 		}
 
 	private:
 		bool _combine(const VertexBufferView& LHS, const VertexBufferView& RHS, char* out);
 
 		void				SetElementSize(size_t) {}
-		char*				mBuffer;
+		std::byte*			mBuffer;
 		size_t				mBufferSize;
 		size_t				mBufferUsed;
 		size_t				mBufferElementSize;
@@ -333,10 +333,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void CreateBufferView(byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
+	inline void CreateBufferView(std::byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
 	{
 		size_t blobSize = bufferSize + sizeof(VertexBufferView);
-		char* blob = (char*)allocator->malloc(blobSize);
+		std::byte* blob = (std::byte*)allocator->malloc(blobSize);
 
 		View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
 
