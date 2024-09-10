@@ -5,7 +5,7 @@
 #include <ranges>
 
 #include "EditorAnimationResource.h"
-#include "MeshResource.h"
+#include "EditorMeshResource.hpp"
 
 
 #if USING(TOOTLE)

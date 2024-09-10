@@ -4,7 +4,7 @@
 #include "CSGComponent.h"
 #include "CSGRendering.h"
 #include "DXRenderWindow.h"
-#include "MeshResource.h"
+#include "EditorMeshResource.hpp"
 
 #include <AnimationComponents.hpp>
 #include <DebugUI.hpp>

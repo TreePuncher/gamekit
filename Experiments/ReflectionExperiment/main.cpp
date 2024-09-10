@@ -33,8 +33,35 @@ int main(int argc, const char* argv[])
 		for (auto& object : componentObjects)
 		{
 			std::print("Component Name: {}\n", object.componentName);
-			for(auto& field : object.fields)
-				std::print("\t Field Name: {}, Type: {}, Options: {}\n", field.name, field.type, field.annotation);
+			for (auto& subType : object.subTypes)
+			{
+				//TypeArgument, TemplateType, IntegerLiteral, FloatLiteral, StringLiteral
+				std::visit(FlexKit::overloaded{
+						[](FlexKit::TypeArgument& type)
+						{
+							std::print("\t\tComponent Subtype: {}\n", type.name);
+							for (auto f : type.structInfo.fields)
+								std::print("\t\t\tField Name: {}, Type: {}, Options: {}\n", f.name, f.type, f.annotation);
+						},
+						[](FlexKit::TemplateType& type)
+						{
+							std::print("\t\ttemplate Name: {}, ID: {}\n", type.name, type.typeIdx);
+						},
+						[](FlexKit::IntegerLiteral& type)
+						{
+							std::print("\t\tInteger Value Name: {}, value: {}\n", type.name, type.value);
+						},
+						[](FlexKit::FloatLiteral& type)
+						{
+							std::print("\t\tFloat Value Name: {}, value: {}\n", type.name, type.value);
+						},
+						[](FlexKit::StringLiteral& type)
+						{
+							std::print("\t\tString Value Name: {}, value: {}\n", type.name, type.value);
+						},
+					}, subType);
+
+			}
 		}
 	}
 	else

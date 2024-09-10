@@ -1,21 +1,86 @@
 #include "PCH.h"
+#include "EditorMeshResource.hpp"
 #include "EditorProject.h"
 #include "EditorResource.h"
-#include "MeshResource.h"
 #include "EditorTextureResources.h"
 
+#include <boost/process.hpp>
 #include <fstream>
 #include <filesystem>
+#include <print>
 #include <QFileSystemWatcher>
+#include <regex>
+#include <Serialization.hpp>
 
 
-#include "Serialization.hpp"
+using namespace std::filesystem;
+
 
 /************************************************************************************************/
 // Project Global Parameters
-inline static std::string objectsDirectory = "Objects/";
+inline static std::string objectsDirectory				= "Objects/";
+inline static const char defaultConfigure[]				= "cmake -B @buildPath @projectPath --preset ";
+inline static const char defaultBuildCommand[]			= "cmake --build @buildPath --preset ";
+inline static const char debugPreset[]					= R"("x64-debug")";
+inline static const char releasePreset[]				= R"("x64-release")";
+
+inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
+inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
+
+inline static const char defaultVCVarsPath[]			= R"('C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat')";
+
+inline static std::string cmakeTemplate = R"(
+cmake_minimum_required(VERSION 3.23)
+project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  vcpkg 
+  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
+  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
+)
+
+FetchContent_MakeAvailable(vcpkg)
+set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
+
+FetchContent_Declare(
+  flex
+  GIT_REPOSITORY "@SourceRepo"
+  GIT_TAG        "@SourceHash"
+)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+file (GLOB CPP_FILES src/*.cpp)
+file (GLOB HPP_FILES includes/*.hpp)
+
+add_executable(
+    @ProjectName
+    ${CPP_FILES}
+	${HPP_FILES}
+)
+
+target_include_directories(
+    @ProjectName
+    PUBLIC
+    ${PROJECT_SOURCE_DIR})
+
+set_property(TARGET @ProjectName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_link_libraries(@ProjectName PRIVATE flex flex_optional)
+
+#Flex_CopyAssets(@ProjectName)
+)";
+
 
 /************************************************************************************************/
+
+
+std::string SearchAndReplace(const std::string& in, const std::string& from, const std::string& to)
+{
+	return std::regex_replace(in, std::regex(from), to);
+}
 
 
 ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
@@ -31,7 +96,10 @@ ProjectResource_ptr EditorScene::FindSceneResource(uint64_t resourceID)
 
 
 EditorProject::EditorProject() :
-	fileWatcher{ new QFileSystemWatcher{} }
+	fileWatcher				{ new QFileSystemWatcher{} },
+	debugBuildCMakeCommand	{ defaultBuildCommand },
+	gitSource				{ defaultGitSource },
+	gitSourceHash			{ defaultGitHash }
 {
 
 }
@@ -354,12 +422,86 @@ void EditorProject::ResetProject()
 /************************************************************************************************/
 
 
+void EditorProject::RegenerateCMake() const
+{
+	path cmakeFile = projectDirectory.string() + R"(\CMakeLists.txt)";
+
+	if (exists(path(cmakeFile)))
+		remove(cmakeFile);
+
+	std::string newCMakeTexts = cmakeTemplate;
+
+	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@ProjectName", projectName);
+	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceRepo", gitSource);
+	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceHash", gitSourceHash);
+
+	auto f = fopen(cmakeFile.string().c_str(), "w");
+
+	if (!f)
+	{
+		FK_LOG_ERROR("Failed to create new cmakefile at: %s", cmakeFile.c_str());
+		return;
+	}
+
+	for(size_t i = 0; i < newCMakeTexts.size(); i++)
+		i += fwrite(newCMakeTexts.c_str() + i, 1, newCMakeTexts.size() - i, f);
+
+	fclose(f);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::ReconfigureCMake() const
+{
+	std::string configCommand = defaultConfigure;
+	configCommand = SearchAndReplace(configCommand, "@buildPath", projectDirectory.string() + "/out");
+	configCommand = SearchAndReplace(configCommand, "@projectPath", projectDirectory.string());
+	configCommand = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + configCommand + debugPreset + R"(")";
+
+	boost::process::ipstream pipe_stream;
+	boost::process::child c{ configCommand, boost::process::std_out > pipe_stream};
+
+	std::string line;
+
+	while (pipe_stream && std::getline(pipe_stream, line))
+		std::print("[CMake]>{}\n", line);
+
+	c.wait();
+}
+
+
+/************************************************************************************************/
+
+
 void EditorProject::BuildDebug() const
 {
-	//boost::process::system("cmake --help");
+	std::string buildCommand = defaultBuildCommand;
+	buildCommand = SearchAndReplace(buildCommand, "@buildPath", projectDirectory.string() + "/out");
+	buildCommand = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + buildCommand + debugPreset + R"(")";
 
-	int x = 0;
+	boost::process::ipstream pipe_stream;
+	boost::process::child c{ buildCommand, boost::process::std_out > pipe_stream};
+
+	std::string line;
+
+	while (pipe_stream && std::getline(pipe_stream, line) )
+		std::print("{}\n", line);
+
+	c.wait();
 }
+
+
+/************************************************************************************************/
+
+
+void EditorProject::StartEditor() const
+{
+	auto command = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + "devenv " + R"(")";
+	system(command.c_str());
+}
+
 
 
 /************************************************************************************************/

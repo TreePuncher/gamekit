@@ -261,6 +261,20 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 		});
 
 	mainWindow.AddBuildAction(
+		"Create CMakeLists.txt",
+		[&]()
+		{
+			project.RegenerateCMake();
+		});
+
+	mainWindow.AddBuildAction(
+		"Reconfigure CMake",
+		[&]()
+		{
+			project.ReconfigureCMake();
+		});
+
+	mainWindow.AddBuildAction(
 		"Build Debug",
 		[&]()
 		{
