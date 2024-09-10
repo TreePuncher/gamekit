@@ -4,7 +4,7 @@
 #include <MemoryUtilities.hpp>
 #include <AnimationUtilities.hpp>
 
-#include "MeshResource.h"
+#include "EditorMeshResource.hpp"
 #include "ResourceUtilities.h"
 
 #include <string>

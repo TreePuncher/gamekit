@@ -133,13 +133,26 @@ public:
 
 	void ResetProject();
 
+	void RegenerateCMake() const;
+	void ReconfigureCMake() const;
+
 	void BuildDebug() const;
+
+	void StartEditor() const;
 
 	std::string GetHeadersPath() const;
 	std::string GetSourcesPath() const;
 	std::string GetAssetsPath() const;
 	std::string GetGeneratedPath() const;
 
+	// Project Variables
+	std::string projectName				= "flexApplication";
+
+	// Engine Source variables
+	std::string gitSource;
+	std::string gitSourceHash;
+
+	std::string debugBuildCMakeCommand;
 
 	std::shared_mutex m;
 

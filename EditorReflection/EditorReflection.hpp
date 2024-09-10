@@ -56,16 +56,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct ComponentDefinition
-	{
-		std::vector<Field>	fields;
-		std::string			componentName;
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct TemplateType
 	{
 		std::string name;
@@ -83,7 +73,7 @@ namespace FlexKit
 	struct FloatLiteral
 	{
 		std::string name;
-		float value;
+		double value;
 	};
 
 
@@ -93,7 +83,13 @@ namespace FlexKit
 		std::string value;
 	};
 
-	using TemplateArgument = std::variant<TemplateType, IntegerLiteral, FloatLiteral, StringLiteral>;
+	struct TypeArgument
+	{
+		std::string			name;
+		StructInformation	structInfo;
+	};
+
+	using TemplateArgument = std::variant<TypeArgument, TemplateType, IntegerLiteral, FloatLiteral, StringLiteral>;
 
 	enum class ObjectKind
 	{
@@ -120,6 +116,16 @@ namespace FlexKit
 		ObjectKind							kind;
 		uint32_t							typeSize;
 		std::unique_ptr<StructInformation>	structDefinition;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct ComponentDefinition
+	{
+		std::vector<TemplateArgument>	subTypes;
+		std::string						componentName;
 	};
 
 

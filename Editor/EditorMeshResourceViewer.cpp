@@ -1,6 +1,6 @@
 #include "PCH.h"
 #include "EditorMeshResourceViewer.h"
-#include "MeshResource.h"
+#include "EditorMeshResource.hpp"
 #include <qcombobox.h>
 #include <ranges>
 

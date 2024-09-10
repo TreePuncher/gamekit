@@ -73,11 +73,11 @@ namespace FlexKit
 					auto spelling	= ClangString(clang_getCursorSpelling(cursor)).ToString();
 					auto referenced = clang_getCursorReferenced(cursor);
 
-					struct StructInformation info;
+					StructInformation info;
 					info.component = true;
 					TraverseStruct(referenced, info);
 
-					data.structInfo = info;
+					data.templateArguments.emplace_back(TypeArgument{ spelling, std::move(info) });
 				}	break;
 				case CXCursor_IntegerLiteral:
 				{
@@ -133,6 +133,42 @@ namespace FlexKit
 					data.templateArguments.push_back(literal);
 					clang_disposeTokens(tu, tokens, tokenCount);
 				}	break;
+				case CXCursor_CallExpr:
+				{
+					auto name		= ClangString{ clang_getCursorSpelling(cursor) };
+					auto expression = clang_Cursor_Evaluate(cursor);
+					auto exprKind	= clang_EvalResult_getKind(expression);
+
+					switch (exprKind)
+					{
+					case CXEval_Int:
+					{
+						IntegerLiteral value;
+						value.name = name.ToString();
+						value.value = clang_EvalResult_getAsInt(expression);
+						data.templateArguments.push_back(value);
+					}	break;
+					case CXEval_Float:
+					{
+						FloatLiteral value;
+						value.name = name.ToString();
+						value.value = clang_EvalResult_getAsDouble(expression);
+						data.templateArguments.push_back(value);
+					}	break;
+					case CXEval_StrLiteral:
+					{
+						StringLiteral value;
+						value.name	= name.ToString();
+						value.value = clang_EvalResult_getAsStr(expression);
+						data.templateArguments.push_back(value);
+					}	break;
+					default:
+						std::print("Warning, clang_EvalResult_getKind returned kind that is unhandled!\n");
+						break;
+					}
+					clang_EvalResult_dispose(expression);
+
+				}
 				default:
 					break;
 				};
@@ -340,7 +376,7 @@ namespace FlexKit
 					if (aliasDecl.isComponent)
 					{
 						ComponentDefinition component;
-						component.fields		= aliasDecl.structInfo.fields;
+						component.subTypes		= aliasDecl.templateArguments;
 						component.componentName = name.ToString();
 						objects.components.push_back(component);
 					}

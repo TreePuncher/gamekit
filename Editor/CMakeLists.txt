@@ -13,6 +13,7 @@ if(WIN32)
 
 	find_package(pxr CONFIG REQUIRED)
 	find_package(Qt6 REQUIRED COMPONENTS Core Widgets GUI)
+	find_package(boost_process CONFIG REQUIRED)
 
 	qt_standard_project_setup()
 
@@ -63,7 +64,7 @@ if(WIN32)
 		flxEditor-Win64.cpp
 		gltfImport.cpp
 		MaterialResource.cpp
-		MeshResource.cpp
+		"EditorMeshResource.cpp"
 		MetaData.cpp
 		ModelViewerWidget.cpp
 		PCH.cpp
@@ -86,9 +87,9 @@ if(WIN32)
 	target_link_libraries(editor PRIVATE EditorReflection)
 	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
 	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
-	
-	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
+	target_link_libraries(editor PRIVATE Boost::process)
 
+	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
 	target_compile_definitions(editor PUBLIC UNICODE)
     target_compile_options(editor PUBLIC /UTF-8 /bigobj)
 

@@ -1,8 +1,8 @@
 #include "PCH.h"
-#include "EditorSceneResource.h"
-#include "EditorSceneEntityComponents.h"
+#include "EditorMeshResource.hpp"
 #include "EditorTextureResources.h"
-#include "MeshResource.h"
+#include "EditorSceneEntityComponents.h"
+#include "EditorSceneResource.h"
 #include "ResourceUtilities.h"
 
 #define TINYGLTF_NO_STB_IMAGE
