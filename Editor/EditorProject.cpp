@@ -28,8 +28,8 @@ inline static const char releasePreset[]				= R"("x64-release")";
 //inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
 //inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
 
-inline static const char defaultGitSource[]				= R"(https://fedora/gamedev/flex.git)";
-inline static const char defaultGitHash[]				= R"(13baf1e3a926e3836d1cde523b8305c3b9daff14)";
+inline static const char defaultGitSource[]				= R"(http://fedora/gamedev/flex.git)";
+inline static const char defaultGitHash[]				= R"(fa79d79a5d6ed426f27f4ace2625292e324f7f45)";
 
 inline static const char defaultVCVarsPath[]			= R"(C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat)";
 
@@ -38,14 +38,16 @@ cmake_minimum_required(VERSION 3.23)
 
 include(FetchContent)
 
-#FetchContent_Declare(
-#  vcpkg 
-#  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
-#  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
-#)
+FetchContent_Declare(
+  vcpkg 
+  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
+  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
+)
 
-#FetchContent_MakeAvailable(vcpkg)
-#set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
+FetchContent_MakeAvailable(vcpkg)
+set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
+
+project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
 
 FetchContent_Declare(
   flex
@@ -55,8 +57,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(flex)
 
-project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -64,20 +64,20 @@ file (GLOB CPP_FILES src/*.cpp)
 file (GLOB HPP_FILES includes/*.hpp)
 
 add_executable(
-    @ProjectName
+    @AppName
     ${CPP_FILES}
 	${HPP_FILES}
 )
 
 target_include_directories(
-    @ProjectName
+    @AppName
     PUBLIC
     ${PROJECT_SOURCE_DIR})
 
-#set_property(TARGET @ProjectName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(@ProjectName PRIVATE flex flex_optional)
+set_property(TARGET @AppName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+target_link_libraries(@AppName PRIVATE flex flex_optional)
 
-#Flex_CopyAssets(@ProjectName)
+Flex_CopyAssets(@AppName)
 )";
 
 
