@@ -186,8 +186,8 @@ if(WIN32)
     message(${SIMDE_INCLUDE_DIRS})
 
     ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
-    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
-    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
+    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
+    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
 
     set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
     ADD_LIBRARY(WINPIX SHARED IMPORTED)
@@ -209,8 +209,6 @@ if(WIN32)
     target_link_libraries(flex PRIVATE WINPIX) 
     target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
     target_link_libraries(flex PRIVATE RmlUi::Core RmlUi::Debugger)
-    target_link_libraries(flex PRIVATE ${FLEX_ROOT}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
-
 
     target_compile_definitions(flex PUBLIC UNICODE)
     target_compile_options(flex PUBLIC /UTF-8)

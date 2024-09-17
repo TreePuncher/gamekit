@@ -1,0 +1,49 @@
+{
+  "name": "flexkit",
+  "version-string": "0.0.1",
+  "supports": "(!x86 & windows)",
+  "dependencies": [
+    {
+      "name": "angelscript",
+      "features": [
+        "addons"
+      ]
+    },
+    {
+      "name": "directxtex",
+      "features": [
+        "dx12",
+        "openexr"
+      ]
+    },
+    "cppcoro",
+    "cpptoml",
+    "directx-dxc",
+    "directx12-agility",
+    "directxmesh",
+    "directxtk12",
+    "fmt",
+    "fp16",
+    "imgui",
+    "implot",
+    "imguizmo",
+    "loguru",
+    "ois",
+    "physx",
+    "rmlui",
+    "range-v3",
+    "recastnavigation",
+    "scnlib",
+    "simde",
+    "slikenet",
+    "stb",
+    "zlib-ng"
+  ],
+  "builtin-baseline": "91d888703f251c13111c1b889be1f350c4ceb7ab",
+  "overrides": [
+    {
+      "name": "physx",
+      "version": "5.2.1"
+    }
+  ]
+}

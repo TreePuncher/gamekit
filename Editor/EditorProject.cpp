@@ -21,15 +21,15 @@ using namespace std::filesystem;
 inline static std::string objectsDirectory				= "Objects/";
 //inline static const char defaultConfigure[]				= R"(cmd /r 'echo hello & "@vcvars" & cmake -B "@buildPath" "@projectPath" --preset @preset')";
 inline static const char defaultConfigure[]				= R"(cmd /c "echo "Starting Reconfigure" && "@VCVARS" && @ProjectDrive && cmake -B "@BuildPath" "@ProjectPath" --preset @Preset && echo "Done!"")";
-inline static const char defaultBuildCommand[]			= R"(cmd /c "echo "Starting Build" && @ProjectDrive && cd "@ProjectPath" && cmake --build "@BuildPath" --preset @Preset && echo "Done!"")";
+inline static const char defaultBuildCommand[]			= R"(cmd /c "echo "Starting Build" && @ProjectDrive && cd "@ProjectPath" && "@VCVARS" && cmake --build "@BuildPath" && echo "Done!"")";
 inline static const char debugPreset[]					= R"("x64-debug")";
 inline static const char releasePreset[]				= R"("x64-release")";
 
-//inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
+//inline static const char defaultGitSource[]			= R"(https://github.com/TreePuncher/gamekit.git)";
 //inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
 
 inline static const char defaultGitSource[]				= R"(http://fedora/gamedev/flex.git)";
-inline static const char defaultGitHash[]				= R"(fa79d79a5d6ed426f27f4ace2625292e324f7f45)";
+inline static const char defaultGitHash[]				= R"(3c6ab3ec7ca4834c7cd47859c7f6a6802fb15e70)";
 
 inline static const char defaultVCVarsPath[]			= R"(C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat)";
 
@@ -76,8 +76,6 @@ target_include_directories(
 
 set_property(TARGET @AppName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(@AppName PRIVATE flex flex_optional)
-
-Flex_CopyAssets(@AppName)
 )";
 
 
@@ -441,6 +439,7 @@ void EditorProject::RegenerateCMake() const
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@ProjectName", projectName);
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceRepo", gitSource);
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceHash", gitSourceHash);
+	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@AppName", "TestApp");
 
 	auto f = fopen(cmakeFile.string().c_str(), "w");
 
@@ -501,10 +500,13 @@ void EditorProject::ReconfigureCMake() const
 void EditorProject::BuildDebug() const
 {
 	std::string buildCommand = defaultBuildCommand;
+	buildCommand = SearchAndReplace(buildCommand, "@VCVARS", defaultVCVarsPath);
 	buildCommand = SearchAndReplace(buildCommand, "@BuildPath", projectDirectory.string() + "/out");
 	buildCommand = SearchAndReplace(buildCommand, "@Preset", debugPreset);
 	buildCommand = SearchAndReplace(buildCommand, "@ProjectPath", projectDirectory.string());
 	buildCommand = SearchAndReplace(buildCommand, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
+
+	std::print("{}\n", buildCommand);
 
 	boost::process::ipstream pipe_stream;
 	boost::process::child c{ buildCommand, boost::process::std_out > pipe_stream};
