@@ -19,36 +19,43 @@ using namespace std::filesystem;
 /************************************************************************************************/
 // Project Global Parameters
 inline static std::string objectsDirectory				= "Objects/";
-inline static const char defaultConfigure[]				= "cmake -B @buildPath @projectPath --preset ";
-inline static const char defaultBuildCommand[]			= "cmake --build @buildPath --preset ";
+//inline static const char defaultConfigure[]				= R"(cmd /r 'echo hello & "@vcvars" & cmake -B "@buildPath" "@projectPath" --preset @preset')";
+inline static const char defaultConfigure[]				= R"(cmd /c "echo "Starting Reconfigure" && "@VCVARS" && @ProjectDrive && cmake -B "@BuildPath" "@ProjectPath" --preset @Preset && echo "Done!"")";
+inline static const char defaultBuildCommand[]			= R"(cmd /c "echo "Starting Build" && @ProjectDrive && cd "@ProjectPath" && cmake --build "@BuildPath" --preset @Preset && echo "Done!"")";
 inline static const char debugPreset[]					= R"("x64-debug")";
 inline static const char releasePreset[]				= R"("x64-release")";
 
-inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
-inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
+//inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
+//inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
 
-inline static const char defaultVCVarsPath[]			= R"('C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat')";
+inline static const char defaultGitSource[]				= R"(https://fedora/gamedev/flex.git)";
+inline static const char defaultGitHash[]				= R"(13baf1e3a926e3836d1cde523b8305c3b9daff14)";
+
+inline static const char defaultVCVarsPath[]			= R"(C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat)";
 
 inline static std::string cmakeTemplate = R"(
 cmake_minimum_required(VERSION 3.23)
-project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
 
 include(FetchContent)
 
-FetchContent_Declare(
-  vcpkg 
-  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
-  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
-)
+#FetchContent_Declare(
+#  vcpkg 
+#  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
+#  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
+#)
 
-FetchContent_MakeAvailable(vcpkg)
-set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
+#FetchContent_MakeAvailable(vcpkg)
+#set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
 
 FetchContent_Declare(
   flex
   GIT_REPOSITORY "@SourceRepo"
   GIT_TAG        "@SourceHash"
 )
+
+FetchContent_MakeAvailable(flex)
+
+project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -67,7 +74,7 @@ target_include_directories(
     PUBLIC
     ${PROJECT_SOURCE_DIR})
 
-set_property(TARGET @ProjectName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+#set_property(TARGET @ProjectName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(@ProjectName PRIVATE flex flex_optional)
 
 #Flex_CopyAssets(@ProjectName)
@@ -456,19 +463,35 @@ void EditorProject::RegenerateCMake() const
 void EditorProject::ReconfigureCMake() const
 {
 	std::string configCommand = defaultConfigure;
-	configCommand = SearchAndReplace(configCommand, "@buildPath", projectDirectory.string() + "/out");
-	configCommand = SearchAndReplace(configCommand, "@projectPath", projectDirectory.string());
-	configCommand = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + configCommand + debugPreset + R"(")";
+	configCommand = SearchAndReplace(configCommand, "@VCVARS", defaultVCVarsPath);
+	configCommand = SearchAndReplace(configCommand, "@BuildPath", projectDirectory.string() + "/out");
+	configCommand = SearchAndReplace(configCommand, "@ProjectPath", projectDirectory.string());
+	configCommand = SearchAndReplace(configCommand, "@Preset", debugPreset);
+	configCommand = SearchAndReplace(configCommand, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
 
-	boost::process::ipstream pipe_stream;
-	boost::process::child c{ configCommand, boost::process::std_out > pipe_stream};
+	std::print("{}\n", configCommand);
 
-	std::string line;
+	try
+	{
+		boost::process::ipstream pipe_stream_out;
+		//boost::process::child c{ configCommand, boost::process::std_out > pipe_stream_out };
+		boost::process::child c{ configCommand, boost::process::std_out > pipe_stream_out };
 
-	while (pipe_stream && std::getline(pipe_stream, line))
-		std::print("[CMake]>{}\n", line);
 
-	c.wait();
+		std::string output;
+		while (c.running())
+		{
+			std::this_thread::sleep_for(1s);
+
+			char buffer[1024];
+			pipe_stream_out.gcount();
+			pipe_stream_out.read(buffer, 1024);
+		}
+	}
+	catch (const boost::process::process_error& error)
+	{
+		FK_LOG_ERROR("EditorProject::ReconfigureCMake: %s", error.what());
+	}
 }
 
 
@@ -478,16 +501,21 @@ void EditorProject::ReconfigureCMake() const
 void EditorProject::BuildDebug() const
 {
 	std::string buildCommand = defaultBuildCommand;
-	buildCommand = SearchAndReplace(buildCommand, "@buildPath", projectDirectory.string() + "/out");
-	buildCommand = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + buildCommand + debugPreset + R"(")";
+	buildCommand = SearchAndReplace(buildCommand, "@BuildPath", projectDirectory.string() + "/out");
+	buildCommand = SearchAndReplace(buildCommand, "@Preset", debugPreset);
+	buildCommand = SearchAndReplace(buildCommand, "@ProjectPath", projectDirectory.string());
+	buildCommand = SearchAndReplace(buildCommand, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
 
 	boost::process::ipstream pipe_stream;
 	boost::process::child c{ buildCommand, boost::process::std_out > pipe_stream};
 
 	std::string line;
 
-	while (pipe_stream && std::getline(pipe_stream, line) )
-		std::print("{}\n", line);
+	while (c.running())
+	{
+		while (pipe_stream && std::getline(pipe_stream, line))
+			std::print("{}\n", line);
+	}
 
 	c.wait();
 }
@@ -498,7 +526,7 @@ void EditorProject::BuildDebug() const
 
 void EditorProject::StartEditor() const
 {
-	auto command = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + "devenv " + R"(")";
+	auto command = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + "devenv " + R"(" & echo "Done!")";
 	system(command.c_str());
 }
 
