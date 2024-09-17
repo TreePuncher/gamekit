@@ -12,21 +12,22 @@ option(BuildEditor "Build Editor" ON)
 add_subdirectory(Core)
 add_subdirectory(Components)
 
-if(BuildEditor)
-    message("Building Editor")
-    add_subdirectory(EditorReflection)
-    add_subdirectory(Editor)
-endif()
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    if(BuildEditor)
+        message("Building Editor")
+        add_subdirectory(EditorReflection)
+        add_subdirectory(Editor)
+    endif()
 
-if(BuildExamples)
-    message("Building Examples")
-endif()
+    if(BuildExamples)
+        message("Building Examples")
+    endif()
 
-if(BuildExperiments)
-    message("Building Experiments")
-    add_subdirectory(Experiments)
+    if(BuildExperiments)
+        message("Building Experiments")
+        add_subdirectory(Experiments)
+    endif()
 endif()
-
 
 #Install
 include(GNUInstallDirs)
@@ -50,5 +51,5 @@ write_basic_package_version_file(
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/flex-config-version.cmake
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/flex-config.cmake
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/spud
+    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/flex
 )

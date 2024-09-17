@@ -1,6 +1,10 @@
 #Editor
 cmake_minimum_required(VERSION 3.23)
 
+ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB	${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
+SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION	${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
+
 if(WIN32)
 	project(Editor LANGUAGES CXX VERSION 0.0.1)
 
@@ -14,6 +18,9 @@ if(WIN32)
 	find_package(pxr CONFIG REQUIRED)
 	find_package(Qt6 REQUIRED COMPONENTS Core Widgets GUI)
 	find_package(boost_process CONFIG REQUIRED)
+	find_package(PkgConfig)
+
+    pkg_check_modules(zlib-ng REQUIRED IMPORTED_TARGET GLOBAL zlib-ng>=2.0)
 
 	qt_standard_project_setup()
 
