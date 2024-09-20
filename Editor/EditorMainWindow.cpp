@@ -13,6 +13,7 @@
 #include "EditorTaskList.h"
 
 #include <chrono>
+#include <print>
 #include <QShortcut.h>
 #include <QtWidgets/qmenubar.h>
 
@@ -36,6 +37,7 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 	fileMenu	= menuBar()->addMenu("File");
 	editMenu	= menuBar()->addMenu("Edit");
 	buildMenu	= menuBar()->addMenu("Build");
+	projectMenu = menuBar()->addMenu("Project");
 
 	auto timer = new QTimer{ this };
 	connect(timer, &QTimer::timeout, this, &EditorMainWindow::Update);
@@ -49,6 +51,31 @@ EditorMainWindow::EditorMainWindow(EditorRenderer& IN_renderer, EditorScriptEngi
 
 	frameEnd	= high_resolution_clock::now();
 	frameBegin	= frameEnd;
+
+
+	AddProjectInputAction("Add Source File",
+		[this](const std::string& input)
+		{
+			project.AddSource(input);
+		});
+
+	AddProjectInputAction("Add Header File",
+		[this](const std::string& input)
+		{
+			project.AddHeader(input);
+		});
+
+	AddProjectAction("Open Editor",
+		[this]()
+		{
+			project.OpenIDE();
+		});
+
+	AddProjectAction("Open Explorer",
+		[this]()
+		{
+			project.OpenExplorer();
+		});
 }
 
 

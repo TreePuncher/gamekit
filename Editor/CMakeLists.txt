@@ -18,6 +18,7 @@ if(WIN32)
 	qt_standard_project_setup()
 
 	file (GLOB CPP_FILES "*.h")
+	file (GLOB resources_FILES "EditorResources/*")
 
 	add_executable(editor
 		CSGComponent.cpp

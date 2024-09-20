@@ -19,7 +19,8 @@ using namespace std::filesystem;
 /************************************************************************************************/
 // Project Global Parameters
 inline static std::string objectsDirectory				= "Objects/";
-//inline static const char defaultConfigure[]				= R"(cmd /r 'echo hello & "@vcvars" & cmake -B "@buildPath" "@projectPath" --preset @preset')";
+inline static const char defaultOpenIDE[]				= R"(cmd /c "echo "Starting Visual Studio" && "@VCVARS" && @ProjectDrive && cd "@ProjectPath" && devenv "@ProjectPath")";
+inline static const char defaultOpenExplorer[]			= R"(cmd /c "echo "Starting Explorer" && @ProjectDrive && explorer "@ProjectPath")";
 inline static const char defaultConfigure[]				= R"(cmd /c "echo "Starting Reconfigure" && "@VCVARS" && @ProjectDrive && cmake -B "@BuildPath" "@ProjectPath" --preset @Preset && echo "Done!"")";
 inline static const char defaultBuildCommand[]			= R"(cmd /c "echo "Starting Build" && @ProjectDrive && cd "@ProjectPath" && "@VCVARS" && cmake --build "@BuildPath" && echo "Done!"")";
 inline static const char debugPreset[]					= R"("x64-debug")";
@@ -64,18 +65,20 @@ file (GLOB CPP_FILES src/*.cpp)
 file (GLOB HPP_FILES includes/*.hpp)
 
 add_executable(
-    @AppName
-    ${CPP_FILES}
+	@AppName
+	${CPP_FILES}
 	${HPP_FILES}
 )
 
 target_include_directories(
-    @AppName
-    PUBLIC
-    ${PROJECT_SOURCE_DIR})
+	@AppName
+	PUBLIC
+	${PROJECT_SOURCE_DIR})
 
 set_property(TARGET @AppName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(@AppName PRIVATE flex flex_optional)
+
+Flex_CopyBinaries(@AppName)
 )";
 
 
@@ -222,17 +225,23 @@ void EditorProject::StartWatchingDirectories()
 			QObject::connect(fileWatcher, &QFileSystemWatcher::directoryChanged,
 				[this](const QString& path)
 				{
+					projectNeedsCMakeRebuild = true;
 					onHeaderChanged(path.toStdString());
 				});
 	}
+
 	for (auto&& srcFile : std::filesystem::directory_iterator{ GetSourcesPath() })
+	{
+		projectNeedsCMakeRebuild = true;
 		sourceFiles.insert(srcFile.path().filename().string());
+	}
 
 	if (fileWatcher->addPath(GetHeadersPath().c_str()))
 	{
 		QObject::connect(fileWatcher, &QFileSystemWatcher::directoryChanged,
 			[this](const QString& path)
 			{
+				projectNeedsCMakeRebuild = true;
 				HeaderAddedRemoved(path.toStdString());
 			});
 	}
@@ -244,6 +253,7 @@ void EditorProject::StartWatchingDirectories()
 
 void EditorProject::HeaderChanged(const std::string& changedFile)
 {
+	projectNeedsCMakeRebuild = true;
 	onHeaderChanged(changedFile);
 }
 
@@ -268,6 +278,7 @@ void EditorProject::HeaderAddedRemoved(const std::string& changedDirectory)
 						});
 
 				headerFiles.insert(fileName);
+				projectNeedsCMakeRebuild = true;
 				onHeaderAdded(file.path().string());
 			}
 		}
@@ -279,6 +290,7 @@ void EditorProject::HeaderAddedRemoved(const std::string& changedDirectory)
 		if (!std::filesystem::exists(path))
 		{
 			headerFiles.erase(header);
+			projectNeedsCMakeRebuild = true;
 			onHeaderRemoved(header);
 		}
 	}
@@ -453,6 +465,8 @@ void EditorProject::RegenerateCMake() const
 		i += fwrite(newCMakeTexts.c_str() + i, 1, newCMakeTexts.size() - i, f);
 
 	fclose(f);
+
+	projectNeedsCMakeRebuild = false;
 }
 
 
@@ -486,6 +500,8 @@ void EditorProject::ReconfigureCMake() const
 			pipe_stream_out.gcount();
 			pipe_stream_out.read(buffer, 1024);
 		}
+
+		projectNeedsCMakeRebuild = false;
 	}
 	catch (const boost::process::process_error& error)
 	{
@@ -499,6 +515,9 @@ void EditorProject::ReconfigureCMake() const
 
 void EditorProject::BuildDebug() const
 {
+	if (projectNeedsCMakeRebuild)
+		ReconfigureCMake();
+
 	std::string buildCommand = defaultBuildCommand;
 	buildCommand = SearchAndReplace(buildCommand, "@VCVARS", defaultVCVarsPath);
 	buildCommand = SearchAndReplace(buildCommand, "@BuildPath", projectDirectory.string() + "/out");
@@ -526,12 +545,64 @@ void EditorProject::BuildDebug() const
 /************************************************************************************************/
 
 
-void EditorProject::StartEditor() const
+void EditorProject::OpenIDE() const
 {
-	auto command = std::string{ R"(cmd /c ")" } + defaultVCVarsPath + " | " + "devenv " + R"(" & echo "Done!")";
+	std::string command = defaultOpenIDE;
+	command = SearchAndReplace(command, "@VCVARS", defaultVCVarsPath);
+	command = SearchAndReplace(command, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
+	command = SearchAndReplace(command, "@ProjectPath", projectDirectory.string());
+
 	system(command.c_str());
 }
 
+
+/************************************************************************************************/
+
+
+void EditorProject::OpenExplorer() const
+{
+	std::string command = defaultOpenExplorer;
+	command = SearchAndReplace(command, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
+	command = SearchAndReplace(command, "@ProjectPath", SearchAndReplace(projectDirectory.string(), "/", "\\"));
+
+	system(command.c_str());
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::AddHeader(const std::string& name) const
+{
+	auto filePath = projectResourceDir + "/includes/" + name;
+	if (std::filesystem::exists(filePath))
+		return;
+
+	if (auto f = fopen(filePath.c_str(), "w"); f)
+		fclose(f);
+	else
+		FK_LOG_ERROR("Failed to create file %s", filePath.c_str());
+
+	projectNeedsCMakeRebuild = true;
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::AddSource(const std::string& name) const
+{
+	auto filePath = projectResourceDir + "/src/" + name;
+	if (std::filesystem::exists(filePath))
+		return;
+
+	if (auto f = fopen(filePath.c_str(), "w"); f)
+		fclose(f);
+	else
+		FK_LOG_ERROR("Failed to create file %s", filePath.c_str());
+
+	projectNeedsCMakeRebuild = true;
+}
 
 
 /************************************************************************************************/
