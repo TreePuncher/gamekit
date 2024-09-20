@@ -1,13 +1,15 @@
 #pragma once
 
 #include <memory>
+#include <qsettings.h>
+#include <qtimer>
+#include <QWidgetAction>
 #include <QtWidgets/qwidget.h>
 #include <QtWidgets/qmainwindow>
 #include <QtWidgets/qapplication.h>
-#include <qtimer>
+#include <QPushButton>
 #include <QtWidgets/qdockwidget.h>
-#include <QtWidgets/qtextedit.h>
-#include <qsettings.h>
+#include <QtWidgets/qlineedit.h>
 #include <QtWidgets/qfiledialog.h>
 #include <QtWidgets/qmenubar.h>
 #include <QtWidgets/qtabwidget.h>
@@ -41,6 +43,31 @@ using FlexKit::ResourceList;
 using high_resolution_clock	= std::chrono::high_resolution_clock;
 using time_point			= high_resolution_clock::time_point;
 using duration_t			= std::chrono::duration<double>;
+
+
+/************************************************************************************************/
+
+
+struct EditorTextInputMenuItem : public QWidgetAction
+{
+	EditorTextInputMenuItem() :
+		QWidgetAction	{ nullptr },
+		button			{ new QPushButton{} }
+	{
+		QWidget*		widget	= new QWidget{ nullptr };
+		QHBoxLayout*	layout	= new QHBoxLayout{};
+		input					= new QLineEdit{};
+
+		layout->addWidget(input);
+		layout->addWidget(button);
+		widget->setLayout(layout);
+
+		setDefaultWidget(widget);
+	}
+
+	QPushButton*	button	= nullptr;
+	QLineEdit*		input	= nullptr;
+};
 
 
 /************************************************************************************************/
@@ -82,6 +109,29 @@ public:
 	{
 		auto action = buildMenu->addAction(name.c_str());
 		connect(action, &QAction::triggered, this, callable);
+	}
+
+	void AddProjectAction(const std::string& name, auto&& callable)
+	{
+		auto action = projectMenu->addAction(name.c_str());
+		connect(action, &QAction::triggered, this, callable);
+	}
+
+	void AddProjectInputAction(const std::string& name, auto&& callable)
+	{
+		auto action	= new EditorTextInputMenuItem{};
+		projectMenu->addAction(action);
+
+		action->button->setText(name.c_str());
+		connect(action->button, &QPushButton::released, this,
+			[action, callable]()
+			{
+				auto input	= action->input;
+				auto text	= input->text().toStdString();
+				input->clear();
+
+				callable(text);
+			});
 	}
 
 	EditorViewport&			Get3DView()			{ return *viewport; }
@@ -126,6 +176,7 @@ private:
 	QMenu*				fileMenu	= nullptr;
 	QMenu*				editMenu	= nullptr;
 	QMenu*				buildMenu	= nullptr;
+	QMenu*				projectMenu	= nullptr;
 	QMenu*				importMenu	= nullptr;
 	QMenu*				exportMenu	= nullptr;
 	QMenu*				gadgetMenu	= nullptr;

@@ -138,7 +138,11 @@ public:
 
 	void BuildDebug() const;
 
-	void StartEditor() const;
+	void OpenIDE() const;
+	void OpenExplorer() const;
+
+	void AddHeader(const std::string& name) const;
+	void AddSource(const std::string& name) const;
 
 	std::string GetHeadersPath() const;
 	std::string GetSourcesPath() const;
@@ -169,6 +173,8 @@ public:
 	FlexKit::Signal<void (const std::string&)>	onHeaderRemoved;
 	FlexKit::Signal<void (const std::string&)>	onHeaderAdded;
 	FlexKit::Signal<void (const std::string&)>	onHeaderChanged;
+
+	mutable bool projectNeedsCMakeRebuild = false;
 };
 
 std::string ProjectGetObjectDirectory();
