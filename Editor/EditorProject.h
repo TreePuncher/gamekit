@@ -151,11 +151,11 @@ public:
 
 	// Project Variables
 	std::string projectName				= "flexApplication";
+	std::string version					= "0.0.1";
 
 	// Engine Source variables
 	std::string gitSource;
 	std::string gitSourceHash;
-
 	std::string debugBuildCMakeCommand;
 
 	std::shared_mutex m;

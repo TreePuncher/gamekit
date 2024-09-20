@@ -21,4 +21,4 @@ target_include_directories(
 set_property(TARGET Tessellation PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(Tessellation PRIVATE flex flex_optional)
 
-Flex_CopyAssets(Tessellation)
+Flex_LinkAssets(Tessellation)

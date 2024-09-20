@@ -5,6 +5,7 @@ project(EditorReflection)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(Reflection_Dir ${PROJECT_SOURCE_DIR})
 
 find_package(fmt CONFIG REQUIRED)
 find_library(zlib_lib zlib.lib)
@@ -33,3 +34,15 @@ target_link_libraries(EditorReflection PUBLIC
 
 install(TARGETS EditorReflection DESTINATION lib)
 install(TARGETS EditorReflection FILE_SET reflection_headers)
+
+
+function(Flex_CopyReflectionLibraries TARGET)
+    if(WIN32)
+        add_custom_command(
+            TARGET ${TARGET} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/core     "$<TARGET_FILE_DIR:${TARGET}>/core"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/include  "$<TARGET_FILE_DIR:${TARGET}>/include"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/stl      "$<TARGET_FILE_DIR:${TARGET}>/stl"
+            COMMAND_EXPAND_LISTS)
+    endif()
+endfunction()
