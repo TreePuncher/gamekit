@@ -21,4 +21,4 @@ target_include_directories(
 
 target_link_libraries(PhysicsTest PRIVATE flex flex_optional)
 
-Flex_CopyAssets(PhysicsTest)
+Flex_LinkAssets(PhysicsTest)

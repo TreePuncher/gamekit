@@ -48,7 +48,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(vcpkg)
 set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
 
-project(@ProjectName  LANGUAGES CXX VERSION 0.0.1)
+project(@ProjectName  LANGUAGES CXX VERSION @Version)
 
 FetchContent_Declare(
   flex
@@ -79,6 +79,7 @@ set_property(TARGET @AppName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(@AppName PRIVATE flex flex_optional)
 
 Flex_CopyBinaries(@AppName)
+Flex_CopyAssets(@AppName)
 )";
 
 
@@ -136,9 +137,27 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 
 	ResetProject();
 
+	size_t version;
+
 	FlexKit::LoadFileArchiveContext archive{ f };
+	archive& version;
 	archive& resources;
 	archive& scenes;
+
+	switch (version)
+	{
+	case 1:
+	{
+		archive& projectName;
+		archive& version;
+		archive& gitSource;
+		archive& gitSourceHash;
+		archive& debugBuildCMakeCommand;
+
+		headerFiles.clear();
+		sourceFiles.clear();
+	}	break;
+	}
 
 	fclose(f);
 
@@ -172,7 +191,10 @@ bool EditorProject::SaveProject(const std::string& projectDir)
 
 	try
 	{
+		size_t version = 1;
+
 		FlexKit::SaveArchiveContext archive;
+		archive& version;
 		archive& resources;
 		archive& scenes;
 
@@ -415,10 +437,12 @@ void EditorProject::CreateProjectFileStructure(const std::string& projectDir)
 	projectDirectory = projectDir; 
 	std::filesystem::create_directory(projectDirectory.string() + R"(\generated_headers)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\components)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\build)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\assets)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\includes)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\src)");
+
+	std::filesystem::copy_file(R"(resources\vcpkg.json)", projectDirectory.string() + R"(\vcpkg.json)");
+	std::filesystem::copy_file(R"(resources\CMakePresets.json)", projectDirectory.string() + R"(\CMakePresets.json)");
 
 	SaveProject(projectDirectory.string() + R"(\flex.proj)");
 }
@@ -452,6 +476,7 @@ void EditorProject::RegenerateCMake() const
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceRepo", gitSource);
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@SourceHash", gitSourceHash);
 	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@AppName", "TestApp");
+	newCMakeTexts = SearchAndReplace(newCMakeTexts, "@Version", version);
 
 	auto f = fopen(cmakeFile.string().c_str(), "w");
 
@@ -487,19 +512,11 @@ void EditorProject::ReconfigureCMake() const
 	try
 	{
 		boost::process::ipstream pipe_stream_out;
-		//boost::process::child c{ configCommand, boost::process::std_out > pipe_stream_out };
 		boost::process::child c{ configCommand, boost::process::std_out > pipe_stream_out };
 
-
-		std::string output;
-		while (c.running())
-		{
-			std::this_thread::sleep_for(1s);
-
-			char buffer[1024];
-			pipe_stream_out.gcount();
-			pipe_stream_out.read(buffer, 1024);
-		}
+		std::string line;
+		while (pipe_stream_out && std::getline(pipe_stream_out, line))
+			std::print("{}\n", line);
 
 		projectNeedsCMakeRebuild = false;
 	}
@@ -532,11 +549,8 @@ void EditorProject::BuildDebug() const
 
 	std::string line;
 
-	while (c.running())
-	{
-		while (pipe_stream && std::getline(pipe_stream, line))
-			std::print("{}\n", line);
-	}
+	while (pipe_stream && std::getline(pipe_stream, line))
+		std::print("{}\n", line);
 
 	c.wait();
 }
@@ -574,7 +588,7 @@ void EditorProject::OpenExplorer() const
 
 void EditorProject::AddHeader(const std::string& name) const
 {
-	auto filePath = projectResourceDir + "/includes/" + name;
+	auto filePath = projectDirectory.string() + "/includes/" + name;
 	if (std::filesystem::exists(filePath))
 		return;
 
@@ -592,7 +606,7 @@ void EditorProject::AddHeader(const std::string& name) const
 
 void EditorProject::AddSource(const std::string& name) const
 {
-	auto filePath = projectResourceDir + "/src/" + name;
+	auto filePath = projectDirectory.string() + "/src/" + name;
 	if (std::filesystem::exists(filePath))
 		return;
 

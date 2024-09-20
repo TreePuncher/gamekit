@@ -34,6 +34,7 @@ if(WIN32)
 		EditorInspectors.cpp
 		EditorInspectorView.cpp
 		EditorMainWindow.cpp
+		EditorMeshResource.cpp
 		EditorMeshResourceViewer.cpp
 		EditorOperators.cpp
 		EditorOutliner.cpp
@@ -65,7 +66,6 @@ if(WIN32)
 		flxEditor-Win64.cpp
 		gltfImport.cpp
 		MaterialResource.cpp
-		"EditorMeshResource.cpp"
 		MetaData.cpp
 		ModelViewerWidget.cpp
 		PCH.cpp
@@ -100,9 +100,11 @@ if(WIN32)
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MD.lib)
 	endif()
 
-	FLEX_COPYASSETS(editor)
+	Flex_LinkAssets(editor)
+	Flex_CopyReflectionLibraries(editor)
 
 	add_custom_command(
 		TARGET editor POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/resources $<TARGET_FILE_DIR:editor>/resources
 		COMMAND Qt6::windeployqt ARGS $<TARGET_FILE:editor>)
 endif()

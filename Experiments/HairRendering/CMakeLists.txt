@@ -15,4 +15,4 @@ target_include_directories(HairRendering PUBLIC ${PROJECT_SOURCE_DIR})
 
 target_link_libraries(HairRendering PRIVATE flex)
 
-Flex_CopyAssets(HairRendering)
+Flex_LinkAssets(HairRendering)

@@ -21,4 +21,4 @@ target_include_directories(
 set_property(TARGET Signals PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(Signals PRIVATE flex flex_optional)
 
-Flex_CopyAssets(Signals)
+Flex_LinkAssets(Signals)

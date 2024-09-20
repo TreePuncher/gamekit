@@ -21,4 +21,4 @@ target_include_directories(
 set_property(TARGET ProcGen PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(ProcGen PRIVATE flex flex_optional)
 
-Flex_CopyAssets(ProcGen)
+Flex_LinkAssets(ProcGen)
