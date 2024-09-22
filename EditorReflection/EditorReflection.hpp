@@ -39,11 +39,19 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	enum class ComponentType
+	{
+		Basic,
+		MultiField,
+		Custom,
+		IsAComponent,
+		NotAComponent
+	};
 
 	struct StructInformation
 	{
-		bool isTemplate = false;
-		bool component = false;
+		bool			isTemplate		= false;
+		ComponentType	componentType	= ComponentType::NotAComponent;
 
 		std::vector<std::string>	bases;
 		std::vector<std::string>	functions;
@@ -102,10 +110,11 @@ namespace FlexKit
 		Enum,
 	};
 
+
 	struct AliasDecl
 	{
-		bool							isComponent = false;
-		bool							isTemplate = false;
+		bool							isTemplate		= false;
+		ComponentType					componentType	= ComponentType::NotAComponent;
 		StructInformation				structInfo;
 		std::vector<TemplateArgument>	templateArguments;
 	};
@@ -124,6 +133,7 @@ namespace FlexKit
 
 	struct ComponentDefinition
 	{
+		ComponentType					type;
 		std::vector<TemplateArgument>	subTypes;
 		std::string						componentName;
 	};

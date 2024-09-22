@@ -366,10 +366,51 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 	contentLayout		{ new QVBoxLayout{} },
 	contentWidget		{ new QWidget{} }
 {
-	auto addComponentMenu = menu->addMenu("Add");
+	AddMenuItems();
 
-	for (auto& component : availableComponents)
+	setLayout(outerLayout);
+	outerLayout->addWidget(scrollArea);
+	outerLayout->setMenuBar(menu);
+
+	scrollArea->setWidgetResizable(true);
+	scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+	scrollArea->setWidget(contentWidget);
+	scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
+	scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
+
+	contentLayout->setSizeConstraint(QLayout::SizeConstraint::SetMinimumSize);
+	contentLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+	contentWidget->setLayout(contentLayout);
+	
+	ComponentViewPanelContext context{ contentLayout, propertyItems, properties, this };
+
+	timer->start(100);
+
+	connect(timer, &QTimer::timeout, this, &EditorInspectorView::OnUpdate);
+
+	selectionContext.OnChange.Connect(
+		slot,
+		[&]()
+		{
+			ClearPanel();
+		});
+}
+
+inline FlexKit::Vector<IEditorComponent*> availableComponents{ FlexKit::SystemAllocator };
+
+void EditorInspectorView::AddComponent(IEditorComponent& component_ref)
+{
+	availableComponents.push_back(&component_ref);
+}
+
+void EditorInspectorView::AddMenuItems()
+{
+	auto addComponentMenu = menu->addMenu("Add");
+	auto size = availableComponents.size();
+	for (int i = 0; i < size; i++)
 	{
+		auto& component = availableComponents[i];
+
 		if (!component->Constructable())
 			continue;
 
@@ -438,35 +479,7 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 				}
 			});
 	}
-
-	setLayout(outerLayout);
-	outerLayout->addWidget(scrollArea);
-	outerLayout->setMenuBar(menu);
-
-	scrollArea->setWidgetResizable(true);
-	scrollArea->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-	scrollArea->setWidget(contentWidget);
-	scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
-	scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarPolicy::ScrollBarAsNeeded);
-
-	contentLayout->setSizeConstraint(QLayout::SizeConstraint::SetMinimumSize);
-	contentLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-	contentWidget->setLayout(contentLayout);
-	
-	ComponentViewPanelContext context{ contentLayout, propertyItems, properties, this };
-
-	timer->start(100);
-
-	connect(timer, &QTimer::timeout, this, &EditorInspectorView::OnUpdate);
-
-	selectionContext.OnChange.Connect(
-		slot,
-		[&]()
-		{
-			ClearPanel();
-		});
 }
-
 
 FlexKit::ComponentViewBase* EditorInspectorView::ConstructComponent(uint32_t componentID, ViewportGameObject& gameObject, ComponentConstructionContext& ctx)
 {

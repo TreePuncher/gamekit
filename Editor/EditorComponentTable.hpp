@@ -1,5 +1,38 @@
 #pragma once
 #include <Signals.hpp>
+#include <vector>
+
+struct ComponentVariable
+{
+	std::string name;
+	std::string type;
+	std::string annotation;
+
+	uint32_t offset;
+	uint32_t size;
+};
+
+struct ComponentField
+{
+	std::string name;
+	std::string type;
+	std::string annotation;
+	std::vector<ComponentVariable> childVariables;
+};
+
+struct BasicComponentReflection
+{
+	std::string name;
+	std::vector<ComponentVariable> childVariables;
+};
+
+using BasicComponentReflection_ptr = std::shared_ptr<BasicComponentReflection>;
+
+struct MultiFieldComponentReflection
+{
+	std::string					name;
+	std::vector<ComponentField> fields;
+};
 
 class EditorComponentTable
 {
@@ -10,6 +43,10 @@ public:
 	void AddHeader		(const std::string& header);
 
 	FlexKit::Signal<void(const std::string&)>::Slot onHeaderAdded;
+
+	std::vector<BasicComponentReflection_ptr>	basicComponents;
+	std::vector<MultiFieldComponentReflection>	complexComponents;
+	std::vector<class IEditorComponent*>		editorComponents;
 
 	class EditorProject* project_ptr;
 };
