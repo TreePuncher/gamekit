@@ -141,11 +141,7 @@ public:
 	EditorInspectorView(SelectionContext& selectionContext, QWidget *parent = Q_NULLPTR);
 	~EditorInspectorView();
 
-	static void AddComponent(IEditorComponent& component_ref)
-	{
-		availableComponents.push_back(&component_ref);
-	}
-
+	static void AddComponent(IEditorComponent& component_ref);
 	static FlexKit::ComponentViewBase* ConstructComponent(uint32_t ComponentID, ViewportGameObject& gameObject, ComponentConstructionContext& scene);
 
 	 SelectionContext* GetSelectionContext() { return &selectionContext; }
@@ -156,15 +152,13 @@ private:
 
 	IEditorComponent* FindComponent(uint32_t componentID);
 
+	void AddMenuItems();
 	void UpdatePropertiesViewportObjectInspector();
 	void UpdateAnimatorObjectInspector();
 	void UpdateUI(FlexKit::GameObject&, bool remote = false);
 
 	void timerEvent(QTimerEvent*) override;
 	void OnUpdate();
-
-
-	inline static std::vector<IEditorComponent*> availableComponents = {};
 
 	QTimer*					timer = new QTimer{ this };
 	QMenuBar*				menu;

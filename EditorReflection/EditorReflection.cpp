@@ -66,7 +66,9 @@ namespace FlexKit
 
 					auto spelling = ClangString(clang_getCursorSpelling(cursor)).ToString();
 					if (spelling == "BasicComponent_t")
-						data.isComponent = true;
+						data.componentType = ComponentType::Basic;
+					else if (spelling == "MultiFieldComponent_t")
+						data.componentType = ComponentType::MultiField;
 				}	break;
 				case CXCursor_TypeRef:
 				{
@@ -74,7 +76,7 @@ namespace FlexKit
 					auto referenced = clang_getCursorReferenced(cursor);
 
 					StructInformation info;
-					info.component = true;
+					info.componentType = ComponentType::IsAComponent;
 					TraverseStruct(referenced, info);
 
 					data.templateArguments.emplace_back(TypeArgument{ spelling, std::move(info) });
@@ -250,7 +252,7 @@ namespace FlexKit
 
 				if (CXCursor_CXXBaseSpecifier != cursorType)
 				{
-					if (!structInfo.component)
+					if (structInfo.componentType == ComponentType::NotAComponent)
 						return CXChildVisit_Break;
 				}
 
@@ -263,7 +265,7 @@ namespace FlexKit
 					std::string	structNameStr = structName;
 
 					if (structNameStr.find("ComponentBase") != std::string::npos)
-						structInfo.component = true;
+						structInfo.componentType = ComponentType::Custom;
 
 					clang_visitChildren(cursor,
 						[](CXCursor cursor, CXCursor parent, CXClientData client_data)
@@ -373,9 +375,10 @@ namespace FlexKit
 					ClangString name	= clang_getCursorSpelling(cursor);
 					auto aliasDecl		= HandleAliasDeclaration(cursor);
 
-					if (aliasDecl.isComponent)
+					if (aliasDecl.componentType != ComponentType::NotAComponent)
 					{
 						ComponentDefinition component;
+						component.type			= aliasDecl.componentType;
 						component.subTypes		= aliasDecl.templateArguments;
 						component.componentName = name.ToString();
 						objects.components.push_back(component);

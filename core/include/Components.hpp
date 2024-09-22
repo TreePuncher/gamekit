@@ -282,6 +282,12 @@ namespace FlexKit
 				new(buffer) TY(gameObject, std::forward<TY_ARGS>(args)...);
 		}
 
+		void Place(ComponentViewBase* IN_view)
+		{
+			componentSize	= 0xff;
+			_ptr			= IN_view;
+		}
+
 		ComponentViewBase* operator -> () { return Get(); }
 		operator ComponentViewBase* () { return Get(); }
 
@@ -311,7 +317,7 @@ namespace FlexKit
 
 			Get()->~ComponentViewBase();
 
-			if (componentSize > componentSize)
+			if (componentSize > sizeof(buffer) && componentSize != 0xff)
 				allocator->release(_ptr);
 		}
 
@@ -368,6 +374,15 @@ namespace FlexKit
 
 				return *static_cast<TY_View*>(container.Get());
 			}
+		}
+
+
+		void AddView(ComponentViewBase* component)
+		{
+			views.emplace_back();
+			ids.push_back(component->ID);
+			auto& container = views.back();
+			container.Place(component);
 		}
 
 
