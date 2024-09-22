@@ -40,9 +40,10 @@ function(Flex_CopyReflectionLibraries TARGET)
     if(WIN32)
         add_custom_command(
             TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/core     "$<TARGET_FILE_DIR:${TARGET}>/core"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/include  "$<TARGET_FILE_DIR:${TARGET}>/include"
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/EditorReflection/stl      "$<TARGET_FILE_DIR:${TARGET}>/stl"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory  ${FLEX_ROOT}/EditorReflection/core          "$<TARGET_FILE_DIR:${TARGET}>/core"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory  ${FLEX_ROOT}/EditorReflection/include       "$<TARGET_FILE_DIR:${TARGET}>/include"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory  ${FLEX_ROOT}/EditorReflection/stl           "$<TARGET_FILE_DIR:${TARGET}>/stl"
+            COMMAND ${CMAKE_COMMAND} -E copy            ${FLEX_ROOT}/ThirdParty/libs/libclang.dll   "$<TARGET_FILE_DIR:${TARGET}>"
             COMMAND_EXPAND_LISTS)
     endif()
 endfunction()

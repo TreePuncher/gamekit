@@ -40,10 +40,16 @@ using USDImporter_ptr		= std::unique_ptr<USDImporter>;
 using TextureImporter_ptr	= std::unique_ptr<EditorTextureImporter>;
 using GameResExporter_ptr	= std::unique_ptr<GameResExporter>;
 
+struct EditorOptions
+{
+	bool skipPrevious = false;
+};
+
+
 class EditorApplication
 {
 public:
-	EditorApplication(QApplication& IN_qtApp);
+	EditorApplication(QApplication& IN_qtApp, const EditorOptions& ops = {});
 	~EditorApplication();
 
 	QApplication&					qtApp;

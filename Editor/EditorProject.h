@@ -138,20 +138,47 @@ public:
 
 	void BuildDebug() const;
 
+	void MoveAssets(const std::string& targetLocation) const;
+
 	void OpenIDE() const;
 	void OpenExplorer() const;
 
 	void AddHeader(const std::string& name) const;
 	void AddSource(const std::string& name) const;
 
+	void Serialize(auto&& archive)
+	{
+		uint64_t fileVersion = 1;
+
+		archive& fileVersion;
+		archive& resources;
+		archive& scenes;
+
+		switch (fileVersion)
+		{
+		case 1:
+		{
+			archive& projectName;
+			archive& version;
+			archive& gitSource;
+			archive& gitSourceHash;
+			archive& debugBuildCMakeCommand;
+
+			headerFiles.clear();
+			sourceFiles.clear();
+		}	break;
+		}
+	}
+
 	std::string GetHeadersPath() const;
 	std::string GetSourcesPath() const;
 	std::string GetAssetsPath() const;
+	std::string GetGameAssetsPath() const;
 	std::string GetGeneratedPath() const;
 
 	// Project Variables
-	std::string projectName				= "flexApplication";
-	std::string version					= "0.0.1";
+	std::string projectName		= "flexApplication";
+	std::string version			= "0.0.1";
 
 	// Engine Source variables
 	std::string gitSource;
