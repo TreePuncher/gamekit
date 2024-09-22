@@ -212,7 +212,7 @@ namespace FlexKit
 
 		void pop_back()
 		{
-			FK_ASSERT(used	> 1);
+			FK_ASSERT(used	> 0);
 			FK_ASSERT(allocator != nullptr);
 
 			--used;
