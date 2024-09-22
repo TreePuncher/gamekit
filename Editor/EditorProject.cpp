@@ -26,11 +26,11 @@ inline static const char defaultBuildCommand[]			= R"(cmd /c "echo "Starting Bui
 inline static const char debugPreset[]					= R"("x64-debug")";
 inline static const char releasePreset[]				= R"("x64-release")";
 
-//inline static const char defaultGitSource[]			= R"(https://github.com/TreePuncher/gamekit.git)";
-//inline static const char defaultGitHash[]				= R"(1324dcaad01af6763909ba73238eb1213a2124db)";
+inline static const char defaultGitSource[]				= R"(https://github.com/TreePuncher/gamekit.git)";
+inline static const char defaultGitHash[]				= R"(editor)";
 
-inline static const char defaultGitSource[]				= R"(http://fedora/gamedev/flex.git)";
-inline static const char defaultGitHash[]				= R"(3c6ab3ec7ca4834c7cd47859c7f6a6802fb15e70)";
+//inline static const char defaultGitSource[]			= R"(http://fedora/gamedev/flex.git)";
+//inline static const char defaultGitHash[]				= R"(editor)";
 
 inline static const char defaultVCVarsPath[]			= R"(C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat)";
 
@@ -38,15 +38,6 @@ inline static std::string cmakeTemplate = R"(
 cmake_minimum_required(VERSION 3.23)
 
 include(FetchContent)
-
-FetchContent_Declare(
-  vcpkg 
-  GIT_REPOSITORY "https://github.com/microsoft/vcpkg"
-  GIT_TAG        "91d888703f251c13111c1b889be1f350c4ceb7ab"
-)
-
-FetchContent_MakeAvailable(vcpkg)
-set(CMAKE_TOOLCHAIN_FILE "${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake" CACHE FILEPATH "")
 
 project(@ProjectName  LANGUAGES CXX VERSION @Version)
 
@@ -67,13 +58,13 @@ file (GLOB HPP_FILES includes/*.hpp)
 add_executable(
 	@AppName
 	${CPP_FILES}
-	${HPP_FILES}
 )
 
 target_include_directories(
 	@AppName
 	PUBLIC
-	${PROJECT_SOURCE_DIR})
+	${PROJECT_SOURCE_DIR}/includes
+	${PROJECT_SOURCE_DIR}/generated_headers)
 
 set_property(TARGET @AppName PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(@AppName PRIVATE flex flex_optional)
@@ -137,27 +128,11 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 
 	ResetProject();
 
-	size_t version;
+	size_t fileVersion;
 
 	FlexKit::LoadFileArchiveContext archive{ f };
-	archive& version;
-	archive& resources;
-	archive& scenes;
 
-	switch (version)
-	{
-	case 1:
-	{
-		archive& projectName;
-		archive& version;
-		archive& gitSource;
-		archive& gitSourceHash;
-		archive& debugBuildCMakeCommand;
-
-		headerFiles.clear();
-		sourceFiles.clear();
-	}	break;
-	}
+	archive& *this;
 
 	fclose(f);
 
@@ -191,12 +166,8 @@ bool EditorProject::SaveProject(const std::string& projectDir)
 
 	try
 	{
-		size_t version = 1;
-
 		FlexKit::SaveArchiveContext archive;
-		archive& version;
-		archive& resources;
-		archive& scenes;
+		archive& *this;
 
 		auto blob = archive.GetBlob();
 
@@ -438,11 +409,14 @@ void EditorProject::CreateProjectFileStructure(const std::string& projectDir)
 	std::filesystem::create_directory(projectDirectory.string() + R"(\generated_headers)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\components)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\assets)");
+	std::filesystem::create_directory(projectDirectory.string() + R"(\assetPacks)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\includes)");
 	std::filesystem::create_directory(projectDirectory.string() + R"(\src)");
 
 	std::filesystem::copy_file(R"(resources\vcpkg.json)", projectDirectory.string() + R"(\vcpkg.json)");
 	std::filesystem::copy_file(R"(resources\CMakePresets.json)", projectDirectory.string() + R"(\CMakePresets.json)");
+	std::filesystem::copy_file(R"(resources\main.cpp)", projectDirectory.string() + R"(\src\main.cpp)");
+	std::filesystem::copy_file(R"(resources\.gitignore)", projectDirectory.string() + R"(\.gitignore)");
 
 	SaveProject(projectDirectory.string() + R"(\flex.proj)");
 }
@@ -502,7 +476,7 @@ void EditorProject::ReconfigureCMake() const
 {
 	std::string configCommand = defaultConfigure;
 	configCommand = SearchAndReplace(configCommand, "@VCVARS", defaultVCVarsPath);
-	configCommand = SearchAndReplace(configCommand, "@BuildPath", projectDirectory.string() + "/out");
+	configCommand = SearchAndReplace(configCommand, "@BuildPath", projectDirectory.string() + "/out/build/" + debugPreset);
 	configCommand = SearchAndReplace(configCommand, "@ProjectPath", projectDirectory.string());
 	configCommand = SearchAndReplace(configCommand, "@Preset", debugPreset);
 	configCommand = SearchAndReplace(configCommand, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
@@ -553,6 +527,38 @@ void EditorProject::BuildDebug() const
 		std::print("{}\n", line);
 
 	c.wait();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::MoveAssets(const std::string& targetLocation) const
+{
+	auto assetPackLocation = GetGameAssetsPath();
+
+	for (auto& itr : directory_iterator{ assetPackLocation })
+	{
+		if (is_regular_file(itr))
+		{
+			path targetPath{ targetLocation + itr.path().filename().string() };
+			if (exists(targetPath))
+			{
+				auto targetLastWriteTime = last_write_time(targetPath);
+				auto sourceLastWriteTime = last_write_time(itr);
+
+				if (targetLastWriteTime == sourceLastWriteTime)
+					continue;
+				else
+				{
+					remove(targetPath);
+					copy_file(itr, targetPath);
+
+					last_write_time(targetPath, sourceLastWriteTime);
+				}
+			}
+		}
+	}
 }
 
 
@@ -644,6 +650,18 @@ std::string EditorProject::GetAssetsPath() const
 {
 	return projectDirectory.string() + R"(\assets)";
 }
+
+
+/************************************************************************************************/
+
+
+std::string EditorProject::GetGameAssetsPath() const
+{
+	return projectDirectory.string() + R"(\assetPacks)";
+}
+
+
+/************************************************************************************************/
 
 
 std::string EditorProject::GetGeneratedPath() const

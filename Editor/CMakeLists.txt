@@ -98,6 +98,8 @@ if(WIN32)
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MDd.lib)
 	elseif(${CMAKE_BUILD_TYPE} STREQUAL "Release")
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MD.lib)
+	elseif(${CMAKE_BUILD_TYPE} STREQUAL "RelWithDebInfo")
+		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MD.lib)
 	endif()
 
 	Flex_LinkAssets(editor)

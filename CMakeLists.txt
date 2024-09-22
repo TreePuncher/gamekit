@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.23)
 project(FlexEngine  LANGUAGES CXX VERSION 0.0.1)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-set(FLEX_ROOT ${PROJECT_SOURCE_DIR})
+set(FLEX_ROOT ${PROJECT_SOURCE_DIR} CACHE STRING "FLEX ROOT")
 
 option(BuildExamples "Build Examples" ON)
 option(BuildExperiments "Build Experiments" ON)

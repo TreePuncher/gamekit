@@ -41,6 +41,14 @@
             }
         },
         {
+            "name": "x64-releaseWithdebug",
+            "displayName": "x64 Release with Debug",
+            "inherits": "x64-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
             "name": "linux-debug",
             "displayName": "Linux Debug",
             "generator": "Ninja",

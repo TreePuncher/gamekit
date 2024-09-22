@@ -175,7 +175,7 @@ struct SceneResourceViewer : public IResourceViewer
 /************************************************************************************************/
 
 
-EditorApplication::EditorApplication(QApplication& IN_qtApp) :
+EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions& ops) :
 	qtApp				{ IN_qtApp },
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
@@ -193,14 +193,17 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp) :
 	QApplication::setApplicationName("Flex");
 	QApplication::setOrganizationName("MonotoneZombie");
 
-	auto previousPath = settings.value("project_directory", QDir::currentPath()).toString().toStdString();
+	if (!ops.skipPrevious)
+	{
+		auto previousPath = settings.value("project_directory", QDir::currentPath()).toString().toStdString();
 
-	project.onHeaderAdded.Connect(components.onHeaderAdded);
+		project.onHeaderAdded.Connect(components.onHeaderAdded);
 
-	if(previousPath != std::filesystem::current_path())
-		project.LoadProject(previousPath);
+		if (previousPath != std::filesystem::current_path())
+			project.LoadProject(previousPath);
 
-	currentProject = &project;
+		currentProject = &project;
+	}
 
 	SceneBrushEditorComponent::Register(project, mainWindow.Get3DView());
 
