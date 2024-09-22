@@ -269,7 +269,7 @@ endfunction()
 function(Flex_CopyAssets TARGET)
     add_custom_command(TARGET ${TARGET} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${TARGET}> $<TARGET_FILE_DIR:${TARGET}>
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${FLEX_ROOT}/shaders $<TARGET_FILE_DIR:${TARGET}>/assets/shaders
         COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
         COMMAND_EXPAND_LISTS)
 endfunction()
