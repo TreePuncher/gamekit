@@ -123,8 +123,13 @@ namespace FlexKit
 			archive& id;
 		}
 
+		static void RegisterFactory(size_t constructorID, std::function<EntityComponent* ()> factory)
+		{
+			constructors[constructorID] = factory;
+		}
+
 	protected:
-		inline static std::map<uint32_t, EntityComponent* (*)()> constructors;
+		inline static std::map<uint32_t, std::function<EntityComponent* ()>> constructors;
 
 		template<typename TY, size_t ConstructorID>
 		struct RegisterConstructorHelper

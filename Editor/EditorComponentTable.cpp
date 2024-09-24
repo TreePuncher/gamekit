@@ -1,8 +1,44 @@
 #include "EditorComponentTable.hpp"
 #include "EditorProject.h"
 #include "EditorInspectorView.h"
+
 #include <EditorReflection.hpp>
 #include <Components.hpp>
+#include <print>
+#include <scn/scan.h>
+
+
+/************************************************************************************************/
+
+
+constexpr uint32_t ReflectedComponentID = GetTypeGUID(ReflectedComponentID);
+
+class EditorReflectedComponent :
+	public FlexKit::Serializable<EditorReflectedComponent, FlexKit::EntityComponent, ReflectedComponentID>
+{
+public:
+	EditorReflectedComponent(uint32_t IN_componentID = 0) :
+		Serializable{ IN_componentID } {}
+
+	void Serialize(auto& ar)
+	{
+		EntityComponent::Serialize(ar);
+		uint32_t version = 1;
+
+		ar& componentData;
+	}
+
+	FlexKit::Blob GetBlob() override
+	{
+		return componentData;
+	}
+
+	FlexKit::Blob	componentData;
+};
+
+
+/************************************************************************************************/
+
 
 class ReflectedComponent : public IEditorComponent
 {
@@ -10,10 +46,23 @@ public:
 	ReflectedComponent(BasicComponentReflection_ptr	IN_definition) :
 		definition			{ IN_definition },
 		name				{ IN_definition->name },
-		componentID			{ (FlexKit::ComponentID)rand() },
-		runtimeComponent	{ componentID }
+		componentID			{ IN_definition->ID },
+		runtimeComponent	{ IN_definition.get() }
 	{
 		EditorInspectorView::AddComponent(*this);
+		IEntityComponentRuntimeUpdater::updaters[componentID] =
+			[componentID = this->componentID](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+			{
+				std::print("Reflected component updating serialized data: {}\n", componentID);
+				ReflectedComponent::Update(component, runtime, scene);
+			};
+
+		FlexKit::EntityComponent::RegisterFactory(
+			componentID, 
+			[this]()
+			{
+				return new EditorReflectedComponent{ componentID };
+			});
 	}
 
 	FlexKit::ComponentID ComponentID()	const noexcept { return componentID; }
@@ -21,7 +70,7 @@ public:
 
 	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& scene, bool constructRemot)
 	{
-		return nullptr;
+		return runtimeComponent.AddComponentView(gameObject);
 	}
 
 	bool Constructable() const noexcept
@@ -29,52 +78,174 @@ public:
 		return true;
 	}
 
-	void Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
+
+	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
 	{
+		auto& editorComponent	= static_cast<EditorReflectedComponent&>(component); // This gets serialized
+		auto& runtimeComponent	= static_cast<RuntimeComponentView&>(base);
+
+		editorComponent.componentData = runtimeComponent.blob;
+	}
+
+	void Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
+	{
+		RuntimeComponentView* componentView = static_cast<RuntimeComponentView*>(gameObject.GetView(componentID));
+
 		for (auto& variable : definition->childVariables)
-			CreateVariableUIField(variable);
+		{
+			if (variable.type == "int" || variable.type == "int32_t")
+			{
+				auto textEdit = layout.AddInputBox(
+					variable.name,
+					[this, componentView, variable](std::string& string)
+					{
+						auto* i = (int*)(componentView->blob.data() + variable.offset);
+						string = fmt::format("{}", *i);
+					},
+					[this, componentView, &variable](const std::string& string)
+					{
+						auto res = scn::scan<int>(string, "{}");
+						if (res)
+						{
+							auto* i = (int*)(componentView->blob.data() + variable.offset);
+							*i = res->value();
+						}
+					});
+				continue;
+			}
+			else if (variable.type == "uint" || variable.type == "uint32_t")
+			{
+				auto textEdit = layout.AddInputBox(
+					variable.name,
+					[this, componentView, variable](std::string& string)
+					{
+						auto* i = (uint32_t*)(componentView->blob.data() + variable.offset);
+						string = fmt::format("{}", *i);
+					},
+					[this, componentView, &variable](const std::string& string)
+					{
+						auto res = scn::scan<uint32_t>(string, "{}");
+						if (res)
+						{
+							auto* i = (uint32_t*)(componentView->blob.data() + variable.offset);
+							*i = res->value();
+						}
+					});
+				continue;
+			}
+			else if (variable.type == "float")
+			{
+				auto textEdit = layout.AddInputBox(
+					variable.name,
+					[this, componentView, variable](std::string& string)
+					{
+						auto* i = (float*)(componentView->blob.data() + variable.offset);
+						string = fmt::format("{}", *i);
+					},
+					[this, componentView, &variable](const std::string& string)
+					{
+						auto res = scn::scan<float>(string, "{}");
+						if (res)
+						{
+							auto* i = (float*)(componentView->blob.data() + variable.offset);
+							*i = res->value();
+						}
+					});
+				continue;
+			}
+			else if (variable.type == "double")
+			{
+				auto textEdit = layout.AddInputBox(
+					variable.name,
+					[this, componentView, variable](std::string& string)
+					{
+						auto* i = (double*)(componentView->blob.data() + variable.offset);
+						string = fmt::format("{}", *i);
+					},
+					[this, componentView, &variable](const std::string& string)
+					{
+						auto res = scn::scan<double>(string, "{}");
+						if (res)
+						{
+							auto* i = (double*)(componentView->blob.data() + variable.offset);
+							*i = res->value();
+						}
+					});
+				continue;
+			}
+		}
 	}
 
-	void CreateVariableUIField(ComponentVariable& variable)
-	{
-
-	}
 
 	struct RuntimeComponentView : FlexKit::ComponentViewBase
 	{
-		RuntimeComponentView(FlexKit::ComponentID IN_componentID) : ComponentViewBase(IN_componentID) {}
+		RuntimeComponentView(BasicComponentReflection* IN_definition) :
+			ComponentViewBase	{ IN_definition->ID },
+			definition			{ IN_definition }
+		{
+			blob.resize(FlexKit::Max(definition->size, blob.size()));
 
+			memset(blob.data(), 0, blob.size());
+		}
+
+		FlexKit::Blob blob;
+
+		BasicComponentReflection* definition = nullptr;
 		FlexKit::ComponentID	GetComponentID()	{ return ID;}
 		FlexKit::ComponentBase&	GetComponent()		{ return FlexKit::ComponentBase::GetComponent(ID); }
 	};
 
-	BasicComponentReflection_ptr	definition;
-	FlexKit::ComponentID			componentID;
-	std::string						name;
 
 	struct RuntimeComponent : FlexKit::ComponentBase
 	{
-		RuntimeComponent(FlexKit::ComponentID IN_componentID) :
-			componentID{ IN_componentID }
+		RuntimeComponent(BasicComponentReflection* IN_definition) :
+			componentID	{ IN_definition->ID },
+			definition	{ IN_definition }
 		{
 			AddComponent(*this);
 		}
 
+		RuntimeComponentView* AddComponentView(FlexKit::GameObject& GO)
+		{
+			auto view = new RuntimeComponentView(definition);
+			GO.AddView(view);
+
+			elements.push_back(view);
+
+			return view;
+		}
+
 		void AddComponentView(FlexKit::GameObject& GO, FlexKit::ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 		{
+			auto view = new RuntimeComponentView(definition);
+			view->blob.resize(FlexKit::Max(bufferSize, definition->size));
+			memcpy(view->blob.data(), buffer, bufferSize);
 
+			GO.AddView(view);
+
+			elements.push_back(view);
 		}
 
 		void FreeComponentView(void* _ptr)
 		{
+			auto res = std::find(elements.begin(), elements.end(), (RuntimeComponentView*)_ptr);
+			if (res != elements.end())
+				elements.erase(res);
 
+			delete static_cast<RuntimeComponentView*>(_ptr);
 		}
 
+		std::vector<RuntimeComponentView*>	elements;
+		BasicComponentReflection*			definition;
+
 		FlexKit::ComponentID GetID() override { return componentID; }
-
-
 		FlexKit::ComponentID componentID;
 	} runtimeComponent;
+
+	BasicComponentReflection_ptr	definition;
+	FlexKit::ComponentID			componentID;
+	std::string						name;
+	size_t							size = 0;
 };
 
 
@@ -104,10 +275,62 @@ void EditorComponentTable::GenerateHeader(const std::string& header)
 /************************************************************************************************/
 
 
-void EditorComponentTable::AddHeader(const std::string& header)
+void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefinition& component, std::span<const FlexKit::TypedefDecl> types)
 {
 	using std::ranges::find_if;
 
+	auto res = find_if(basicComponents,
+		[&](const auto& c) -> bool
+		{
+			return c->name == component.componentName;
+		});
+
+	if (res != basicComponents.end())
+	{
+		UpdateBasicComponent(component, types, res->get());
+		return;
+	}
+
+	const auto& type	= std::get<FlexKit::TypeArgument>(component.subTypes[0]);
+	const auto& id		= std::get<FlexKit::IntegerLiteral>(component.subTypes[2]);
+
+	auto newComponent = std::make_shared<BasicComponentReflection>();
+	newComponent->name	= component.componentName;
+	newComponent->ID	= id.value;
+	newComponent->size	= type.structInfo.size;
+
+	for (auto& var : type.structInfo.fields)
+	{
+		newComponent->childVariables.emplace_back(
+			ComponentVariable{
+				.name		= var.name,
+				.type		= var.type,
+				.annotation = var.annotation,
+				.offset		= var.offset,
+				.size		= var.size,
+			});
+	}
+
+	basicComponents.push_back(newComponent);
+	auto editorReflection = new ReflectedComponent{ newComponent };
+	editorComponents.push_back(editorReflection);
+}
+
+
+/************************************************************************************************/
+
+
+void EditorComponentTable::UpdateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, BasicComponentReflection* component)
+{
+
+}
+
+
+/************************************************************************************************/
+
+
+void EditorComponentTable::AddHeader(const std::string& header)
+{
 	std::filesystem::path paths[] = { { header } };
 	auto results = FlexKit::ParseHeaders(std::span<const std::filesystem::path>{ paths, 1u });
 
@@ -116,64 +339,16 @@ void EditorComponentTable::AddHeader(const std::string& header)
 
 	auto&& [types, components] = results.value();
 
+	for (const auto& component : components)
+		std::print("Component Found: {}\n", component.componentName);
+
 	for (const FlexKit::ComponentDefinition& component : components)
 	{
 		switch (component.type)
 		{
 		case FlexKit::ComponentType::Basic:
 		{
-			auto res = find_if(basicComponents,
-				[&](const auto& c) -> bool
-				{
-					return c->name == component.componentName;
-				});
-
-			if (res == basicComponents.end())
-			{
-				auto newComponent = std::make_shared<BasicComponentReflection>();
-				newComponent->name = component.componentName;
-				auto type = component.subTypes.back();
-
-				for (auto subType : component.subTypes)
-				{
-					std::visit(
-						FlexKit::overloaded{
-							[&](const FlexKit::TypeArgument& parameter)
-							{
-								for (auto& var : parameter.structInfo.fields)
-								{
-									newComponent->childVariables.emplace_back(
-										ComponentVariable{
-											.name		= var.name,
-											.type		= var.type,
-											.annotation = var.annotation,
-											.offset		= var.offset,
-											.size		= var.size,
-										});
-								}
-							},
-							[&](const FlexKit::TemplateType& parameter)
-							{
-								auto& type = types[parameter.typeIdx];
-
-								int x = 0;
-							},
-							[&](const FlexKit::IntegerLiteral& parameter)
-							{
-								int x = 0;
-							},
-							[&](const auto& _)
-							{
-								int x = 0;
-							}
-						},
-						subType);
-				}
-
-				basicComponents.push_back(newComponent);
-				auto editorReflection = new ReflectedComponent{ newComponent };
-				editorComponents.push_back(editorReflection);
-			}
+			CreateBasicComponent(component, types);
 		}	break;
 		case FlexKit::ComponentType::MultiField:
 		{

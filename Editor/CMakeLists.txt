@@ -103,7 +103,7 @@ if(WIN32)
 	endif()
 
 	Flex_LinkAssets(editor)
-	Flex_CopyReflectionLibraries(editor)
+	#Flex_CopyReflectionLibraries(editor)
 
 	add_custom_command(
 		TARGET editor POST_BUILD

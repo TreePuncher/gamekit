@@ -4,26 +4,28 @@
 
 struct ComponentVariable
 {
-	std::string name;
-	std::string type;
-	std::string annotation;
+	std::string	name;
+	std::string	type;
+	std::string	annotation;
 
-	uint32_t offset;
-	uint32_t size;
+	uint32_t	offset;
+	uint32_t	size;
 };
 
 struct ComponentField
 {
-	std::string name;
-	std::string type;
-	std::string annotation;
-	std::vector<ComponentVariable> childVariables;
+	std::string						name;
+	std::string						type;
+	std::string						annotation;
+	std::vector<ComponentVariable>	childVariables;
 };
 
 struct BasicComponentReflection
 {
-	std::string name;
-	std::vector<ComponentVariable> childVariables;
+	size_t							size;
+	FlexKit::ComponentID			ID;
+	std::string						name;
+	std::vector<ComponentVariable>	childVariables;
 };
 
 using BasicComponentReflection_ptr = std::shared_ptr<BasicComponentReflection>;
@@ -34,6 +36,12 @@ struct MultiFieldComponentReflection
 	std::vector<ComponentField> fields;
 };
 
+namespace FlexKit
+{
+	class ComponentDefinition;
+	class TypedefDecl;
+}
+
 class EditorComponentTable
 {
 public:
@@ -41,6 +49,9 @@ public:
 
 	void GenerateHeader	(const std::string& header);
 	void AddHeader		(const std::string& header);
+
+	void CreateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>);
+	void UpdateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, BasicComponentReflection* component);
 
 	FlexKit::Signal<void(const std::string&)>::Slot onHeaderAdded;
 
