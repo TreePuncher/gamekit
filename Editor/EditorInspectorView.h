@@ -176,6 +176,8 @@ private:
 
 	std::vector<QBoxLayout*>	properties;
 	std::vector<QObject*>		propertyItems;
+
+	inline static FlexKit::Vector<IEditorComponent*> availableComponents{ FlexKit::SystemAllocator };
 };
 
 

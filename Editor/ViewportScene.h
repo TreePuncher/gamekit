@@ -143,7 +143,10 @@ struct ViewportSceneContext
 class IEntityComponentRuntimeUpdater
 {
 public:
-	inline static std::map<uint32_t, void (*)(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)> updaters;
+
+	using ComponentUpdate_FN = std::function<void (FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)>;
+
+	inline static std::map<uint32_t, ComponentUpdate_FN> updaters;
 
 	template<typename TY, size_t UpdaterID>
 	struct RegisterConstructorHelper

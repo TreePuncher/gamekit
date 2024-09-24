@@ -396,7 +396,6 @@ EditorInspectorView::EditorInspectorView(SelectionContext& IN_selectionContext, 
 		});
 }
 
-inline FlexKit::Vector<IEditorComponent*> availableComponents{ FlexKit::SystemAllocator };
 
 void EditorInspectorView::AddComponent(IEditorComponent& component_ref)
 {

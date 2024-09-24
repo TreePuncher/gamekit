@@ -135,6 +135,7 @@ namespace FlexKit
 					data.templateArguments.push_back(literal);
 					clang_disposeTokens(tu, tokens, tokenCount);
 				}	break;
+				case CXCursor_FirstExpr:
 				case CXCursor_CallExpr:
 				{
 					auto name		= ClangString{ clang_getCursorSpelling(cursor) };
@@ -169,7 +170,6 @@ namespace FlexKit
 						break;
 					}
 					clang_EvalResult_dispose(expression);
-
 				}
 				default:
 					break;
@@ -242,6 +242,9 @@ namespace FlexKit
 	{
 		CXType		structType = clang_getCursorType(cursor);
 		ClangString	structName = clang_getTypeSpelling(structType);
+		size_t		structSize = clang_Type_getSizeOf(structType);
+
+		structInfo.size = structSize;
 
 		clang_visitChildren(cursor,
 			[](CXCursor cursor, CXCursor parent, CXClientData client_data)

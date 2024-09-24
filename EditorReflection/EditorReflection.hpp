@@ -57,7 +57,7 @@ namespace FlexKit
 		std::vector<std::string>	functions;
 		std::vector<std::string>	staticfunctions;
 		std::vector<Field>			fields;
-		size_t						size;
+		size_t						size = 0;
 	};
 
 
@@ -133,7 +133,7 @@ namespace FlexKit
 
 	struct ComponentDefinition
 	{
-		ComponentType					type;
+		ComponentType					type	= ComponentType::NotAComponent;
 		std::vector<TemplateArgument>	subTypes;
 		std::string						componentName;
 	};

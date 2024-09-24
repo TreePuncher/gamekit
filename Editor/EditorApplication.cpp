@@ -202,7 +202,8 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 		if (previousPath != std::filesystem::current_path())
 			project.LoadProject(previousPath);
 
-		currentProject = &project;
+		currentProject		= &project;
+		currentProjectFile	= previousPath + "\\flex.proj";
 	}
 
 	SceneBrushEditorComponent::Register(project, mainWindow.Get3DView());
