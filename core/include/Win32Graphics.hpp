@@ -83,54 +83,52 @@ namespace FlexKit
 			if (!swapChain)
 				return;
 
+			const bool resize = newWH[0] > maxSize[0] || newWH[1] > maxSize[1];
+
 			WH = newWH;
 
-			renderSystem->SyncDirectTo(renderSystem->SyncDirectTicket());
-			renderSystem->WaitForGPU();
-			renderSystem->_ForceReleaseTexture(backBuffer);
-
-			ID3D12Resource* before_ptr[3];
-			swapChain->GetBuffer(0, __uuidof(ID3D12Resource), (void**)(before_ptr + 0));
-			swapChain->GetBuffer(1, __uuidof(ID3D12Resource), (void**)(before_ptr + 1));
-			swapChain->GetBuffer(2, __uuidof(ID3D12Resource), (void**)(before_ptr + 2));
-
-			for (auto r : before_ptr)
-				r->Release();
-
-			try
+			if(resize)
 			{
-				const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
-				if (FAILED(HR))
-					FK_ASSERT(0, "Failed to resize back buffer!");
+				maxSize = Max(newWH, maxSize);
+
+				renderSystem->SyncDirectTo(renderSystem->SyncDirectTicket());
+				renderSystem->WaitForGPU();
+
+				std::span resources = renderSystem->Textures.GetResources(backBuffer);
+
+				for (auto r : resources)
+					r->Release();
+
+				try
+				{
+					const auto HR = swapChain->ResizeBuffers(0, WH[0], WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, flags);
+					if (FAILED(HR))
+						FK_ASSERT(0, "Failed to resize back buffer!");
+				}
+				catch (...) {}
+
+				//recreateBackBuffer
+				ID3D12Resource* buffer[3];
+
+				DXGI_SWAP_CHAIN_DESC1 desc;
+				swapChain->GetDesc1(&desc);
+				desc.Width  = newWH[0];
+				desc.Height = newWH[1];
+
+				const auto bufferCount = desc.BufferCount;
+
+				for (UINT I = 0; I < bufferCount; ++I)
+				{
+					swapChain->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+					if (!buffer[I])
+						FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
+					resources[I] = buffer[I];
+				}
+
+				renderSystem->SetDebugName(backBuffer, "BackBuffer");
+				renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 			}
-			catch (...) {}
-
-			//recreateBackBuffer
-			ID3D12Resource* buffer[3];
-
-			DXGI_SWAP_CHAIN_DESC1 desc;
-			swapChain->GetDesc1(&desc);
-			desc.Width  = newWH[0];
-			desc.Height = newWH[1];
-
-			const auto bufferCount = desc.BufferCount;
-
-			for (UINT I = 0; I < bufferCount; ++I)
-			{
-				swapChain->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
-				if (!buffer[I])
-					FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
-
-			}
-
-			backBuffer = renderSystem->CreateGPUResource(
-				GPUResourceDesc::BackBuffered(
-					{ desc.Width, desc.Height },
-					DeviceFormat::R16G16B16A16_FLOAT,
-					buffer, 3));
-
-			renderSystem->SetDebugName(backBuffer, "BackBuffer");
-			renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
+			renderSystem->Textures.SetWH(backBuffer, WH);
 		}
 
 
@@ -290,6 +288,7 @@ namespace FlexKit
 		HWND						hWindow;
 		UINT                        flags;
 
+		uint2						maxSize;
 		uint2						WH; // Width-Height
 		uint2						WindowCenterPosition;
 		uint2                       LastMousePOS;
@@ -776,6 +775,7 @@ namespace FlexKit
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
 		SwapChainDesc.Stereo			= false;
 		SwapChainDesc.BufferCount		= 3;
+		SwapChainDesc.Scaling			= DXGI_SCALING::DXGI_SCALING_NONE;
 		SwapChainDesc.Width				= renderWindowDesc.width;
 		SwapChainDesc.Height			= renderWindowDesc.height;
 		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -811,9 +811,8 @@ namespace FlexKit
 			}
 		}
 
-
-
 		renderWindow.WH             = { SwapChainDesc.Width, SwapChainDesc.Height };
+		renderWindow.maxSize		= renderWindow.WH;
 		renderWindow.Format		    = SwapChainDesc.Format;
 		renderWindow.renderSystem   = renderSystem;
 		renderWindow.fullscreen		= renderWindowDesc.fullscreen;
@@ -870,6 +869,7 @@ namespace FlexKit
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
 		SwapChainDesc.Stereo			= false;
 		SwapChainDesc.BufferCount		= 3;
+		SwapChainDesc.Scaling			= DXGI_SCALING::DXGI_SCALING_NONE;
 		SwapChainDesc.Width				= rect.right - rect.left;
 		SwapChainDesc.Height			= rect.bottom - rect.top;
 		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;

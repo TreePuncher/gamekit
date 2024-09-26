@@ -4,6 +4,7 @@
 #include "Application.hpp"
 #include "Win32Graphics.hpp"
 #include <functional>
+#include <memory>
 
 class FlexKit::UpdateDispatcher;
 class FlexKit::FrameGraph;
@@ -16,6 +17,7 @@ struct TemporaryBuffers
 
 using FNRender_t = std::function<void (FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& threadSafeAllocator)>;
 using FNResize_t = std::function<void (FlexKit::uint2 newSize)>;
+
 
 class DXRenderWindow : public QWidget
 {
@@ -70,10 +72,14 @@ private:
 
 	void            resizeSwapChain(int width, int height);
 
-	bool            dirty = false;
+	bool				dirty				= false;
+	std::atomic_bool	resizeInProgress	= false;
+	std::atomic_bool	resizeFinished		= false;
+	FlexKit::iWork*		resizeTask			= nullptr;
+
+	std::atomic<FlexKit::uint2>			newWidthHeight;
 
 	double          t = 0.0f;
-
 	FNRender_t                  onDraw;
 	FNResize_t                  onResize;
 

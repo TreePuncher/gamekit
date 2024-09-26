@@ -56,9 +56,20 @@ void DXRenderWindow::Release()
 
 void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
 {
+	if (resizeFinished)
+	{
+		if (ResizeEventHandler)
+			ResizeEventHandler(this);
+
+		if (onResize)
+			onResize(newWidthHeight);
+
+		resizeFinished		= false;
+	}
+
 	t += dT;
 
-	if (isActiveWindow())
+	if (!resizeInProgress && isActiveWindow())
 	{
 		dirty = true;
 
@@ -82,6 +93,9 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 
 void DXRenderWindow::Present()
 {
+	if (resizeInProgress)
+		return;
+
 	if (dirty)
 	{
 		dirty = false;
@@ -129,6 +143,8 @@ void DXRenderWindow::resizeSwapChain(int width, int height)
 /************************************************************************************************/
 
 
+
+
 void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 {
 	QWidget::resize(evt->size());
@@ -140,13 +156,24 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 	const auto newWidth     = evt->size().width() * 1.5;
 	const auto newHeight    = evt->size().height() * 1.5;
 
-	resizeSwapChain(newWidth, newHeight);
+	newWidthHeight		= { newWidth, newHeight };
 
-	if (ResizeEventHandler)
-		ResizeEventHandler(this);
+	if(!resizeInProgress)
+	{
+		resizeInProgress	= true;
 
-	if (onResize)
-		onResize({ (uint32_t)width, (uint32_t)height });
+		resizeTask = FlexKit::CreateWorkItem(
+			[this](auto&& _)
+			{
+				while (renderWindow->WH != newWidthHeight.load())
+					renderWindow->Resize(newWidthHeight);
+
+				resizeFinished		= true;
+				resizeInProgress	= false;
+			});
+
+		FlexKit::PushToLocalQueue(*resizeTask);
+	}
 }
 
 
