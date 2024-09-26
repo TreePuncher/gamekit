@@ -393,7 +393,7 @@ namespace FlexKit
 		pointLight.type		= LightType::PointLight;
 		pointLight.node		= node != InvalidHandle ? node : FlexKit::GetSceneNode(gameObject);
 
-		if (triggerless)
+		if (!triggerless)
 		{
 			auto& triggers = gameObject.AddView<TriggerView>();
 

@@ -1359,22 +1359,36 @@ namespace FlexKit
 		}
 #endif
 
-		FillState[idx] = true;
+		if (handle == InvalidHandle)
+		{
+			PushSRVNULLDescHeap(
+				ctx.renderSystem,
+				IncrementHeapPOS(
+					descriptorHeap,
+					ctx.renderSystem->DescriptorCBVSRVUAVSize,
+					idx));
 
-		const auto byteSize = ctx.renderSystem->GetResourceSize(handle);
+			return *this;
+		}
+		else
+		{
+			FillState[idx] = true;
 
-		PushSRVToDescHeap(
-			ctx.renderSystem,
-			ctx.renderSystem->Textures[handle],
-			IncrementHeapPOS(descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			byteSize / stride,
-			stride,
-			D3D12_BUFFER_SRV_FLAG_NONE,
-			offset);
+			const auto byteSize = ctx.renderSystem->GetResourceSize(handle);
 
-		return *this;
+			PushSRVToDescHeap(
+				ctx.renderSystem,
+				ctx.renderSystem->Textures[handle],
+				IncrementHeapPOS(descriptorHeap,
+					ctx.renderSystem->DescriptorCBVSRVUAVSize,
+					idx),
+				byteSize / stride,
+				stride,
+				D3D12_BUFFER_SRV_FLAG_NONE,
+				offset);
+
+			return *this;
+		}
 	}
 
 
@@ -6238,6 +6252,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void RenderSystem::WaitFor(const SyncPoint& sp)
+	{
+		WaitFor(sp.syncCounter);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RenderSystem::WaitFor(const uint64_t counter)
 	{
 		uint32_t stallCounter = 0;
@@ -9438,6 +9461,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	std::span<ID3D12Resource*>	ResourceStateTable::GetResources(ResourceHandle Handle)
+	{
+		if (Handle >= Handles.size())
+			return {};
+
+		auto  idx			= Handles[Handle];
+		auto  resourceIdx	= UserEntries[idx].ResourceIdx;
+		auto& resource		= Resources[resourceIdx];
+
+		return {
+			resource.Resources + 0,
+			resource.Resources + resource.ResourceCount
+		};
+	}
+
+
+	/************************************************************************************************/
+
+
 	size_t ResourceStateTable::GetResourceSize(ResourceHandle Handle) const
 	{
 		auto  Idx			= Handles[Handle];
@@ -11298,6 +11340,30 @@ namespace FlexKit
 		FK_ASSERT(desc.Buffer.NumElements > 0);
 
 		RS->pDevice->CreateShaderResourceView(Buffer, &desc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS PushSRVNULLDescHeap(RenderSystem* RS, DescHeapPOS POS)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC desc; {
+			desc.Format						= DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+			desc.Shader4ComponentMapping	= D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			desc.ViewDimension				= D3D12_SRV_DIMENSION_BUFFER;
+			desc.Buffer.FirstElement		= 0;
+			desc.Buffer.Flags				= D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE;
+			desc.Buffer.NumElements			= 1;
+			desc.Buffer.StructureByteStride	= 1;
+		}
+
+		FK_ASSERT(desc.Buffer.StructureByteStride < 512);
+		FK_ASSERT(desc.Buffer.NumElements > 0);
+
+		RS->pDevice->CreateShaderResourceView(nullptr, &desc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}

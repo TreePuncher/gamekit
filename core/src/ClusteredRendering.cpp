@@ -1150,7 +1150,7 @@ namespace FlexKit
 				builder.SetDebugName(data.counterObject,			"counterObject");
 				builder.SetDebugName(data.argumentBufferObject,		"argumentBufferObject");
 
-				builder.AddNodeDependency(allocation.node);
+				builder.AddNodeDependency(allocation);
 				//builder.AddDataDependency(sceneDescription.lights);
 				//builder.AddDataDependency(sceneDescription.cameras);
 
@@ -1185,16 +1185,16 @@ namespace FlexKit
 				{
 					float4x4_GPU	iproj;
 					float4x4_GPU	view;
-					uint2			LightMapWidthHeight;
+					uint2			lightMapWidthHeight;
 					uint32_t		lightCount;
 
 					uint32_t nodeCount;
 					uint32_t nodeOffset;
 				}constantsValues = {
-					Inverse(cameraConstants.Proj),
-					cameraConstants.View,
-					{ 0, 0 },
-					(uint32_t)lightCount
+					.iproj					= Inverse(cameraConstants.Proj),
+					.view					= cameraConstants.View,
+					.lightMapWidthHeight	= { 0, 0 },
+					.lightCount				= (uint32_t)lightCount
 				};
 
 				LightComponent& pointLights = LightComponent::GetComponent();

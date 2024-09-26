@@ -129,12 +129,12 @@ public:
 		if (!gameObject.hasView(FlexKit::TransformComponentID))
 			gameObject.AddView<FlexKit::SceneNodeView>();
 
-		gameObject.AddView<FlexKit::LightView>();
+		auto& pointLight = gameObject.AddView<FlexKit::LightView>();
 
 		if (!gameObject.hasView(FlexKit::SceneVisibilityComponentID))
 			ctx.AddToScene(gameObject);
 
-		return *gameObject.GetView(FlexKit::LightComponentID);
+		return pointLight;
 	}
 
 	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool constructRemote)

@@ -2976,7 +2976,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		DeviceLayout		GetLayout		(ResourceHandle Handle) const;
 
-		ID3D12Resource*		GetResource		(ResourceHandle Handle, ID3D12Device* device) const;
+		ID3D12Resource*				GetResource	(ResourceHandle Handle, ID3D12Device* device) const;
+		std::span<ID3D12Resource*>	GetResources(ResourceHandle Handle);
+
 		size_t				GetResourceSize	(ResourceHandle Handle) const;
 		uint2				GetHeapOffset	(ResourceHandle Handle, uint subResourceIdx) const;
 
@@ -3704,6 +3706,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void WaitForGPU();
 		void WaitFor(const uint64_t);
+		void WaitFor(const SyncPoint&);
 
 
 		void SetDebugName(ResourceHandle, const char*);
@@ -4905,6 +4908,7 @@ private:
 	FLEXKITAPI DescHeapPOS PushDepthStencilArray		(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t arraySize = -1);
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap				(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
 	FLEXKITAPI DescHeapPOS PushSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE, size_t offset = 0);
+	FLEXKITAPI DescHeapPOS PushSRVNULLDescHeap			(RenderSystem* RS, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE, const DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);
 
 	[[deprecated]]
