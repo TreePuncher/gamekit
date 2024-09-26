@@ -707,7 +707,7 @@ namespace FlexKit
 
 		void Debug_Draw(LayoutEngine* LayoutEngine)
 		{
-			float3 Area = { LayoutEngine->GetDrawArea(), 0 };
+			float3 Area{ LayoutEngine->GetDrawArea(), 0 };
 			LayoutEngine->PushOffset(XY * Area);
 			LayoutEngine->PushDrawArea(WH);
 

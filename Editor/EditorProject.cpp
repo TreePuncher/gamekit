@@ -19,6 +19,7 @@ using namespace std::filesystem;
 /************************************************************************************************/
 // Project Global Parameters
 inline static std::string objectsDirectory				= "Objects/";
+inline static const char defaultRunCommand[]			= R"(cmd /c "echo "Starting Visual Studio" && "@VCVARS" && @ProjectDrive && cd "@ProjectPath" && "@Command")";
 inline static const char defaultOpenIDE[]				= R"(cmd /c "echo "Starting Visual Studio" && "@VCVARS" && @ProjectDrive && cd "@ProjectPath" && devenv "@ProjectPath")";
 inline static const char defaultOpenExplorer[]			= R"(cmd /c "echo "Starting Explorer" && @ProjectDrive && explorer "@ProjectPath")";
 inline static const char defaultConfigure[]				= R"(cmd /c "echo "Starting Reconfigure" && "@VCVARS" && @ProjectDrive && cmake -B "@BuildPath" "@ProjectPath" --preset @Preset && echo "Done!"")";
@@ -527,6 +528,19 @@ void EditorProject::BuildDebug() const
 		std::print("{}\n", line);
 
 	c.wait();
+}
+
+
+/************************************************************************************************/
+
+
+void EditorProject::RunBuildCommand(const std::string& commandStr) const
+{
+	std::string command = defaultOpenIDE;
+	command = SearchAndReplace(command, "@VCVARS", defaultVCVarsPath);
+	command = SearchAndReplace(command, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
+	command = SearchAndReplace(command, "@ProjectPath", projectDirectory.string());
+	command = SearchAndReplace(command, "@Command", commandStr);
 }
 
 

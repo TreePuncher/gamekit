@@ -105,7 +105,7 @@ bool Intersects(const Triangle& A, const Triangle& B) noexcept
 
 	if (M_a < 0.00001f || M_b < 0.00001f)
 	{   // Coplanar
-		const float3 n = FlexKit::SSE_ABS(A_n);
+		const float3 n{ FlexKit::SSE_ABS(A_n) };
 		int i0, i1;
 
 		if (n[0] > n[1])

@@ -173,6 +173,13 @@ public:
 					});
 				continue;
 			}
+			else
+			{
+				int x = 0;
+				// Create,
+				// Copy,
+				// Create Blobs
+			}
 		}
 	}
 
@@ -275,7 +282,7 @@ void EditorComponentTable::GenerateHeader(const std::string& header)
 /************************************************************************************************/
 
 
-void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefinition& component, std::span<const FlexKit::TypedefDecl> types)
+void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefinition& component, std::span<const FlexKit::TypedefDecl> types, const std::string& sourceHeader)
 {
 	using std::ranges::find_if;
 
@@ -314,6 +321,89 @@ void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefiniti
 	basicComponents.push_back(newComponent);
 	auto editorReflection = new ReflectedComponent{ newComponent };
 	editorComponents.push_back(editorReflection);
+
+	for (auto& var : type.structInfo.fields)
+	{
+		if (var.type == "int"		|| var.type == "int32_t" ||
+			var.type == "int"		|| var.type == "float" ||
+			var.type == "double")
+			continue;
+
+		auto typeName = var.type;
+
+#if 0
+		std::string generatedSrc =
+			R"(
+#include <@Header>
+
+template<FlexKit::Vector_t t>
+constexpr bool IsVector() { return true; }
+
+template<typename TY>
+constexpr bool IsVector() { return false; }
+
+extern "C"
+{
+	void __declspec(dllexport) Create_@TYPEID(void* _ptr)
+	{
+		new(_ptr) @Type{};
+	}
+
+	void __declspec(dllexport) Destroy_@TYPEID(void* _ptr)
+	{
+		auto* typed_ptr = reinterpret_cast<@Type*>(_ptr);
+		typed_ptr->~@Type();
+	}
+
+	bool __declspec(dllexport) IsVector_@TYPEID()
+	{
+		return IsVector<@Type>();
+	}
+
+	int __declspec(dllexport) VectorSize_@TypeID(void* _ptr)
+	{
+		if constexpr (!IsVector<@Type>())
+			return 0;
+		else
+		{
+			auto* typed_ptr = reinterpret_cast<@Type*>(_ptr);
+			return typed_ptr->size();
+		}
+	}
+})";
+		generatedSrc = SearchAndReplace(generatedSrc, "@Header",	sourceHeader);
+		generatedSrc = SearchAndReplace(generatedSrc, "@Type",		typeName);
+		generatedSrc = SearchAndReplace(generatedSrc, "@TypeID",	typeID);
+
+		"cl /std:c++latest /EHsc /arch:AVX2 /LD test.cpp /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include       ";
+		project_ptr->RunBuildCommand("cl.exe");
+#endif
+
+		auto moduleDir				= project_ptr->projectDirectory.string() + "\\modules\\test.dll";
+		auto moduleHndl				= LoadLibraryA(moduleDir.c_str());
+		void (*Create)(void*)		= (void (*)(void*)) GetProcAddress(moduleHndl, "Create_float4");
+		void (*Destroy)(void*)		= (void (*)(void*))	GetProcAddress(moduleHndl, "Destroy_float4");
+		bool (*IsVector)()			= (bool (*)())		GetProcAddress(moduleHndl, "IsVector_float4");
+		int  (*VectorSize)(void*)	= nullptr;
+
+		void (*VectorReadIndex)(int, void*)		= nullptr;
+		void (*VectorWriteIndex)(int, void*)	= nullptr;
+
+		if(IsVector())
+			VectorSize = (int (*)(void*))GetProcAddress(moduleHndl, "VectorSize_float4");
+
+		std::vector<char> buffer{ 16 };
+
+		Create(buffer.data());
+
+		int x = VectorSize(buffer.data());
+
+		Destroy(buffer.data());
+
+		int y = 0;
+	}
+
+
 }
 
 
@@ -348,7 +438,7 @@ void EditorComponentTable::AddHeader(const std::string& header)
 		{
 		case FlexKit::ComponentType::Basic:
 		{
-			CreateBasicComponent(component, types);
+			CreateBasicComponent(component, types, std::filesystem::path{ header }.filename().string());
 		}	break;
 		case FlexKit::ComponentType::MultiField:
 		{
