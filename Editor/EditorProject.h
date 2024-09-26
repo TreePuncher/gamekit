@@ -138,6 +138,8 @@ public:
 
 	void BuildDebug() const;
 
+	void RunBuildCommand(const std::string& command) const;
+
 	void MoveAssets(const std::string& targetLocation) const;
 
 	void OpenIDE() const;
@@ -205,6 +207,7 @@ public:
 };
 
 std::string ProjectGetObjectDirectory();
+std::string SearchAndReplace(const std::string& in, const std::string& from, const std::string& to);
 
 
 /**********************************************************************

@@ -273,7 +273,7 @@ namespace FlexKit
 	{
 		auto Local = GetLocal(Node);
 
-		return Local.T;
+		return float3{ Local.T };
 	}
 
 
@@ -346,7 +346,7 @@ namespace FlexKit
 
 	float3 GetLocalScale(NodeHandle Node)
 	{
-		float3 L_s = GetLocal(Node).S;
+		float3 L_s{ GetLocal(Node).S };
 		return L_s;
 	}
 

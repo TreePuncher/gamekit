@@ -50,7 +50,7 @@ public:
 	void GenerateHeader	(const std::string& header);
 	void AddHeader		(const std::string& header);
 
-	void CreateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>);
+	void CreateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, const std::string& sourceheader);
 	void UpdateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, BasicComponentReflection* component);
 
 	FlexKit::Signal<void(const std::string&)>::Slot onHeaderAdded;
