@@ -11,6 +11,15 @@
 /************************************************************************************************/
 
 
+ComplexVariableMethods::~ComplexVariableMethods()
+{
+	FreeLibrary(moduleHNDL);
+}
+
+
+/************************************************************************************************/
+
+
 constexpr uint32_t ReflectedComponentID = GetTypeGUID(ReflectedComponentID);
 
 class EditorReflectedComponent :
@@ -97,9 +106,9 @@ public:
 			{
 				auto textEdit = layout.AddInputBox(
 					variable.name,
-					[this, componentView, variable](std::string& string)
+					[this, componentView, &variable](std::string& string)
 					{
-						auto* i = (int*)(componentView->blob.data() + variable.offset);
+						auto* i = (int*)(componentView->blob.data() + variable.byteOffset);
 						string = fmt::format("{}", *i);
 					},
 					[this, componentView, &variable](const std::string& string)
@@ -107,7 +116,7 @@ public:
 						auto res = scn::scan<int>(string, "{}");
 						if (res)
 						{
-							auto* i = (int*)(componentView->blob.data() + variable.offset);
+							auto* i = (int*)(componentView->blob.data() + variable.byteOffset);
 							*i = res->value();
 						}
 					});
@@ -117,9 +126,9 @@ public:
 			{
 				auto textEdit = layout.AddInputBox(
 					variable.name,
-					[this, componentView, variable](std::string& string)
+					[this, componentView, &variable](std::string& string)
 					{
-						auto* i = (uint32_t*)(componentView->blob.data() + variable.offset);
+						auto* i = (uint32_t*)(componentView->blob.data() + variable.byteOffset);
 						string = fmt::format("{}", *i);
 					},
 					[this, componentView, &variable](const std::string& string)
@@ -127,7 +136,7 @@ public:
 						auto res = scn::scan<uint32_t>(string, "{}");
 						if (res)
 						{
-							auto* i = (uint32_t*)(componentView->blob.data() + variable.offset);
+							auto* i = (uint32_t*)(componentView->blob.data() + variable.byteOffset);
 							*i = res->value();
 						}
 					});
@@ -137,9 +146,9 @@ public:
 			{
 				auto textEdit = layout.AddInputBox(
 					variable.name,
-					[this, componentView, variable](std::string& string)
+					[this, componentView, &variable](std::string& string)
 					{
-						auto* i = (float*)(componentView->blob.data() + variable.offset);
+						auto* i = (float*)(componentView->blob.data() + variable.byteOffset);
 						string = fmt::format("{}", *i);
 					},
 					[this, componentView, &variable](const std::string& string)
@@ -147,7 +156,7 @@ public:
 						auto res = scn::scan<float>(string, "{}");
 						if (res)
 						{
-							auto* i = (float*)(componentView->blob.data() + variable.offset);
+							auto* i = (float*)(componentView->blob.data() + variable.byteOffset);
 							*i = res->value();
 						}
 					});
@@ -157,9 +166,9 @@ public:
 			{
 				auto textEdit = layout.AddInputBox(
 					variable.name,
-					[this, componentView, variable](std::string& string)
+					[this, componentView, &variable](std::string& string)
 					{
-						auto* i = (double*)(componentView->blob.data() + variable.offset);
+						auto* i = (double*)(componentView->blob.data() + variable.byteOffset);
 						string = fmt::format("{}", *i);
 					},
 					[this, componentView, &variable](const std::string& string)
@@ -167,7 +176,7 @@ public:
 						auto res = scn::scan<double>(string, "{}");
 						if (res)
 						{
-							auto* i = (double*)(componentView->blob.data() + variable.offset);
+							auto* i = (double*)(componentView->blob.data() + variable.byteOffset);
 							*i = res->value();
 						}
 					});
@@ -190,7 +199,7 @@ public:
 			ComponentViewBase	{ IN_definition->ID },
 			definition			{ IN_definition }
 		{
-			blob.resize(FlexKit::Max(definition->size, blob.size()));
+			blob.resize(FlexKit::Max(definition->byteSize, blob.size()));
 
 			memset(blob.data(), 0, blob.size());
 		}
@@ -225,7 +234,7 @@ public:
 		void AddComponentView(FlexKit::GameObject& GO, FlexKit::ValueMap user_ptr, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 		{
 			auto view = new RuntimeComponentView(definition);
-			view->blob.resize(FlexKit::Max(bufferSize, definition->size));
+			view->blob.resize(FlexKit::Max(bufferSize, definition->byteSize));
 			memcpy(view->blob.data(), buffer, bufferSize);
 
 			GO.AddView(view);
@@ -282,59 +291,13 @@ void EditorComponentTable::GenerateHeader(const std::string& header)
 /************************************************************************************************/
 
 
-void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefinition& component, std::span<const FlexKit::TypedefDecl> types, const std::string& sourceHeader)
+ComplexVariableMethods_ptr	CreateMethods(const FlexKit::Field& f,  const std::string& sourceHeader, EditorProject* project_ptr)
 {
-	using std::ranges::find_if;
-
-	auto res = find_if(basicComponents,
-		[&](const auto& c) -> bool
-		{
-			return c->name == component.componentName;
-		});
-
-	if (res != basicComponents.end())
-	{
-		UpdateBasicComponent(component, types, res->get());
-		return;
-	}
-
-	const auto& type	= std::get<FlexKit::TypeArgument>(component.subTypes[0]);
-	const auto& id		= std::get<FlexKit::IntegerLiteral>(component.subTypes[2]);
-
-	auto newComponent = std::make_shared<BasicComponentReflection>();
-	newComponent->name	= component.componentName;
-	newComponent->ID	= id.value;
-	newComponent->size	= type.structInfo.size;
-
-	for (auto& var : type.structInfo.fields)
-	{
-		newComponent->childVariables.emplace_back(
-			ComponentVariable{
-				.name		= var.name,
-				.type		= var.type,
-				.annotation = var.annotation,
-				.offset		= var.offset,
-				.size		= var.size,
-			});
-	}
-
-	basicComponents.push_back(newComponent);
-	auto editorReflection = new ReflectedComponent{ newComponent };
-	editorComponents.push_back(editorReflection);
-
-	for (auto& var : type.structInfo.fields)
-	{
-		if (var.type == "int"		|| var.type == "int32_t" ||
-			var.type == "int"		|| var.type == "float" ||
-			var.type == "double")
-			continue;
-
-		auto typeName = var.type;
-
-#if 0
-		std::string generatedSrc =
-			R"(
+	const auto& typeName	= f.type;
+	const auto typeID		= "eqwrezsdx";
+	std::string generatedSrc = R"(
 #include <@Header>
+#include <MathUtilities.hpp>
 
 template<FlexKit::Vector_t t>
 constexpr bool IsVector() { return true; }
@@ -370,40 +333,170 @@ extern "C"
 			return typed_ptr->size();
 		}
 	}
-})";
-		generatedSrc = SearchAndReplace(generatedSrc, "@Header",	sourceHeader);
-		generatedSrc = SearchAndReplace(generatedSrc, "@Type",		typeName);
-		generatedSrc = SearchAndReplace(generatedSrc, "@TypeID",	typeID);
 
-		"cl /std:c++latest /EHsc /arch:AVX2 /LD test.cpp /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include       ";
-		project_ptr->RunBuildCommand("cl.exe");
-#endif
+	void __declspec(dllexport) VectorRead_@TypeID(int idx, void* out_ptr, void* c)
+	{
+		if constexpr (IsVector<@Type>())
+			return 0;
+		else
+		{
+			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
+			using ScalerType	= decltype(vector_ptr[0]);
 
-		auto moduleDir				= project_ptr->projectDirectory.string() + "\\modules\\test.dll";
-		auto moduleHndl				= LoadLibraryA(moduleDir.c_str());
-		void (*Create)(void*)		= (void (*)(void*)) GetProcAddress(moduleHndl, "Create_float4");
-		void (*Destroy)(void*)		= (void (*)(void*))	GetProcAddress(moduleHndl, "Destroy_float4");
-		bool (*IsVector)()			= (bool (*)())		GetProcAddress(moduleHndl, "IsVector_float4");
-		int  (*VectorSize)(void*)	= nullptr;
+			auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
+			auto& out_ref	= *reinterpret_ptr<ScalerType*>(out_ptr);
 
-		void (*VectorReadIndex)(int, void*)		= nullptr;
-		void (*VectorWriteIndex)(int, void*)	= nullptr;
-
-		if(IsVector())
-			VectorSize = (int (*)(void*))GetProcAddress(moduleHndl, "VectorSize_float4");
-
-		std::vector<char> buffer{ 16 };
-
-		Create(buffer.data());
-
-		int x = VectorSize(buffer.data());
-
-		Destroy(buffer.data());
-
-		int y = 0;
+			out_ref = c_ref[idx];
+		}
 	}
 
+	void __declspec(dllexport) VectorWrite_@TypeID(int idx, void* out_ptr, void* c)
+	{
+		if constexpr (IsVector<@Type>())
+			return 0;
+		else
+		{
+			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
+			using ScalerType	= decltype(vector_ptr[0]);
 
+			auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
+			auto& out_ref	= *reinterpret_ptr<ScalerType*>(out_ptr);
+
+			c_ref[idx] = out_ref;
+		}
+	}
+
+	void __declspec(dllexport) VectorGet_@TypeID(int idx, void* c)
+	{
+		if constexpr (IsVector<@Type>())
+			return nullptr;
+		else
+		{
+			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
+			using ScalerType	= decltype(vector_ptr[0]);
+
+			if(vector_ptr->size() > idx)
+			{
+				auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
+				return &c_ref[idx];
+			}
+			else return nullptr;
+		}
+	}
+})";
+
+	generatedSrc = SearchAndReplace(generatedSrc, "@Header",	sourceHeader);
+	generatedSrc = SearchAndReplace(generatedSrc, "@Type",		typeName);
+	generatedSrc = SearchAndReplace(generatedSrc, "@TypeID",	typeID);
+
+
+	//"cl /std:c++latest /EHsc /arch:AVX2 /LD test.cpp /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include       ";
+
+	//project_ptr->RunBuildCommand("cl.exe");
+
+	auto moduleDir				= project_ptr->projectDirectory.string() + "\\modules\\test.dll";
+	auto moduleHNDL				= LoadLibraryA(moduleDir.c_str());
+
+	if(moduleHNDL)
+	{
+		std::string CreateFNID		= std::format("Create_{}", typeID);
+		std::string DestroyFNID		= std::format("Destroy_{}", typeID);
+		std::string IsVectorFNID	= std::format("IsVector_{}", typeID);
+
+		auto create		= (void (*)(void*)) GetProcAddress(moduleHNDL, CreateFNID.c_str());
+		auto destroy	= (void (*)(void*))	GetProcAddress(moduleHNDL, DestroyFNID.c_str());
+		auto isVector	= (bool (*)())		GetProcAddress(moduleHNDL, IsVectorFNID.c_str());
+
+		if (isVector())
+		{
+			std::string SizeFNID	= std::format("VectorSize_{}", typeID);
+			std::string ReadFNID	= std::format("VectorRead_{}", typeID);
+			std::string WriteFNID	= std::format("VectorWrite_{}", typeID);
+			std::string GetFNID		= std::format("VectorGet_{}", typeID);
+
+			auto vectorSize		= (Vector_Size)GetProcAddress(moduleHNDL, SizeFNID.c_str());
+			auto vectorRead		= (Vector_ReadIndex)GetProcAddress(moduleHNDL, ReadFNID.c_str());
+			auto vectorWrite	= (Vector_WriteIndex)GetProcAddress(moduleHNDL, WriteFNID.c_str());
+			auto vectorGet		= (Vector_Get)GetProcAddress(moduleHNDL, GetFNID.c_str());
+
+			auto methods = std::make_unique<ComplexVectorMethods>();
+			methods->moduleHNDL	= moduleHNDL;
+			methods->Create		= create;
+			methods->Destroy	= destroy;
+			methods->IsVector	= isVector;
+			methods->Size		= vectorSize;
+			methods->Read		= vectorRead;
+			methods->Write		= vectorWrite;
+			methods->Get		= vectorGet;
+
+			return methods;
+		}
+		else
+		{
+			auto methods = std::make_unique<ComplexVariableMethods>();
+			methods->moduleHNDL		= moduleHNDL;
+			methods->Create			= create;
+			methods->Destroy		= destroy;
+			methods->IsVector		= isVector;
+
+			return methods;
+		}
+	}
+
+	return {};
+}
+
+
+/************************************************************************************************/
+
+
+void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefinition& component, std::span<const FlexKit::TypedefDecl> types, const std::string& sourceHeader)
+{
+	using std::ranges::find_if;
+
+	auto res = find_if(basicComponents,
+		[&](const auto& c) -> bool
+		{
+			return c->name == component.componentName;
+		});
+
+	if (res != basicComponents.end())
+	{
+		UpdateBasicComponent(component, types, res->get());
+		return;
+	}
+
+	const auto& type	= std::get<FlexKit::TypeArgument>(component.subTypes[0]);
+	const auto& id		= std::get<FlexKit::IntegerLiteral>(component.subTypes[2]);
+
+	auto newComponent = std::make_shared<BasicComponentReflection>();
+	newComponent->name		= component.componentName;
+	newComponent->ID		= id.value;
+	newComponent->byteSize	= type.structInfo.size;
+
+	for (auto& var : type.structInfo.fields)
+	{
+		newComponent->childVariables.emplace_back(
+				ComponentVariable{
+					.name		= var.name,
+					.type		= var.type,
+					.annotation = var.annotation,
+					.byteOffset	= var.offset,
+					.byteSize	= var.size,
+				});
+
+		if (var.type != "int" || var.type != "int32_t" ||
+			var.type != "int" || var.type != "float" ||
+			var.type != "double")
+		{
+			auto methods_ptr = CreateMethods(var, sourceHeader, project_ptr);
+			newComponent->childVariables.back().methods = std::move(methods_ptr);
+		}
+	}
+
+	basicComponents.push_back(newComponent);
+	auto editorReflection = new ReflectedComponent{ newComponent };
+	editorComponents.push_back(editorReflection);
 }
 
 

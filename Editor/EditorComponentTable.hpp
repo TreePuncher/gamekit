@@ -2,14 +2,46 @@
 #include <Signals.hpp>
 #include <vector>
 
+using Type_Create		= void (*)(void*);
+using Type_Destroy		= void (*)(void*);
+using Type_IsVector		= bool (*)();
+
+using Vector_Size		= int	(*)(void*);
+using Vector_ReadIndex	= void	(*)(int, void* out_ptr, void* c);
+using Vector_WriteIndex = void	(*)(int, void* out_ptr, void* c);
+using Vector_Get		= void*	(*)(int, void* c);
+
+struct ComplexVariableMethods
+{
+	ComplexVariableMethods() = default;
+	~ComplexVariableMethods();
+
+	HMODULE			moduleHNDL;
+	Type_Create		Create;
+	Type_Destroy	Destroy;
+	Type_IsVector	IsVector;
+};
+
+struct ComplexVectorMethods : ComplexVariableMethods
+{
+	Vector_Size			Size;
+	Vector_ReadIndex	Read;
+	Vector_WriteIndex	Write;
+	Vector_Get			Get;
+};
+
+using ComplexVariableMethods_ptr = std::unique_ptr<ComplexVariableMethods>;
+
 struct ComponentVariable
 {
 	std::string	name;
 	std::string	type;
 	std::string	annotation;
 
-	uint32_t	offset;
-	uint32_t	size;
+	uint32_t	byteOffset;
+	uint32_t	byteSize;
+
+	ComplexVariableMethods_ptr methods;
 };
 
 struct ComponentField
@@ -22,7 +54,7 @@ struct ComponentField
 
 struct BasicComponentReflection
 {
-	size_t							size;
+	size_t							byteSize;
 	FlexKit::ComponentID			ID;
 	std::string						name;
 	std::vector<ComponentVariable>	childVariables;
@@ -52,7 +84,7 @@ public:
 
 	void CreateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, const std::string& sourceheader);
 	void UpdateBasicComponent(const FlexKit::ComponentDefinition&, std::span<const FlexKit::TypedefDecl>, BasicComponentReflection* component);
-
+	
 	FlexKit::Signal<void(const std::string&)>::Slot onHeaderAdded;
 
 	std::vector<BasicComponentReflection_ptr>	basicComponents;
