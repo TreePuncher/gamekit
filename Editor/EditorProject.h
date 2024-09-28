@@ -138,7 +138,7 @@ public:
 
 	void BuildDebug() const;
 
-	void RunBuildCommand(const std::string& command) const;
+	int RunBuildCommand(const std::string& command) const;
 
 	void MoveAssets(const std::string& targetLocation) const;
 

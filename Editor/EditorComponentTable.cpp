@@ -8,6 +8,22 @@
 #include <scn/scan.h>
 
 
+std::string GenerateTypeID()
+{
+	std::string ID;
+	ID.reserve(15);
+
+	for (int i = 0; i < 15; i++)
+	{
+		int n = rand() % 26;
+		char c = 'a' + n;
+
+		ID.push_back(c);
+	}
+
+	return ID;
+}
+
 /************************************************************************************************/
 
 
@@ -182,12 +198,34 @@ public:
 					});
 				continue;
 			}
-			else
+			else if (variable.methods && variable.methods->IsVector())
 			{
-				int x = 0;
-				// Create,
-				// Copy,
-				// Create Blobs
+				layout.AddText(variable.name);
+				layout.PushHorizontalLayout();
+
+				auto* methods		= (ComplexVectorMethods*)variable.methods.get();
+				auto* vector_ptr	= (componentView->blob.data() + variable.byteOffset);
+
+				const int vectorSize = methods->Size(vector_ptr);
+
+				const char* xyzw[] = { "X", "Y", "Z", "W" };
+				for(int i = 0; i < vectorSize; i++)
+				{
+					auto textEdit = layout.AddInputBox(
+						((vectorSize > 4) ? std::format("{}", i) : std::string{ xyzw[i] }),
+						[this, componentView, &variable, i, vector_ptr, methods](std::string& string)
+						{
+							char buffer[512];
+							memset(buffer, 0, 512);
+							methods->formatElement(i, vector_ptr, buffer);
+							string = buffer;
+						},
+						[this, componentView, &variable, i, vector_ptr, methods](const std::string& string)
+						{
+							//methods->scanElement(i, vector_ptr, string);
+						});
+				}
+				layout.Pop();
 			}
 		}
 	}
@@ -294,10 +332,15 @@ void EditorComponentTable::GenerateHeader(const std::string& header)
 ComplexVariableMethods_ptr	CreateMethods(const FlexKit::Field& f,  const std::string& sourceHeader, EditorProject* project_ptr)
 {
 	const auto& typeName	= f.type;
-	const auto typeID		= "eqwrezsdx";
+	const auto	typeID		= GenerateTypeID();
+
 	std::string generatedSrc = R"(
 #include <@Header>
 #include <MathUtilities.hpp>
+#include <memory>
+#include <string>
+#include <scn/scan.h>
+#include <iostream>
 
 template<FlexKit::Vector_t t>
 constexpr bool IsVector() { return true; }
@@ -307,26 +350,26 @@ constexpr bool IsVector() { return false; }
 
 extern "C"
 {
-	void __declspec(dllexport) Create_@TYPEID(void* _ptr)
+	__declspec(dllexport) void Create_@TypeID(void* _ptr)
 	{
 		new(_ptr) @Type{};
 	}
 
-	void __declspec(dllexport) Destroy_@TYPEID(void* _ptr)
+	__declspec(dllexport) void Destroy_@TypeID(void* _ptr)
 	{
 		auto* typed_ptr = reinterpret_cast<@Type*>(_ptr);
-		typed_ptr->~@Type();
+		std::destroy_at(typed_ptr);
 	}
 
-	bool __declspec(dllexport) IsVector_@TYPEID()
+	__declspec(dllexport) bool IsVector_@TypeID()
 	{
 		return IsVector<@Type>();
 	}
 
-	int __declspec(dllexport) VectorSize_@TypeID(void* _ptr)
+	__declspec(dllexport) int VectorSize_@TypeID(void* _ptr)
 	{
 		if constexpr (!IsVector<@Type>())
-			return 0;
+			return;
 		else
 		{
 			auto* typed_ptr = reinterpret_cast<@Type*>(_ptr);
@@ -334,67 +377,103 @@ extern "C"
 		}
 	}
 
-	void __declspec(dllexport) VectorRead_@TypeID(int idx, void* out_ptr, void* c)
+	__declspec(dllexport) void VectorRead_@TypeID(int idx, void* out_ptr, void* c)
 	{
-		if constexpr (IsVector<@Type>())
-			return 0;
+		if constexpr (!IsVector<@Type>())
+			return;
 		else
 		{
-			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
-			using ScalerType	= decltype(vector_ptr[0]);
+			auto vector_ptr		= reinterpret_cast<@Type*>(c);
+			using ScalerType	= std::remove_reference_t<decltype((*vector_ptr)[0])>;
 
-			auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
-			auto& out_ref	= *reinterpret_ptr<ScalerType*>(out_ptr);
-
-			out_ref = c_ref[idx];
+			*reinterpret_cast<ScalerType*>(out_ptr) = (*vector_ptr)[idx];
 		}
 	}
 
-	void __declspec(dllexport) VectorWrite_@TypeID(int idx, void* out_ptr, void* c)
+	__declspec(dllexport) void  VectorWrite_@TypeID(int idx, void* out_ptr, void* c)
 	{
-		if constexpr (IsVector<@Type>())
-			return 0;
+		if constexpr (!IsVector<@Type>())
+			return;
 		else
 		{
-			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
-			using ScalerType	= decltype(vector_ptr[0]);
+			auto vector_ptr		= reinterpret_cast<@Type*>(c);
+			using ScalerType	= std::remove_reference_t<decltype((*vector_ptr)[0])>;
 
-			auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
-			auto& out_ref	= *reinterpret_ptr<ScalerType*>(out_ptr);
-
-			c_ref[idx] = out_ref;
+			(*vector_ptr)[idx] = *reinterpret_cast<ScalerType*>(out_ptr);
 		}
 	}
 
-	void __declspec(dllexport) VectorGet_@TypeID(int idx, void* c)
+	__declspec(dllexport)  void* VectorGet_@TypeID(int idx, void* c)
 	{
-		if constexpr (IsVector<@Type>())
+		if constexpr (!IsVector<@Type>())
 			return nullptr;
 		else
 		{
-			auto vector_ptr		= reinterpret_ptr<@Type*>(c);
-			using ScalerType	= decltype(vector_ptr[0]);
+			auto vector_ptr		= reinterpret_cast<@Type*>(c);
 
 			if(vector_ptr->size() > idx)
 			{
-				auto& c_ref		= *reinterpret_ptr<ScalerType*>(vector_ptr);
-				return &c_ref[idx];
+				return &(*vector_ptr)[idx];
 			}
 			else return nullptr;
+		}
+	}
+
+	__declspec(dllexport) void  VectorFormat_@TypeID(int idx, void* c, char* c_str)
+	{
+		if constexpr (!IsVector<@Type>())
+			return;
+		else
+		{
+			auto vector_ptr		= reinterpret_cast<@Type*>(c);
+		
+			auto formatted = std::format("{}", (*vector_ptr)[idx]);
+			strcpy_s(c_str, 512, formatted.c_str());
+		}
+	}
+
+	__declspec(dllexport)  void VectorScan_@TypeID(int idx, void* c, char* c_str)
+	{
+		if constexpr (!IsVector<@Type>())
+			return;
+		else
+		{
+			auto vector_ptr		= reinterpret_cast<@Type*>(c);
+			using ScalerType	= std::remove_reference_t<decltype((*vector_ptr)[0])>;
 		}
 	}
 })";
 
 	generatedSrc = SearchAndReplace(generatedSrc, "@Header",	sourceHeader);
-	generatedSrc = SearchAndReplace(generatedSrc, "@Type",		typeName);
 	generatedSrc = SearchAndReplace(generatedSrc, "@TypeID",	typeID);
+	generatedSrc = SearchAndReplace(generatedSrc, "@Type",		typeName);
 
 
-	//"cl /std:c++latest /EHsc /arch:AVX2 /LD test.cpp /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include       ";
+	std::string sourceFile = std::format(R"({}\modules\{}.cpp)", project_ptr->projectDirectory.string(), typeID);
+	std::string moduleFile = std::format(R"({}\modules\{}.dll)", project_ptr->projectDirectory.string(), typeID);
 
-	//project_ptr->RunBuildCommand("cl.exe");
+	sourceFile = SearchAndReplace(sourceFile, "/", "\\");
+	moduleFile = SearchAndReplace(moduleFile, "/", "\\");
 
-	auto moduleDir				= project_ptr->projectDirectory.string() + "\\modules\\test.dll";
+	auto file = fopen(sourceFile.c_str(), "w");
+	size_t written = 0;
+	for(;written < generatedSrc.size();)
+		written += fwrite(generatedSrc.c_str() + written, 1, generatedSrc.size() - written, file);
+	fclose(file);
+
+	std::string buildCommand = std::format(R"(cd modules && cl /DEBUG /std:c++latest /EHsc /arch:AVX2 /LD {} /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include)", sourceFile);
+
+	if (auto success = project_ptr->RunBuildCommand(buildCommand); success != 0)
+	{
+		FK_LOG_ERROR("Failed to build module! Type: %s", typeName.c_str());
+		std::print("{}\n", generatedSrc);
+		std::filesystem::remove(sourceFile);
+		return {};
+	}
+
+	//std::filesystem::remove(sourceFile);
+
+	auto moduleDir				= project_ptr->projectDirectory.string() + std::format(R"(\modules\{}.dll)", typeID);
 	auto moduleHNDL				= LoadLibraryA(moduleDir.c_str());
 
 	if(moduleHNDL)
@@ -413,21 +492,27 @@ extern "C"
 			std::string ReadFNID	= std::format("VectorRead_{}", typeID);
 			std::string WriteFNID	= std::format("VectorWrite_{}", typeID);
 			std::string GetFNID		= std::format("VectorGet_{}", typeID);
+			std::string FormatFNID	= std::format("VectorFormat_{}", typeID);
+			std::string ScanFNID	= std::format("VectorScan_{}", typeID);
 
 			auto vectorSize		= (Vector_Size)GetProcAddress(moduleHNDL, SizeFNID.c_str());
 			auto vectorRead		= (Vector_ReadIndex)GetProcAddress(moduleHNDL, ReadFNID.c_str());
 			auto vectorWrite	= (Vector_WriteIndex)GetProcAddress(moduleHNDL, WriteFNID.c_str());
 			auto vectorGet		= (Vector_Get)GetProcAddress(moduleHNDL, GetFNID.c_str());
+			auto format			= (Vector_Format)GetProcAddress(moduleHNDL, FormatFNID.c_str());
+			auto scan			= (Vector_Scan)GetProcAddress(moduleHNDL, ScanFNID.c_str());
 
 			auto methods = std::make_unique<ComplexVectorMethods>();
-			methods->moduleHNDL	= moduleHNDL;
-			methods->Create		= create;
-			methods->Destroy	= destroy;
-			methods->IsVector	= isVector;
-			methods->Size		= vectorSize;
-			methods->Read		= vectorRead;
-			methods->Write		= vectorWrite;
-			methods->Get		= vectorGet;
+			methods->moduleHNDL		= moduleHNDL;
+			methods->Create			= create;
+			methods->Destroy		= destroy;
+			methods->IsVector		= isVector;
+			methods->Size			= vectorSize;
+			methods->Read			= vectorRead;
+			methods->Write			= vectorWrite;
+			methods->Get			= vectorGet;
+			methods->formatElement	= format;
+			methods->scanElement	= scan;
 
 			return methods;
 		}
@@ -485,13 +570,13 @@ void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefiniti
 					.byteSize	= var.size,
 				});
 
-		if (var.type != "int" || var.type != "int32_t" ||
-			var.type != "int" || var.type != "float" ||
-			var.type != "double")
-		{
-			auto methods_ptr = CreateMethods(var, sourceHeader, project_ptr);
-			newComponent->childVariables.back().methods = std::move(methods_ptr);
-		}
+		if (var.type == "int" || var.type == "int32_t" ||
+			var.type == "uint32_t" || var.type == "float" ||
+			var.type == "double")
+			continue;
+
+		auto methods_ptr = CreateMethods(var, sourceHeader, project_ptr);
+		newComponent->childVariables.back().methods = std::move(methods_ptr);
 	}
 
 	basicComponents.push_back(newComponent);
