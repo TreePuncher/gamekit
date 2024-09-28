@@ -11,6 +11,9 @@ using Vector_ReadIndex	= void	(*)(int, void* out_ptr, void* c);
 using Vector_WriteIndex = void	(*)(int, void* out_ptr, void* c);
 using Vector_Get		= void*	(*)(int, void* c);
 
+using Vector_Format = void (*)(int idx, void* c, char*);
+using Vector_Scan	= void (*)(int idx, void* c, char*);
+
 struct ComplexVariableMethods
 {
 	ComplexVariableMethods() = default;
@@ -28,6 +31,9 @@ struct ComplexVectorMethods : ComplexVariableMethods
 	Vector_ReadIndex	Read;
 	Vector_WriteIndex	Write;
 	Vector_Get			Get;
+
+	Vector_Format	formatElement;
+	Vector_Scan		scanElement;
 };
 
 using ComplexVariableMethods_ptr = std::unique_ptr<ComplexVariableMethods>;
