@@ -1,10 +1,42 @@
 #include "EditorReflection.hpp"
+#include <map>
+#include <memory>
 #include <print>
 
 /************************************************************************************************/
 
 namespace FlexKit
 {
+	StructInformation	HandleAliasDeclaration(CXCursor cursor);
+	Field				HandleField(CXCursor cursor);
+	TypedefDecl			HandleTypedefDeclaration(CXCursor cursor);
+	void				TraverseStruct(CXCursor cursor, StructInformation& structInfo, bool recurse = false);
+
+
+	/************************************************************************************************/
+
+
+	using StructInformation_ptr = std::shared_ptr<StructInformation>;
+	std::map<std::string, StructInformation_ptr>	structs;
+
+
+	StructInformation_ptr GetStruct(const std::string& name, CXCursor cursor, ComponentType type = ComponentType::NotAComponent)
+	{
+		if (auto res = structs.find(name); res != structs.end())
+			return res->second;
+		else
+		{
+			StructInformation structDefinition;
+			StructInformation_ptr struct_ptr = std::make_shared<StructInformation>(std::move(structDefinition));
+			structs[name] = struct_ptr;
+
+			TraverseStruct(cursor, *struct_ptr, true);
+
+			return struct_ptr;
+		}
+	}
+
+
 	Field HandleField(CXCursor cursor)
 	{
 		auto		type		= clang_getCursorType(cursor);
@@ -28,6 +60,41 @@ namespace FlexKit
 
 				switch (type)
 				{
+				case CXCursor_TypeRef:
+				{
+					auto name = ClangString{ clang_getCursorSpelling(cursor) }.ToString();
+
+					auto referencedType = clang_getCursorReferenced(cursor);
+					auto referencedName = ClangString{ clang_getCursorSpelling(referencedType) }.ToString();
+
+					auto type = clang_getCursorType(cursor);
+
+					int fieldCount = 0;
+					clang_Type_visitFields(type,
+						[](CXCursor C, CXClientData client_data) -> CXVisitorResult
+						{
+							int& fieldCount = *reinterpret_cast<int*>(client_data);
+							auto type = clang_getCursorKind(C);
+
+							if (type == CXCursor_FieldDecl)
+								fieldCount++;
+
+							return CXVisitorResult::CXVisit_Continue;
+						}, &fieldCount);
+
+					if (fieldCount)
+						field->structInfo = GetStruct(referencedName, referencedType);
+				}	break;
+				case CXCursor_TemplateRef:
+				{
+					auto spelling = ClangString(clang_getCursorSpelling(cursor)).ToString();
+					if (spelling == "Vector")
+						field->fieldType = FieldType::Vector;
+					else if (spelling == "vector")
+						field->fieldType = FieldType::std_vector;
+
+					int x = 0;
+				}	break;
 				case CXCursor_AnnotateAttr:
 				{
 					auto type				= clang_getCursorType(cursor);
@@ -48,18 +115,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	AliasDecl HandleAliasDeclaration(CXCursor cursor)
+	StructInformation HandleAliasDeclaration(CXCursor cursor)
 	{
-		AliasDecl aliasDecl;
+		StructInformation aliasDecl;
 
 		clang_visitChildren(cursor,
 			[](CXCursor cursor, CXCursor parent, CXClientData client_data)
 			{
-				AliasDecl& data = *reinterpret_cast<AliasDecl*>(client_data);
+				StructInformation& data = *reinterpret_cast<StructInformation*>(client_data);
 				auto kind = clang_getCursorKind(cursor);
+				ClangString annoation = clang_getCursorSpelling(cursor);
 
 				switch (kind)
 				{
+				case CXCursor_TemplateTypeParameter:
+				{
+					ClangString spelling = clang_getCursorSpelling(cursor);
+					std::string spellingString = spelling;
+
+					int x = 0;
+				}	break;
+				case CXCursor_ClassDecl:
+				{
+					ClangString spelling = clang_getCursorSpelling(cursor);
+					std::string spellingString = spelling;
+
+					StructInformation structDefinition;
+					TraverseStruct(cursor, structDefinition);
+
+					int x = 0;
+				}	break;
 				case CXCursor_TemplateRef:
 				{
 					data.isTemplate = true;
@@ -74,12 +159,9 @@ namespace FlexKit
 				{
 					auto spelling	= ClangString(clang_getCursorSpelling(cursor)).ToString();
 					auto referenced = clang_getCursorReferenced(cursor);
+					auto struct_ptr = GetStruct(spelling, referenced, ComponentType::IsAComponent);
 
-					StructInformation info;
-					info.componentType = ComponentType::IsAComponent;
-					TraverseStruct(referenced, info);
-
-					data.templateArguments.emplace_back(TypeArgument{ spelling, std::move(info) });
+					data.templateArguments.emplace_back(TypeArgument{ spelling, struct_ptr });
 				}	break;
 				case CXCursor_IntegerLiteral:
 				{
@@ -171,6 +253,25 @@ namespace FlexKit
 					}
 					clang_EvalResult_dispose(expression);
 				}
+				case CXCursor_VarDecl:
+				{
+					auto type = clang_getCursorType(cursor);
+					ClangString spelled		= clang_getCursorSpelling(cursor);
+					ClangString typeName	= clang_getTypeSpelling(type);
+
+					std::string spelledStr	= spelled;
+					std::string typeNameStr	= typeName;
+
+					int x = 0;
+				}	break;
+				case CXCursor_TypeAliasDecl:
+				{
+					ClangString spelled			= clang_getCursorSpelling(cursor);
+					std::string spelledStr		= spelled;
+
+					TypedefDecl res = HandleTypedefDeclaration(cursor);
+
+				}	break;
 				default:
 					break;
 				};
@@ -238,13 +339,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TraverseStruct(CXCursor cursor, StructInformation& structInfo)
+	void TraverseStruct(CXCursor cursor, StructInformation& structInfo, bool recurse)
 	{
 		CXType		structType = clang_getCursorType(cursor);
 		ClangString	structName = clang_getTypeSpelling(structType);
 		size_t		structSize = clang_Type_getSizeOf(structType);
 
-		structInfo.size = structSize;
+		if(recurse)
+			structInfo.componentType	= ComponentType::IsAComponent;
+
+		structInfo.typeName			= structName.ToString();
+		structInfo.size				= structSize;
 
 		clang_visitChildren(cursor,
 			[](CXCursor cursor, CXCursor parent, CXClientData client_data)
@@ -253,32 +358,16 @@ namespace FlexKit
 
 				auto cursorType = clang_getCursorKind(cursor);
 
-				if (CXCursor_CXXBaseSpecifier != cursorType)
-				{
-					if (structInfo.componentType == ComponentType::NotAComponent)
-						return CXChildVisit_Break;
-				}
-
 				switch (cursorType)
 				{
 				case CXCursor_CXXBaseSpecifier:
 				{
-					CXType		structType = clang_getCursorType(cursor);
-					ClangString structName = clang_getTypeSpelling(structType);
-					std::string	structNameStr = structName;
+					CXType		structType		= clang_getCursorType(cursor);
+					ClangString structName		= clang_getTypeSpelling(structType);
+					std::string	structNameStr	= structName;
 
 					if (structNameStr.find("ComponentBase") != std::string::npos)
 						structInfo.componentType = ComponentType::Custom;
-
-					clang_visitChildren(cursor,
-						[](CXCursor cursor, CXCursor parent, CXClientData client_data)
-						{
-							CXType		structType = clang_getCursorType(cursor);
-							ClangString structName = clang_getTypeSpelling(structType);
-
-							return CXChildVisit_Continue;
-						},
-						nullptr);
 				}	break;
 				case CXCursor_CXXMethod:
 					if (clang_CXXMethod_isStatic(cursor) != 0)
@@ -331,7 +420,6 @@ namespace FlexKit
 				case CXCursor_FieldDecl:
 				{
 					auto field = HandleField(cursor);
-
 					structInfo.fields.emplace_back(std::move(field));
 				}	break;
 				case CXCursor_VarDecl:
@@ -375,14 +463,14 @@ namespace FlexKit
 				}	break;
 				case CXCursor_TypeAliasDecl:
 				{
-					ClangString name	= clang_getCursorSpelling(cursor);
-					auto aliasDecl		= HandleAliasDeclaration(cursor);
+					ClangString name		= clang_getCursorSpelling(cursor);
+					auto structDefinition	= HandleAliasDeclaration(cursor);
 
-					if (aliasDecl.componentType != ComponentType::NotAComponent)
+					if (structDefinition.componentType != ComponentType::NotAComponent)
 					{
 						ComponentDefinition component;
-						component.type			= aliasDecl.componentType;
-						component.subTypes		= aliasDecl.templateArguments;
+						component.type			= structDefinition.componentType;
+						component.subTypes		= std::move(structDefinition.templateArguments);
 						component.componentName = name.ToString();
 						objects.components.push_back(component);
 					}
@@ -390,8 +478,13 @@ namespace FlexKit
 				case CXCursor_ClassDecl:
 				case CXCursor_StructDecl:
 				{
-					StructInformation	structInfo;
-					TraverseStruct(cursor, structInfo);
+					ClangString name	= clang_getCursorSpelling(cursor);
+					auto struct_ptr		= GetStruct(name, cursor);
+
+					objects.types.emplace_back(
+						FlexKit::TypedefDecl{
+							.typeName			= name,
+							.structDefinition	= struct_ptr });
 				}	break;
 
 				case CXCursor_FunctionTemplate:

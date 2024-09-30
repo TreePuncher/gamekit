@@ -31,6 +31,7 @@ if(WIN32 AND BuildEditor)
 
     add_custom_command(TARGET ReflectionTest POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:ReflectionTest> $<TARGET_FILE_DIR:ReflectionTest>
+        COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/libs/libclang.dll   "$<TARGET_FILE_DIR:ReflectionTest>"
         COMMAND_EXPAND_LISTS)
 endif()
 
