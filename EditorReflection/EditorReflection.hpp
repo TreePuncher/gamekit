@@ -1,10 +1,12 @@
 #include <clang-c/Index.h>
-#include <string>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <variant>
+#include <memory>
 #include <span>
+#include <string>
+#include <variant>
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -26,78 +28,30 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct StructInformation;
+
+	enum class FieldType
+	{
+		MemberVariable,
+		Vector,
+		std_vector
+	};
+
 	struct Field
 	{
-		std::string type;
-		std::string name;
-		std::string annotation;
+		std::string	type;
+		std::string	name;
+		std::string	annotation;
 
-		uint32_t		size;
-		uint32_t		offset;
+		FieldType							fieldType = FieldType::MemberVariable;
+		uint32_t							size;
+		uint32_t							offset;
+		std::shared_ptr<StructInformation>	structInfo;
 	};
 
 
 	/************************************************************************************************/
 
-	enum class ComponentType
-	{
-		Basic,
-		MultiField,
-		Custom,
-		IsAComponent,
-		NotAComponent
-	};
-
-	struct StructInformation
-	{
-		bool			isTemplate		= false;
-		ComponentType	componentType	= ComponentType::NotAComponent;
-
-		std::vector<std::string>	bases;
-		std::vector<std::string>	functions;
-		std::vector<std::string>	staticfunctions;
-		std::vector<Field>			fields;
-		size_t						size = 0;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct TemplateType
-	{
-		std::string name;
-		uint32_t	typeIdx;
-	};
-
-
-	struct IntegerLiteral
-	{
-		std::string name;
-		int value;
-	};
-
-
-	struct FloatLiteral
-	{
-		std::string name;
-		double value;
-	};
-
-
-	struct StringLiteral
-	{
-		std::string name;
-		std::string value;
-	};
-
-	struct TypeArgument
-	{
-		std::string			name;
-		StructInformation	structInfo;
-	};
-
-	using TemplateArgument = std::variant<TypeArgument, TemplateType, IntegerLiteral, FloatLiteral, StringLiteral>;
 
 	enum class ObjectKind
 	{
@@ -111,21 +65,85 @@ namespace FlexKit
 	};
 
 
-	struct AliasDecl
-	{
-		bool							isTemplate		= false;
-		ComponentType					componentType	= ComponentType::NotAComponent;
-		StructInformation				structInfo;
-		std::vector<TemplateArgument>	templateArguments;
-	};
-
 	struct TypedefDecl
 	{
 		std::string							typeName;
 		ObjectKind							kind;
 		uint32_t							typeSize;
-		std::unique_ptr<StructInformation>	structDefinition;
+		std::shared_ptr<StructInformation>	structDefinition;
 	};
+
+
+	enum class ComponentType
+	{
+		Basic,
+		MultiField,
+		Custom,
+		IsAComponent,
+		NotAComponent
+	};
+
+	struct StructInformation
+	{
+		using thisType = StructInformation;
+
+		struct TemplateType
+		{
+			std::string name;
+			uint32_t	typeIdx;
+		};
+
+
+		struct IntegerLiteral
+		{
+			std::string name;
+			int value;
+		};
+
+
+		struct FloatLiteral
+		{
+			std::string name;
+			double		value;
+		};
+
+
+		struct StringLiteral
+		{
+			std::string name;
+			std::string value;
+		};
+
+
+		struct TypeArgument
+		{
+			std::string					name;
+			std::shared_ptr<thisType>	structInfo;
+		};
+
+
+		using TemplateArgument = std::variant<TypeArgument, TemplateType, IntegerLiteral, FloatLiteral, StringLiteral>;
+
+		std::string		typeName;
+		bool			isTemplate		= false;
+		ComponentType	componentType	= ComponentType::NotAComponent;
+		size_t							size = 0;
+
+		std::vector<std::string>		bases;
+		std::vector<std::string>		functions;
+		std::vector<std::string>		staticfunctions;
+		std::vector<Field>				fields;
+		std::vector<TemplateArgument>	templateArguments;
+	};
+
+
+	using TemplateType		= StructInformation::TemplateType;
+	using IntegerLiteral	= StructInformation::IntegerLiteral;
+	using FloatLiteral		= StructInformation::FloatLiteral;
+	using StringLiteral		= StructInformation::StringLiteral;
+	using TypeArgument		= StructInformation::TypeArgument;
+
+	using TemplateArgument = StructInformation::TemplateArgument;
 
 
 	/************************************************************************************************/
@@ -163,9 +181,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	AliasDecl										HandleAliasDeclaration(CXCursor cursor);
-	Field											HandleField(CXCursor cursor);
-	void											TraverseStruct(CXCursor cursor, StructInformation& structInfo);
 	std::expected<ReflectionObjects, ParseError>	TraverseTranslationUnit(CXCursor cursor);
 	std::expected<ReflectionObjects, ParseError>	ParseHeaders(std::span<const std::filesystem::path> paths, std::span<const std::filesystem::path> includePaths = {});
 

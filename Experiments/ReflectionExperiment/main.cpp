@@ -35,32 +35,38 @@ int main(int argc, const char* argv[])
 			std::print("Component Name: {}\n", object.componentName);
 			for (auto& subType : object.subTypes)
 			{
-				//TypeArgument, TemplateType, IntegerLiteral, FloatLiteral, StringLiteral
-				std::visit(FlexKit::overloaded{
-						[](FlexKit::TypeArgument& type)
-						{
-							std::print("\t\tComponent Subtype: {}\n", type.name);
-							for (auto f : type.structInfo.fields)
-								std::print("\t\t\tField Name: {}, Type: {}, Options: {}\n", f.name, f.type, f.annotation);
-						},
-						[](FlexKit::TemplateType& type)
-						{
-							std::print("\t\ttemplate Name: {}, ID: {}\n", type.name, type.typeIdx);
-						},
-						[](FlexKit::IntegerLiteral& type)
-						{
-							std::print("\t\tInteger Value Name: {}, value: {}\n", type.name, type.value);
-						},
-						[](FlexKit::FloatLiteral& type)
-						{
-							std::print("\t\tFloat Value Name: {}, value: {}\n", type.name, type.value);
-						},
-						[](FlexKit::StringLiteral& type)
-						{
-							std::print("\t\tString Value Name: {}, value: {}\n", type.name, type.value);
-						},
-					}, subType);
+				auto processSubType = [&](this auto& self, auto& subType) -> void
+					{
+						std::visit(FlexKit::overloaded{
+								[&](FlexKit::TypeArgument& type)
+								{
+									std::print("\t\tComponent Subtype: {}\n", type.name);
+									for (auto f : type.structInfo->fields)
+										std::print("\t\t\tField Name: {}, Type: {}, Options: {}\n", f.name, f.type, f.annotation);
 
+									for (auto& f : type.structInfo->templateArguments)
+										self(f);
+								},
+								[](FlexKit::TemplateType& type)
+								{
+									std::print("\t\ttemplate Name: {}, ID: {}\n", type.name, type.typeIdx);
+								},
+								[](FlexKit::IntegerLiteral& type)
+								{
+									std::print("\t\tInteger Value Name: {}, value: {}\n", type.name, type.value);
+								},
+								[](FlexKit::FloatLiteral& type)
+								{
+									std::print("\t\tFloat Value Name: {}, value: {}\n", type.name, type.value);
+								},
+								[](FlexKit::StringLiteral& type)
+								{
+									std::print("\t\tString Value Name: {}, value: {}\n", type.name, type.value);
+								}
+							}, subType);
+					};
+
+				processSubType(subType);
 			}
 		}
 	}
