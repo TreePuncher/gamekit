@@ -644,7 +644,7 @@ namespace FlexKit
 	inline void RegisterWindowClass( HINSTANCE hinst )
 	{
 		// Register Window Class
-		WNDCLASSEXA wcex = {0};
+		WNDCLASSEXW wcex = {0};
 
 		wcex.cbSize			= sizeof( wcex );
 		wcex.style			= CS_HREDRAW | CS_VREDRAW;
@@ -656,10 +656,10 @@ namespace FlexKit
 		wcex.hCursor		= LoadCursor( nullptr, IDC_ARROW );
 		wcex.hbrBackground	= (HBRUSH)( COLOR_WINDOW );
 		wcex.lpszMenuName	= nullptr;
-		wcex.lpszClassName	= "RENDER_WINDOW";
+		wcex.lpszClassName	= L"RENDER_WINDOW";
 		wcex.hIconSm		= LoadIcon( wcex.hInstance, IDI_APPLICATION );
 
-		FK_ASSERT(RegisterClassExA( &wcex ));
+		FK_ASSERT(RegisterClassExW( &wcex ));
 	 }
 
 
@@ -724,7 +724,7 @@ namespace FlexKit
 		Window_Count++;
 
 		// Register Window Class
-		auto windowHWND = CreateWindowA("RENDER_WINDOW", "Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
+		auto windowHWND = CreateWindowW(L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
 								renderWindowDesc.POS_X,
 								renderWindowDesc.POS_Y,
 								renderWindowDesc.width,
