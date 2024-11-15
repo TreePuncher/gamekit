@@ -219,6 +219,48 @@ namespace FlexKit
 	}
 
 
+
+	Frustum GetFrustum(CameraHandle camera)
+	{
+		auto node = GetCameraNode(camera);
+
+		return GetFrustum(
+			GetCameraAspectRatio(camera),
+			GetCameraFOV(camera),
+			GetCameraNear(camera),
+			GetCameraFar(camera),
+			GetPositionW(node),
+			GetOrientation(node));
+	}
+
+	Frustum GetFrustumVS(CameraHandle camera)
+	{
+		auto node = GetCameraNode(camera);
+
+		return GetFrustumVS(
+			GetCameraAspectRatio(camera),
+			GetCameraFOV(camera),
+			GetCameraNear(camera),
+			GetCameraFar(camera));
+	}
+
+
+	Frustum GetSubFrustum(CameraHandle camera, float2 UL, float2 BR)
+	{
+		auto& sceneNodeComponent	= SceneNodeComponent::GetComponent();
+		auto node					= GetCameraNode(camera);
+
+		return GetSubFrustum(
+			GetCameraAspectRatio(camera),
+			GetCameraFOV		(camera),
+			GetCameraNear		(camera),
+			GetCameraFar		(camera),
+			GetPositionW		(node),
+			GetOrientation		(node), 
+			UL, 
+			BR);
+	}
+
 	/************************************************************************************************/
 }// nemespace FlexKit
 

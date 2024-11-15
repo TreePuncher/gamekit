@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2014-2022 Robert May
+Copyright (c) 2014-2024 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -206,6 +206,13 @@ namespace FlexKit
 		float3      Position,
 		Quaternion  Q) noexcept;
 
+	
+	Frustum GetFrustumVS(
+		const float AspectRatio,
+		const float FOV,
+		const float Near,
+		const float Far) noexcept;
+
 
 	Frustum GetSubFrustum(
 		const float AspectRatio,
@@ -214,6 +221,15 @@ namespace FlexKit
 		const float Far,
 		float3		Position,
 		Quaternion	Q,
+		float2		TopLeft,
+		float2		BottomRight) noexcept;
+
+
+	Frustum GetSubFrustumVS(
+		const float AspectRatio,
+		const float FOV,
+		const float Near,
+		const float Far,
 		float2		TopLeft,
 		float2		BottomRight) noexcept;
 
