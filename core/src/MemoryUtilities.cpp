@@ -73,7 +73,7 @@ namespace FlexKit
 
 	void* StackAllocator::_aligned_malloc(size_t s, size_t alignment)
 	{
-		byte* _ptr          = (byte*)malloc(s + alignment);
+		std::byte* _ptr     = (std::byte*)malloc(s + alignment);
 		size_t alignOffset  = (size_t)_ptr % alignment;
 		_ptr               += alignment - alignOffset;
 

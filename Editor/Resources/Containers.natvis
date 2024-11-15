@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="FlexKit::Vector&lt;*&gt;">
+    <Expand>
+      <Item Name="Max">Max</Item>
+      <Item Name="Size">Size</Item>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>A</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::static_array&lt;*&gt;">
+    <Expand>
+      <Item Name="Max">TSIZE</Item>
+      <Item Name="Size">Size</Item>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>Elements</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::Vector&lt;*&gt;">
+    <Expand>
+      <Item Name="Max">Max</Item>
+      <Item Name="Size">Size</Item>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>A</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::float2">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::float3">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+      <Item Name="Z">z</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::float4">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+      <Item Name="Z">z</Item>
+      <Item Name="W">w</Item>
+    </Expand>
+  </Type>
+
+<Type Name="FlexKit::Quaternion">
+    <Expand>
+      <Item Name="iX">x</Item>
+      <Item Name="jY">y</Item>
+      <Item Name="kZ">z</Item>
+      <Item Name="W">w</Item>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>

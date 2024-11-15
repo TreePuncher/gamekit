@@ -127,7 +127,7 @@ namespace FlexKit
 		std::string		typeName;
 		bool			isTemplate		= false;
 		ComponentType	componentType	= ComponentType::NotAComponent;
-		size_t							size = 0;
+		size_t			size			= 0;
 
 		std::vector<std::string>		bases;
 		std::vector<std::string>		functions;

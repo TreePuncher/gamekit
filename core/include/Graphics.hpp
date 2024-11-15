@@ -1072,7 +1072,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint32_t		height;
 		uint32_t		width;
 		uint32_t		mip_Levels;
-		byte*			usr;
+		std::byte*		usr;
 	};
 
 
@@ -4127,6 +4127,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void SetComputeDescriptorTable		(size_t idx);
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
+		void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range);
+
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
 		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
@@ -4238,6 +4240,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Dispatch				(const uint3);
 		void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
 		void DispatchRays			(const uint3, const DispatchDesc desc);
+		void DispatchMesh			(const uint3);
 
 		void FlushBarriers();
 
@@ -4614,33 +4617,31 @@ private:
 		PipelineBuilder(iAllocator& allocator);
 		~PipelineBuilder();
 
-		void AddRootSignature	(const RootSignature* rootSig);
+		PipelineBuilder& AddRootSignature	(const RootSignature* rootSig);
 
-		void AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
-		void AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		void AddWorkGraph		(const WorkGraph_Desc& desc = {});
+		PipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {});
 
-		void AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		void AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		void AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		void AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
-		void AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		void AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
-		void AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilder& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
+		PipelineBuilder& SetDebugName			(const char* name) { debugName = name; return *this; }
 
-
-		void SetDebugName			(const char* name) { debugName = name; }
-
-		void AddInputLayout			(const InputLayoutState&	state = {});
-		void AddInputTopology		(const ETopology			topology);
-		void AddDepthStencilState	(const DepthStencilState&	state = {});
-		void AddRasterizerState		(const RasterizerState&		state = {});
-		void AddRenderTargetState	(const RenderTargetState&	state = {});
-		void AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		void AddBlendState			(const BlendState&			state = {});
+		PipelineBuilder& AddInputLayout			(const InputLayoutState&	state = {});
+		PipelineBuilder& AddInputTopology		(const ETopology			topology);
+		PipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {});
+		PipelineBuilder& AddRasterizerState		(const RasterizerState&		state = {});
+		PipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {});
+		PipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		PipelineBuilder& AddBlendState			(const BlendState&			state = {});
 
 		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
 		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
@@ -4899,7 +4900,7 @@ private:
 
 	// INTERNAL USE ONLY!
 	FLEXKITAPI UploadReservation	ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle);
-	FLEXKITAPI void					MoveBuffer2UploadBuffer	(const UploadReservation& data, const byte* source, const size_t uploadSize);
+	FLEXKITAPI void					MoveBuffer2UploadBuffer	(const UploadReservation& data, const std::byte* source, const size_t uploadSize);
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget				(RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 

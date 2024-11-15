@@ -569,7 +569,7 @@ struct ModifiableShape
         auto EdgeView    (const ModifiableShape& shape) const { return _EdgeViewConst    { &shape, edgeStart }; }
         auto VertexView  (const ModifiableShape& shape) const { return _VertexViewConst  { &shape, edgeStart }; }
 
-        size_t GetEdgeCount(ModifiableShape& shape) const;
+        size_t GetEdgeCount(const ModifiableShape& shape) const noexcept;
 
         void Serialize(auto& ar)
         {

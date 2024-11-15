@@ -1834,18 +1834,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
+	PipelineBuilder& PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
 	{
 		rootSig = IN_rootSig;
 
 		blob += CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE{ rootSig->Get_ptr() };
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		/*
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
@@ -1860,26 +1862,30 @@ namespace FlexKit
 
 		//D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH
 		*/
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& work_desc)
+	PipelineBuilder& PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& work_desc)
 	{
 		struct {
 			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH;
@@ -1896,107 +1902,123 @@ namespace FlexKit
 		};
 
 		blob += subObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilder& PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
 		blob += streamObject;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddInputLayout(const InputLayoutState& state)
+	PipelineBuilder& PipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
 		if (inputElements)
-			return;
+			return *this;
 
 		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT layout;
 		memset(std::addressof(layout), 0, sizeof(layout));
@@ -2024,24 +2046,28 @@ namespace FlexKit
 
 		hash = FNVa62((const char*)inputElements, state.count * sizeof(D3D12_INPUT_ELEMENT_DESC), hash);
 		blob += layout;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddInputTopology(const ETopology topology)
+	PipelineBuilder& PipelineBuilder::AddInputTopology(const ETopology topology)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY dxTopolgy{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
 		hash = FNVa62((const char*)&dxTopolgy, sizeof(dxTopolgy), hash);
 		blob += dxTopolgy;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddRasterizerState(const RasterizerState& state)
+	PipelineBuilder& PipelineBuilder::AddRasterizerState(const RasterizerState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER2 rasterizerState;
 		memset(&rasterizerState, 0, sizeof(CD3DX12_RASTERIZER_DESC2));
@@ -2060,13 +2086,15 @@ namespace FlexKit
 
 		hash = FNVa62((const char*)&rasterizerState, sizeof(rasterizerState), hash);
 		blob += rasterizerState;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddDepthStencilState(const DepthStencilState& inputState)
+	PipelineBuilder& PipelineBuilder::AddDepthStencilState(const DepthStencilState& inputState)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL depthStencil{};
 		CD3DX12_DEPTH_STENCIL_DESC& state = depthStencil;
@@ -2090,13 +2118,15 @@ namespace FlexKit
 
 		hash = FNVa62((const char*)&depthStencil, sizeof(depthStencil), hash);
 		blob += depthStencil;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddBlendState(const BlendState& state)
+	PipelineBuilder& PipelineBuilder::AddBlendState(const BlendState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
 		CD3DX12_BLEND_DESC& desc = blendState;
@@ -2106,13 +2136,15 @@ namespace FlexKit
 		memcpy(&desc.RenderTarget, &state.renderTarget, sizeof(state));
 
 		blob += blendState;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
+	PipelineBuilder& PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
 		CD3DX12_RT_FORMAT_ARRAY formats{};
 		memset(&formats, 0, sizeof(formats));
@@ -2124,17 +2156,21 @@ namespace FlexKit
 		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS dxFormats{ formats };
 		hash = FNVa62((const char*)&dxFormats, sizeof(dxFormats), hash);
 		blob += dxFormats;
+
+		return *this;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
+	PipelineBuilder& PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT dxDepthFormat{ TextureFormat2DXGIFormat(format) };
 		hash = FNVa62((const char*)&dxDepthFormat, sizeof(dxDepthFormat), hash);
 		blob += dxDepthFormat;
+
+		return *this;
 	}
 
 
@@ -2868,7 +2904,13 @@ namespace FlexKit
 		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
 
 		if (PSO == nullptr)
+		{
+			FK_LOG_ERROR("Failed to load pipeline state! %u", stateHandle.to_uint());
+
+#if _DEBUG
 			__debugbreak();
+#endif
+		}
 
 		if (CurrentRootSignature != rootSignature)
 		{
@@ -3277,6 +3319,12 @@ namespace FlexKit
 	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
 	{
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
+	}
+
+
+	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)
+	{
+		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
 	}
 
 
@@ -4303,6 +4351,16 @@ namespace FlexKit
 		dispatchDesc.RayGenerationShaderRecord	= desc.rayGenerationRecord;
 
 		DeviceContext->DispatchRays(&dispatchDesc);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::DispatchMesh(const uint3 xyz)
+	{
+		UpdateResourceStates();
+		DeviceContext->DispatchMesh(xyz[0], xyz[1], xyz[2]);
 	}
 
 
@@ -7998,7 +8056,11 @@ namespace FlexKit
 				auto errorString = (const char*)errors->GetBufferPointer();
 
 				std::string traceMessage = GetCallStackString();
-				FK_LOG_ERROR("%s\nFailed to Compile Shader\nEntryPoint: %s\nFile: %s\nStack Trace:\n%s\nPress Enter to try again\n", errorString, entryPoint, file, traceMessage.c_str());
+				std::string formattedMessage =
+					std::format("{}\nFailed to Compile Shader\nEntryPoint: {}\nFile : {}\nStack Trace : \n {}\nPress Enter to try again\n",
+						errorString, entryPoint, file, traceMessage);
+
+				FK_LOG_ERROR(formattedMessage.c_str());
 
 				errors->Release();
 
@@ -8055,7 +8117,10 @@ namespace FlexKit
 				0,
 				nullptr);
 
-			FK_LOG_ERROR("Signature failed to load: %s", string);
+			std::string formattedMessage =
+				std::format("Signature failed to load : {}", string);
+
+			FK_LOG_ERROR(formattedMessage.c_str());
 
 			LocalFree(string);
 
@@ -8142,7 +8207,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void MoveBuffer2UploadBuffer(const UploadReservation& data, const byte* source, const size_t uploadSize)
+	void MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize)
 	{
 		memcpy(data.buffer, source, data.size > uploadSize ? uploadSize : data.size);
 	}
@@ -11991,7 +12056,7 @@ namespace FlexKit
 
 		auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
 		UploadReservation upload = ReserveUploadBuffer(*RS, byteSize);
-		MoveBuffer2UploadBuffer(upload, (const byte*)buffer, byteSize);
+		MoveBuffer2UploadBuffer(upload, (const std::byte*)buffer, byteSize);
 
 		auto	deviceResource	= RS->GetDeviceResource(bufferResource);
 		auto&	ctx				= RS->_GetCopyContext(copyCtx);

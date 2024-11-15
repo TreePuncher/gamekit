@@ -857,6 +857,16 @@ namespace FlexKit
 			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx, before, after);
 		}
 
+		ResourceHandle DepthTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		{
+			return Transition(resource, DASDEPTHBUFFERWRITE, DeviceLayout::DeviceLayout_DepthStencilWrite, ctx, before, after);
+		}
+
+		ResourceHandle DepthRead(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		{
+			return Transition(resource, DASDEPTHBUFFERREAD, DeviceLayout::DeviceLayout_DepthStencilRead, ctx, before, after);
+		}
+
 		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx, before, after);
@@ -2480,7 +2490,7 @@ namespace FlexKit
 	template<typename TY_CB>
 	[[deprecated]] bool PushConstantBufferData(const TY_CB& constants, ConstantBufferHandle buffer, FrameResources& resources)
 	{
-		const auto res = resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&constants, sizeof(TY_CB));
+		const auto res = resources.renderSystem.ConstantBuffers.Push(buffer, (void*)&constants, sizeof(TY_CB));
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res.has_value();
 	}

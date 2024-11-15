@@ -233,7 +233,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    size_t ModifiableShape::wFace::GetEdgeCount(ModifiableShape& shape) const
+    size_t ModifiableShape::wFace::GetEdgeCount(const ModifiableShape& shape) const noexcept
     {
         size_t edgeCount = 0;
 

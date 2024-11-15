@@ -193,35 +193,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline Frustum GetFrustum(CameraHandle camera)
-	{
-		auto node = GetCameraNode(camera);
+	Frustum GetFrustum(CameraHandle camera);
+	Frustum GetFrustumVS(CameraHandle camera);
+	Frustum GetSubFrustum(CameraHandle camera, float2 UL, float2 BR);
 
-		return GetFrustum(
-			GetCameraAspectRatio(camera),
-			GetCameraFOV		(camera),
-			GetCameraNear		(camera),
-			GetCameraFar		(camera),
-			GetPositionW		(node),
-			GetOrientation		(node));
-	}
-
-
-	inline Frustum GetSubFrustum(CameraHandle camera, float2 UL, float2 BR)
-	{
-		auto& sceneNodeComponent	= SceneNodeComponent::GetComponent();
-		auto node					= GetCameraNode(camera);
-
-		return GetSubFrustum(
-			GetCameraAspectRatio(camera),
-			GetCameraFOV		(camera),
-			GetCameraNear		(camera),
-			GetCameraFar		(camera),
-			GetPositionW		(node),
-			GetOrientation		(node), 
-			UL, 
-			BR);
-	}
 
 	struct PassDrawList
 	{

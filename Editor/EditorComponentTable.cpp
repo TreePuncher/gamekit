@@ -461,10 +461,11 @@ extern "C"
 		written += fwrite(generatedSrc.c_str() + written, 1, generatedSrc.size() - written, file);
 	fclose(file);
 
-	std::string buildCommand = std::format(R"(cd modules && cl /DEBUG /std:c++latest /EHsc /arch:AVX2 /LD {} /I "F:\repos\TestProject\includes" /I "F:\repos\TestProject\src" /I F:\repos\flex\core\include /I F:\repos\flex\out\build\x64-debug\Editor\include)", sourceFile);
+	std::string buildCommand = std::format(R"(cd modules && cl /DEBUG /std:c++latest /EHsc /arch:AVX2 /LD {} /I "D:\repos\TestProject\includes" /I "D:\repos\TestProject\src" /I D:\repos\flex\core\include /I D:\repos\flex\out\build\x64-debug\Editor\include)", sourceFile);
 
 	if (auto success = project_ptr->RunBuildCommand(buildCommand); success != 0)
 	{
+		FK_LOG_INFO("Failed to ");
 		FK_LOG_ERROR("Failed to build module! Type: %s", typeName.c_str());
 		std::print("{}\n", generatedSrc);
 		std::filesystem::remove(sourceFile);
@@ -557,26 +558,29 @@ void EditorComponentTable::CreateBasicComponent(const FlexKit::ComponentDefiniti
 	auto newComponent = std::make_shared<BasicComponentReflection>();
 	newComponent->name		= component.componentName;
 	newComponent->ID		= id.value;
-	newComponent->byteSize	= type.structInfo.size;
+	newComponent->byteSize	= type.structInfo->size;
 
-	for (auto& var : type.structInfo.fields)
+	if(type.structInfo)
 	{
-		newComponent->childVariables.emplace_back(
-				ComponentVariable{
-					.name		= var.name,
-					.type		= var.type,
-					.annotation = var.annotation,
-					.byteOffset	= var.offset,
-					.byteSize	= var.size,
-				});
+		for (auto& var : type.structInfo->fields)
+		{
+			newComponent->childVariables.emplace_back(
+					ComponentVariable{
+						.name		= var.name,
+						.type		= var.type,
+						.annotation = var.annotation,
+						.byteOffset	= var.offset,
+						.byteSize	= var.size,
+					});
 
-		if (var.type == "int" || var.type == "int32_t" ||
-			var.type == "uint32_t" || var.type == "float" ||
-			var.type == "double")
-			continue;
+			if (var.type == "int" || var.type == "int32_t" ||
+				var.type == "uint32_t" || var.type == "float" ||
+				var.type == "double")
+				continue;
 
-		auto methods_ptr = CreateMethods(var, sourceHeader, project_ptr);
-		newComponent->childVariables.back().methods = std::move(methods_ptr);
+			auto methods_ptr = CreateMethods(var, sourceHeader, project_ptr);
+			newComponent->childVariables.back().methods = std::move(methods_ptr);
+		}
 	}
 
 	basicComponents.push_back(newComponent);

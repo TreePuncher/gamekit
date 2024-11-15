@@ -451,6 +451,7 @@ namespace FlexKit
 			{
 				ReflectionObjects& objects = *reinterpret_cast<ReflectionObjects*>(client_data);
 
+				auto line = ClangString{ clang_getCursorSpelling(cursor) }.ToString();
 				auto kind = clang_getCursorKind(cursor);
 				switch (kind)
 				{

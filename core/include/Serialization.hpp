@@ -6,6 +6,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <typeinfo>
