@@ -321,7 +321,7 @@ namespace FlexKit
 			Get()->~ComponentViewBase();
 
 			if (componentSize > sizeof(buffer) && componentSize != 0xff)
-				allocator->release(_ptr);
+				allocator->free(_ptr);
 		}
 
 		union
