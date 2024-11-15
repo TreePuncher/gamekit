@@ -7992,7 +7992,9 @@ namespace FlexKit
 				0,
 				nullptr);
 
-			FK_LOG_ERROR("Shader failed to load: %s", string);
+			auto converted = fmt::format("Shader failed to load: {}", string);
+
+			FK_LOG_ERROR(converted.c_str());
 
 			LocalFree(string);
 
