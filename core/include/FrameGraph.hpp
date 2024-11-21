@@ -972,6 +972,19 @@ namespace FlexKit
 		}
 
 
+		void SetDebugName(FrameResourceHandle handle, const char* debugName) const
+		{
+			if (auto res = GetResource(handle); res != InvalidHandle)
+				renderSystem().SetDebugName(res, debugName);
+		}
+
+
+		void SetDebugName(ResourceHandle handle, const char* debugName) const
+		{
+			if (handle != InvalidHandle)
+				renderSystem().SetDebugName(handle, debugName);
+		}
+
 		private:
 
 		LocallyTrackedResource& _FindSubNodeResource(FrameResourceHandle handle) const

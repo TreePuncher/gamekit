@@ -1560,7 +1560,11 @@ namespace FlexKit
 		auto result = RenderSystem::_GetInstance()._CreateRootSignature(*this, temp);
 
 		if (result)
+		{
 			Clear();
+		}
+		else
+			FK_LOG_ERROR("Failed to build root signature!");
 
 		return result;
 	}
@@ -1795,8 +1799,11 @@ namespace FlexKit
 
 	void RootSignature::Release()
 	{
-		Signature->Release();
-		Heaps.Release();
+		if(!Signature->Release())
+		{
+			Heaps.Release();
+			RenderSystem::_GetInstance()._ReleaseRootSignature((uint64_t)this);
+		}
 	}
 
 
@@ -8060,7 +8067,7 @@ namespace FlexKit
 				std::string traceMessage = GetCallStackString();
 				std::string formattedMessage =
 					std::format("{}\nFailed to Compile Shader\nEntryPoint: {}\nFile : {}\nStack Trace : \n {}\nPress Enter to try again\n",
-						errorString, entryPoint, file, traceMessage);
+						errorString, entryPoint ? entryPoint : "No Entry Point", file, traceMessage);
 
 				FK_LOG_ERROR(formattedMessage.c_str());
 
