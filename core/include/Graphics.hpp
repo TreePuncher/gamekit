@@ -1539,6 +1539,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 #endif
 		}
 
+
 		bool SetParameterAsCBV(
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
 			size_t BufferTag = -1)
