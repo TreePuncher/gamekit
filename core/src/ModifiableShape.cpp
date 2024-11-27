@@ -702,8 +702,18 @@ namespace FlexKit
 
     uint32_t ModifiableShape::GetVertexValence(const uint32_t vertexIdx) const
     {
-        const auto& edges = wVerticeEdges[vertexIdx];
-        return (uint32_t)(edges.size() / 2);
+        const wEdgeList& edges = wVerticeEdges[vertexIdx];
+        
+        uint32_t v = 0;
+        for (auto e : edges)
+        {
+            if (wEdges[e].twin == -1)
+                v += 2;
+            else
+                v += 1;
+        }
+
+        return (uint32_t)(v / 2);
     }
 
 
