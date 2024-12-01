@@ -836,7 +836,7 @@ namespace FlexKit
 			/************************************************************************************************/
 
 
-			void ExtractIndice(size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int ITYPE)
+			uint32_t ExtractIndice(size_t RINOUT itr, const char* in_str, size_t LineLength)
 			{
 				char			c_str[16];
 				unsigned int	POS = 0;
@@ -875,28 +875,14 @@ namespace FlexKit
 					size *= 10;
 				}
 
-				if (indice != 0)
-				{
-					switch (ITYPE)
-					{
-					case 0:
-						(*out).p_Index = indice - 1; // Vertex
-						break;
-					case 1:
-						(*out).t_Index = indice - 1; // Texcoord
-						break;
-					case 2:
-						(*out).n_Index = indice - 1; // Normal
-						break;
-					}
-				}
+				return indice - 1;
 			}
 
 
 			/************************************************************************************************/
 
 
-			void ExtractFace(const char* str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int index, int slashcount)
+			void ExtractFace(const char* str, size_t LineLength, VertexToken& token, int index, int slashcount)
 			{
 				// Skip token plus spaces
 				size_t itr = 0;
@@ -915,25 +901,16 @@ namespace FlexKit
 				switch (slashcount)
 				{
 				case 0:
-
-					ExtractIndice(itr, str, LineLength, out, 0);
-					out[0].n_Index = 0xfffff;
-					out[0].t_Index = 0xfffff;
-
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::Point });
 					break;
 				case 1:
-
-					ExtractIndice(itr, str, LineLength, out, 0);
-					ExtractIndice(itr, str, LineLength, out, 2);
-					out[0].n_Index = 0xfffff;
-
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::Point });
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::TextureCoordinate });
 					break;
 				case 2:
-
-					ExtractIndice(itr, str, LineLength, out, 0);
-					ExtractIndice(itr, str, LineLength, out, 1);
-					ExtractIndice(itr, str, LineLength, out, 2);
-
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::Point });
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::TextureCoordinate });
+					token.vertex.push_back({ .idx = ExtractIndice(itr, str, LineLength), .type = VertexField::Normal });
 					break;
 				default:
 #if USING(FATALERROR)
@@ -1083,66 +1060,65 @@ namespace FlexKit
 
 				int BOTH = hl.BOTHPARTS;
 
-				/*
 				switch (hl.BOTHPARTS)
 				{
 				case 0x00002320: // Comment
 #ifdef _DEBUG
 					// TODO: Decide on storage of string and Disposal
-					newToken = s_TokenValue::Empty();
-					TL.push_back( newToken );
+					//newToken = s_TokenValue::Empty();
+					//TL.push_back( newToken );
 #endif
 					break;
 				case 0x00006d74: // mtl MTLLIB
-					newToken.token = COMMENT;
-					TL.push_back( newToken );
+					//newToken.token = COMMENT;
+					//TL.push_back( newToken );
 					break;
 				case 0x00006f20: // o iObject
-					newToken.token = BEGINOBJECT;
-					TL.push_back( newToken );
+					//newToken.token = BEGINOBJECT;
+					//TL.push_back( newToken );
 					break;
 				case 0x00007620: // v Vertex
-					newToken.token = POSITION_COORD;
-					ExtractFloats_3( in_Line, LineLength, newToken.buffer );
-					TL.push_back( newToken );
-					break;
+				{
+					PointToken point;
+					ExtractFloats_3(in_Line, LineLength, (byte*)&point.xyz);
+					TL.emplace_back(point);
+				}	break;
 				case 0x00007674: // vt Vertex Texture Coord
-					newToken.token = UV_COORD;
-					ExtractFloats_2( in_Line, LineLength, newToken.buffer );
-					TL.push_back( newToken );
-					S.UV_1 = true;
-					break;
+				{
+					TextureCoordinateToken UV;
+					ExtractFloats_2(in_Line, LineLength, (byte*)&UV.UV);
+					TL.emplace_back(UV);
+				}	break;
 				case 0x0000766e: // vn Vertex Normal
-					newToken.token = Normal_COORD;
-					ExtractFloats_3( in_Line, LineLength, newToken.buffer );
-					TL.push_back( newToken );
+				{
+					NormalToken normal;
+					ExtractFloats_3( in_Line, LineLength, (byte*)&normal.normal);
+					TL.emplace_back(normal);
 					S.Normals = true;
-					break;
+				}	break;
 				case 0x00007573: // us usemtl
-					newToken.token = LOADMATERIAL;
-					TL.push_back( newToken );
+					//newToken.token = LOADMATERIAL;
+					//TL.push_back( newToken );
 					break;
 				case 0x00007320: // s_ set Smoothing
-					newToken.token = SMOOTHING;
-					TL.push_back( newToken );
+					//newToken.token = SMOOTHING;
+					//TL.push_back( newToken );
 					break;
 				case 0x00006620: // f Face
-					{
-						int spacecount = GetIndiceCount	( in_Line, LineLength );
-						int slashcount = GetSlashCount	( in_Line, LineLength );
-						newToken.token = INDEX;
-						for( auto itr = 0; itr <= spacecount; itr++ )
-						{
-							new( &newToken.buffer ) CombinedVertex::IndexBitField();
-							ExtractFace( in_Line, LineLength, ( CombinedVertex::IndexBitField*)&newToken.buffer, itr, slashcount );
-							TL.push_back( newToken );
-						}
-					}
-					break;
+				{
+					int spacecount = GetIndiceCount	( in_Line, LineLength );
+					int slashcount = GetSlashCount	( in_Line, LineLength );
+					VertexToken vertex;
+
+					for( auto itr = 0; itr <= spacecount; itr++ )
+						ExtractFace(in_Line, LineLength, vertex, itr, slashcount );
+
+					TL.emplace_back(vertex);
+				}
+				break;
 				default:
 					break;
 				}
-				*/
 
 		}
 
