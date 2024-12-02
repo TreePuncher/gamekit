@@ -7939,7 +7939,7 @@ namespace FlexKit
 			auto fileLength = wcstombs(fileStr, pFilename, 256);
 
 			std::filesystem::path file{ fileStr };
-			auto newFilePath = includePath.string() + R"(\)" + file.filename().string();
+			auto newFilePath = includePath.string() + R"(\)" + file.string();
 
 			wchar_t fileW[256];
 			mbstowcs(fileW, newFilePath.c_str(), 256);
