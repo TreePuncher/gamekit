@@ -81,6 +81,8 @@ namespace FlexKit
 
 		void		SumReduction() noexcept;
 
+		uint64_t	GetNthPrefixSum(uint64_t idx);
+
 		void*		data()		noexcept { return bitField.data(); }
 		size_t		ByteSize()	noexcept { return bitField.ByteSize(); }
 

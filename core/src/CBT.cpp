@@ -268,6 +268,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	uint64_t CBTBuffer::GetNthPrefixSum(uint64_t idx)
+	{
+		uint32_t heapID = 1;
+		uint64_t sum 	= 0;
+
+		for (int i = 0; i < maxDepth; i++)
+		{
+			auto shift = maxDepth - 1 - i;
+			bool bit = (idx >> (shift)) & 0x01;
+			if (bit)
+			{
+				sum += GetHeapValue(2 * heapID);
+				heapID = 2 * heapID + 1;
+			}
+			else
+			{
+				heapID *= 2;
+			}
+		}
+
+		return sum;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void CBTBuffer::PipelineStates::_InitializeStates(PipelineStates& states, RenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(
