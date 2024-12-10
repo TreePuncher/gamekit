@@ -3407,8 +3407,10 @@ namespace FlexKit
 		if (debugCommandList)
 			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 #endif
-
-		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+		if(resource != InvalidHandle)
+			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+		else
+			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, 0);
 	}
 
 
@@ -3423,8 +3425,10 @@ namespace FlexKit
 		if(debugCommandList)
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 #endif
-
-		DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
+		if (UAVresource != InvalidHandle)
+			DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
+		else
+			DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, 0);
 	}
 
 

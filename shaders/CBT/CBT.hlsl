@@ -73,6 +73,15 @@ uint32_t GetBitOffset(uint32_t idx, in uint32_t maxDepth)
 /************************************************************************************************/
 
 
+uint32_t HeapToBitIndex(uint32_t k, uint32_t maxDepth) 
+{
+	return k * ipow(2, maxDepth - FindMSB(k)) - ipow(2, maxDepth);
+}
+
+
+/************************************************************************************************/
+
+
 template<typename TY> uint32_t ReadValue(in TY CBTBuffer, uint32_t start, uint32_t bitWidth)
 {
 	const uint32_t	mask	= (uint32_t(1) << (bitWidth)) - 1;
@@ -168,6 +177,30 @@ uint32_t DecodeNode(in TY CBTBuffer, in uint32_t maxDepth, int32_t leafID)
 	}
 
 	return heapID;
+}
+
+
+/************************************************************************************************/
+
+
+template<typename TY>
+uint32_t DecodeBitIdx(in TY cbt, in uint32_t maxDepth, int32_t idx)
+{
+	uint32_t heapID = 1;
+
+	for (int i = 0; i < maxDepth; i++)
+	{
+		uint32_t temp = GetHeapValue(cbt, maxDepth, 2 * heapID);
+		if (idx < temp)
+			heapID *= 2;
+		else
+		{
+			idx -= temp;
+			heapID = 2 * heapID + 1;
+		}
+	}
+
+	return HeapToBitIndex(heapID, maxDepth);
 }
 
 
@@ -299,15 +332,6 @@ template<typename TY>
 bool IsDiamond(in TY CBTBuffer, in const uint heapID, const in uint maxDepth)
 {
 	return GetHeapValue(CBTBuffer, maxDepth, heapID) <= 2;
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t HeapToBitIndex(uint32_t k, uint32_t maxDepth) 
-{
-	return k * ipow(2, maxDepth - FindMSB(k)) - ipow(2, maxDepth);
 }
 
 
