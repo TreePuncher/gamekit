@@ -72,6 +72,7 @@ namespace FlexKit
 
 		uint64_t GetHeapValue(uint32_t heapIdx) const noexcept;
 		uint32_t DecodeNode(int32_t leafID)		const noexcept;
+		uint32_t DecodeBitidx(int32_t idx)		const noexcept;
 
 		void		SetBit(uint64_t idx, bool b) noexcept;
 		uint64_t	GetBit(uint64_t idx, bool b) const noexcept;
@@ -86,7 +87,7 @@ namespace FlexKit
 		void*		data()		noexcept { return bitField.data(); }
 		size_t		ByteSize()	noexcept { return bitField.ByteSize(); }
 
-		uint HeapIndexToBitIndex(const uint k) { return k * ipow(2, maxDepth - FindMSB(k)) - ipow(2, maxDepth); }
+		uint HeapIndexToBitIndex(const uint k) const noexcept { return k * ipow(2, maxDepth - FindMSB(k)) - ipow(2, maxDepth); }
 
 	private:
 		uint32_t			maxDepth	= 0;

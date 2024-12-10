@@ -163,6 +163,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	uint32_t CBTBuffer::DecodeBitidx(int32_t idx)		const noexcept
+	{
+		uint32_t heapID = 1;
+
+		for (int i = 0; i < maxDepth; i++)
+		{
+			uint32_t temp = GetHeapValue(2 * heapID);
+			if (idx < temp)
+				heapID *= 2;
+			else
+			{
+				idx -= temp;
+				heapID = 2 * heapID + 1;
+			}
+		}
+
+		return HeapIndexToBitIndex(heapID);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void CBTBuffer::SetBit(uint64_t idx, bool b) noexcept
 	{
 		const uint64_t bitIdx		= GetBitOffset(ipow(2, maxDepth) + idx);
@@ -345,14 +368,17 @@ namespace FlexKit
 		if (buffer != InvalidHandle)
 			renderSystem.ReleaseResource(buffer);
 
-		auto size	= 64 * MEGABYTE;//Max(8, GetCBTSizeBytes(description.maxDepth, description.cbtTreeCount) + 1);
-		buffer		= renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(size));
+		const size_t bitCount	= ipow(2, description.maxDepth + 2);
+		const size_t wordSize	= Max(bitCount / 32 + (bitCount % 32 == 0 ? 0 : 1), 16);
+		const size_t byteSize	= Max(bitCount / 8 + (bitCount % 8 == 0 ? 0 : 1), 128);
+
+		buffer		= renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(byteSize));
 		maxDepth	= description.maxDepth;
-		bufferSize	= size;
+		bufferSize	= wordSize;
 
 		renderSystem.SetDebugName(buffer, "CBTBuffer");
 
-		bitField.resize(Max(1, size / sizeof(uint64_t)));
+		bitField.resize(Max(1, bitCount / 64 + (bitCount % 64 == 0 ? 0 : 1)));
 		memset(bitField.data(), 0x00, bitField.ByteSize());
 	}
 
