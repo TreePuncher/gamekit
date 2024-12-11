@@ -7081,6 +7081,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct D3D12_DISPATCH_RAYS_DESC
+	{
+		D3D12_GPU_VIRTUAL_ADDRESS_RANGE				RayGenerationShaderRecord;
+		D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE	MissShaderTable;
+		D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE	HitGroupTable;
+		D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE	CallableShaderTable;
+		UINT Width;
+		UINT Height;
+		UINT Depth;
+	} D3D12_DISPATCH_RAYS_DESC;
+
+
 	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* rootSignatureID)
 	{
 		ID3D12CommandSignature* signature = nullptr;
@@ -7101,7 +7113,16 @@ namespace FlexKit
 
 					signatureEntries.push_back(desc);
 					layout.push_back(ILE_DrawCall);
-					entryStride += sizeof(uint32_t) * 4; // uses 4 8byte values
+					entryStride += sizeof(uint32_t) * 4; // uses 4 x 4 byte values
+				}	break;
+				case ILE_DrawIndexedCall:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type	= D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_DrawCall);
+					entryStride += sizeof(uint32_t) * 5; // uses 5 x 4 byte values
 				}	break;
 				case ILE_DispatchCall:
 				{
@@ -7110,7 +7131,23 @@ namespace FlexKit
 
 					signatureEntries.push_back(desc);
 					layout.push_back(ILE_DispatchCall);
-					entryStride += sizeof(uint4); // uses 4 8byte values
+					entryStride += sizeof(uint4); // uses 4 x 4 byte values
+				}   break;
+				case ILE_DispatchMesh:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_DispatchCall);
+					entryStride += sizeof(uint3); // uses 4 x 4byte values
+				}   break;
+				case ILE_DispatchRays:
+				{
+					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
+					desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS;
+					signatureEntries.push_back(desc);
+					layout.push_back(ILE_DispatchCall);
+					entryStride += sizeof(D3D12_DISPATCH_RAYS_DESC);
 				}   break;
 				case ILE_RootDescriptorUINT:
 				{

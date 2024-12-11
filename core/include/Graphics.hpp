@@ -1882,7 +1882,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	enum IndirectLayoutEntryType
 	{
 		ILE_DrawCall,
+		ILE_DrawIndexedCall,
 		ILE_DispatchCall,
+		ILE_DispatchMesh,
+		ILE_DispatchRays,
 		ILE_UpdateVBBindings,
 		ILE_RootDescriptorUINT,
 		ILE_UNKNOWN,
