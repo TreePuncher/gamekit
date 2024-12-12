@@ -592,10 +592,11 @@ struct ModifiableShape
         uint32_t                current;
         int32_t                 itr;
 
-        FlexKit::float3 GetPoint(uint32_t vertex) const;
+        float3          GetPoint(uint32_t vertex) const;
         bool            end() noexcept;
         bool            operator == (const ConstFaceIterator& rhs) const noexcept;
         const   wEdge*  operator -> () noexcept;
+        const   wEdge&  Edge() const noexcept;
 
         ConstFaceIterator   operator +  (int rhs) const noexcept;
         ConstFaceIterator&  operator += (int rhs) noexcept;
@@ -604,6 +605,21 @@ struct ModifiableShape
 
         void Next() noexcept;
         void Prev() noexcept;
+
+        bool IsBorder() const noexcept
+        {
+            return Edge().twin != -1;
+        }
+
+        uint32_t GetValence() const noexcept
+        {
+            return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
+        }
+
+        uint32_t GetVertexSelector() const noexcept
+        {
+            return shape->wEdges[current].vertices[0];
+        }
 
         ConstFaceIterator& operator ++(int) noexcept;
         ConstFaceIterator& operator --(int) noexcept;
@@ -636,6 +652,16 @@ struct ModifiableShape
 
         void Next() noexcept;
         void Prev() noexcept;
+
+        uint32_t GetValence() const noexcept
+        {
+            return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
+        }
+
+        uint32_t GetVertexSelector() const noexcept
+        {
+            return shape->wEdges[current].vertices[0];
+        }
 
         auto Twin() const
         {
@@ -774,6 +800,13 @@ struct ModifiableShape
 using FaceIterator      = ModifiableShape::FaceIterator;
 using ConstFaceIterator = ModifiableShape::ConstFaceIterator;
 
+    uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape);
+    uint32_t RotateEdgeSelectorCW(uint32_t edgeSelection, const ModifiableShape& shape);
+    uint32_t NextEdge(uint32_t edgeSelection, const ModifiableShape& shape);
+    uint32_t PrevEdge(uint32_t edgeSelection, const ModifiableShape& shape);
+
+    bool IsRegularVertex    (uint32_t vertexSelection, const ModifiableShape& shape);
+    bool IsRegularQuad      (uint32_t vertexSelection, const ModifiableShape& shape);
 
 }   /************************************************************************************************/
 

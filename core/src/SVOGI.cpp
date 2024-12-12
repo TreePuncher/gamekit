@@ -47,7 +47,7 @@ namespace FlexKit
 			&allocator);
 
 		remove = renderSystem.CreateIndirectLayout({
-			{ ILE_RootDescriptorUINT, IndirectDrawDescription::Constant{.rootParameterIdx = 3, .destinationOffset = 0, .numValues = 4 } },
+			{ IndirectDrawDescription::Constant{.rootParameterIdx = 3, .destinationOffset = 0, .numValues = 4 } },
 			{ ILE_DispatchCall } },
 			&allocator,
 			removeSignature);
@@ -914,16 +914,14 @@ namespace FlexKit
 			SVO_BUILDMIPLEVEL, { this, &StaticVoxelizer::CreateBuildMIPLevelPSO	});
 
 		dispatch = renderSystem.CreateIndirectLayout(
-			{   {   ILE_RootDescriptorUINT,
-					IndirectDrawDescription::Constant{
-						.rootParameterIdx   = 2,
-						.destinationOffset  = 0,
-						.numValues          = 4 }},
+			{   { IndirectDrawDescription::Constant{
+					.rootParameterIdx   = 2,
+					.destinationOffset  = 0,
+					.numValues          = 4 }},
 				{ ILE_DispatchCall }
 			},
 			&allocator,
-			markSignature
-		);
+			markSignature);
 	}
 
 

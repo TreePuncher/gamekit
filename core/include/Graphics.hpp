@@ -1876,6 +1876,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	typedef static_vector<ResourceHandle, 16>       RenderTargetList;
 
 
+	struct VertexBufferResource
+	{
+		ResourceHandle		resource = InvalidHandle;
+		UINT				stride = 0;
+		UINT				offset = 0;
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -1902,7 +1910,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		};
 
 		IndirectDrawDescription(IndirectLayoutEntryType IN_type = ILE_UNKNOWN) : type{IN_type} {}
-		IndirectDrawDescription(IndirectLayoutEntryType IN_type, Constant IN_constant) : type{ IN_type }, description{ IN_constant } {}
+		IndirectDrawDescription(Constant IN_constant) : type{ ILE_RootDescriptorUINT }, description{ IN_constant } {}
 
 		IndirectLayoutEntryType type;
 
@@ -4220,11 +4228,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0);
 		void SetIndexBuffer			(VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT);
+		void SetIndexBuffer			(ResourceHandle, DeviceFormat format = DeviceFormat::R32_UINT);
 
 		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers = nullptr);
 		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers = nullptr);
-		void SetVertexBuffers		(const std::initializer_list<VertexBufferEntry>&	list);
-		void SetVertexBuffers		(const std::span<const VertexBufferEntry>			list);
+		void SetVertexBuffers		(const std::initializer_list<VertexBufferEntry>&	span);
+		void SetVertexBuffers		(const std::span<const VertexBufferEntry>			span);
+
+		void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span);
+		void SetVertexBuffers		(const std::span<const VertexBufferResource>		span);
 
 		void SetVertexBuffers2		(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>&	list);
 		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		list);

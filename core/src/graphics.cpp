@@ -3943,6 +3943,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetIndexBuffer(ResourceHandle resource, DeviceFormat format)
+	{
+		D3D12_INDEX_BUFFER_VIEW		IndexView;
+		IndexView.BufferLocation    = renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress();
+		IndexView.Format            = TextureFormat2DXGIFormat(format);
+		IndexView.SizeInBytes       = (UINT)(renderSystem->GetResourceSize(resource));
+
+		DeviceContext->IASetIndexBuffer(&IndexView);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::AddVertexBuffers(TriMesh* mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* instanceBuffers)
 	{
 		AddVertexBuffers(mesh, lod, std::span{ buffers.begin(), buffers.size() }, instanceBuffers);
@@ -4004,6 +4018,42 @@ namespace FlexKit
 				renderSystem->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
 				(UINT)renderSystem->GetVertexBufferSize(VB.VertexBuffer) - +VB.Offset,
 				VB.Stride});
+		}
+
+		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& span)
+	{
+		SetVertexBuffers(std::span{ span.begin(), span.end() });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetVertexBuffers(const std::span<const VertexBufferResource> list)
+	{
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+		for (auto& VB : list)
+		{
+			/*
+			typedef struct D3D12_VERTEX_BUFFER_VIEW
+			{
+			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+			UINT SizeInBytes;
+			UINT StrideInBytes;
+			} 	D3D12_VERTEX_BUFFER_VIEW;
+			*/
+
+			VBViews.push_back({
+				renderSystem->GetDeviceResource(VB.resource)->GetGPUVirtualAddress() + VB.offset,
+				(UINT)renderSystem->GetResourceSize(VB.resource) - VB.offset,
+				VB.stride});
 		}
 
 		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
