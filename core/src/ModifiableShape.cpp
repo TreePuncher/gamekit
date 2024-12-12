@@ -322,6 +322,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    const ModifiableShape::wEdge& ModifiableShape::ConstFaceIterator::Edge() const noexcept
+    {
+        return shape->wEdges[current];
+    }
+
+
+    /************************************************************************************************/
+
+
     ModifiableShape::ConstFaceIterator ModifiableShape::ConstFaceIterator::operator + (int rhs) const noexcept
     {
         ModifiableShape::ConstFaceIterator out{ shape, endIdx };
@@ -1348,7 +1357,91 @@ namespace FlexKit
     }
 
 
-}
+    /************************************************************************************************/
+
+
+    uint32_t RotateEdgeSelectorCW(uint32_t edgeSelection, const ModifiableShape& shape)
+    {
+        edgeSelection = shape.wEdges[edgeSelection].twin;
+        edgeSelection = shape.wEdges[edgeSelection].next;
+
+        return edgeSelection;
+    }
+
+    /************************************************************************************************/
+
+
+    uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape)
+    {
+        edgeSelection = shape.wEdges[edgeSelection].prev;
+        edgeSelection = shape.wEdges[edgeSelection].twin;
+
+        return edgeSelection;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t NextEdge(uint32_t edgeSelection, const ModifiableShape& shape)
+    {
+        return shape.wEdges[edgeSelection].next;
+    }
+
+
+    uint32_t PrevEdge(uint32_t edgeSelection, const ModifiableShape& shape)
+    {
+        return shape.wEdges[edgeSelection].prev;
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool IsRegularVertex(uint32_t vertexSelection, const ModifiableShape& shape)
+	{
+		auto& edges = shape.wVerticeEdges[vertexSelection];
+		for (uint32_t edge : edges)
+		{
+			if (shape.wEdges[edge].twin == -1)
+				return false;
+
+			auto f = shape.wEdges[edge].face;
+			auto faceCount = shape.wFaces[f].GetEdgeCount(shape);
+
+			if (faceCount != 4)
+				return false;
+		}
+
+		return true;
+	}
+
+
+    /************************************************************************************************/
+
+
+	bool IsRegularQuad(uint32_t faceIdx, const ModifiableShape& shape)
+	{
+		const auto& face = shape.wFaces[faceIdx];
+		if (face.GetEdgeCount(shape) == 4)
+		{
+			ConstFaceIterator faceItr{ &shape, face.edgeStart };
+
+			auto v0 = (faceItr + 0).GetVertexSelector();
+			auto v1 = (faceItr + 1).GetVertexSelector();
+			auto v2 = (faceItr + 2).GetVertexSelector();
+			auto v3 = (faceItr + 3).GetVertexSelector();
+
+			return (IsRegularVertex(v0, shape) &&
+					IsRegularVertex(v1, shape) &&
+					IsRegularVertex(v2, shape) &&
+					IsRegularVertex(v3, shape));
+		}
+		else return false;
+	}
+
+
+}   /************************************************************************************************/
 
 /**********************************************************************
 
