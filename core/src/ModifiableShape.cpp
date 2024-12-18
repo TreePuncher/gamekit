@@ -9,10 +9,10 @@ namespace FlexKit
     {
         static const float epsilon = 0.000001f;
 
-        const auto edge1    = tri[1] - tri[0];
-        const auto edge2    = tri[2] - tri[0];
-        const auto h        = r.D.cross(edge2);
-        const auto a        = edge1.dot(h);
+        const auto edge1 = tri[1] - tri[0];
+        const auto edge2 = tri[2] - tri[0];
+        const auto h = r.D.cross(edge2);
+        const auto a = edge1.dot(h);
 
         if (abs(a) < epsilon)
             return { false };
@@ -114,7 +114,7 @@ namespace FlexKit
 
     const float3 Triangle::TriPoint(const float3 BaryCentricPoint) const noexcept
     {
-        return 
+        return
             position[0] * BaryCentricPoint[0] +
             position[1] * BaryCentricPoint[1] +
             position[2] * BaryCentricPoint[2];
@@ -148,7 +148,7 @@ namespace FlexKit
         if (currentEdge == 0xffffffff)
             return;
 
-        auto prev   = shape->wEdges[currentEdge].prev;
+        auto prev = shape->wEdges[currentEdge].prev;
         currentEdge = shape->wEdges[prev].twin;
 
         itr++;
@@ -160,9 +160,9 @@ namespace FlexKit
         if (currentEdge == 0xffffffff)
             return;
 
-        auto twin   = shape->wEdges[currentEdge].twin;
+        auto twin = shape->wEdges[currentEdge].twin;
 
-        if(twin!= 0xffffffff)
+        if (twin != 0xffffffff)
             currentEdge = shape->wEdges[twin].next;
 
         itr--;
@@ -240,7 +240,7 @@ namespace FlexKit
         auto i = EdgeView(shape).begin();
         auto e = EdgeView(shape).end();
 
-        for(;i != e; i++)
+        for (; i != e; i++)
             edgeCount++;
 
         return edgeCount + 1;
@@ -278,7 +278,7 @@ namespace FlexKit
             aabb += v.position[1];
             aabb += v.position[2];
         }
-    
+
         return aabb.Offset(pos);
     }
 
@@ -289,6 +289,15 @@ namespace FlexKit
     float3 ModifiableShape::ConstFaceIterator::GetPoint(uint32_t vertex) const
     {
         return shape->wVertices[shape->wEdges[current].vertices[vertex]].point;
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 ModifiableShape::ConstFaceIterator::GetFacePoint() const noexcept
+    {
+        return shape->GetFaceCenterPoint(shape->wEdges[current].face);
     }
 
 
@@ -335,7 +344,7 @@ namespace FlexKit
     {
         ModifiableShape::ConstFaceIterator out{ shape, endIdx };
 
-        for(size_t I = 0; I < rhs; I++)
+        for (size_t I = 0; I < rhs; I++)
             out++;
 
         return out;
@@ -426,6 +435,15 @@ namespace FlexKit
     float3 ModifiableShape::FaceIterator::GetPoint(uint32_t vertex) const
     {
         return shape->wVertices[vertex].point;
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 ModifiableShape::FaceIterator::GetFacePoint() const noexcept
+    {
+        return shape->GetFaceCenterPoint(shape->wEdges[current].face);
     }
 
 
@@ -980,7 +998,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool ModifiableShape::IsEdgeVertex(const uint32_t vertexIdx) const
+    bool ModifiableShape::IsInternalVertex(const uint32_t vertexIdx) const
     {
         auto& edges = wVerticeEdges[vertexIdx];
         for (auto& edge : edges)
@@ -1360,7 +1378,16 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    uint32_t RotateEdgeSelectorCW(uint32_t edgeSelection, const ModifiableShape& shape)
+    uint32_t GetEdgeFace(uint32_t edgeSelector, const ModifiableShape& shape) noexcept
+    {
+        return shape.wEdges[edgeSelector].face;
+    }
+
+
+    /************************************************************************************************/
+
+
+    uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape)
     {
         edgeSelection = shape.wEdges[edgeSelection].twin;
         edgeSelection = shape.wEdges[edgeSelection].next;
@@ -1371,10 +1398,11 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape)
+    uint32_t RotateEdgeSelectorCW(uint32_t edgeSelection, const ModifiableShape& shape)
     {
         edgeSelection = shape.wEdges[edgeSelection].prev;
-        edgeSelection = shape.wEdges[edgeSelection].twin;
+        if(auto twin = shape.wEdges[edgeSelection].twin; twin != -1)
+            edgeSelection = twin;
 
         return edgeSelection;
     }
@@ -1394,6 +1422,11 @@ namespace FlexKit
         return shape.wEdges[edgeSelection].prev;
     }
 
+
+    uint32_t Twin(uint32_t edgeSelection, const ModifiableShape& shape)
+    {
+        return shape.wEdges[edgeSelection].twin;
+    }
 
     /************************************************************************************************/
 
