@@ -341,8 +341,8 @@ struct ModifiableShape
             uint32_t            current;
             uint32_t            itr;
 
-            wEdgeList&  Edges()         { return shape->wVerticeEdges[shape->wEdges[current].vertices[0]]; }
-            bool        IsEdge() const  { return shape->IsEdgeVertex(shape->wEdges[current].vertices[0]); }
+            wEdgeList&  Edges()             { return shape->wVerticeEdges[shape->wEdges[current].vertices[0]]; }
+            bool        IsInternal() const  { return shape->IsInternalVertex(shape->wEdges[current].vertices[0]); }
 
             _NeighborEdgeView EdgeView()
             {
@@ -593,6 +593,8 @@ struct ModifiableShape
         int32_t                 itr;
 
         float3          GetPoint(uint32_t vertex) const;
+        float3          GetFacePoint() const noexcept;
+
         bool            end() noexcept;
         bool            operator == (const ConstFaceIterator& rhs) const noexcept;
         const   wEdge*  operator -> () noexcept;
@@ -606,12 +608,20 @@ struct ModifiableShape
         void Next() noexcept;
         void Prev() noexcept;
 
+
         bool IsBorder() const noexcept
         {
-            return Edge().twin != -1;
+            return Edge().twin == -1;
         }
 
-        uint32_t GetValence() const noexcept
+
+        bool IsInternal() const noexcept
+        {
+            return shape->IsInternalVertex(shape->wEdges[current].vertices[0]);
+        }
+
+
+        uint32_t GetVertexValence() const noexcept
         {
             return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
         }
@@ -639,7 +649,9 @@ struct ModifiableShape
         uint32_t            current;
         uint32_t            itr;
 
-        FlexKit::float3 GetPoint(uint32_t vertex) const;
+        float3          GetPoint(uint32_t vertex) const;
+        float3          GetFacePoint() const noexcept;
+
         bool            end() noexcept;
 
         bool            operator == (const FaceIterator& rhs) const noexcept;
@@ -653,7 +665,7 @@ struct ModifiableShape
         void Next() noexcept;
         void Prev() noexcept;
 
-        uint32_t GetValence() const noexcept
+        uint32_t GetVertexValence() const noexcept
         {
             return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
         }
@@ -740,7 +752,7 @@ struct ModifiableShape
     std::vector<uint32_t>   GetFaceVertices             (uint32_t faceIdx) const;
     float3                  GetFaceCenterPoint          (uint32_t faceIdx) const;
 
-    bool        IsEdgeVertex(const uint32_t vertexIdx) const;
+    bool        IsInternalVertex(const uint32_t vertexIdx) const;
 
     uint32_t    NextEdge(const uint32_t edgeIdx) const;
 
@@ -797,13 +809,16 @@ struct ModifiableShape
 };
 
 
-using FaceIterator      = ModifiableShape::FaceIterator;
-using ConstFaceIterator = ModifiableShape::ConstFaceIterator;
+    using FaceIterator      = ModifiableShape::FaceIterator;
+    using ConstFaceIterator = ModifiableShape::ConstFaceIterator;
+
+    uint32_t GetEdgeFace(uint32_t edgeSelection, const ModifiableShape& shape) noexcept;
 
     uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape);
     uint32_t RotateEdgeSelectorCW(uint32_t edgeSelection, const ModifiableShape& shape);
     uint32_t NextEdge(uint32_t edgeSelection, const ModifiableShape& shape);
     uint32_t PrevEdge(uint32_t edgeSelection, const ModifiableShape& shape);
+    uint32_t Twin(uint32_t edgeSelection, const ModifiableShape& shape);
 
     bool IsRegularVertex    (uint32_t vertexSelection, const ModifiableShape& shape);
     bool IsRegularQuad      (uint32_t vertexSelection, const ModifiableShape& shape);

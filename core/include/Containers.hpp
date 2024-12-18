@@ -3033,6 +3033,20 @@ namespace FlexKit
 			return res;
 		}
 
+		template<typename TY_callable>
+		TY_value* Find_Or(const TY_key key, TY_callable&& callable)
+			requires requires(TY_callable callable)
+			{	
+				{ callable() } -> std::convertible_to<TY_value>;
+			}
+		{
+			auto res = find(key);
+			if (!res)
+				res = insert(key, callable());
+
+			return res;
+		}
+
 		TY_value* operator [] (const TY_key key) const noexcept
 		{
 			return find(key);
