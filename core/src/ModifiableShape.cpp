@@ -342,7 +342,7 @@ namespace FlexKit
 
     ModifiableShape::ConstFaceIterator ModifiableShape::ConstFaceIterator::operator + (int rhs) const noexcept
     {
-        ModifiableShape::ConstFaceIterator out{ shape, endIdx };
+        ModifiableShape::ConstFaceIterator out = *this;
 
         for (size_t I = 0; I < rhs; I++)
             out++;
@@ -368,7 +368,7 @@ namespace FlexKit
 
     ModifiableShape::ConstFaceIterator ModifiableShape::ConstFaceIterator::operator - (int rhs) const noexcept
     {
-        ModifiableShape::ConstFaceIterator out{ shape, endIdx };
+        ModifiableShape::ConstFaceIterator out = *this;
 
         for (size_t I = 0; I < rhs; I++)
             out--;
@@ -479,7 +479,7 @@ namespace FlexKit
 
     ModifiableShape::FaceIterator ModifiableShape::FaceIterator::operator + (int rhs) const noexcept
     {
-        FaceIterator out{ shape, endIdx };
+        FaceIterator out = *this;
 
         auto e = abs(rhs);
         for (size_t I = 0; I < e; I++)
@@ -509,7 +509,7 @@ namespace FlexKit
 
     ModifiableShape::FaceIterator ModifiableShape::FaceIterator::operator - (int rhs) const noexcept
     {
-        FaceIterator out{ shape, endIdx };
+        FaceIterator out = *this;
 
         for (size_t I = 0; I < rhs; I++)
             out--;
@@ -527,6 +527,15 @@ namespace FlexKit
             Prev();
 
         return *this;
+    }
+
+
+    /************************************************************************************************/
+
+
+    const ModifiableShape::wEdge& ModifiableShape::FaceIterator::Edge() const noexcept
+    {
+        return shape->wEdges[current];
     }
 
 
@@ -1003,9 +1012,9 @@ namespace FlexKit
         auto& edges = wVerticeEdges[vertexIdx];
         for (auto& edge : edges)
             if (wEdges[edge].twin == 0xffffffff)
-                return true;
+                return false;
 
-        return false;
+        return true;
     }
 
 

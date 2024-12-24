@@ -608,27 +608,23 @@ struct ModifiableShape
         void Next() noexcept;
         void Prev() noexcept;
 
+        uint32_t Twin() const noexcept { return Edge().twin; }
 
-        bool IsBorder() const noexcept
+        bool IsBorder() const noexcept { return Edge().twin == -1; }
+
+        bool IsInternalVertex(uint32_t i = 0) const noexcept
         {
-            return Edge().twin == -1;
+            return shape->IsInternalVertex(shape->wEdges[current].vertices[i]);
         }
 
-
-        bool IsInternal() const noexcept
+        uint32_t GetVertexValence(int idx = 0) const noexcept
         {
-            return shape->IsInternalVertex(shape->wEdges[current].vertices[0]);
+            return shape->GetVertexValence(shape->wEdges[current].vertices[idx]);
         }
 
-
-        uint32_t GetVertexValence() const noexcept
+        uint32_t GetVertexSelector(uint32_t idx = 0) const noexcept
         {
-            return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
-        }
-
-        uint32_t GetVertexSelector() const noexcept
-        {
-            return shape->wEdges[current].vertices[0];
+            return shape->wEdges[current].vertices[idx];
         }
 
         ConstFaceIterator& operator ++(int) noexcept;
@@ -661,13 +657,22 @@ struct ModifiableShape
         FaceIterator    operator -  (int rhs) const noexcept;
         FaceIterator&   operator -= (int rhs)       noexcept;
 
+        const   wEdge& Edge() const noexcept;
+
 
         void Next() noexcept;
         void Prev() noexcept;
 
-        uint32_t GetVertexValence() const noexcept
+        bool IsBorder() const noexcept { return Edge().twin == -1; }
+
+        bool IsInternal() const noexcept
         {
-            return shape->GetVertexValence(shape->wEdges[current].vertices[0]);
+            return shape->IsInternalVertex(shape->wEdges[current].vertices[0]);
+        }
+
+        uint32_t GetVertexValence(uint32_t i = 0) const noexcept
+        {
+            return shape->GetVertexValence(shape->wEdges[current].vertices[i]);
         }
 
         uint32_t GetVertexSelector() const noexcept
@@ -675,7 +680,7 @@ struct ModifiableShape
             return shape->wEdges[current].vertices[0];
         }
 
-        auto Twin() const
+        uint32_t Twin() const noexcept
         {
             return shape->wEdges[current].twin;
         }

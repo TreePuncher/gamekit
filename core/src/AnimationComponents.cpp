@@ -1047,6 +1047,9 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
+				if (!FABRIKComponent::isAvailable())
+					return;
+
 				auto& IKControllers = FABRIKComponent::GetComponent();
 				using IKInstance    = FABRIKComponent::FABRIK;
 

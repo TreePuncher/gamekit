@@ -216,7 +216,7 @@ namespace FlexKit
 		void		SetInnerAngle	(float r) noexcept;
 		void		SetOuterAngle	(float r) noexcept;
 		void		SetSize			(float r) noexcept;
-		void		SetType(LightType) noexcept;
+		void		SetType			(LightType) noexcept;
 
 		LightType	GetType() const noexcept;
 		float		GetInnerAngle	() const noexcept;
@@ -630,6 +630,7 @@ namespace FlexKit
 
 		void				AddGameObject	(GameObject& go, NodeHandle node);
 		void				AddGameObject	(GameObject& go);
+		void				OwnGameObject	(GameObject& go);
 		void				RemoveEntity	(GameObject& go);
 
 		void				ClearScene();

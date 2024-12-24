@@ -427,6 +427,7 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+
 		template<typename thisType, TYSize rhsSize, typename rhsSizeType>
 		auto& operator +=(this thisType&  self, const Vector<Ty, rhsSize, rhsSizeType>& RHS)
 		{
@@ -434,6 +435,19 @@ namespace FlexKit
 
 			for (auto I : RHS)
 				self.push_back(I);
+
+			return self;
+		}
+
+
+		template<typename thisType, Vector_t TY_vector>
+		auto& operator += (this thisType&  self, const TY_vector& RHS)
+		{
+			self.reserve(self.size() + RHS.size());
+
+			auto end = RHS.size();
+			for (uint32_t i = 0; i < end; i++)
+				self.emplace_back(RHS[i]);
 
 			return self;
 		}

@@ -179,6 +179,9 @@ namespace FlexKit
 				}   break;
 				case VertexField::FieldType::TextureCoordinate:
 				{
+					if (textureCoordinates.size() == 0)
+						continue;
+
 					const auto lhs    = textureCoordinates[lhsVertexField[I].idx];
 					const auto rhs    = textureCoordinates[rhsVertexField[I].idx];
 
@@ -299,19 +302,6 @@ namespace FlexKit
 		MeshKDBTree::MeshKDBTree(const UnoptimizedMesh& IN_mesh) :
 			mesh{ IN_mesh },
 			root{ BuildNode(0, mesh.tris.size()) } {}
-
-
-
-		auto MeshKDBTree::begin() const
-		{
-			return leafNodes.begin();
-		}
-
-
-		auto MeshKDBTree::end() const
-		{
-			return leafNodes.end();
-		}
 
 
 		auto MeshKDBTree::GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const
@@ -444,7 +434,8 @@ namespace FlexKit
 						points.push_back(ctx.mesh.points[field.idx]);
 						break;
 					case VertexField::TextureCoordinate:
-						textureCoordinates.push_back(ctx.mesh.textureCoordinates[field.idx].UV);
+						if(ctx.mesh.textureCoordinates.size())
+							textureCoordinates.push_back(ctx.mesh.textureCoordinates[field.idx].UV);
 						break;
 					case VertexField::Normal:
 						normals.push_back(ctx.mesh.normals[field.idx]);
@@ -484,9 +475,23 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void OptimizedMesh::PushTri(const Triangle& tri, LocalBlockContext& ctx)
+		void OptimizedMesh::PushTri(const Triangle& tri, LocalBlockContext& ctx, bool flip)
 		{
-			for (auto& v : tri.vertices)
+			uint32_t indices[3];
+			if (flip)
+			{
+				indices[0] = tri.vertices[0];
+				indices[1] = tri.vertices[2];
+				indices[2] = tri.vertices[1];
+			}
+			else
+			{
+				indices[0] = tri.vertices[0];
+				indices[1] = tri.vertices[1];
+				indices[2] = tri.vertices[2];
+			}
+
+			for (auto& v : indices)
 			{
 				if (ctx.LocallyUnique(v, (uint32_t)points.size()))
 				{
@@ -875,7 +880,7 @@ namespace FlexKit
 					size *= 10;
 				}
 
-				return indice - 1;
+				return indice > 0 ? indice - 1 : 0;
 			}
 
 
@@ -1108,12 +1113,15 @@ namespace FlexKit
 				{
 					int spacecount = GetIndiceCount	( in_Line, LineLength );
 					int slashcount = GetSlashCount	( in_Line, LineLength );
-					VertexToken vertex;
 
-					for( auto itr = 0; itr <= spacecount; itr++ )
-						ExtractFace(in_Line, LineLength, vertex, itr, slashcount );
+					for (auto itr = 0; itr <= spacecount; itr++)
+					{
+						VertexToken vertex;
+						ExtractFace(in_Line, LineLength, vertex, itr, slashcount);
+						TL.emplace_back(vertex);
+					}
 
-					TL.emplace_back(vertex);
+					TL.emplace_back(FaceToken{});
 				}
 				break;
 				default:

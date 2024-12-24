@@ -166,7 +166,7 @@ namespace FlexKit
 				mBufferinError = true;
 			else if (!mBufferinError)
 			{
-				char* Val = (char*)&in;
+				std::byte* Val = (std::byte*)&in;
 				for (size_t itr = 0; itr < static_cast<uint32_t>(mBufferFormat); itr++)
 					mBuffer[mBufferUsed++] = Val[itr];
 			}
@@ -269,6 +269,11 @@ namespace FlexKit
 
 		void Begin(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT);
 		bool End();
+
+		void MarkFull()
+		{
+			mBufferUsed = mBufferSize;
+		}
 
 		bool				LoadBuffer();
 		bool				UnloadBuffer();

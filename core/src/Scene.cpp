@@ -754,6 +754,16 @@ namespace FlexKit
 		Trigger(go, AddedToSceneID);
 	}
 
+	void Scene::OwnGameObject(GameObject& go)
+	{
+		auto& view = go.AddView<SceneVisibilityView>(GetSceneNode(go), sceneID);
+		sceneEntities.push_back(view);
+
+		Trigger(go, AddedToSceneID);
+
+		ownedGameObjects.push_back(&go);
+	}
+
 
 	/************************************************************************************************/
 

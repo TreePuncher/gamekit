@@ -135,6 +135,8 @@ namespace FlexKit
 		VertexIndexList vertex;
 	};
 
+	struct FaceToken
+	{};
 
 	using MeshToken = std::variant<
 		PointToken,
@@ -145,6 +147,7 @@ namespace FlexKit
 		JointWeightToken,
 		JointIndexToken,
 		VertexToken,
+		FaceToken,
 		MorphTargetVertexToken>;
 
 
@@ -342,7 +345,7 @@ namespace FlexKit
 			OptimizedMesh& operator += (OptimizedMesh& rhs);
 
 			void PushVertex (uint32_t globalIdx, LocalBlockContext& ctx);
-			void PushTri    (const Triangle& tri, LocalBlockContext& ctx);
+			void PushTri    (const Triangle& tri, LocalBlockContext& ctx, bool flip = false);
 
 			Vector<float3>		        points      { SystemAllocator };
 			Vector<float3>		        normals     { SystemAllocator };
@@ -417,8 +420,8 @@ namespace FlexKit
 			MeshKDBTree() = default;
 			MeshKDBTree(const UnoptimizedMesh& IN_mesh);
 
-			auto begin() const;
-			auto end() const;
+			auto begin()	const { return leafNodes.begin();	}
+			auto end()		const { return leafNodes.end();		}
 
 			auto						GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const;
 			std::shared_ptr<KDBNode>	BuildNode(size_t begin, size_t end);
