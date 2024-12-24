@@ -5737,6 +5737,7 @@ private:
 	FLEXKITAPI void							AddRef					( TriMeshHandle  TMHandle );
 	FLEXKITAPI void							ReleaseMesh				( TriMeshHandle  TMHandle );
 
+	FLEXKITAPI TriMeshHandle				CreateMesh				( GUID_t ID );
 	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
 
 	FLEXKITAPI TriMeshHandle				GetMesh					( GUID_t, CopyContextHandle copyCtx = InvalidHandle);

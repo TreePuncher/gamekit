@@ -1038,8 +1038,6 @@ namespace FlexKit
 
 		if(!GeometryTable.FreeList.size())
 		{
-
-
 			auto Index	= GeometryTable.Geometry.size();
 			Handle		= GeometryTable.Handles.GetNewHandle();
 

@@ -6832,17 +6832,11 @@ namespace FlexKit
 									nullptr,
 									IID_PPV_ARGS(&NewResource[itr]));
 
-					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
-
-					/*
-					HRESULT HR = pDevice10->CreateReservedResource2(
-									&Resource_DESC,
-									InitialState,
-									pCV,
-									IID_PPV_ARGS(&NewResource[itr]));
-
-					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
-					*/
+					if (FAILED(HR))
+					{
+						FK_LOG_ERROR("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE");
+						_OnCrash();
+					}
 				}	break;
 				case ResourceAllocationType::Committed:
 				{
@@ -6860,7 +6854,11 @@ namespace FlexKit
 						nullptr,
 						IID_PPV_ARGS(&NewResource[itr]));
 
-					CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
+					if (FAILED(HR))
+					{
+						FK_LOG_ERROR("FAILED TO COMMIT MEMORY FOR TEXTURE");
+						_OnCrash();
+					}
 				}   break;
 				case ResourceAllocationType::Placed:
 				{
@@ -6880,10 +6878,11 @@ namespace FlexKit
 						nullptr,
 						IID_PPV_ARGS(&NewResource[itr]));
 
-					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PLACED RESOURCE"));
-
 					if (FAILED(HR))
+					{
+						FK_LOG_ERROR("FAILED TO CREATE PLACED RESOURCE");
 						_OnCrash();
+					}
 				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -9782,6 +9781,48 @@ namespace FlexKit
 #else
 		GeometryTable.ReferenceCounts[Index]++;
 #endif
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle CreateMesh(GUID_t GUID)
+	{
+		auto Available = isAssetAvailable(GUID);
+		if (Available)
+			return InvalidHandle;
+
+		TriMeshHandle Handle;
+
+		if(!GeometryTable.FreeList.size())
+		{
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
+			GeometryTable.Handles[Handle] = (index_t)Index;
+
+			GeometryTable.Geometry.push_back(TriMesh());
+			GeometryTable.GeometryIDs.push_back(nullptr);
+			GeometryTable.Guids.push_back(GUID);
+			GeometryTable.ReferenceCounts.push_back(1);
+			GeometryTable.Handle.push_back(Handle);
+
+		}
+		else
+		{
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
+
+			Handle = GeometryTable.Handles.GetNewHandle();
+
+			GeometryTable.Handles			[Handle]	= (FlexKit::index_t)Index;
+			GeometryTable.GeometryIDs		[Index]		= nullptr;
+			GeometryTable.Guids				[Index]		= GUID;
+			GeometryTable.ReferenceCounts	[Index]		= 1;
+			GeometryTable.Handle			[Index]		= Handle;
+		}
+
+		return Handle;
 	}
 
 
