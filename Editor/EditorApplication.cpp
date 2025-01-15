@@ -357,6 +357,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 
 EditorApplication::~EditorApplication()
 {
+	mainWindow.GetSelectionCtx().Clear();
 	ReleaseUndoStack();
 	mainWindow.Release();
 	fkApplication.Release();
@@ -519,7 +520,7 @@ void EditorProjectScriptConnector::CreateTexture2DResource(FlexKit::TextureBuffe
 
 /**********************************************************************
 
-Copyright (c) 2023 Robert May
+Copyright (c) 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

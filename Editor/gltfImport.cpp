@@ -49,7 +49,14 @@ public:
 			{
 				FlexKit::WorkBarrier barrier{ threads };
 
-				auto resources = FlexKit::CreateSceneFromGlTF(fileDir, options, meta, barrier, task);
+				std::filesystem::path assetFile = project.GetAssetsPath() + "\\" + std::filesystem::path{fileDir}.filename().string();
+
+				if (std::filesystem::exists(assetFile))
+					std::filesystem::remove(assetFile);
+
+				std::filesystem::copy_file(fileDir, assetFile.string());
+
+				auto resources = FlexKit::CreateSceneFromGlTF(assetFile.string(), options, meta, barrier, task);
 
 				barrier.JoinLocal();
 

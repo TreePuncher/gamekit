@@ -741,8 +741,9 @@ void EditorPrefabPreview::RenderAnimated(
 	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 	QPoint globalCursorPos	= QCursor::pos();
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
+	auto scaling			= renderWindow->GetDPIScaling();
 
-	renderer.hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
+	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, HW, dispatcher, dT);
 
 	ImGui::NewFrame();
 

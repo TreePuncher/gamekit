@@ -28,7 +28,6 @@ using FieldUpdateCallback	= std::function<void (std::string& string)>;
 using FieldChangeCallback	= std::function<void (const std::string& string)>;
 using ButtonCallback		= std::function<void ()>;
 
-
 using ListSizeUpdateCallback	= std::function<size_t()>;
 using ListContentUpdateCallback	= std::function<void (size_t, QListWidgetItem*)>;
 using ListEventCallback			= std::function<void (QListWidget*)>;
@@ -38,6 +37,9 @@ using SliderEventCallback		= std::function<void (float)>;
 
 using ComboBoxUpdateCallback	= std::function<uint32_t ()>;
 using ComboBoxEventCallback		= std::function<void(uint32_t)>;
+
+using ColorIconGetColorCallback = std::function<FlexKit::float4 ()>;
+using ColorIconGetClickCallback = std::function<void (class ColorWidget*)>;
 
 namespace FlexKit
 {
@@ -56,6 +58,8 @@ public:
 	QLabel*		AddHeader		(const std::string txt);
 	QLabel*		AddText			(const std::string txt);
 	QTextEdit*	AddInputBox		(const std::string txt, FieldUpdateCallback update, FieldChangeCallback change);
+
+	class ColorWidget*	AddColorPicker(ColorIconGetColorCallback, ColorIconGetClickCallback);
 
 	QPushButton*	AddButton	(std::string label, ButtonCallback);
 	QListWidget*	AddList		(ListSizeUpdateCallback, ListContentUpdateCallback, ListEventCallback);

@@ -434,7 +434,7 @@ namespace FlexKit
                     for (; itr != end; itr++)
                     {
                         const auto vertexValence = itr.Edges().size() / 2;
-                        if (itr.IsEdge())
+                        if (itr.IsInternal())
                         {
                             groups.edgeQuadPatches.push_back(I);
                             return;

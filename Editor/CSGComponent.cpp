@@ -923,11 +923,11 @@ public:
 		auto& vertices          = shape.wEdges[edgeIdx].vertices;
 		FlexKit::float3 point   = (shape.wVertices[vertices[0]].point + shape.wVertices[vertices[1]].point) / 2.0f;
 
-				FlexKit::float4x4 m             = FlexKit::TranslationMatrix(point);
-				FlexKit::float4x4 delta         = FlexKit::float4x4::Identity();
+				FlexKit::float4x4_GPU m             = FlexKit::TranslationMatrix(point);
+				FlexKit::float4x4_GPU delta         = FlexKit::float4x4::Identity();
 
-		const   FlexKit::float4x4 view          = cameraData.View.Transpose();
-		const   FlexKit::float4x4 projection    = cameraData.Proj;
+		const   FlexKit::float4x4_GPU view          = cameraData.View;
+		const   FlexKit::float4x4_GPU projection    = cameraData.Proj;
 
 
 		switch (operation)
@@ -938,9 +938,9 @@ public:
 			static FlexKit::float3 P2{ 0 };
 			static FlexKit::float3 scale{ 1, 1, 1 };
 
-			m[0][0] = scale[0];
-			m[1][1] = scale[1];
-			m[2][2] = scale[2];
+			m.m[0][0] = scale[0];
+			m.m[1][1] = scale[1];
+			m.m[2][2] = scale[2];
 
 			if (!ImGuizmo::Manipulate(view, projection, operation, ImGuizmo::WORLD, m, delta))
 			{

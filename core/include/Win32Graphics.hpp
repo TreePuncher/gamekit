@@ -69,6 +69,14 @@ namespace FlexKit
 		}
 
 
+		float GetDPIScaling() const noexcept
+		{
+			uint dpi = GetDpiForWindow(hWindow);
+			constexpr const float baseDPI = 96;
+
+			return float(dpi) / baseDPI;
+		}
+
 		uint2 GetWH() const override
 		{
 			if (!swapChain)
@@ -919,6 +927,7 @@ namespace FlexKit
 		renderWindow.Format         = SwapChainDesc.Format;
 		renderWindow.renderSystem   = renderSystem;
 		renderWindow.fullscreen		= false;
+		renderWindow.hWindow		= hwnd;
 
 		memset(renderWindow.InputBuffer, 0, sizeof(renderWindow.InputBuffer));
 
