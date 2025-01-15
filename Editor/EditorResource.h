@@ -253,7 +253,7 @@ namespace FlexKit
 				auto dir = std::format("{}/{}", GetProjectResourceDir(), assetHandle);
 				auto F = fopen(dir.c_str(), "wb");
 
-				if (F || !ferror(F))
+				if (F && !ferror(F))
 				{
 					FlexKit::SaveArchiveContext ctx{};
 

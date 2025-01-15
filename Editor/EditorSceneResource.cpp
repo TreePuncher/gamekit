@@ -35,24 +35,107 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct ImageLoaderDesc
+	{
+		tinygltf::Model&				model;
+		ResourceList&					resources;
+		std::map<int, Resource_ptr>&	imageMap;
+		bool							enableImageLoading;
+	};
+
+
+	bool loadImage(tinygltf::Image* image, const int image_idx, std::string* err, std::string* warn, int req_width, int req_height, const unsigned char* bytes, int size, void* user_ptr)
+	{
+		ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
+
+		if (!loader->enableImageLoading)
+			return false;
+
+		int x		= 0;
+		int y		= 0;
+		int comp	= 0;
+
+		auto datass		= stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
+		float* floats	= (float*)datass;
+		auto resource	= CreateTextureResource(floats, x * y * 3, { x, y }, 3, image->name, "DXT7");
+
+		loader->resources.push_back(resource);
+		loader->imageMap[image_idx] = resource;
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	MeshResource_ptr	ParseMesh(tinygltf::Model&, tinygltf::Mesh&);
+	ResourceList		GatherAnimations(tinygltf::Model&, FlexKit::WorkBarrier&, EditorTask_ptr);
+
+
+	/************************************************************************************************/
+
+
 	struct GLTFMeshSource : Serializable<GLTFMeshSource, IResourceSource, GetTypeGUID(GLTFMeshSource)>
 	{
-		~GLTFMeshSource() override
+		GLTFMeshSource() = default;
+		GLTFMeshSource(const std::filesystem::path& fileDir, const std::string& IN_meshID) :
+			meshID	{ IN_meshID				},
+			fileStr	{ fileDir.string()		},
+			time	{ std::time(nullptr)	}
 		{
-
 		}
+
+		~GLTFMeshSource() override {}
+
+		std::time_t		GetTime() const { return time; }
 
 		Resource_ptr LoadResource()
 		{
+			using namespace tinygltf;
+
+			Model model;
+			TinyGLTF loader;
+			std::string err;
+			std::string warn;
+
+			ResourceList				textureResources;
+			std::map<int, Resource_ptr>	imageMap;
+
+			ImageLoaderDesc imageLoader{ model, textureResources, imageMap };
+			imageLoader.enableImageLoading = false;
+
+			loader.SetImageLoader(loadImage, &imageLoader);
+
+			if (auto res = loader.LoadBinaryFromFile(&model, &err, &warn, fileStr); res == true)
+			{
+				for (auto& mesh : model.meshes)
+				{
+					if (mesh.name == meshID)
+					{
+						auto loadedMesh = ParseMesh(model, mesh);
+
+						if(loadedMesh)
+							time = std::time(nullptr);
+
+						return loadedMesh;
+					}
+				}
+			}
+
 			return {};
 		}
 
 		void Serialize(auto& arc)
 		{
-
+			arc& meshID;
+			arc& fileStr;
+			arc& time;
 		}
 
-		std::string meshID;
+		std::time_t	time;
+		std::string meshID		= "";
+		std::string fileStr		= "";
 	};
 
 
@@ -442,7 +525,7 @@ namespace FlexKit
 
 				}
 
-				auto& indexAccessor	= model.accessors[primitive.indices];
+				auto& indexAccessor		= model.accessors[primitive.indices];
 				auto& indexBufferView	= model.bufferViews[indexAccessor.bufferView];
 				auto& indexBuffer		= model.buffers[indexBufferView.buffer];
 					 
@@ -629,6 +712,7 @@ namespace FlexKit
 					meshTokens.push_back(tokens[0]);
 					meshTokens.push_back(tokens[2]);
 					meshTokens.push_back(tokens[1]);
+					meshTokens.push_back(FlexKit::FaceToken{});
 				}
 
 				newMesh.tokens		= std::move(meshTokens);
@@ -655,7 +739,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model, FlexKit::WorkBarrier& parentBarrier, EditorTask_ptr parentTask)
+	std::pair<ResourceList, std::vector<size_t>>  GatherGeometry(tinygltf::Model& model, const std::filesystem::path& fileDir, FlexKit::WorkBarrier& parentBarrier, EditorTask_ptr parentTask)
 	{
 		using namespace tinygltf;
 
@@ -707,6 +791,7 @@ namespace FlexKit
 					}
 
 					auto meshResource		= ParseMesh(model, mesh);
+					meshResource->source	= std::make_shared<GLTFMeshSource>(fileDir, mesh.name);
 					meshResource->TriMeshID	= GUID;
 					meshMap[idx]			= GUID;
 					resources[idx]			= std::move(meshResource);
@@ -926,40 +1011,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct ImageLoaderDesc
-	{
-		tinygltf::Model&				model;
-		ResourceList&					resources;
-		std::map<int, Resource_ptr>&	imageMap;
-		bool							enableImageLoading;
-	};
-
-
-	bool loadImage(tinygltf::Image* image, const int image_idx, std::string* err, std::string* warn, int req_width, int req_height, const unsigned char* bytes, int size, void* user_ptr)
-	{
-		ImageLoaderDesc* loader = reinterpret_cast<ImageLoaderDesc*>(user_ptr);
-
-		if (!loader->enableImageLoading)
-			return false;
-
-		int x		= 0;
-		int y		= 0;
-		int comp	= 0;
-
-		auto datass		= stbi_load_from_memory(bytes, size, &x, &y, &comp, 3);
-		float* floats	= (float*)datass;
-		auto resource	= CreateTextureResource(floats, x * y * 3, { x, y }, 3, image->name, "DXT7");
-
-		loader->resources.push_back(resource);
-		loader->imageMap[image_idx] = resource;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
 	ResourceList GatherDeformers(tinygltf::Model& model, FlexKit::WorkBarrier& barrier, EditorTask_ptr parentTask)
 	{
 		ResourceList resources;
@@ -1160,7 +1211,7 @@ namespace FlexKit
 				FlexKit::CreatePromise(
 					[&](auto&)
 					{
-						return GatherGeometry(model, localBarrier, parentTask);
+						return GatherGeometry(model, fileDir, localBarrier, parentTask);
 					});
 
 

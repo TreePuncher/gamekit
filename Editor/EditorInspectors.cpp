@@ -8,6 +8,8 @@
 
 #include <TriggerSlotStrings.hpp>
 
+#include <QColorDialog>
+
 
 /************************************************************************************************/
 
@@ -524,7 +526,9 @@ void VisibilityEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 
 void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject&, FlexKit::ComponentViewBase& component, bool remoteObject)
 {
-	auto& pointLight = static_cast<FlexKit::LightView&>(component);
+	using namespace FlexKit;
+
+	auto& pointLight = static_cast<LightView&>(component);
 
 	panelCtx.AddHeader("Point Light");
 
@@ -631,6 +635,54 @@ void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 				inputBox->update();
 			});
 
+
+		panelCtx.Pop();
+	}
+
+	{
+		panelCtx.PushVerticalLayout();
+		panelCtx.AddText("Light Color");
+		panelCtx.AddColorPicker(
+			[light = pointLight.light]
+			{
+				return float4{ LightComponent::GetComponent()[light].K, 1.0f };
+			},
+			[light = pointLight.light, parent = panelCtx.inspector->parentWidget()](auto* colorWidget)
+			{
+				std::print("Hello color!\n");
+
+				auto currentColor = float4{ LightComponent::GetComponent()[light].K, 1.0f };
+				QColorDialog* colorDialog =
+					new QColorDialog{
+						QColor{
+							(int)(0xff * currentColor.x),
+							(int)(0xff * currentColor.y),
+							(int)(0xff * currentColor.z),
+							0xff},
+							parent };
+
+				colorDialog->connect(
+					colorDialog,
+					&QColorDialog::currentColorChanged,
+					[light](const QColor& color)
+					{
+						float3 k;
+						color.getRgbF(&k.x, &k.y, &k.z);
+						LightComponent::GetComponent()[light].K = k;
+
+						std::print("Color Changed!\nlight : {}\n", light.to_uint());
+					});
+
+				colorDialog->connect(
+					colorDialog,
+					&QColorDialog::reject,
+					[light, currentColor]()
+					{
+						LightComponent::GetComponent()[light].K = currentColor.xyz();
+					});
+
+				colorDialog->setVisible(true);
+			});
 
 		panelCtx.Pop();
 	}

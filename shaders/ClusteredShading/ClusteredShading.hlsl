@@ -232,7 +232,7 @@ void ClusteredShading(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThread
 		#endif
 
 		#if 1// skip shadowmaping
-			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
+			const float3 colorSample = Lc * (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;
 			color += max(float4(colorSample, 0 ), 0.0f);
 		#else
 			const float3 colorSample = (diffuse * Kd + specular * Ks) * La * abs(NdotL) * INV_PI;

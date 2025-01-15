@@ -303,7 +303,6 @@ public:
 					ctx.DrawIndexed(indices.size());
 				}
 
-
 				if (markers)
 				{
 					const auto devicePointer1 = resources.GetDevicePointer(resources.VertexBuffer(data.debug2Buffer, ctx));

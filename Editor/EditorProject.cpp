@@ -159,7 +159,11 @@ bool EditorProject::SaveProject(const std::string& projectDir)
 
 	std::filesystem::path projectPath(projectDir);
 	const std::string fileName = projectPath.replace_extension().string();
-	std::filesystem::create_directory(fileName + R"(.objects)");
+	std::filesystem::path objectDir{ fileName + R"(.objects)" };
+
+	if(!std::filesystem::exists(objectDir))
+		std::filesystem::create_directory(objectDir);
+
 	FlexKit::SetProjectResourceDir(fileName + R"(.objects/)");
 
 	if (!projectDir.size())
@@ -512,7 +516,7 @@ void EditorProject::BuildDebug() const
 
 	std::string buildCommand = defaultBuildCommand;
 	buildCommand = SearchAndReplace(buildCommand, "@VCVARS", defaultVCVarsPath);
-	buildCommand = SearchAndReplace(buildCommand, "@BuildPath", projectDirectory.string() + "/out");
+	buildCommand = SearchAndReplace(buildCommand, "@BuildPath", projectDirectory.string() + "/out/build/x64-debug");
 	buildCommand = SearchAndReplace(buildCommand, "@Preset", debugPreset);
 	buildCommand = SearchAndReplace(buildCommand, "@ProjectPath", projectDirectory.string());
 	buildCommand = SearchAndReplace(buildCommand, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");

@@ -35,31 +35,18 @@ public:
 	bool isValid() { return renderWindow != nullptr; }
 	std::function<void (DXRenderWindow* renderWindow)> ResizeEventHandler;
 
-	void SetOnDraw(FNRender_t draw)
-	{
-		onDraw = draw;
-	}
+	void SetOnDraw(FNRender_t draw);
+	void SetOnResize(FNResize_t resize);
 
-	void SetOnResize(FNResize_t resize)
-	{
-		onResize = resize;
-	}
-
-	FlexKit::uint2 WH() const { return renderWindow->GetWH(); }
-
+	FlexKit::uint2 WH() const noexcept;
 	void resizeEvent(QResizeEvent* evt);
+	void enterEvent(QMouseEvent* event);
 
-	void enterEvent(QMouseEvent* event)
-	{
-		renderWindow->PIX_SetActiveWindow();
-	}
-
-	void DEBUG_SetActiveWindow()
-	{
-		renderWindow->PIX_SetActiveWindow();
-	}
+	void DEBUG_SetActiveWindow();
 
 	FlexKit::ResourceHandle GetBackBuffer() const;
+
+	float GetDPIScaling() const noexcept;
 
 public slots:
 	void OnFrame();
