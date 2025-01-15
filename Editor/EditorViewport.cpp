@@ -21,6 +21,7 @@ using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::float4;
 using FlexKit::float4x4;
+using FlexKit::float4x4_GPU;
 
 
 /************************************************************************************************/
@@ -204,20 +205,21 @@ void EditorVewportTranslationMode::DrawImguI()
 	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
 	FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera).UpdateMatrices();
-	auto& camera				= FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
-	const float4x4 view			= camera.View.Transpose();
-	const float4x4 projection	= camera.Proj;
-	const float4x4 grid			= float4x4{   1,   0,   0,   0,
+	auto& camera					= FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
+	const float4x4_GPU view			= camera.View;
+	const float4x4_GPU projection	= camera.Proj;
+	const float4x4_GPU grid			= float4x4{   1,   0,   0,   0,
 											  0,   1,   0,   0,
 											  0,   0,   1,   0,
 											  0,   0,   0,   1  };
 
 	QPoint globalCursorPos		= QCursor::pos();
 	const auto localPosition	= renderWindow->mapFromGlobal(globalCursorPos);
+	const auto scaling			= renderWindow->GetDPIScaling();
 
 	if (localPosition.x() >= 0 && localPosition.y() >= 0 &&
-		localPosition.x() * 1.5f < io.DisplaySize.x  &&
-		localPosition.y() * 1.5f < io.DisplaySize.y &&
+		localPosition.x() * scaling < io.DisplaySize.x  &&
+		localPosition.y() * scaling < io.DisplaySize.y &&
 
 		selectionContext.GetSelectionType() == ViewportObjectList_ID)
 	{
@@ -295,7 +297,7 @@ void EditorVewportTranslationMode::DrawImguI()
 										wt[2][0], wt[2][1], wt[2][2], wt[2][3],
 										wt[3][0], wt[3][1], wt[3][2], wt[3][3]);
 
-			if (0)
+			if (1)
 			{
 				if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
 					ImGui::SetWindowPos({ 0, 0 });
@@ -841,7 +843,10 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 {
 	QWidget::resizeEvent(evt);
 
-	FlexKit::uint2 newWH = { evt->size().width() * 1.5, evt->size().height() * 1.5 };
+	const float scaling = renderWindow->GetDPIScaling();
+	FlexKit::uint2 newWH = {
+		evt->size().width() * scaling,
+		evt->size().height() * scaling };
 
 	renderWindow->resize(evt->size());
 	depthBuffer.Resize(newWH);
@@ -1379,9 +1384,10 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 	QPoint globalCursorPos	= QCursor::pos();
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
+	const auto scaling		= renderWindow->GetDPIScaling();
 
-	renderer.hud.Update({ (float)localPosition.x() * 1.5f, (float)localPosition.y() * 1.5f }, HW, dispatcher, dT);
-
+	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, HW, dispatcher, dT);
+	
 	ImGui::NewFrame();
 	ImGuizmo::BeginFrame();
 
@@ -1405,7 +1411,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
 		FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 		FlexKit::ClearGBuffer(frameGraph, gbuffer);
-		FlexKit::ClearBackBuffer(frameGraph, renderTarget);
+		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
 		FlexKit::WorldRender_Targets targets {
 			.RenderTarget	= renderTarget,
@@ -1526,7 +1532,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			auto& pointLights	= data.lights;
 
 			auto& visibilityComponent = FlexKit::SceneVisibilityComponent::GetComponent();
-			auto& pointLightComponnet = FlexKit::LightComponent::GetComponent();
+			auto& pointLightComponent = FlexKit::LightComponent::GetComponent();
 
 			FlexKit::DescriptorHeap descHeap;
 			descHeap.Init(
@@ -1551,13 +1557,12 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			ctx.NullGraphicsConstantBufferView(6);
 
 			struct PassConstants {
-				FlexKit::float4x4 x = FlexKit::float4x4::Identity();
+				FlexKit::float4x4_GPU x = FlexKit::float4x4::Identity();
 			} passConstantData;
 
 			auto constantBuffer = data.ReserveConstantBuffer(
 				FlexKit::AlignedSize<FlexKit::Camera::ConstantBuffer>() + 
 				FlexKit::AlignedSize<PassConstants>());
-
 			
 			FlexKit::ConstantBufferDataSet cameraConstants	{ FlexKit::GetCameraConstants(viewportCamera), constantBuffer };
 			FlexKit::ConstantBufferDataSet passConstants	{ passConstantData, constantBuffer };
@@ -1586,8 +1591,8 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 						FlexKit::float2 UV;
 					};
 
-					const float3 position	= FlexKit::GetPositionW(pointLightComponnet[lightHandle].node);
-					const float radius		= pointLightComponnet[lightHandle].R;
+					const float3 position	= FlexKit::GetPositionW(pointLightComponent[lightHandle].node);
+					const float radius		= pointLightComponent[lightHandle].R;
 
 					const size_t divisions  = 64;
 					FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
@@ -1621,9 +1626,9 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					ctx.SetVertexBuffers({ vertices });
 
 					struct {
-						float4		unused1;
-						float4		unused2;
-						float4x4	transform;
+						float4			unused1;
+						float4			unused2;
+						float4x4_GPU	transform;
 					} CB_Data {
 						.unused1	= float4{ 0, 0, 0, 1 },
 						.unused2	= float4{ 1, 1, 1, 1 },
@@ -1648,9 +1653,9 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 				ctx.BeginEvent_DEBUG("PhysX Debug");
 
 				struct {
-					float4		unused1;
-					float4		unused2;
-					float4x4	transform;
+					float4			unused1;
+					float4			unused2;
+					float4x4_GPU	transform;
 				} CB_Data {
 					.unused1	= float4{ 0, 0, 0, 0 },
 					.unused2	= float4{ 0, 0, 0, 0 },
@@ -1746,13 +1751,13 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					ctx.SetVertexBuffers({ vbDataSet });
 
 					struct {
-						float4		unused1;
-						float4		unused2;
-						float4x4	transform;
+						float4			unused1;
+						float4			unused2;
+						float4x4_GPU	transform;
 					} CB_Data {
 						.unused1	= float4{ 0, 0, 0, 1 },
 						.unused2	= float4{ 1, 1, 1, 1 },
-						.transform	= GetWT(node).Transpose()
+						.transform	= GetWT(node)
 					};
 
 					auto constantBuffer = data.ReserveConstantBuffer(256);

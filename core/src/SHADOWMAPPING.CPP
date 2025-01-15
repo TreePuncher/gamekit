@@ -408,6 +408,7 @@ namespace FlexKit
 					{
 					case LightType::PointLightNoShadows:
 					case LightType::SpotLightNoShadows:
+					case LightType::Direction:
 						continue;
 					case LightType::PointLight:
 					case LightType::SpotLight:

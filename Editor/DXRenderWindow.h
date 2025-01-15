@@ -61,6 +61,8 @@ public:
 
 	FlexKit::ResourceHandle GetBackBuffer() const;
 
+	float GetDPIScaling() const noexcept { return renderWindow->GetDPIScaling(); }
+
 public slots:
 	void OnFrame();
 
