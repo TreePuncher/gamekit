@@ -220,7 +220,6 @@ void EditorVewportTranslationMode::DrawImguI()
 	if (localPosition.x() >= 0 && localPosition.y() >= 0 &&
 		localPosition.x() * scaling < io.DisplaySize.x  &&
 		localPosition.y() * scaling < io.DisplaySize.y &&
-
 		selectionContext.GetSelectionType() == ViewportObjectList_ID)
 	{
 		auto selection = selectionContext.GetSelectionType() == ViewportObjectList_ID ? selectionContext.GetSelection<ViewportSelection>() : ViewportSelection{};
@@ -843,7 +842,7 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 {
 	QWidget::resizeEvent(evt);
 
-	const float scaling = renderWindow->GetDPIScaling();
+	const float scaling = 1.5;// renderWindow->GetDPIScaling();
 	FlexKit::uint2 newWH = {
 		evt->size().width() * scaling,
 		evt->size().height() * scaling };
@@ -852,7 +851,7 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 	depthBuffer.Resize(newWH);
 	gbuffer.Resize(newWH);
 
-	FlexKit::SetCameraAspectRatio(viewportCamera, float(evt->size().width())/ float(evt->size().height()));
+	FlexKit::SetCameraAspectRatio(viewportCamera, float(newWH[0]) / float(newWH[1]));
 	MarkCameraDirty(viewportCamera);
 }
 
