@@ -69,7 +69,7 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 
 	t += dT;
 
-	if (!resizeInProgress && isActiveWindow())
+	if (!resizeInProgress && isVisible())
 	{
 		dirty = true;
 
@@ -143,6 +143,28 @@ void DXRenderWindow::resizeSwapChain(int width, int height)
 /************************************************************************************************/
 
 
+void DXRenderWindow::SetOnDraw(FNRender_t draw)
+{
+	onDraw = draw;
+}
+
+
+/************************************************************************************************/
+
+
+void DXRenderWindow::SetOnResize(FNResize_t resize)
+{
+	onResize = resize;
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::uint2 DXRenderWindow::WH() const noexcept { return renderWindow->GetWH(); }
+
+
+/************************************************************************************************/
 
 
 void DXRenderWindow::resizeEvent(QResizeEvent* evt)
@@ -153,8 +175,9 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 	const auto width      = widgetSize.width();
 	const auto height     = widgetSize.height();
 
-	const auto newWidth     = evt->size().width() * 1.5;
-	const auto newHeight    = evt->size().height() * 1.5;
+	const float dpiScaling	= GetDPIScaling();
+	const auto newWidth     = evt->size().width() * dpiScaling;
+	const auto newHeight    = evt->size().height() * dpiScaling;
 
 	newWidthHeight		= { newWidth, newHeight };
 
@@ -180,9 +203,36 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 /************************************************************************************************/
 
 
+void DXRenderWindow::enterEvent(QMouseEvent* event)
+{
+	renderWindow->PIX_SetActiveWindow();
+}
+
+
+/************************************************************************************************/
+
+
+void DXRenderWindow::DEBUG_SetActiveWindow()
+{
+	renderWindow->PIX_SetActiveWindow();
+}
+
+
+/************************************************************************************************/
+
+
 FlexKit::ResourceHandle DXRenderWindow::GetBackBuffer() const
 {
 	return renderWindow->GetBackBuffer();
+}
+
+
+/************************************************************************************************/
+
+
+float DXRenderWindow::GetDPIScaling() const noexcept
+{
+	return renderWindow->GetDPIScaling();
 }
 
 

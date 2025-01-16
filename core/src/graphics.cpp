@@ -2345,7 +2345,6 @@ namespace FlexKit
 		RenderTargetCount		= RHS.RenderTargetCount;
 		DepthStencilEnabled		= RHS.DepthStencilEnabled;
 
-		Viewports				= RHS.Viewports;
 		DesciptorHeaps			= RHS.DesciptorHeaps;
 		VBViews					= RHS.VBViews;
 		pendingBarriers			= RHS.pendingBarriers;
@@ -2365,7 +2364,6 @@ namespace FlexKit
 		RHS.DepthStencilEnabled		= false;
 		RHS.Memory					= nullptr;
 
-		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
 		RHS.VBViews.clear();
 		RHS.pendingBarriers.clear();
@@ -2414,7 +2412,6 @@ namespace FlexKit
 		RenderTargetCount		= RHS.RenderTargetCount;
 		DepthStencilEnabled		= RHS.DepthStencilEnabled;
 
-		Viewports				= RHS.Viewports;
 		DesciptorHeaps			= RHS.DesciptorHeaps;
 		VBViews					= RHS.VBViews;
 		pendingBarriers			= RHS.pendingBarriers;
@@ -2434,7 +2431,6 @@ namespace FlexKit
 		RHS.DepthStencilEnabled		= false;
 		RHS.Memory					= nullptr;
 
-		RHS.Viewports.clear();
 		RHS.DesciptorHeaps.clear();
 		RHS.VBViews.clear();
 		RHS.pendingBarriers.clear();
@@ -3091,8 +3087,16 @@ namespace FlexKit
 
 	void Context::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
 	{
-		Viewports = VPs;
 		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetViewports(std::span<const D3D12_VIEWPORT>	VPs)
+	{
+		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.data());
 	}
 
 
@@ -3102,6 +3106,15 @@ namespace FlexKit
 	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>	Rects)
 	{
 		DeviceContext->RSSetScissorRects((UINT)Rects.size(), Rects.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetScissorRects(std::span<const D3D12_RECT> rects)
+	{
+		DeviceContext->RSSetScissorRects((UINT)rects.size(), rects.data());
 	}
 
 
@@ -4500,7 +4513,6 @@ namespace FlexKit
 	{
 		pendingBarriers.clear();
 		RenderTargets.clear();
-		Viewports.clear();
 		DesciptorHeaps.clear();
 		VBViews.clear();
 

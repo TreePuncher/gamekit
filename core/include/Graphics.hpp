@@ -4093,7 +4093,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
 
 		void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs);
+		void SetViewports				(std::span<const D3D12_VIEWPORT>	VPs);
 		void SetScissorRects			(static_vector<D3D12_RECT, 16>		Rects);
+		void SetScissorRects			(std::span<const D3D12_RECT>		Rects);
 
 		void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets);
 		void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
@@ -4356,7 +4358,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		
 		static_vector<ResourceHandle, 16>		RenderTargets;
-		static_vector<D3D12_VIEWPORT, 16>		Viewports;
 		static_vector<DescriptorHeap*>			DesciptorHeaps;
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 

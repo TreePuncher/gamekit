@@ -6,6 +6,10 @@
 #include <ranges>
 #include <qslider.h>
 #include <qcombobox.h>
+#include <QColorDialog>
+#include <qpainter.h>
+#include <qpainterpath.h>
+
 
 /************************************************************************************************/
 
@@ -95,6 +99,69 @@ QTextEdit* ComponentViewPanelContext::AddInputBox(const std::string txt, FieldUp
 	propertyItems.push_back(timer);
 
 	return inputBox;
+}
+
+
+/************************************************************************************************/
+
+
+
+class ColorWidget : public QWidget
+{
+public:
+	ColorWidget() : QWidget{ nullptr }
+	{
+		brush.setColor(QColor{ QRgb{0xffffffff} });
+		brush.setStyle(Qt::BrushStyle::SolidPattern);
+
+		pen.setWidth(3);
+	}
+
+	QSize sizeHint() const override
+	{
+		return QSize(55, 55);
+	}
+
+	void paintEvent(QPaintEvent* event) override
+	{
+		auto color = getColor();
+		int32_t r = 0xff * FlexKit::Saturate(color.r);
+		int32_t g = 0xff * FlexKit::Saturate(color.g);
+		int32_t b = 0xff * FlexKit::Saturate(color.b);
+		int32_t a = 0xff * FlexKit::Saturate(color.a);
+		brush.setColor(QColor{ r, g, b, a });
+
+		QPainterPath path;
+		path.addRoundedRect(QRectF(5, 5, 50, 50), 5, 5);
+
+		QPainter painter(this);
+		painter.setPen(pen);
+		painter.setBrush(brush);
+		painter.drawPath(path);
+	}
+
+	void mouseDoubleClickEvent(QMouseEvent* event) override
+	{
+		clickCallback(this);
+	}
+
+	QPen	pen;
+	QBrush	brush;
+
+	ColorIconGetColorCallback getColor		= []() -> float4 { return { 1, 1, 1, 1 }; };
+	ColorIconGetClickCallback clickCallback = [](auto) {};
+};
+
+
+ColorWidget* ComponentViewPanelContext::AddColorPicker(ColorIconGetColorCallback getColor, ColorIconGetClickCallback clickCallback)
+{
+	auto colorWidget			= new ColorWidget{};
+	colorWidget->getColor		= getColor;
+	colorWidget->clickCallback	= clickCallback;
+
+	layoutStack.back()->addWidget(colorWidget);
+
+	return colorWidget;
 }
 
 

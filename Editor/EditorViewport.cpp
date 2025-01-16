@@ -17,14 +17,10 @@
 #include <fmt/format.h>
 
 
-using FlexKit::float2;
-using FlexKit::float3;
-using FlexKit::float4;
-using FlexKit::float4x4;
-using FlexKit::float4x4_GPU;
-
-
 /************************************************************************************************/
+
+
+using namespace FlexKit;
 
 
 class EditorVewportSelectionMode : public IEditorViewportMode
@@ -208,10 +204,11 @@ void EditorVewportTranslationMode::DrawImguI()
 	auto& camera					= FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
 	const float4x4_GPU view			= camera.View;
 	const float4x4_GPU projection	= camera.Proj;
-	const float4x4_GPU grid			= float4x4{   1,   0,   0,   0,
-											  0,   1,   0,   0,
-											  0,   0,   1,   0,
-											  0,   0,   0,   1  };
+	const float4x4_GPU grid			= float4x4{
+											1,   0,   0,   0,
+											0,   1,   0,   0,
+											0,   0,   1,   0,
+											0,   0,   0,   1  };
 
 	QPoint globalCursorPos		= QCursor::pos();
 	const auto localPosition	= renderWindow->mapFromGlobal(globalCursorPos);
@@ -229,12 +226,17 @@ void EditorVewportTranslationMode::DrawImguI()
 			auto& viewportObject	= selection.viewportObjects.front();
 			auto& gameObject		= viewportObject->gameObject;
 
-			float4x4 initial	= FlexKit::GetWT(gameObject);
+			float4x4 initial	= GetWT(gameObject);
 			float4x4 wt			= initial.Transpose();
 			float4x4 delta		= float4x4::Identity();
 
 			if (ImGuizmo::Manipulate(view, projection, manipulatorState, mode, wt, delta))
 			{
+				auto translation = wt[3];
+				wt[0][3] = translation[0];
+				wt[1][3] = translation[1];
+				wt[2][3] = translation[2];
+				/*
 				auto& object = GetCurrentState();
 				if (object.stateID != GetTypeGUID(TransformOP) || object.userID != viewportObject->objectID)
 				{
@@ -252,7 +254,7 @@ void EditorVewportTranslationMode::DrawImguI()
 
 							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
 
-							FlexKit::SetWT(gameObject, initial.Transpose());
+							FlexKit::SetWT(gameObject, initial);
 						},
 						.redo = [wt, &gameObject]()
 						{
@@ -264,7 +266,7 @@ void EditorVewportTranslationMode::DrawImguI()
 
 							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
 
-							FlexKit::SetWT(gameObject, wt);
+							SetWT(gameObject, wt);
 						}
 					};
 					PushState(std::move(state));
@@ -283,11 +285,12 @@ void EditorVewportTranslationMode::DrawImguI()
 
 							fmt::print("Undoing Transform, previous WT: \n{}\n", text);
 
-							FlexKit::SetWT(gameObject, wt);
+							FlexKit::SetWT(gameObject, wt.Transpose());
 						};
 				}
+				*/
 
-				FlexKit::SetWT(gameObject, wt);
+				SetWT(gameObject, wt.Transpose());
 			}
 
 			const std::string text = fmt::format("\nWT\n{}, {}, {}, {}, \n{}, {}, {}, {}, \n{}, {}, {}, {},\n{}, {}, {}, {} ]\n",
@@ -300,6 +303,7 @@ void EditorVewportTranslationMode::DrawImguI()
 			{
 				if (ImGui::Begin("Transform", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize)) {
 					ImGui::SetWindowPos({ 0, 0 });
+					ImGui::SetWindowSize({400, 400});
 					ImGui::Text(text.c_str());
 				}
 				ImGui::End();
@@ -440,8 +444,8 @@ void EditorVewportPanMode::keyPressEvent(QKeyEvent* event)
 
 			const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(viewportCamera);
 
-			const auto target				= aabb.MidPoint();
-			const auto desiredDistance		= (2.0f / std::sqrt(2.0f)) * aabb.Span().magnitude() / std::tan(c.FOV);
+			const auto target			= aabb.MidPoint();
+			const auto desiredDistance	= (2.0f / std::sqrt(2.0f)) * aabb.Span().magnitude() / std::tan(c.FOV);
 
 			auto position_VS			= c.View.Transpose() * float4 { target, 1 };
 			auto updatedPosition_WS		= c.IV.Transpose() * float4 { position_VS.x, position_VS.y, position_VS.z + desiredDistance, 1 };
@@ -591,16 +595,17 @@ void EditorVewportPanMode::DrawImguI()
 		previous->DrawImguI();
 	else
 	{
+		auto h = renderWindow->size().height()	* 1.25f;
+		auto w = renderWindow->size().width()	* 1.25f;
 		const auto WH = renderWindow->WH();
-		ImGui::SetNextWindowPos({ (float)WH[0] - 400, 0 });
+		ImGui::SetNextWindowPos({ (float)w - 400, 0 });
 		ImGui::SetNextWindowSize({ 400, 400 });
 
-		if (ImGui::Begin("Pan"))
-		{
+		if (ImGui::Begin("Pan", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDecoration)){
 			ImGui::SliderFloat("Zoom", &zoomSpeed, 0.0f, 20.0f);
 			ImGui::SliderFloat("Pan", &panSpeed, 0.0f, 20.0f);
-			ImGui::End();
 		}
+		ImGui::End();
 	}
 }
 
@@ -842,16 +847,17 @@ void EditorViewport::resizeEvent(QResizeEvent* evt)
 {
 	QWidget::resizeEvent(evt);
 
-	const float scaling = 1.5;// renderWindow->GetDPIScaling();
-	FlexKit::uint2 newWH = {
-		evt->size().width() * scaling,
-		evt->size().height() * scaling };
+	const float scaling = renderWindow->GetDPIScaling();
+	const uint2 newWH = {
+		scaling * evt->size().width(),
+		scaling * evt->size().height() };
 
 	renderWindow->resize(evt->size());
+	//renderWindow->resize(newWH[0] / scaling, newWH[1] / scaling);
 	depthBuffer.Resize(newWH);
 	gbuffer.Resize(newWH);
 
-	FlexKit::SetCameraAspectRatio(viewportCamera, float(newWH[0]) / float(newWH[1]));
+	SetCameraAspectRatio(viewportCamera, float(newWH[0]) / float(newWH[1]));
 	MarkCameraDirty(viewportCamera);
 }
 
@@ -1331,7 +1337,7 @@ void EditorViewport::DeleteSelectionItem()
 		auto selection	= selectionContext.GetSelection<ViewportSelection>();
 		auto& obj		= selection.viewportObjects.front();
 
-		auto bs		= FlexKit::GetBoundingSphere(obj->gameObject);
+		auto bs		= GetBoundingSphere(obj->gameObject);
 		auto handle = scene->RemoveObject(obj);
 
 		ObjectState objState{
@@ -1343,7 +1349,7 @@ void EditorViewport::DeleteSelectionItem()
 				handle.UndoDelete();
 
 				if (auto obj_ptr = handle.GetObj(); obj_ptr)
-					FlexKit::SetBoundingSphere(obj_ptr->gameObject, bs);
+					SetBoundingSphere(obj_ptr->gameObject, bs);
 
 				selectionContext.Clear();
 				selectionContext.selection	= selection;
@@ -1379,13 +1385,16 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
 			std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, renderer.hud, mode.size() ? mode.back() : nullptr)));
 	}
+	
 
-	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+	auto h = renderWindow->size().height();
+	auto w = renderWindow->size().width();
+	const auto WH			= uint2{ w, h } * 1.25;//frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 	QPoint globalCursorPos	= QCursor::pos();
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
 	const auto scaling		= renderWindow->GetDPIScaling();
 
-	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, HW, dispatcher, dT);
+	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, WH, dispatcher, dT);
 	
 	ImGui::NewFrame();
 	ImGuizmo::BeginFrame();
@@ -1408,16 +1417,16 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		cameras.AddInput(transforms);
 		depthBuffer.Increment();
 
-		FlexKit::ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
-		FlexKit::ClearGBuffer(frameGraph, gbuffer);
-		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
+		ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
+		ClearGBuffer(frameGraph, gbuffer);
+		ClearBackBuffer(frameGraph, renderTarget);
 
-		FlexKit::WorldRender_Targets targets {
+		WorldRender_Targets targets {
 			.RenderTarget	= renderTarget,
 			.DepthTarget	= depthBuffer,
 		};
 
-		FlexKit::DrawSceneDescription sceneDesc =
+		DrawSceneDescription sceneDesc =
 		{
 			.camera	= viewportCamera,
 			.scene	= scene->scene,
@@ -1428,9 +1437,9 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			.reserveVB	= temporaries.ReserveVertexBuffer,
 			.reserveCB	= temporaries.ReserveConstantBuffer,
 
-			.debugDisplay	= FlexKit::DebugVisMode::Disabled,
-			.BVHVisMode		= FlexKit::BVHVisMode::BoundingVolumes,
-			.debugDrawMode	= FlexKit::ClusterDebugDrawMode::Clusters,
+			.debugDisplay	= DebugVisMode::Disabled,
+			.BVHVisMode		= BVHVisMode::BoundingVolumes,
+			.debugDrawMode	= ClusterDebugDrawMode::Clusters,
 
 			.transformDependency	= transforms,
 			.cameraDependency		= cameras,
@@ -1476,10 +1485,10 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			allocator);
 	}
 	else
-		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
+		ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
 	renderer.hud.DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
-	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
+	PresentBackBuffer(frameGraph, renderTarget);
 
 	T += dT;
 }
@@ -1527,8 +1536,8 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 				float3 Color;
 			};
 
-			auto& PVS			= data.brushes;
-			auto& pointLights	= data.lights;
+			auto& PVS = data.brushes;
+			auto& pointLights = data.lights;
 
 			auto& visibilityComponent = FlexKit::SceneVisibilityComponent::GetComponent();
 			auto& pointLightComponent = FlexKit::LightComponent::GetComponent();
@@ -1543,7 +1552,28 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
 
-			ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+			auto scaling	= renderWindow->GetDPIScaling();
+			auto size		= renderWindow->size();
+			auto w			= size.width() * scaling;
+			auto h			= size.height() * scaling;
+
+			D3D12_VIEWPORT vp;
+			vp.Height	= h;
+			vp.Width	= w;
+			vp.MaxDepth = 1.0f;
+			vp.MinDepth = 0.0f;
+			vp.TopLeftX = 0;
+			vp.TopLeftY = 0;
+
+			D3D12_RECT rect;
+			rect.right	= w;
+			rect.bottom = h;
+			rect.left	= 0;
+			rect.top	= 0;
+
+			ctx.SetViewports(std::span{ &vp, &vp + 1 });
+			ctx.SetScissorRects(std::span{ &rect, &rect + 1 });
+
 			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
 
 			ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
