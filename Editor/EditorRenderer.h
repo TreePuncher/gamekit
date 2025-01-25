@@ -50,7 +50,6 @@ public:
 	FlexKit::TextureStreamingEngine	textureEngine;
 	FlexKit::WorldRender			worldRender;
 	CSGRender						csgRender;
-	FlexKit::ImGUIIntegrator		hud;
 
 private:
 	struct TempBuffer

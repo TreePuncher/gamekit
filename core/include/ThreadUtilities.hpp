@@ -350,6 +350,10 @@ namespace FlexKit
 	{
 	public:
 		_BackgrounWorkQueue(iAllocator* allocator);
+		~_BackgrounWorkQueue()
+		{
+			int x = 0;
+		}
 
 		void Shutdown();
 		void PushWork(iWork& work);

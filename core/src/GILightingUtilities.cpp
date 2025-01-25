@@ -13,7 +13,7 @@ namespace FlexKit
 	{
 	public:
 		Null_Technqiue(RenderSystem& renderSystem, iAllocator& allocator) {}
-
+		~Null_Technqiue() override {}
 
 		void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB) {}
 

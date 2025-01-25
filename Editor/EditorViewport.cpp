@@ -1140,7 +1140,7 @@ void EditorViewport::ClearSelection()
 
 FlexKit::ImGUIIntegrator& EditorViewport::GetHUD()
 {
-	return renderer.hud;
+	return *renderer.framework.debugUI;
 }
 
 /************************************************************************************************/
@@ -1204,7 +1204,7 @@ void EditorViewport::keyPressEvent(QKeyEvent* evt)
 				mode.back()->keyPressEvent(evt);
 			else if (mode.size() == 0 || !(mode.size() && mode.back()->GetModeID() != TranslationModeID))
 			{
-				auto _ptr = std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, *this, viewportCamera, renderer.hud);
+				auto _ptr = std::make_shared<EditorVewportTranslationMode>(selectionContext, renderWindow, *this, viewportCamera, *renderer.framework.debugUI);
 				_ptr->manipulatorState = op;
 				mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(_ptr));
 			}
@@ -1383,7 +1383,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			!(mode.size() && mode.back()->GetModeID() == VewportPanModeID))
 	{
 		mode.emplace_back(std::static_pointer_cast<IEditorViewportMode>(
-			std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, renderer.hud, mode.size() ? mode.back() : nullptr)));
+			std::make_shared<EditorVewportPanMode>(selectionContext, scene, renderWindow, viewportCamera, *renderer.framework.debugUI, mode.size() ? mode.back() : nullptr)));
 	}
 	
 
@@ -1394,7 +1394,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
 	const auto scaling		= renderWindow->GetDPIScaling();
 
-	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, WH, dispatcher, dT);
+	renderer.framework.debugUI->Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, WH, dispatcher, dT);
 	
 	ImGui::NewFrame();
 	ImGuizmo::BeginFrame();
@@ -1487,7 +1487,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 	else
 		ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
-	renderer.hud.DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
+	renderer.framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
 	PresentBackBuffer(frameGraph, renderTarget);
 
 	T += dT;

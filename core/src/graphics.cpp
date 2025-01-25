@@ -1445,7 +1445,6 @@ namespace FlexKit
 		}
 
 		RootEntries[Index]  = Desc;
-		Tags[Index]         = -1;
 
 		return true;
 	}
@@ -1456,7 +1455,7 @@ namespace FlexKit
 
 	bool RootSignatureBuilder::SetParameterAsCBV(
 		size_t Index, size_t Register, size_t RegisterSpace, 
-		PIPELINE_DESTINATION AccessableStages, size_t Tag)
+		PIPELINE_DESTINATION AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::ConstantBuffer;
@@ -1474,7 +1473,6 @@ namespace FlexKit
 		}
 
 		RootEntries[Index] = Desc;
-		Tags[Index]        = Tag;
 
 		return false;
 	}
@@ -1485,7 +1483,7 @@ namespace FlexKit
 
 	bool RootSignatureBuilder::SetParameterAsUAV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages, size_t Tag)
+		PIPELINE_DESTINATION AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::UnorderedAcess;
@@ -1503,7 +1501,6 @@ namespace FlexKit
 		}
 
 		RootEntries[Index] = Desc;
-		Tags[Index]        = Tag;
 
 		return false;
 	}
@@ -1514,8 +1511,7 @@ namespace FlexKit
 
 	bool RootSignatureBuilder::SetParameterAsSRV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages,
-		size_t Tag)
+		PIPELINE_DESTINATION AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::StructuredBuffer;
@@ -1532,7 +1528,6 @@ namespace FlexKit
 		}
 
 		RootEntries[Index] = Desc;
-		Tags[Index]        = Tag;
 
 		return false;
 	}
@@ -1543,7 +1538,6 @@ namespace FlexKit
 
 	void RootSignatureBuilder::Clear()
 	{
-		Tags.clear();
 		Heaps.clear();
 		RootEntries.clear();
 
@@ -1803,6 +1797,7 @@ namespace FlexKit
 		{
 			Heaps.Release();
 			RenderSystem::_GetInstance()._ReleaseRootSignature((uint64_t)this);
+			allocator->free(this);
 		}
 	}
 
@@ -5724,6 +5719,15 @@ namespace FlexKit
 
 	HeapTable::~HeapTable()
 	{
+		Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void HeapTable::Release()
+	{
 		for (auto& heap : heaps)
 			heap.Release();
 
@@ -6236,6 +6240,7 @@ namespace FlexKit
 		for (auto& ctx : Contexts)
 			ctx.Release();
 
+
 		while (FreeList_GraphicsQueue.size() || FreeList_CopyQueue.size())
 			Free_DelayedReleaseResources(this);
 
@@ -6246,6 +6251,7 @@ namespace FlexKit
 		for (auto& FR : Contexts)
 			FR.Release();
 
+		Contexts.Release();
 		ConstantBuffers.Release();
 		VertexBuffers.Release();
 		Textures.Release();
@@ -6254,6 +6260,7 @@ namespace FlexKit
 		ReadBackTable.Release();
 		Queries.Release();
 		directUploadBuffer.Release();
+		heaps.Release();
 
 		if(GraphicsQueue)	GraphicsQueue->Release();
 		if(ComputeQueue)	ComputeQueue->Release();
@@ -8193,7 +8200,7 @@ namespace FlexKit
 			byteCodeBlob->Release();
 			result->Release();
 
-			return std::move(out);
+			return out;
 		}
 	}
 
@@ -10710,7 +10717,7 @@ namespace FlexKit
 
 		lock.unlock();
 
-		auto& object			= Memory->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps));
+		auto& object			= Memory->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps), Memory);
 		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
 
 		std::unique_lock unique{ rootSignatureLock };
@@ -10725,8 +10732,7 @@ namespace FlexKit
 
 	RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
-		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps{ temp };
-		DesciptorHeaps.reserve(12);
+		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> DesciptorHeaps{ temp };
 
 		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
 
@@ -10779,7 +10785,6 @@ namespace FlexKit
 					DesciptorHeaps.back().push_back(Range);
 				}
 
-				const auto temp = DesciptorHeaps.back().size();
 				Param.InitAsDescriptorTable(
 					(UINT)DesciptorHeaps.back().size(),
 					DesciptorHeaps.back().begin(),
@@ -10884,7 +10889,7 @@ namespace FlexKit
 
 		lock.unlock();
 
-		auto& object			= Memory->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps));
+		auto& object			= Memory->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps), Memory);
 		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
 
 		std::unique_lock unique{ rootSignatureLock };

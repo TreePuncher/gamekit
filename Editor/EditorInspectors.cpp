@@ -649,8 +649,6 @@ void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 			},
 			[light = pointLight.light, parent = panelCtx.inspector->parentWidget()](auto* colorWidget)
 			{
-				std::print("Hello color!\n");
-
 				auto currentColor = float4{ LightComponent::GetComponent()[light].K, 1.0f };
 				QColorDialog* colorDialog =
 					new QColorDialog{
@@ -669,13 +667,11 @@ void PointLightEditorComponent::Inspect(ComponentViewPanelContext& panelCtx, Fle
 						float3 k;
 						color.getRgbF(&k.x, &k.y, &k.z);
 						LightComponent::GetComponent()[light].K = k;
-
-						std::print("Color Changed!\nlight : {}\n", light.to_uint());
 					});
 
 				colorDialog->connect(
 					colorDialog,
-					&QColorDialog::reject,
+					&QDialog::rejected,
 					[light, currentColor]()
 					{
 						LightComponent::GetComponent()[light].K = currentColor.xyz();

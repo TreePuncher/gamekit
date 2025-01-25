@@ -24,12 +24,13 @@ int EditorMain(int argc, char* argv[])
 	auto qtApplication	= std::make_unique<QApplication>( argc, argv );
 	auto editor			= std::make_unique<EditorApplication>(*qtApplication);
 
+	auto& memory = editor->fkApplication.GetCore().GetBlockMemory();
 	auto ret = qtApplication->exec();
+	editor.reset();
+
 
 	std::cout << "Editor Memory Stats\n";
-	FlexKit::PrintBlockStatus(&editor->fkApplication.GetCore().GetBlockMemory());
-
-	editor.reset();
+	PrintBlockStatus(&memory);
 
 	return ret;
 }

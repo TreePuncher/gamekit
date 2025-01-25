@@ -3158,7 +3158,10 @@ namespace FlexKit
 					for (size_t itr = 0; itr < max; itr++)
 					{
 						if (keys[itr] != (TY_key)0xffffffffffffffff)
+						{
+							keys[itr] = (TY_key)0xffffffffffffffff;
 							values[itr].~TY_value();
+						}
 					}
 				}
 

@@ -26,6 +26,7 @@ namespace FlexKit
 		{
 			framework.Release();
 			Core.Release();
+
 			Memory = nullptr;
 		}
 	}

@@ -73,7 +73,6 @@ namespace FlexKit
 		profiler.Release();
 
 		Memory = nullptr;
-		delete &RenderSystem;
 	}
 
 
@@ -152,6 +151,7 @@ namespace FlexKit
 		ReleaseGeometryTable();
 
 		Threads.Release();
+		delete& RenderSystem;
 
 		Memory = nullptr;
 	}

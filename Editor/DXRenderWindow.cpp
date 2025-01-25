@@ -38,6 +38,7 @@ DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *par
 
 DXRenderWindow::~DXRenderWindow()
 {
+	renderWindow->Release();
 	Release();
 }
 

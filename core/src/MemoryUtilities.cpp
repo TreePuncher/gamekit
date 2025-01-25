@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,6 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <iostream>
 #include <windows.h>
+
+#include <stacktrace>
+#include <format>
 
 namespace FlexKit
 {
@@ -100,6 +103,8 @@ namespace FlexKit
 // Generic Utiliteies
 	bool LoadFileIntoBuffer(const char* strLoc, std::byte* buffer, size_t bufferSize, bool TextFile )
 	{
+#if 1
+		// Use cstdlib
 		size_t newSize = 0;
 		WCHAR Temp[512];
 		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
@@ -112,11 +117,9 @@ namespace FlexKit
 
 		auto res = fread(buffer, 1, bufferSize, file);
 
-		//__debugbreak();
-
 		return true;
-
-		/*
+#else
+		// Use Win32
 		auto F = CreateFile(Temp, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		LARGE_INTEGER LSize; 
 		auto res        = ::GetFileSizeEx(F, &LSize);
@@ -145,9 +148,9 @@ namespace FlexKit
 			return (BytesRead == Size);
 
 		}
-		*/
-
-		return false;
+		else
+			return false;
+#endif
 	}
 
 
@@ -185,6 +188,146 @@ namespace FlexKit
 		}
 
 		return 0;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void BlockAllocator::Init(BlockAllocator_desc& in)
+	{
+		Small	= in.SmallBlock;
+		Medium	= in.MediumBlock;
+		Large	= in.LargeBlock;
+
+		if (in._ptr == nullptr)
+			in._ptr = (std::byte*)::_aligned_malloc(Small + Medium + Large, 16);
+
+		Buffer_ptr = (std::byte*)in._ptr;
+
+		SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
+		MediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + Small);
+		LargeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + Small + Medium);
+
+		new(&AllocatorInterface) iBlockAllocator(this);
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::byte* BlockAllocator::malloc(const size_t size, bool MarkAligned, bool MarkDebugMetaData)
+	{
+		std::unique_lock ul{ mu };
+
+		std::byte* ret = nullptr;
+
+		if (size <= SmallBlockAllocator::MaxAllocationSize())
+			ret = SmallBlockAlloc.malloc(size, MarkAligned);
+		if (size <=  (MediumBlockAllocator::MaxBlockSize() - 64) && !ret)
+		{
+#if USING(STACKTRACEMALLOC)
+			ret = MediumBlockAlloc.malloc(size + 64, MarkAligned, true);
+
+			auto currentTrace = std::stacktrace::current();
+			auto traceStr = new(ret) std::string{};
+
+			for (auto frame : currentTrace)
+				*traceStr += std::format("File: {}, line: {}, Description: {}\n", frame.source_file(), frame.source_line(), frame.description());
+#else
+			ret = MediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
+#endif
+
+			ret += 64;
+		}
+		if (!ret)
+		{
+#if USING(STACKTRACEMALLOC)
+			ret = LargeBlockAlloc.malloc(size + 64, MarkAligned);
+
+			auto currentTrace = std::stacktrace::current();
+			auto traceStr = new(ret) std::string{};
+
+			for (auto frame : currentTrace)
+				*traceStr += std::format("File: {}, line: {}, Description: {}\n", frame.source_file(), frame.source_line(), frame.description());
+
+			ret += 64;
+#else
+			ret = LargeBlockAlloc.malloc(size, MarkAligned);
+#endif
+		}
+
+		if (ret == nullptr) {
+			throw std::bad_alloc();
+			FK_ASSERT(false, "BAD ALLOC!");
+		}
+
+		return ret;
+	}
+
+
+	/************************************************************************************************/
+
+	// Debug String Must be below 64 Bytes
+	std::byte* BlockAllocator::malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
+	{
+		if (Debug == nullptr || DebugSize > 64)
+		{
+			FK_LOG_ERROR("Invalid Debug Section Header passed into allocator!");
+			throw std::invalid_argument("Invalid Debug Section Header passed into allocator!");
+		}
+
+		std::byte* ret = nullptr;
+		const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
+
+		if (size <= SmallBlockAllocator::MaxAllocationSize())
+			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
+		if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
+			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40, true);
+		if (!ret)
+			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
+
+		if (size > SmallBlockAllocator::MaxAllocationSize() && 
+			size < MediumBlockAllocator::MaxBlockSize())
+		{
+			auto DebugSectionSize	= (DebugSize < MetaDataSectionSize ? DebugSize : MetaDataSectionSize);
+			auto DebugStringLen		= strlen("DEBUG ALLOCATION");
+			strncpy_s(reinterpret_cast<char*>(ret), DebugStringLen, "DEBUG ALLOCATION", DebugSectionSize);
+		}
+
+		return ret + MetaDataSectionSize;
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::byte* BlockAllocator::_aligned_malloc(size_t s, size_t alignment, bool MarkDebugMetaData)
+	{
+		std::byte* NewBuffer		= (std::byte*)malloc(s + alignment, true, MarkDebugMetaData);
+		const size_t alignoffset	= (size_t)(NewBuffer) % alignment;
+		const size_t Offset			= alignment - alignoffset;
+
+		return NewBuffer + Offset;
+	}
+
+
+	/************************************************************************************************/
+
+		
+	void BlockAllocator::free(void* _ptr)
+	{
+		if (_ptr == nullptr)
+			return;
+
+		std::unique_lock ul(mu);
+
+		if (InSmallRange(reinterpret_cast<std::byte*>(_ptr)))
+			SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
+		if (InMediumRange(reinterpret_cast<std::byte*>(_ptr)))
+			MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
+		else if (InLargeRange(reinterpret_cast<std::byte*>(_ptr)))
+			LargeBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 	}
 
 
@@ -241,8 +384,15 @@ namespace FlexKit
 
 				if (MB[I].state & FlexKit::MediumBlockAllocator::BlockData::DebugMD) {
 					std::cout << "Meta Data Found: \n";
+
+#if USING(STACKTRACEMALLOC)
 					BlockAlloc->MediumBlockAlloc.Blocks[I].data[0x41] = (std::byte)'\0';
-					std::cout << BlockAlloc->MediumBlockAlloc.Blocks[I].data << "\n";
+					auto str = reinterpret_cast<std::string*>(BlockAlloc->MediumBlockAlloc.Blocks[I].data);
+
+					std::cout << *str << "\n";
+#else
+					std::cout << (const char*)BlockAlloc->MediumBlockAlloc.Blocks[I].data << "\n";
+#endif
 				}
 			}
 		}
@@ -250,17 +400,22 @@ namespace FlexKit
 		{
 			std::cout << "Large Blocks Allocated\n";
 
-			auto LB = BlockAlloc->LargeBlockAlloc.BlockTable;
+			auto LB		= BlockAlloc->LargeBlockAlloc.BlockTable;
+			auto blocks = BlockAlloc->LargeBlockAlloc.Blocks;
 			size_t LB_size_t = BlockAlloc->LargeBlockAlloc.Size;
 			for (size_t I = 0; I < LB_size_t;)
 			{
 				if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
 				{
-					std::cout << "Block: " << I;
+					std::cout << "Block: " << I << " : " << LB[I].AllocationSize << "\n";
 					if (LB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
 						std::cout << " Aligned\n";
 					else
 						std::cout << " Allocated\n";
+#if USING(STACKTRACEMALLOC)
+					auto stackString = reinterpret_cast<std::string*>(blocks[I].data);
+					std::cout << *stackString << "\n";
+#endif
 				}
 				I += LB[I].AllocationSize;
 			}
