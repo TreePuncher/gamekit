@@ -140,6 +140,8 @@ namespace FlexKit
 		stale			{ IN_allocator },
 		inuse			{ IN_allocator }
 	{
+		free.reserve(blockCount);
+
 		for (size_t I = 0; I < blockCount; ++I)
 			free.emplace_back(
 				Block

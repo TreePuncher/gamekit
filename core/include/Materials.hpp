@@ -83,6 +83,8 @@ namespace FlexKit
 			materials.reserve(256);
 		}
 
+		virtual ~MaterialComponent() {}
+
 		void FreeComponentView(void* _ptr) { static_cast<MaterialView*>(_ptr)->Release(); }
 
 

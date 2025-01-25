@@ -155,6 +155,8 @@ namespace FlexKit
 
 				swapChain   = nullptr;
 				hWindow     = 0;
+
+				RenderSystem::_GetInstance().Memory->release(*this);
 			}
 		}
 

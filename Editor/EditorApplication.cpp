@@ -360,6 +360,8 @@ EditorApplication::~EditorApplication()
 	mainWindow.GetSelectionCtx().Clear();
 	ReleaseUndoStack();
 	mainWindow.Release();
+
+	fkApplication.PopState();
 	fkApplication.Release();
 }
 

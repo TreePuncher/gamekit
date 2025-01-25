@@ -743,7 +743,7 @@ void EditorPrefabPreview::RenderAnimated(
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
 	auto scaling			= renderWindow->GetDPIScaling();
 
-	renderer.hud.Update({ (float)localPosition.x() * scaling, (float)localPosition.y() * scaling }, HW, dispatcher, dT);
+	renderer.framework.debugUI->Update({(float)localPosition.x() * scaling, (float)localPosition.y() * scaling}, HW, dispatcher, dT);
 
 	ImGui::NewFrame();
 
@@ -833,7 +833,7 @@ void EditorPrefabPreview::RenderAnimated(
 	ImGui::EndFrame();
 	ImGui::Render();
 
-	renderer.hud.DrawImGui(dT, dispatcher, frameGraph, temporaryBuffers.ReserveVertexBuffer, temporaryBuffers.ReserveConstantBuffer, renderTarget);
+	renderer.framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, temporaryBuffers.ReserveVertexBuffer, temporaryBuffers.ReserveConstantBuffer, renderTarget);
 	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 }
 
@@ -1066,7 +1066,7 @@ void EditorPrefabPreview::mousePressEvent(QMouseEvent* event)
 	mouseEvent.mType			= FlexKit::Event::Input;
 	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
 
-	renderer.hud.HandleInput(mouseEvent);
+	renderer.framework.debugUI->HandleInput(mouseEvent);
 }
 
 
@@ -1091,7 +1091,7 @@ void EditorPrefabPreview::mouseReleaseEvent(QMouseEvent* event)
 	mouseEvent.mType			= FlexKit::Event::Input;
 	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
 
-	renderer.hud.HandleInput(mouseEvent);
+	renderer.framework.debugUI->HandleInput(mouseEvent);
 }
 
 

@@ -76,7 +76,6 @@ public:
 
 	GameResExporter_ptr				gameResExporter;
 
-
 	std::string	currentProjectFile = "";
 
 	inline static	EditorProject* currentProject = nullptr;

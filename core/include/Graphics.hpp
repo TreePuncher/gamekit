@@ -1541,8 +1541,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsCBV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
-			size_t BufferTag = -1)
+			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
 			Desc.Register = BaseRegister;
@@ -1564,8 +1563,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsSRV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
-			size_t BufferTag = -1)
+			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
 			Desc.Register	= uint32_t(BaseRegister);
@@ -1588,8 +1586,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		bool SetParameterAsShaderUAV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0,
-			size_t BufferTag = -1)
+			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
 			Desc.Register = BaseRegister;
@@ -1735,7 +1732,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		template<size_t SIZE>
 		bool SetParameterAsDescriptorTable(
-			size_t Index, DesciptorHeapLayout<SIZE>& Layout, size_t Tag = -1, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
+			size_t Index, const DesciptorHeapLayout<SIZE>& Layout, size_t unused = -1, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::DescriptorHeap;
@@ -1747,30 +1744,27 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			{
 				if (!RootEntries.full()) {
 					RootEntries.resize(Index + 1);
-					Tags.resize(Index + 1);
 				}
 				else
 					return false;
 			}
 
 			RootEntries[Index] = Desc;
-			Tags[Index]        = Tag;
 
-			return false;
+			return true;
 		}
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1);
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsUAV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL, size_t Tag = -1);
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsSRV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
-			size_t Tag = -1);
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 
 		void Clear();
 
@@ -1811,7 +1805,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			};
 		};
 
-		static_vector<size_t, 12>		Tags;
 		Vector<RootSignatureHeapEntry>	Heaps;
 		static_vector<RootEntry>		RootEntries;
 	};
@@ -1823,12 +1816,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	class RootSignature
 	{
 	public:
-		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps) :
+		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps, iAllocator* IN_allocator) :
+			allocator	{ IN_allocator	},
 			Signature	{ rootSignature },
 			Heaps		{ std::move(IN_heaps) } {}
 
 
-		~RootSignature() { Release(); }
+		~RootSignature()
+		{
+			Release();
+		}
 
 		operator ID3D12RootSignature* ()	const { return Signature; }
 		ID3D12RootSignature* Get_ptr()		const { return Signature; };
@@ -1843,6 +1840,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t							GetDesciptorTableSize(size_t idx) const;
 
 		ID3D12RootSignature*			Signature = nullptr;
+		iAllocator*						allocator = nullptr;
 		Vector<RootSignatureHeapEntry>	Heaps;
 	};
 
@@ -3278,6 +3276,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		HeapTable(ID3D12Device* IN_device, iAllocator* allocator);
 		~HeapTable();
 
+		void				Release();
+
 		void				Init(ResourceHeapTier, ID3D12Device* IN_device);
 
 		DeviceHeapHandle	CreateHeap(const size_t size, const uint32_t flags);
@@ -3999,7 +3999,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 			void operator ()(RootSignature* _ptr)
 			{
-				allocator->release(*_ptr);
+				_ptr->Release();
 			};
 		};
 

@@ -69,7 +69,7 @@ namespace FlexKit
 			if (&_ref == nullptr)
 				return;
 
-			_ref.~T();
+			std::destroy_at(std::addressof(_ref));
 			free(&_ref);
 		}
 
@@ -364,7 +364,6 @@ namespace FlexKit
 						if (state == Block::Free)
 						{
 							Blocks[itr].state[itr2] = (Block::Allocated || Aligned) ? Block::Aligned : 0;
-							//if(itr2 == Block::BlockCount) Blocks[itr].BlockFull = true;
 							allocated++;
 							return (std::byte*)&Blocks[itr].data[itr2];
 						}
@@ -516,6 +515,14 @@ namespace FlexKit
 			if (index > Size)
 				throw(std::runtime_error("Invalid Free"));
 
+#if USING(STACKTRACEMALLOC)
+			if (BlockTable[index].state & BlockData::DebugMD)
+			{
+				auto str = reinterpret_cast<std::string*>(Blocks[index].data);
+				str->~basic_string();
+			}
+#endif
+
 #ifdef _DEBUG
 			FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
 #endif
@@ -635,7 +642,12 @@ namespace FlexKit
 			size_t index = (temp - temp2) / sizeof(Block);
 
 #if _DEBUG
-			FK_ASSERT((index < Size),  "FREE ERROR!\n");
+			FK_ASSERT((index < Size), "LargeBlockAllocator: Invalid Pointer Detected!\n");
+			FK_ASSERT(BlockTable[index].state != BlockData::Free,  "LargeBlockAllocator: Double Free Detected!\n");
+#endif
+
+#if USING(STACKTRACEMALLOC)
+			std::destroy_at(reinterpret_cast<std::string*>(Blocks[index].data));
 #endif
 
 			allocatedBlockCount -= BlockTable[index].AllocationSize;
@@ -736,99 +748,15 @@ namespace FlexKit
 		BlockAllocator& operator = (const BlockAllocator&) = delete;
 
 
-		void Init(BlockAllocator_desc& in)
-		{
-			Small	= in.SmallBlock;
-			Medium	= in.MediumBlock;
-			Large	= in.LargeBlock;
+		void Init(BlockAllocator_desc& in);
 
-			if (in._ptr == nullptr)
-				in._ptr = (std::byte*)::_aligned_malloc(Small + Medium + Large, 16);
-
-			Buffer_ptr = (std::byte*)in._ptr;
-
-			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
-			MediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + Small);
-			LargeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + Small + Medium);
-
-			new(&AllocatorInterface) iBlockAllocator(this);
-		}
-
-		std::byte* malloc(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false)
-		{
-			std::unique_lock ul{ mu };
-
-			std::byte* ret = nullptr;
-
-			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = SmallBlockAlloc.malloc(size, MarkAligned);
-			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
-				ret = MediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
-			if (!ret)
-				ret = LargeBlockAlloc.malloc(size, MarkAligned);
-
-			if (ret == nullptr) {
-				throw std::bad_alloc();
-				FK_ASSERT(false, "BAD ALLOC!");
-			}
-
-			return ret;
-		}
+		std::byte* malloc			(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false);
 
 		// Debug String Must be below 64 Bytes
-		std::byte* malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
-		{
-			if (Debug != nullptr && DebugSize != 0)
-			{
-				FK_LOG_ERROR("Invalid Debug Section Header passed into allocator!");
-				throw std::invalid_argument("Invalid Debug Section Header passed into allocator!");
-			}
-
-			std::byte* ret = nullptr;
-			const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
-
-			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
-			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
-				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40, true);
-			if (!ret)
-				ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
-
-			if (	
-				size > SmallBlockAllocator::MaxAllocationSize() && 
-				size < MediumBlockAllocator::MaxBlockSize())
-			{
-				auto DebugSectionSize	= (DebugSize < MetaDataSectionSize ? DebugSize : MetaDataSectionSize);
-				auto DebugStringLen		= strlen("DEBUG ALLOCATION");
-				strncpy_s(reinterpret_cast<char*>(ret), DebugStringLen, "DEBUG ALLOCATION", DebugSectionSize);
-			}
-
-			return ret + MetaDataSectionSize;
-		}
-
-		std::byte* _aligned_malloc(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false)
-		{
-			std::byte* NewBuffer		= (std::byte*)malloc(s + alignment, true, MarkDebugMetaData);
-			const size_t alignoffset	= (size_t)(NewBuffer) % alignment;
-			const size_t Offset			= alignment - alignoffset;
-
-			return NewBuffer + Offset;
-		}
+		std::byte* malloc_debug		(const size_t size, const char* Debug, size_t DebugSize, bool Aligned);
+		std::byte* _aligned_malloc	(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false);
 		
-		void free(void* _ptr)
-		{
-			if (_ptr == nullptr)
-				return;
-
-			std::unique_lock ul(mu);
-
-			if (InSmallRange(reinterpret_cast<std::byte*>(_ptr)))
-				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-			if (InMediumRange(reinterpret_cast<std::byte*>(_ptr)))
-				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-			else if (InLargeRange(reinterpret_cast<std::byte*>(_ptr)))
-				LargeBlockAlloc.free(reinterpret_cast<void*>(_ptr));
-		}
+		void free(void* _ptr);
 
 		template<typename TY>
 		void Delete(TY* _ptr)

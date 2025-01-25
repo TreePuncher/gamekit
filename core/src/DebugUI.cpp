@@ -115,7 +115,7 @@ namespace FlexKit
 
 	ImGUIIntegrator::~ImGUIIntegrator()
 	{
-		ImPlot:: DestroyContext();
+		ImPlot::DestroyContext();
 		ImGui::DestroyContext();
 	}
 

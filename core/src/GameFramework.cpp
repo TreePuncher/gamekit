@@ -300,6 +300,9 @@ namespace FlexKit
 
 	void GameFramework::Release()
 	{
+		if (debugUI)
+			core.GetBlockMemory().release_allocation(*debugUI);
+
 		core.Threads.SendShutdown();
 		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 

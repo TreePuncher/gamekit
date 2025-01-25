@@ -13,6 +13,7 @@
 #include <Serialization.hpp>
 
 
+using namespace FlexKit;
 using namespace std::filesystem;
 
 
@@ -119,8 +120,8 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 {
 	std::unique_lock sl{m};
 
-	std::filesystem::path projectPath{ projectDir };
-	if (!std::filesystem::exists(projectPath))
+	path projectPath{ projectDir };
+	if (!exists(projectPath))
 		return false;
 
 	auto f = fopen(projectDir.c_str(), "rb");
@@ -131,15 +132,15 @@ bool EditorProject::LoadProject(const std::string& projectDir)
 
 	size_t fileVersion;
 
-	FlexKit::LoadFileArchiveContext archive{ f };
+	LoadFileArchiveContext archive{ f };
 
 	archive& *this;
 
 	fclose(f);
 
 	const std::string fileName = projectPath.replace_extension().string();
-	FlexKit::SetProjectResourceDir(fileName + R"(.objects/)");
-	projectDirectory = std::filesystem::path{ projectDir }.parent_path().string();
+	SetProjectResourceDir(fileName + R"(.objects/)");
+	projectDirectory = path{ projectDir }.parent_path().string();
 
 	delete fileWatcher;
 	fileWatcher = new QFileSystemWatcher{};
@@ -157,21 +158,21 @@ bool EditorProject::SaveProject(const std::string& projectDir)
 {
 	std::unique_lock sl{ m };
 
-	std::filesystem::path projectPath(projectDir);
+	path projectPath{ projectDir };
 	const std::string fileName = projectPath.replace_extension().string();
-	std::filesystem::path objectDir{ fileName + R"(.objects)" };
+	path objectDir{ fileName + R"(.objects)" };
 
-	if(!std::filesystem::exists(objectDir))
-		std::filesystem::create_directory(objectDir);
+	if(!exists(objectDir))
+		create_directory(objectDir);
 
-	FlexKit::SetProjectResourceDir(fileName + R"(.objects/)");
+	SetProjectResourceDir(fileName + R"(.objects/)");
 
 	if (!projectDir.size())
 		return false;
 
 	try
 	{
-		FlexKit::SaveArchiveContext archive;
+		SaveArchiveContext archive;
 		archive& *this;
 
 		auto blob = archive.GetBlob();
@@ -214,7 +215,7 @@ void EditorProject::unlock()
 
 void EditorProject::StartWatchingDirectories()
 {
-	for (auto&& header : std::filesystem::directory_iterator{ GetHeadersPath() })
+	for (auto&& header : directory_iterator{ GetHeadersPath() })
 	{
 		headerFiles.insert(header.path().string());
 		onHeaderAdded(header.path().string());
@@ -228,7 +229,7 @@ void EditorProject::StartWatchingDirectories()
 				});
 	}
 
-	for (auto&& srcFile : std::filesystem::directory_iterator{ GetSourcesPath() })
+	for (auto&& srcFile : directory_iterator{ GetSourcesPath() })
 	{
 		projectNeedsCMakeRebuild = true;
 		sourceFiles.insert(srcFile.path().filename().string());
@@ -261,7 +262,7 @@ void EditorProject::HeaderChanged(const std::string& changedFile)
 
 void EditorProject::HeaderAddedRemoved(const std::string& changedDirectory)
 {
-	for (auto&& file : std::filesystem::directory_iterator{ changedDirectory })
+	for (auto&& file : directory_iterator{ changedDirectory })
 	{
 		if (file.is_regular_file() && file.path().extension() == ".hpp")
 		{
@@ -284,8 +285,8 @@ void EditorProject::HeaderAddedRemoved(const std::string& changedDirectory)
 
 	for (auto&& header : headerFiles)
 	{
-		std::filesystem::path path{ GetHeadersPath() + header };
-		if (!std::filesystem::exists(path))
+		path path{ GetHeadersPath() + header };
+		if (exists(path))
 		{
 			headerFiles.erase(header);
 			projectNeedsCMakeRebuild = true;
@@ -323,11 +324,11 @@ ProjectResource_ptr EditorProject::AddResource(FlexKit::Resource_ptr resource)
 /************************************************************************************************/
 
 
-FlexKit::ResourceList EditorProject::GetResources() const
+ResourceList EditorProject::GetResources() const
 {
 	std::shared_lock sl{ const_cast<std::shared_mutex&>(m) };
 
-	FlexKit::ResourceList out;
+	ResourceList out;
 
 	for (auto& r : resources)
 		out.push_back(r->resource);
@@ -360,9 +361,9 @@ ProjectResource_ptr EditorProject::FindProjectResource(uint64_t assetID)
 	auto res = std::find_if(
 		resources.begin(),
 		resources.end(),
-		[&](ProjectResource_ptr& resource)
+		[&](ProjectResource_ptr& projectRes)
 		{
-			return resource->resource->GetResourceGUID() == assetID;
+			return projectRes->resource->GetResourceGUID() == assetID;
 		}
 	);
 
@@ -383,9 +384,9 @@ ProjectResource_ptr EditorProject::FindProjectResource(const std::string& id)
 	auto res = std::find_if(
 		resources.begin(),
 		resources.end(),
-		[&](ProjectResource_ptr& resource)
+		[&](ProjectResource_ptr& projectRes)
 		{
-			return resource->resource->GetResourceID() == id;
+			return projectRes->resource->GetResourceID() == id;
 		}
 	);
 
@@ -411,17 +412,17 @@ std::string ProjectGetObjectDirectory()
 void EditorProject::CreateProjectFileStructure(const std::string& projectDir)
 {
 	projectDirectory = projectDir; 
-	std::filesystem::create_directory(projectDirectory.string() + R"(\generated_headers)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\components)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\assets)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\assetPacks)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\includes)");
-	std::filesystem::create_directory(projectDirectory.string() + R"(\src)");
+	create_directory(projectDirectory.string() + R"(\generated_headers)");
+	create_directory(projectDirectory.string() + R"(\components)");
+	create_directory(projectDirectory.string() + R"(\assets)");
+	create_directory(projectDirectory.string() + R"(\assetPacks)");
+	create_directory(projectDirectory.string() + R"(\includes)");
+	create_directory(projectDirectory.string() + R"(\src)");
 
-	std::filesystem::copy_file(R"(resources\vcpkg.json)", projectDirectory.string() + R"(\vcpkg.json)");
-	std::filesystem::copy_file(R"(resources\CMakePresets.json)", projectDirectory.string() + R"(\CMakePresets.json)");
-	std::filesystem::copy_file(R"(resources\main.cpp)", projectDirectory.string() + R"(\src\main.cpp)");
-	std::filesystem::copy_file(R"(resources\.gitignore)", projectDirectory.string() + R"(\.gitignore)");
+	copy_file(R"(resources\vcpkg.json)",		projectDirectory.string() + R"(\vcpkg.json)");
+	copy_file(R"(resources\CMakePresets.json)", projectDirectory.string() + R"(\CMakePresets.json)");
+	copy_file(R"(resources\main.cpp)",			projectDirectory.string() + R"(\src\main.cpp)");
+	copy_file(R"(resources\.gitignore)",		projectDirectory.string() + R"(\.gitignore)");
 
 	SaveProject(projectDirectory.string() + R"(\flex.proj)");
 }
@@ -543,7 +544,7 @@ int EditorProject::RunBuildCommand(const std::string& commandStr) const
 	std::string command = defaultRunCommand;
 	command = SearchAndReplace(command, "@VCVARS", defaultVCVarsPath);
 	command = SearchAndReplace(command, "@ProjectDrive", std::string{} + projectDirectory.string()[0] + ":");
-	command = SearchAndReplace(command, "@ProjectPath", std::filesystem::path{ projectDirectory }.make_preferred().string());
+	command = SearchAndReplace(command, "@ProjectPath", path{ projectDirectory }.make_preferred().string());
 	command = SearchAndReplace(command, "@Command", commandStr);
 
 	std::print("{}\n", command);
@@ -626,7 +627,7 @@ void EditorProject::OpenExplorer() const
 void EditorProject::AddHeader(const std::string& name) const
 {
 	auto filePath = projectDirectory.string() + "/includes/" + name;
-	if (std::filesystem::exists(filePath))
+	if (exists(filePath))
 		return;
 
 	if (auto f = fopen(filePath.c_str(), "w"); f)
@@ -644,7 +645,7 @@ void EditorProject::AddHeader(const std::string& name) const
 void EditorProject::AddSource(const std::string& name) const
 {
 	auto filePath = projectDirectory.string() + "/src/" + name;
-	if (std::filesystem::exists(filePath))
+	if (exists(filePath))
 		return;
 
 	if (auto f = fopen(filePath.c_str(), "w"); f)
