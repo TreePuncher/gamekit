@@ -28,6 +28,17 @@ namespace FlexKit
 	};
 
 
+
+	uint64_t xorshift64(uint64_t& state)
+	{
+		uint64_t x = state;
+		x ^= x << 13;
+		x ^= x >> 7;
+		x ^= x << 17;
+		return state = x;
+	}
+
+
 	class RmlRenderer : public Rml::RenderInterface
 	{
 	public:
@@ -37,9 +48,9 @@ namespace FlexKit
 
 		void End();
 
-		Rml::CompiledGeometryHandle	CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override { return 0u; }
+		Rml::CompiledGeometryHandle	CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices) override;
 		void						RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture) override;
-		void						ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override {}
+		void						ReleaseGeometry(Rml::CompiledGeometryHandle geometry) override;
 
 
 		void EnableScissorRegion(bool enable) override;
@@ -56,20 +67,31 @@ namespace FlexKit
 		iAllocator*			allocator		= nullptr;
 		ResourceHandle		renderTarget	= FlexKit::InvalidHandle;
 		RenderSystem&		renderSystem;
+		uint64_t			randState		= 1234;
 
 		CopyContextHandle copyHandle	= FlexKit::InvalidHandle;
 
 		struct TextureHandle
 		{
 			DescriptorRange	range;
-			ResourceHandle		handle;
+			ResourceHandle	handle;
 
 			operator DescriptorRange()	{ return range; }
 			operator ResourceHandle()	{ return handle; }
 		};
 
+
+		struct GeometryHandle
+		{
+			ResourceHandle	vertexBuffer;
+			ResourceHandle	indexBuffer;
+			uint32_t		indexCount;
+			uint32_t		vertexCount;
+		};
+
 		float4x4							transform;
 		HashTable<TextureHandle, uint64_t>	textures;
+		HashTable<GeometryHandle, uint64_t>	geometry;
 	};
 
 
@@ -110,8 +132,9 @@ namespace FlexKit
 
 
 	RmlRenderer::RmlRenderer(FlexKit::RenderSystem& IN_renderSystem) :
-		renderSystem	{ IN_renderSystem },
-		textures		{ IN_renderSystem.Memory	}
+		renderSystem	{ IN_renderSystem			},
+		textures		{ IN_renderSystem.Memory	},
+		geometry		{ IN_renderSystem.Memory	}
 	{
 		renderSystem.RegisterPSOLoader(RMLDrawPSO,
 			[&](FlexKit::RenderSystem* renderSystem, FlexKit::iAllocator& allocator) -> FlexKit::LoadPipelineStateRes
@@ -229,44 +252,84 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RmlRenderer::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rml::Vector2f translation, Rml::TextureHandle texture)
+	Rml::CompiledGeometryHandle	RmlRenderer::CompileGeometry(Rml::Span<const Rml::Vertex> vertices, Rml::Span<const int> indices)
 	{
-		/*
+		const uint32_t		vbSize = vertices.size() * sizeof(RMLVertex);
+		const uint32_t		ibSize = indices.size() * sizeof(uint32_t);
+
+		auto copyCtx		= renderSystem.GetImmediateCopyQueue();
+		auto vertexBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource(vbSize));
+		auto indexBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource(ibSize));
+
+		auto& ctx = renderSystem._GetCopyContext(copyCtx);
+
+		const auto vbReservation = ctx.Reserve(vbSize);
+		const auto ibReservation = ctx.Reserve(ibSize);
+
+		for(auto&& [idx, v] : enumerate(vertices))
+		{
+			RMLVertex vertex;
+			vertex.color[0] = v.colour.red;
+			vertex.color[1] = v.colour.green;
+			vertex.color[2] = v.colour.blue;
+			vertex.color[3] = v.colour.alpha;
+
+			vertex.point[0] = fp16_ieee_from_fp32_value(v.position.x);
+			vertex.point[1] = fp16_ieee_from_fp32_value(v.position.y);
+			vertex.UV[0]	= fp16_ieee_from_fp32_value(v.tex_coord.x);
+			vertex.UV[1]	= fp16_ieee_from_fp32_value(v.tex_coord.y);
+
+			memcpy(vbReservation.buffer + sizeof(RMLVertex) * idx, &vertex, sizeof(vertex));
+		}
+
+		memcpy(ibReservation.buffer, indices.data(), ibSize);
+
+		ctx.CopyBuffer(vertexBuffer,	0, vbReservation);
+		ctx.CopyBuffer(indexBuffer,		0, ibReservation);
+
+		GeometryHandle geometryEntry;
+		geometryEntry.indexBuffer	= indexBuffer;
+		geometryEntry.vertexBuffer	= vertexBuffer;
+		geometryEntry.indexCount	= indices.size();
+		geometryEntry.vertexCount	= vertices.size();
+
+		const uint64_t geometryHandle = xorshift64(randState);
+
+		geometry.insert(geometryHandle, geometryEntry);
+
+		return geometryHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RmlRenderer::ReleaseGeometry(Rml::CompiledGeometryHandle geometryHandle)
+	{
+		auto geometryEntry = geometry.find(geometryHandle);
+		if (!geometryEntry)
+			return;
+
+		renderSystem.ReleaseResource(geometryEntry->indexBuffer);
+		renderSystem.ReleaseResource(geometryEntry->vertexBuffer);
+
+		geometry.remove(geometryHandle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RmlRenderer::RenderGeometry(Rml::CompiledGeometryHandle geometryHandle, Rml::Vector2f translation, Rml::TextureHandle texture)
+	{
 		if (!ctx)
 			return;
 
+		auto geometryEntry = geometry.find(geometryHandle);
+		if (!geometryEntry)
+			return;
+
 		auto wh = renderSystem.GetTextureWH(renderTarget);
-
-
-		FlexKit::VBPushBuffer			vertexBuffer = pass->vertexBuffer(sizeof(RMLVertex) * num_vertices);
-		FlexKit::VertexBufferDataSet	gpuVertexBuffer{
-			FlexKit::SET_TRANSFORM_OP,
-			std::span(vertices, (size_t)num_vertices),
-			[&](const Rml::Vertex& v, FlexKit::VBPushBuffer& buffer)
-			{
-				RMLVertex vertex;
-				vertex.color[0] = v.colour.red;
-				vertex.color[1] = v.colour.green;
-				vertex.color[2] = v.colour.blue;
-				vertex.color[3] = v.colour.alpha;
-
-				vertex.point[0] = fp16_ieee_from_fp32_value(v.position.x);
-				vertex.point[1] = fp16_ieee_from_fp32_value(v.position.y);
-				vertex.UV[0]	= fp16_ieee_from_fp32_value(v.tex_coord.x);
-				vertex.UV[1]	= fp16_ieee_from_fp32_value(v.tex_coord.y);
-
-				buffer.Push(vertex);
-				return vertex;
-			},
-			vertexBuffer
-		};
-
-		FlexKit::VBPushBuffer indexBuffer = pass->vertexBuffer(sizeof(uint32_t) * num_indices);
-		FlexKit::VertexBufferDataSet gpuIndexBuffer{
-			indices,
-			sizeof(uint32_t) * num_indices,
-			indexBuffer
-		};
 
 		if (!texture)
 			ctx->SetGraphicsPipelineState(RMLDrawPSO, *allocator);
@@ -275,13 +338,19 @@ namespace FlexKit
 			ctx->SetGraphicsPipelineState(RMLDraw2PSO, *allocator);
 			ctx->SetGraphicsDescriptorTable(1u, *resource);
 		}
-		else return;
+		else
+			return;
 
 		ctx->SetRenderTargets({ pass->renderTarget }, false);
 		ctx->SetScissorAndViewports({ pass->renderTarget });
 
-		ctx->SetVertexBuffers({ gpuVertexBuffer });
-		ctx->SetIndexBuffer(gpuIndexBuffer);
+		D3D12_VERTEX_BUFFER_VIEW vbView;
+		vbView.BufferLocation	= ctx->renderSystem->GetDeviceResource(geometryEntry->vertexBuffer)->GetGPUVirtualAddress();
+		vbView.SizeInBytes		= geometryEntry->vertexCount * sizeof(RMLVertex);
+		vbView.StrideInBytes	= sizeof(RMLVertex);
+
+		ctx->SetVertexBuffers2({ &vbView, 1 });
+		ctx->SetIndexBuffer(geometryEntry->indexBuffer);
 
 		auto temp = transform;
 		temp(0, 3) = 0;
@@ -290,8 +359,7 @@ namespace FlexKit
 		ctx->SetGraphicsConstantValue(0, 16, &temp);
 		ctx->SetGraphicsConstantValue(0, 2, &wh, 16);
 		ctx->SetGraphicsConstantValue(0, 2, &translation, 18);
-		ctx->DrawIndexed(num_indices);
-		*/
+		ctx->DrawIndexed(geometryEntry->indexCount);
 	}
 
 
@@ -513,7 +581,7 @@ namespace FlexKit
 
 			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
-			uint64_t texture_handle = std::hash<uint64_t>{}(resource);
+			uint64_t texture_handle = xorshift64(randState);
 			textures.insert(texture_handle, { res.value(), resource });
 
 			return texture_handle;

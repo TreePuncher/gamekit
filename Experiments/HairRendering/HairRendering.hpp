@@ -141,8 +141,6 @@ public:
 
 	HairStyle						style;
 
-	FlexKit::ImGUIIntegrator		debugUI;
-
 	FlexKit::NodeHandle				cameraRig;
 	FlexKit::CameraHandle			camera;
 

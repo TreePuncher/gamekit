@@ -350,7 +350,6 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 	cameras						{ IN_framework.core.GetBlockMemory() },
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	depthBuffer					{ IN_framework.GetRenderSystem().CreateDepthBuffer({ 1920, 1080 }, true) },
-	debugUI						{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() },
 	UAVPool						{ IN_framework.GetRenderSystem(), 1024 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() },
 	RTPool						{ IN_framework.GetRenderSystem(), 1024 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::RenderTarget, IN_framework.core.GetBlockMemory() },
 	ui							{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory() }
@@ -567,7 +566,8 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	cameraUpdate.AddInput(transformUpdate);
 
-	debugUI.Update(*renderWindow, core, dispatcher, dT);
+	if(framework.debugUI)
+		framework.debugUI->Update(*renderWindow, core, dispatcher, dT);
 
 	counter++;
 
@@ -994,7 +994,8 @@ UpdateTask* HairRenderingTest::Draw(
 	}	break;
 	}
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+	if(framework.debugUI)
+		framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
 	RmlPassData passData{
 		.constantBuffer = reserveCB,
@@ -1074,7 +1075,7 @@ bool HairRenderingTest::EventHandler(Event evt)
 	else
 	{
 		ui.HandleEvent(evt);
-		return debugUI.HandleInput(evt);
+		return (framework.debugUI) ? framework.debugUI->HandleInput(evt) : false;
 	}
 }
 
