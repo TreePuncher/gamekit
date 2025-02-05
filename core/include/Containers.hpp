@@ -3099,6 +3099,7 @@ namespace FlexKit
 					values[idx].~TY_value();
 
 				keys[idx] = 0xffffffffffffffff;
+				used--;
 				return true;
 			}
 			else
@@ -3126,10 +3127,17 @@ namespace FlexKit
 				{
 					const auto key = keys[itr];
 
+					if (key == 0xffffffffffffffff)
+						continue;
+					
 					const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 							uint64_t idx	= hash % newSize;
 
+					while (newKeys[idx] != 0xffffffffffffffff)
+						idx++;
+
 					newKeys[idx] = key;
+
 					if (key != (TY_key)0xffffffffffffffff)
 					{
 						new(newValues + idx) TY_value{ std::move(values[itr]) };
