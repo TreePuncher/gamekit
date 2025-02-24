@@ -337,6 +337,13 @@ namespace FlexKit
     }
 
 
+    const ModifiableShape::wFace& ModifiableShape::ConstFaceIterator::Face() const noexcept
+    {
+        return shape->wFaces[Edge().face];
+
+    }
+
+
     /************************************************************************************************/
 
 
@@ -536,6 +543,15 @@ namespace FlexKit
     const ModifiableShape::wEdge& ModifiableShape::FaceIterator::Edge() const noexcept
     {
         return shape->wEdges[current];
+    }
+
+
+    /************************************************************************************************/
+
+
+    const ModifiableShape::wFace& ModifiableShape::FaceIterator::Face() const noexcept
+    {
+        return shape->wFaces[Edge().face];
     }
 
 
@@ -1399,7 +1415,8 @@ namespace FlexKit
     uint32_t RotateEdgeSelectorCCW(uint32_t edgeSelection, const ModifiableShape& shape)
     {
         edgeSelection = shape.wEdges[edgeSelection].twin;
-        edgeSelection = shape.wEdges[edgeSelection].next;
+        if(edgeSelection != -1u)
+            edgeSelection = shape.wEdges[edgeSelection].next;
 
         return edgeSelection;
     }

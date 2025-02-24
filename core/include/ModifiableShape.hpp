@@ -599,6 +599,8 @@ struct ModifiableShape
         bool            operator == (const ConstFaceIterator& rhs) const noexcept;
         const   wEdge*  operator -> () noexcept;
         const   wEdge&  Edge() const noexcept;
+        const   wFace&  Face() const noexcept;
+
 
         ConstFaceIterator   operator +  (int rhs) const noexcept;
         ConstFaceIterator&  operator += (int rhs) noexcept;
@@ -658,6 +660,7 @@ struct ModifiableShape
         FaceIterator&   operator -= (int rhs)       noexcept;
 
         const   wEdge& Edge() const noexcept;
+        const   wFace& Face() const noexcept;
 
 
         void Next() noexcept;

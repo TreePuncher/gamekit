@@ -3127,14 +3127,14 @@ namespace FlexKit
 				{
 					const auto key = keys[itr];
 
-					if (key == 0xffffffffffffffff)
+					if (key == (TY_key)0xffffffffffffffff)
 						continue;
 					
 					const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 							uint64_t idx	= hash % newSize;
 
-					while (newKeys[idx] != 0xffffffffffffffff)
-						idx++;
+					while (newKeys[idx] != (TY_key)0xffffffffffffffff)
+						idx = (idx + 1) % newSize;
 
 					newKeys[idx] = key;
 
