@@ -532,10 +532,12 @@ namespace FlexKit
 				{
 					target.reserve(target.size() + sizeof(source[0]) * source.size());
 
-					for(auto temp : source)
+					for(const auto& temp : source)
 					{
-						char byteBuffer[sizeof(temp)];
-						memcpy(byteBuffer, &temp, sizeof(temp));
+						constexpr size_t bufferSize = sizeof(temp);
+						char byteBuffer[bufferSize];
+						memcpy(byteBuffer, &temp, bufferSize);
+
 						for (auto byte : byteBuffer)
 							target.push_back(byte);
 					}

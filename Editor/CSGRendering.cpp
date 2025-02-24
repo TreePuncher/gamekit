@@ -5,8 +5,6 @@
 CSGRender::CSGRenderData& CSGRender::Render(
     FlexKit::UpdateDispatcher&              dispatcher,
     FlexKit::FrameGraph&                    frameGraph,
-    FlexKit::ReserveConstantBufferFunction& cb,
-    FlexKit::ReserveVertexBufferFunction&   vb,
     FlexKit::FrameResourceHandle            renderTarget,
     const double                            dt)
 {
@@ -28,13 +26,13 @@ CSGRender::CSGRenderData& CSGRender::Render(
         });
 
     return frameGraph.AddNode<CSGRenderData>(
-        CSGRenderData{ cb, vb },
+        CSGRenderData{},
         [&](FlexKit::FrameGraphNodeBuilder& builder, CSGRenderData& data)
         {
             builder.AddDataDependency(updateGeometryTask);
             builder.WriteTransition(renderTarget, FlexKit::DASRenderTarget);
         },
-        [&](CSGRenderData& data, FlexKit::ResourceHandler& resourceStates, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocal)
+        [&](CSGRenderData& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocal)
         {
             return;
             using FlexKit::float3;
@@ -51,7 +49,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
 
             std::vector<Vertex> v;
 
-            ctx.SetPipelineState(resourceStates.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, threadLocal));
+            ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, threadLocal));
 
             for (auto& csgObject : csg)
             {
@@ -62,7 +60,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
 
                     const auto vertices = CreateWireframeCube(radius);
 
-                    FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24);
+                    FlexKit::VBPushBuffer VBBuffer = resources.ReserveVB(sizeof(Vertex) * 24);
 
                     const FlexKit::VertexBufferDataSet vbDataSet{
                         vertices.data(),

@@ -23,10 +23,7 @@ namespace FlexKit
 	struct BeginResources
 	{
 		ResourceHandle					renderTarget;
-		ReserveConstantBufferFunction	constantBuffer;
-		ReserveVertexBufferFunction		vertexBuffer;
 	};
-
 
 
 	uint64_t xorshift64(uint64_t& state)
@@ -687,8 +684,6 @@ namespace FlexKit
 		auto& node = frameGraph.AddNode<BeginResources> (
 			BeginResources{
 				.renderTarget	= passData.renderTarget,
-				.constantBuffer	= passData.constantBuffer,
-				.vertexBuffer	= passData.vertexBuffer,
 			},
 			[&](FrameGraphNodeBuilder& builder, BeginResources& data)
 			{

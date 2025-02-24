@@ -592,10 +592,8 @@ namespace FlexKit
 	{
 		CameraHandle                    camera;
 		const GatherPassesTask&         pvs;
-		ReserveConstantBufferFunction   reserveCB;
 
 		FrameResourceHandle             feedbackBuffer;
-
 		FrameResourceHandle             feedbackDepth;
 		ReadBackResourceHandle          readbackBuffer;
 	};
@@ -616,8 +614,6 @@ namespace FlexKit
 		BrushConstants&					constants,
 		GatherPassesTask&				passes,
 		const ResourceAllocation&		animationResources,
-		ReserveConstantBufferFunction&	reserveCB,
-		ReserveVertexBufferFunction&	reserveVB,
 		double							dt,
 		iAllocator&						tempAllocator)
 	{
@@ -636,8 +632,6 @@ namespace FlexKit
 				constants,
 				passes,
 				animationResources,
-				reserveCB,
-				reserveVB,
 				tempAllocator);
 		}
 		else
@@ -653,8 +647,6 @@ namespace FlexKit
 					constants,
 					passes,
 					animationResources,
-					reserveCB,
-					reserveVB,
 					tempAllocator);
 			}
 			else if (updateReturned)
@@ -676,8 +668,6 @@ namespace FlexKit
 			BrushConstants&					brushConstants,
 			GatherPassesTask&				passes,
 			const ResourceAllocation&		animationResources,
-			ReserveConstantBufferFunction&	reserveCB,
-			ReserveVertexBufferFunction&	reserveVB,
 			iAllocator&						tempAllocator)
 	{
 		ProfileFunctionStrName("Feedback:Pass");
@@ -686,7 +676,6 @@ namespace FlexKit
 			TextureFeedbackPass_Data{
 				camera,
 				passes,
-				reserveCB,
 			},
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 			{
@@ -715,7 +704,6 @@ namespace FlexKit
 			.sharedData			= {
 				.camera			= camera,
 				.pvs			= passes,
-				.reserveCB		= reserveCB,
 			},
 			.getPVS				= getStaticPass,
 		};
@@ -725,7 +713,6 @@ namespace FlexKit
 			.sharedData			= {
 				.camera			= camera,
 				.pvs			= passes,
-				.reserveCB		= reserveCB,
 			},
 			.getPVS				= getAnimatedPass,
 		};
@@ -754,7 +741,7 @@ namespace FlexKit
 
 			const size_t bufferSize = AlignedSize<Camera::ConstantBuffer>();
 
-			CBPushBuffer passConstantBuffer{ data.reserveCB(bufferSize) };
+			CBPushBuffer passConstantBuffer{ resources.ReserveCB(bufferSize) };
 
 			auto camera					= CameraComponent::GetComponent().GetCamera(data.camera);
 			camera.FOV *= 1.2f;
@@ -910,7 +897,7 @@ namespace FlexKit
 			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 			const size_t bufferSize = AlignedSize<Camera::ConstantBuffer>();
 
-			CBPushBuffer passConstantBuffer		{ data.reserveCB(bufferSize) };
+			CBPushBuffer passConstantBuffer		{ resources.ReserveCB(bufferSize) };
 
 			auto camera					= CameraComponent::GetComponent().GetCamera(data.camera);
 			camera.FOV *= 1.2f;
@@ -1048,7 +1035,6 @@ namespace FlexKit
 			TextureFeedbackPass_Data{
 				.camera			= camera,
 				.pvs			= passes,
-				.reserveCB		= reserveCB,
 			},
 			[&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 			{

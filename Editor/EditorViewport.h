@@ -41,7 +41,7 @@ public:
 	virtual void wheelEvent			(QWheelEvent* event) {};
 
 	virtual void DrawImguI() {}
-	virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) {};
+	virtual void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) {};
 };
 
 using ViewportMode_ptr = std::shared_ptr<IEditorViewportMode>;
@@ -111,14 +111,13 @@ private:
 		const FlexKit::DrawList&			brushes;
 		FlexKit::GatherVisibleLightsTask&	lights;
 
-		TemporaryBuffers&				buffers;
 		FlexKit::ResourceHandle			renderTarget;
 		FlexKit::ThreadSafeAllocator&	allocator;
 	};
 
 	void DeleteSelectionItem();
 
-	void Render				(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
+	void Render				(FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator);
 	void DrawSceneOverlays	(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, DrawSceneOverlay_Desc& desc);
 
 	void enterEvent(QMouseEvent* event);

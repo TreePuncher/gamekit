@@ -11,8 +11,6 @@ namespace FlexKit
 	using AdditionalShadowMapPass =
 		TypeErasedCallable
 		<void (
-			ReserveConstantBufferFunction&	cbReserve,
-			ReserveVertexBufferFunction&	vbReserve,
 			ResourceHandle					renderTarget,
 			LightType						type,
 			FrameResources&					resources,
@@ -36,8 +34,6 @@ namespace FlexKit
 	{
 		const Vector<LightHandle>&			pointLightShadows;
 		ShadowMapPassData&					sharedData;
-		ReserveConstantBufferFunction		reserveCB;
-		ReserveVertexBufferFunction			reserveVB;
 
 		static_vector<AdditionalShadowMapPass>	additionalShadowPass;
 	};
@@ -93,8 +89,6 @@ namespace FlexKit
 								LightUpdate&							lightUpdate,
 								UpdateTask&								cameraUpdate,
 								GatherPassesTask&						passes,
-								ReserveConstantBufferFunction&			reserveCB,
-								ReserveVertexBufferFunction&			reserveVB,
 								std::span<AdditionalShadowMapPass>		additional,
 								const double							t,
 								MemoryPoolAllocator&					shadowMapPool,
@@ -118,8 +112,6 @@ namespace FlexKit
 
 		struct Common_Data
 		{
-			ReserveConstantBufferFunction			reserveCB;
-			ReserveVertexBufferFunction				reserveVB;
 			FrameResourceHandle						depthBuffer;
 			static_vector<AdditionalShadowMapPass>	additional;
 		};

@@ -268,10 +268,10 @@ EditorPrefabPreview::EditorPrefabPreview(EditorRenderer& IN_renderer, EditorSele
 
 #if LOCALPLAYER
 	renderWindow->SetOnDraw(
-		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 		{
 			if (isVisible())
-				RenderAnimated(dispatcher, frameGraph, dT, temporaries, renderTarget, allocator);
+				RenderAnimated(dispatcher, frameGraph, dT, renderTarget, allocator);
 		});
 #else
 	auto shared = renderer.GetSharedMemory();
@@ -477,15 +477,11 @@ void EditorPrefabPreview::RenderStatic(
 	FlexKit::FrameGraph&			frameGraph,
 	FlexKit::GameObject&			gameObject,
 	double							dT,
-	TemporaryBuffers&				temporaryBuffers,
 	FlexKit::ResourceHandle			renderTarget,
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
 	struct Pass
 	{
-		FlexKit::ReserveConstantBufferFunction  reserveCB;
-		FlexKit::ReserveVertexBufferFunction    reserveVB;
-
 		FlexKit::FrameResourceHandle renderTarget;
 		FlexKit::FrameResourceHandle depthTarget;
 		FlexKit::FrameResourceHandle poseBuffer;
@@ -503,10 +499,7 @@ void EditorPrefabPreview::RenderStatic(
 	renderer.worldRender.AddMemoryPools(frameGraph);
 
 	frameGraph.AddNode<Pass>(
-		Pass{
-			temporaryBuffers.ReserveConstantBuffer,
-			temporaryBuffers.ReserveVertexBuffer,
-		},
+		{},
 		[&](FlexKit::FrameGraphNodeBuilder& builder, Pass& data)
 		{
 			data.renderTarget	= builder.RenderTarget(renderTarget);
@@ -561,9 +554,9 @@ void EditorPrefabPreview::RenderStatic(
 			const size_t poseBufferSize =
 				AlignedSize<EntityPoses>();
 
-			auto passConstantBuffer		= data.reserveCB(passBufferSize);
-			auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
-			auto poseBuffer				= data.reserveCB(poseBufferSize);
+			auto passConstantBuffer		= frameResources.ReserveCB(passBufferSize);
+			auto entityConstantBuffer	= frameResources.ReserveCB(entityBufferSize);
+			auto poseBuffer				= frameResources.ReserveCB(poseBufferSize);
 
 			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer};
 			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ .LightCount = 1, .t = 1, .WH = WH }, passConstantBuffer };
@@ -669,7 +662,6 @@ void EditorPrefabPreview::RenderAnimated(
 	FlexKit::UpdateDispatcher&		dispatcher,
 	FlexKit::FrameGraph&			frameGraph,
 	double							dT,
-	TemporaryBuffers&				temporaryBuffers,
 	FlexKit::ResourceHandle			renderTarget,
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
@@ -691,7 +683,7 @@ void EditorPrefabPreview::RenderAnimated(
 
 		FlexKit::SetOrientation(object.gameObject, Quaternion{ 0, yaw * 360.0f, 0 });
 
-		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, temporaryBuffers, renderTarget, allocator);
+		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, renderTarget, allocator);
 			
 		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
 		{
@@ -720,8 +712,6 @@ void EditorPrefabPreview::RenderAnimated(
 			DrawShapes(
 				FlexKit::DRAW_LINE_PSO,
 				frameGraph,
-				temporaryBuffers.ReserveVertexBuffer,
-				temporaryBuffers.ReserveConstantBuffer,
 				renderTarget,
 				allocator,
 				FlexKit::LineShape{ lines });
@@ -734,7 +724,6 @@ void EditorPrefabPreview::RenderAnimated(
 			dispatcher,
 			frameGraph,
 			dT,
-			temporaryBuffers,
 			renderTarget,
 			allocator);
 
@@ -833,7 +822,7 @@ void EditorPrefabPreview::RenderAnimated(
 	ImGui::EndFrame();
 	ImGui::Render();
 
-	renderer.framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, temporaryBuffers.ReserveVertexBuffer, temporaryBuffers.ReserveConstantBuffer, renderTarget);
+	renderer.framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, renderTarget);
 	FlexKit::PresentBackBuffer(frameGraph, renderTarget);
 }
 
@@ -845,7 +834,6 @@ void EditorPrefabPreview::RenderOverlays(
 	FlexKit::UpdateDispatcher&		dispatcher,
 	FlexKit::FrameGraph&			frameGraph,
 	double							dT,
-	TemporaryBuffers&				temporaryBuffers,
 	FlexKit::ResourceHandle			renderTarget,
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
@@ -1008,8 +996,6 @@ void EditorPrefabPreview::RenderOverlays(
 	DrawShapes(
 		FlexKit::DRAW_LINE_PSO,
 		frameGraph,
-		temporaryBuffers.ReserveVertexBuffer,
-		temporaryBuffers.ReserveConstantBuffer,
 		renderTarget,
 		allocator,
 		FlexKit::LineShape{ lines });

@@ -37,11 +37,8 @@ namespace FlexKit
 
 	struct UpdateVoxelVolume
 	{
-		ReserveConstantBufferFunction   reserveCB;
-		CameraHandle                    camera;
-
+		CameraHandle		camera;
 		FrameResourceHandle octree;
-
 		FrameResourceHandle depthTarget;
 		FrameResourceHandle counters;
 		FrameResourceHandle indirectArgs;
@@ -54,8 +51,7 @@ namespace FlexKit
 
 	struct SVO_RayTrace
 	{
-		ReserveConstantBufferFunction   reserveCB;
-		CameraHandle                    camera;
+		CameraHandle		camera;
 
 		FrameResourceHandle depthTarget;
 		FrameResourceHandle renderTarget;
@@ -87,15 +83,13 @@ namespace FlexKit
 
 		struct VoxelizePass
 		{
-			GatherPassesTask&               passes;
-			ReserveConstantBufferFunction   reserveCB;
-
-			FrameResourceHandle             sampleBuffer;
-			FrameResourceHandle             argBuffer;
-			FrameResourceHandle             tempBuffer;
-			FrameResourceHandle             octree;
-			FrameResourceHandle             parentBuffer;
-			FrameResourceHandle             counters;
+			GatherPassesTask&   passes;
+			FrameResourceHandle sampleBuffer;
+			FrameResourceHandle argBuffer;
+			FrameResourceHandle tempBuffer;
+			FrameResourceHandle octree;
+			FrameResourceHandle parentBuffer;
+			FrameResourceHandle counters;
 		};
 
 
@@ -104,8 +98,7 @@ namespace FlexKit
 			Scene&                          scene,
 			ResourceHandle                  octreeBuffer,
 			uint3                           XYZ,
-			GatherPassesTask&               passes,
-			ReserveConstantBufferFunction   reserveCB);
+			GatherPassesTask&               passes);
 
 
 	private:
@@ -118,8 +111,6 @@ namespace FlexKit
 			const FrameResourceHandle   sampleBuffer;
 			const FrameResourceHandle   argBuffer;
 			const FrameResourceHandle   tempBuffer;
-
-			ReserveConstantBufferFunction&  reserveCB;
 		};
 
 
@@ -169,7 +160,6 @@ namespace FlexKit
 		StaticVoxelizer::VoxelizePass& VoxelizeScene(
 				FrameGraph&                     frameGraph,
 				Scene&                          scene,
-				ReserveConstantBufferFunction   reserveCB,
 				GatherPassesTask&               passes);
 
 		UpdateVoxelVolume&        UpdateVoxelVolumes(
@@ -177,7 +167,6 @@ namespace FlexKit
 				FrameGraph&                     frameGraph,
 				const CameraHandle              camera,
 				ResourceHandle                  depthTarget,
-				ReserveConstantBufferFunction   reserveCB,
 				iAllocator*                     allocator);
 
 		SVO_RayTrace&           RayTrace(
@@ -187,7 +176,6 @@ namespace FlexKit
 				ResourceHandle                  depthTarget,
 				FrameResourceHandle             renderTarget,
 				GBuffer&                        gbuffer,
-				ReserveConstantBufferFunction   reserveCB,
 				iAllocator*                     allocator,
 				uint32_t                        mipOffset = 0);
 

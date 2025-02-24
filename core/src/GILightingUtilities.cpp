@@ -15,14 +15,13 @@ namespace FlexKit
 		Null_Technqiue(RenderSystem& renderSystem, iAllocator& allocator) {}
 		~Null_Technqiue() override {}
 
-		void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB) {}
+		void Init(FrameGraph& frameGraph) {}
 
 
 		BuildSceneRes BuildScene(
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator) { return {nullptr}; }
 
 
@@ -36,7 +35,6 @@ namespace FlexKit
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
 			LightBufferUpdate&				lightBuffers,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator) {}
 	};
 
@@ -520,7 +518,7 @@ namespace FlexKit
 		}
 
 
-		void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB)
+		void Init(FrameGraph& frameGraph)
 		{
 			struct Resources
 			{
@@ -533,8 +531,8 @@ namespace FlexKit
 				{},
 				[&](FrameGraphNodeBuilder& builder, Resources& data)
 				{
-					data.rayGenTable = builder.CopyDest(rayGenTable);
-					data.missShaderTable = builder.CopyDest(missShaderTable);
+					data.rayGenTable		= builder.CopyDest(rayGenTable);
+					data.missShaderTable	= builder.CopyDest(missShaderTable);
 				},
 				[&](Resources& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 				{
@@ -568,7 +566,6 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator)
 		{
 			PassDrivenResourceAllocation allocation
@@ -649,12 +646,10 @@ namespace FlexKit
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
 			LightBufferUpdate&				lightBuffers,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator)
 		    {
 			struct raytrace_data
 			{
-				ReserveConstantBufferFunction	reserveCB;
 				FrameResourceHandle				tlAS;
 				FrameResourceHandle				scratchPad;
 				FrameResourceHandle				temporary;
@@ -676,7 +671,6 @@ namespace FlexKit
 			};
 			frameGraph.AddNode<raytrace_data>(
 				raytrace_data{
-					.reserveCB	= reserveCB,
 					.camera		= camera
 				},
 				[&](FrameGraphNodeBuilder& builder, raytrace_data& data)
@@ -818,7 +812,7 @@ namespace FlexKit
 
 
 					const uint32_t bufferSize = (uint32_t)FlexKit::AlignedSize<Camera::ConstantBuffer>();
-					auto constantBuffer = data.reserveCB(bufferSize);
+					auto constantBuffer = resources.ReserveCB(bufferSize);
 					ConstantBufferDataSet cameraConstants{ GetCameraConstants(data.camera), constantBuffer };
 
 					DescriptorHeap heap{};
@@ -843,26 +837,20 @@ namespace FlexKit
 					const DispatchDesc desc = {
 						.hitGroupTable =
 						{
-							.rangeStride = {
-								.StartAddress	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.shaderBindingTable, ctx, Sync_Copy, Sync_Raytracing)),
-								.SizeInBytes	= SBTbyteSize,
-								.StrideInBytes	= sizeof(ShaderTableEntry),
-							}
+							.address	= resources.GetDevicePointer(resources.NonPixelShaderResource(data.shaderBindingTable, ctx, Sync_Copy, Sync_Raytracing)),
+							.size		= SBTbyteSize,
+							.stride		= sizeof(ShaderTableEntry),
 						},
 						.missTable =
 						{
-							.rangeStride = {
-								.StartAddress	= resources.GetDevicePointer(missShaderTable),
-								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-								.StrideInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-							}
+							.address	= resources.GetDevicePointer(missShaderTable),
+							.size		= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
+							.stride		= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 						},
 						.rayGenerationRecord =
 						{
-							.range = {
-								.StartAddress	= resources.GetDevicePointer(rayGenTable),
-								.SizeInBytes	= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
-							}
+							.address	= resources.GetDevicePointer(rayGenTable),
+							.size		= D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
 						},
 					};
 
@@ -928,7 +916,7 @@ namespace FlexKit
 			lightingEngine{ renderSystem, allocator } {}
 
 
-		void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB)
+		void Init(FrameGraph& frameGraph)
 		{
 			lightingEngine.InitializeOctree(frameGraph);
 		}
@@ -937,13 +925,11 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator) final
 		{
 			lightingEngine.VoxelizeScene(
 				frameGraph,
 				scene,
-				reserveCB,
 				passes);
 
 			return { nullptr };
@@ -959,7 +945,6 @@ namespace FlexKit
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
 			LightBufferUpdate&				lightBuffers,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator) final
 		{
 			lightingEngine.RayTrace(
@@ -969,7 +954,6 @@ namespace FlexKit
 				depthTarget,
 				renderTarget,
 				gbuffer,
-				reserveCB,
 				allocator);
 		}
 
@@ -1031,10 +1015,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GlobalIlluminationEngine::Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB)
+	void GlobalIlluminationEngine::Init(FrameGraph& frameGraph)
 	{
 		if(technique)
-			technique->Init(frameGraph, reserveCB);
+			technique->Init(frameGraph);
 	}
 
 
@@ -1045,7 +1029,6 @@ namespace FlexKit
 		FrameGraph&						frameGraph,
 		Scene&							scene,
 		GatherPassesTask&				passes,
-		ReserveConstantBufferFunction	reserveCB,
 		iAllocator&						allocator)
 	{
 		if (technique)
@@ -1053,7 +1036,6 @@ namespace FlexKit
 				frameGraph,
 				scene,
 				passes,
-				reserveCB,
 				allocator);
 		else
 			return { nullptr };
@@ -1073,7 +1055,6 @@ namespace FlexKit
 		FrameResourceHandle				renderTarget,
 		GBuffer&						gbuffer,
 		LightBufferUpdate&				lightBuffers,
-		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
 		if (technique)
@@ -1087,7 +1068,6 @@ namespace FlexKit
 				renderTarget,
 				gbuffer,
 				lightBuffers,
-				reserveCB,
 				allocator);
 	}
 

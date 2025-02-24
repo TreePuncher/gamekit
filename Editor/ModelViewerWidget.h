@@ -19,7 +19,7 @@ public:
 	ModelViewerWidget(EditorRenderer& IN_renderer, QWidget* parent);
 	~ModelViewerWidget();
 
-    void OnDraw(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget);
+    void OnDraw(FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget);
 
 private:
 	Ui::ModelViewerWidget       ui;

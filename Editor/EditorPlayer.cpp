@@ -117,6 +117,8 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 	frameGraph.AddOutput(renderWindow->GetBackBuffer());
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	if (gameObject && !scene.sceneEntities.size())
 	{
@@ -140,8 +142,6 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 		.dt						= dT,
 		.t						= 0.0,
 		.gbuffer				= gbuffer,
-		.reserveVB				= FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
-		.reserveCB				= FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
 		.transformDependency	= transformUpdate,
 		.cameraDependency		= cameraUpdate
 	};

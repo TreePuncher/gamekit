@@ -698,7 +698,7 @@ namespace FlexKit
 		pendingGPUTasks.emplace_back(
 			[&](FrameGraph& frameGraph, auto& resources)
 			{
-				lightingEngine.Init(frameGraph, resources.reserveCB);
+				lightingEngine.Init(frameGraph);
 			});
 
 		readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
@@ -766,9 +766,6 @@ namespace FlexKit
 		updatedPoses.AddInput(skinnedObjects);
 		updatedPoses.AddInput(animationUpdate);
 
-		auto& reserveCB = drawSceneDesc.reserveCB;
-		auto& reserveVB = drawSceneDesc.reserveVB;
-
 		// Add Resources
 		frameGraph.AddMemoryPool(&UAVPool);
 		frameGraph.AddMemoryPool(&RTPool);
@@ -777,8 +774,6 @@ namespace FlexKit
 
 		PassData data = {
 			.passes		= passes,
-			.reserveCB	= reserveCB,
-			.reserveVB	= reserveVB
 		};
 
 		for (auto& task : pendingGPUTasks)
@@ -793,7 +788,6 @@ namespace FlexKit
 				frameGraph,
 				dispatcher,
 				passes,
-				drawSceneDesc.reserveCB,
 				temporary);
 
 		auto& animationResources =
@@ -801,7 +795,6 @@ namespace FlexKit
 				frameGraph,
 				dispatcher,
 				passes,
-				drawSceneDesc.reserveCB,
 				UAVPool,
 				temporary);
 
@@ -810,7 +803,6 @@ namespace FlexKit
 				dispatcher,
 				passes,
 				loadMorphs,
-				drawSceneDesc.reserveCB,
 				UAVPool,
 				temporary);
 
@@ -825,7 +817,6 @@ namespace FlexKit
 				staticConstants,
 				occlusionCulling ? passHistories.GetHistory(renderSystem, drawSceneDesc.camera) : nullptr,
 				animationResources,
-				reserveCB,
 				temporary);
 
 		if(occlusionCulling)
@@ -837,7 +828,6 @@ namespace FlexKit
 					staticConstants,
 					passes,
 					camera,
-					drawSceneDesc.reserveCB,
 					passHistories,
 					depthTarget.Get(),
 					temporary);
@@ -852,7 +842,6 @@ namespace FlexKit
 					staticConstants,
 					*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
 					animationResources,
-					reserveCB,
 					temporary);
 		}
 
@@ -861,8 +850,6 @@ namespace FlexKit
 			.dispatcher		= dispatcher,
 			.passes			= passes,
 			.gbuffer		= gbuffer,
-			.reserveCB		= reserveCB,
-			.reserveVB		= reserveVB,
 			.depthTarget	= depthTarget.Get(),
 			.activeCamera	= drawSceneDesc.camera
 		};
@@ -877,8 +864,6 @@ namespace FlexKit
 				lightUpdate,
 				drawSceneDesc.cameraDependency,
 				passes,
-				reserveCB,
-				reserveVB,
 				drawSceneDesc.additionalShadowPasses,
 				t,
 				RTPool,
@@ -892,7 +877,6 @@ namespace FlexKit
 				scene,
 				visableLights,
 				depthTarget.Get(),
-				reserveCB,
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
@@ -901,7 +885,6 @@ namespace FlexKit
 				frameGraph,
 				scene,
 				passes,
-				reserveCB,
 				temporary);
 
 		auto& shadingPass =
@@ -914,7 +897,6 @@ namespace FlexKit
 				depthTarget.Get(),
 				renderTarget,
 				lightPass,
-				reserveCB, reserveVB,
 				(float)t,
 				temporary);
 
@@ -928,7 +910,6 @@ namespace FlexKit
 				shadingPass.renderTargetObject,
 				gbuffer,
 				lightPass,
-				reserveCB,
 				temporary);
 
 		auto& OIT_pass =
@@ -938,7 +919,6 @@ namespace FlexKit
 				passes,
 				camera,
 				depthTarget.Get(),
-				reserveCB,
 				temporary);
 
 		auto& OIT_blend =
@@ -955,8 +935,6 @@ namespace FlexKit
 				frameGraph,
 				shadingPass.renderTargetObject,
 				renderTarget,
-				reserveCB,
-				reserveVB,
 				(float)drawSceneDesc.dt,
 				temporary);
 		/*
@@ -991,8 +969,6 @@ namespace FlexKit
 			.frameGraph		= frameGraph,
 			.dispatcher		= dispatcher,
 			.passes			= passes,
-			.reserveCB		= reserveCB,
-			.reserveVB		= reserveVB,
 			.renderTarget	= renderTarget,
 			.depthTarget	= depthTarget.Get(),
 			.activeCamera	= drawSceneDesc.camera
@@ -1020,19 +996,18 @@ namespace FlexKit
 		FrameGraph&						frameGraph,
 		UpdateDispatcher&				dispatcher,
 		GatherPassesTask&				passes,
-		ReserveConstantBufferFunction&	reserveConstants,
 		iAllocator&						allocator)
 	{
 		return frameGraph.BuildSharedConstants<BrushConstants>(
 			[&](FrameGraphNodeBuilder& builder) -> BrushConstants
 			{
 				builder.AddDataDependency(passes);
-				
+
 				return BrushConstants
 					{
 						.node				= builder.GetNodeHandle(),
 						.constants			= builder.CreateConstantBuffer(),
-						.getConstantBuffer	= CreateOnceReserveBuffer(reserveConstants, &allocator),
+						.getConstantBuffer	= CreateOnceReserveBuffer2(builder.GetResources(), allocator),
 						.passes				= passes,
 						.entityTable		= Vector<uint32_t>{ allocator },
 					};
@@ -1109,7 +1084,6 @@ namespace FlexKit
 		const CameraHandle				camera,
 		GatherPassesTask&				passes,
 		const ResourceHandle			depthBufferTarget,
-		ReserveConstantBufferFunction	reserveConsantBufferSpace,
 		iAllocator*						allocator)
 	{
 		const size_t MaxEntityDrawCount = 1000;
@@ -1120,8 +1094,8 @@ namespace FlexKit
 			{
 				const size_t localBufferSize = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
-				data.entityConstantsBuffer  = std::move(reserveConsantBufferSpace(sizeof(ForwardDrawConstants) * MaxEntityDrawCount));
-				data.passConstantsBuffer    = std::move(reserveConsantBufferSpace(2048));
+				data.entityConstantsBuffer  = builder.GetResources().ReserveCB(sizeof(ForwardDrawConstants) * MaxEntityDrawCount);
+				data.passConstantsBuffer    = builder.GetResources().ReserveCB(2048);
 				data.depthBufferObject      = builder.DepthTarget(depthBufferTarget);
 				data.depthPassTarget        = depthBufferTarget;
 
@@ -1198,8 +1172,6 @@ namespace FlexKit
 		const CameraHandle				camera,
 		const ResourceHandle			renderTarget,
 		const ResourceHandle			hdrMap,
-		ReserveConstantBufferFunction	reserveCB,
-		ReserveVertexBufferFunction		reserveVB,
 		iAllocator*						allocator)
 	{
 		FK_ASSERT(0);
@@ -1212,8 +1184,8 @@ namespace FlexKit
 				auto& renderSystem					= frameGraph.GetRenderSystem();
 
 				data.renderTargetObject				= builder.RenderTarget(renderTarget);
-				data.passConstants					= reserveCB(6 * KILOBYTE);
-				data.passVertices					= reserveVB(sizeof(float4) * 6);
+				data.passConstants					= builder.ReserveCB(6 * KILOBYTE);
+				data.passVertices					= builder.ReserveVB(sizeof(float4) * 6);
 				//data.diffuseMap                     = hdrMap;
 			},
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& tempAllocator)
@@ -1277,8 +1249,6 @@ namespace FlexKit
 		const ResourceHandle            renderTarget,
 		const ResourceHandle            depthTarget,
 		GBuffer&                        gbuffer,
-		ReserveConstantBufferFunction   reserveCB,
-		ReserveVertexBufferFunction     reserveVB,
 		float                           t,
 		iAllocator*                     allocator)
 	{
@@ -1297,8 +1267,8 @@ namespace FlexKit
 				data.MRIATargetObject           = builder.PixelShaderResource(gbuffer.MRIA);
 				data.depthBufferTargetObject    = builder.PixelShaderResource(depthTarget);
 
-				data.passConstants  = reserveCB(6 * KILOBYTE);
-				data.passVertices   = reserveVB(sizeof(float4) * 6);
+				data.passConstants				= builder.ReserveCB(6 * KILOBYTE);
+				data.passVertices				= builder.ReserveVB(sizeof(float4) * 6);
 			},
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
 			{
@@ -1366,16 +1336,10 @@ namespace FlexKit
 		const ResourceHandle            destination,
 		GBuffer&                        gbuffer,
 		const ResourceHandle            depthBuffer,
-		ReserveConstantBufferFunction   reserveCB,
-		ReserveVertexBufferFunction     reserveVB,
 		iAllocator*                     tempMemory)
 	{
 		auto& pass = frameGraph.AddNode<BilateralBlurPass>(
-			BilateralBlurPass
-			{
-				reserveCB,
-				reserveVB
-			},
+			BilateralBlurPass{},
 			[&](FrameGraphNodeBuilder& builder, BilateralBlurPass& data)
 			{
 				data.DestinationObject  = builder.RenderTarget(destination);
@@ -1387,13 +1351,13 @@ namespace FlexKit
 				data.NormalSource       = builder.PixelShaderResource(gbuffer.normal);
 				data.Source             = builder.PixelShaderResource(source);
 			},
-			[=](BilateralBlurPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
+			[=](BilateralBlurPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				auto& renderSystem	= frameResources.renderSystem();
-				const float2 WH		= frameResources.renderSystem().GetTextureWH(destination);
+				auto& renderSystem	= resources.renderSystem();
+				const float2 WH		= resources.renderSystem().GetTextureWH(destination);
 
-				auto constantBuffer = data.reserveCB(2048);
-				auto vertexBuffer   = data.reserveVB(2048);
+				auto constantBuffer = resources.ReserveCB(2048);
+				auto vertexBuffer   = resources.ReserveVB(2048);
 
 				struct
 				{
@@ -1418,17 +1382,17 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 5, &allocator);
 
-				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.Source));
-				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.NormalSource));
-				descHeap.SetSRV(ctx, 2, frameResources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
+				descHeap.SetSRV(ctx, 0, resources.GetResource(data.Source));
+				descHeap.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
+				descHeap.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 3);
 
-				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
-				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator));
+				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator));
 				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
 				ctx.SetScissorAndViewports({ destination });
-				ctx.SetRenderTargets({ frameResources.GetResource(data.TempObject1), frameResources.GetResource(data.TempObject2) }, false);
+				ctx.SetRenderTargets({ resources.GetResource(data.TempObject1), resources.GetResource(data.TempObject2) }, false);
 				ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, 6, vertexBuffer } });
 				ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, constantBuffer });
 
@@ -1437,14 +1401,14 @@ namespace FlexKit
 				DescriptorHeap descHeap2;
 				descHeap2.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 5, &allocator);
 
-				descHeap2.SetSRV(ctx, 0, frameResources.PixelShaderResource(data.TempObject1, ctx));
-				descHeap2.SetSRV(ctx, 1, frameResources.GetResource(data.NormalSource));
-				descHeap2.SetSRV(ctx, 2, frameResources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
-				descHeap2.SetSRV(ctx, 3, frameResources.PixelShaderResource(data.TempObject2, ctx));
+				descHeap2.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
+				descHeap2.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
+				descHeap2.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
+				descHeap2.SetSRV(ctx, 3, resources.PixelShaderResource(data.TempObject2, ctx));
 
-				ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL, allocator));
+				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSVERTICAL, allocator));
 				ctx.SetGraphicsDescriptorTable(5, descHeap2);
-				ctx.SetRenderTargets({ frameResources.GetResource(data.DestinationObject) }, false);
+				ctx.SetRenderTargets({ resources.GetResource(data.DestinationObject) }, false);
 				ctx.Draw(6);
 			});
 
@@ -1532,8 +1496,6 @@ namespace FlexKit
 				FrameGraph&                     frameGraph,
 				FrameResourceHandle             source,
 				ResourceHandle                  target,
-				ReserveConstantBufferFunction   reserveCB,
-				ReserveVertexBufferFunction     reserveVB,
 				float                           t,
 				iAllocator*                     allocator)
 	{

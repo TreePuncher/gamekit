@@ -19,9 +19,9 @@ ModelViewerWidget::ModelViewerWidget(EditorRenderer& IN_renderer, QWidget* paren
 	layout->addWidget(&renderWindow);
 
 	renderWindow.SetOnDraw(
-		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 		{
-			OnDraw(dispatcher, dT, temporaries, frameGraph, renderTarget);
+			OnDraw(dispatcher, dT, frameGraph, renderTarget);
 		});
 
 	renderWindow.SetOnResize(
@@ -46,7 +46,7 @@ ModelViewerWidget::~ModelViewerWidget()
 /************************************************************************************************/
 
 
-void ModelViewerWidget::OnDraw(FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
+void ModelViewerWidget::OnDraw(FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
 {
 	FlexKit::ClearGBuffer(frameGraph, gbuffer);
 	FlexKit::ClearBackBuffer(frameGraph, depthBuffer, { 0, 1, 0, 1 });

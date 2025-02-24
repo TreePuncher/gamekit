@@ -56,7 +56,7 @@ public:
 	void wheelEvent			(QWheelEvent* event) override;
 
 	void DrawImguI() override;
-	void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
+	void Draw(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) override;
 
 	FlexKit::ImGUIIntegrator&	hud;
 	ViewportMode_ptr			previous;
@@ -610,10 +610,10 @@ void EditorVewportPanMode::DrawImguI()
 }
 
 
-void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer)
+void EditorVewportPanMode::Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer)
 {
 	if (previous)
-		previous->Draw(dispatcher, frameGraph, temps, renderTarget, depthBuffer);
+		previous->Draw(dispatcher, frameGraph, renderTarget, depthBuffer);
 }
 
 
@@ -795,10 +795,10 @@ EditorViewport::EditorViewport(EditorRenderer& IN_renderer, SelectionContext& IN
 
 	renderWindow = renderer.CreateRenderWindow();
 	renderWindow->SetOnDraw(
-		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		[&](FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 		{
 			if(isVisible())
-				Render(dispatcher, dT, temporaries, frameGraph, renderTarget, allocator);
+				Render(dispatcher, dT, frameGraph, renderTarget, allocator);
 		});
 
 	layout->addWidget(renderWindow);
@@ -1374,7 +1374,7 @@ void EditorViewport::DeleteSelectionItem()
 /************************************************************************************************/
 
 
-void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, TemporaryBuffers& temporaries, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 {
 	const auto modifers = QApplication::queryKeyboardModifiers();
 	if(mode.size() && mode.back()->GetModeID() == VewportPanModeID && !modifers.testFlag(Qt::KeyboardModifier::AltModifier))
@@ -1434,8 +1434,6 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			.t		= T,
 
 			.gbuffer	= gbuffer,
-			.reserveVB	= temporaries.ReserveVertexBuffer,
-			.reserveCB	= temporaries.ReserveConstantBuffer,
 
 			.debugDisplay	= DebugVisMode::Disabled,
 			.BVHVisMode		= BVHVisMode::BoundingVolumes,
@@ -1450,8 +1448,6 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 
 		renderer.csgRender.Render(
 			dispatcher, frameGraph,
-			temporaries.ReserveConstantBuffer,
-			temporaries.ReserveVertexBuffer,
 			frameGraph.AddResource(targets.RenderTarget),
 			dT);
 
@@ -1461,7 +1457,6 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			.brushes		= drawSceneRes.passes.GetData().solid,
 			.lights			= drawSceneRes.pointLights,
 
-			.buffers		= temporaries,
 			.renderTarget	= renderTarget,
 			.allocator		= allocator
 		};
@@ -1469,7 +1464,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 		DrawSceneOverlays(dispatcher, frameGraph, desc);
 
 		if (mode.size())
-			mode.back()->Draw(dispatcher, frameGraph, temporaries, renderTarget, depthBuffer.Get());
+			mode.back()->Draw(dispatcher, frameGraph, renderTarget, depthBuffer.Get());
 
 		renderer.textureEngine.TextureFeedbackPass(
 			dispatcher,
@@ -1479,15 +1474,13 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Te
 			drawSceneRes.entityConstants,
 			drawSceneRes.passes,
 			drawSceneRes.animationResources,
-			temporaries.ReserveConstantBuffer,
-			temporaries.ReserveVertexBuffer,
 			dT,
 			allocator);
 	}
 	else
 		ClearBackBuffer(frameGraph, renderTarget, { 0.25f, 0.25f, 0.25f, 0 });
 
-	renderer.framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, temporaries.ReserveVertexBuffer, temporaries.ReserveConstantBuffer, renderTarget);
+	renderer.framework.DrawDebugUI(dT, dispatcher, frameGraph, renderTarget);
 	PresentBackBuffer(frameGraph, renderTarget);
 
 	T += dT;
@@ -1507,9 +1500,6 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 		const FlexKit::DrawList&                brushes;
 		const FlexKit::PointLightHandleList&    lights;
 
-		FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
-		FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
-
 		FlexKit::FrameResourceHandle    renderTarget;
 	};
 
@@ -1517,9 +1507,6 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 		DrawOverlay{
 			desc.brushes,
 			desc.lights.GetData().lights,
-
-			desc.buffers.ReserveVertexBuffer,
-			desc.buffers.ReserveConstantBuffer,
 		},
 		[&](FlexKit::FrameGraphNodeBuilder& builder, DrawOverlay& data)
 		{
@@ -1589,7 +1576,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 				FlexKit::float4x4_GPU x = FlexKit::float4x4::Identity();
 			} passConstantData;
 
-			auto constantBuffer = data.ReserveConstantBuffer(
+			auto constantBuffer = resources.ReserveCB(
 				FlexKit::AlignedSize<FlexKit::Camera::ConstantBuffer>() + 
 				FlexKit::AlignedSize<PassConstants>());
 			
@@ -1624,7 +1611,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					const float radius		= pointLightComponent[lightHandle].R;
 
 					const size_t divisions  = 64;
-					FlexKit::VBPushBuffer VBBuffer   = data.ReserveVertexBuffer(sizeof(Vertex) * 6 * divisions);
+					FlexKit::VBPushBuffer VBBuffer   = resources.ReserveVB(sizeof(Vertex) * 6 * divisions);
 
 					const float Step = 2.0f * (float)FlexKit::pi / divisions;
 					const auto range = FlexKit::MakeRange(0, divisions);
@@ -1664,7 +1651,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 						.transform	= FlexKit::TranslationMatrix(position)
 					};
 
-					auto constantBuffer = data.ReserveConstantBuffer(256);
+					auto constantBuffer = resources.ReserveCB(256);
 					FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
 					ctx.SetGraphicsConstantBufferView(2, constants);
@@ -1691,12 +1678,12 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					.transform	= FlexKit::float4x4::Identity()
 				};
 
-				auto constantBuffer = data.ReserveConstantBuffer(256);
+				auto constantBuffer = resources.ReserveCB(256);
 				FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
 				ctx.SetGraphicsConstantBufferView(2, constants);
 
-				FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(FlexKit::PhysicsLayer::DebugVertex) * layer.debugGeometry.size());
+				FlexKit::VBPushBuffer VBBuffer = resources.ReserveVB(sizeof(FlexKit::PhysicsLayer::DebugVertex) * layer.debugGeometry.size());
 				const FlexKit::VertexBufferDataSet vertexBuffer{ layer.debugGeometry, VBBuffer };
 
 				ctx.SetVertexBuffers({ vertexBuffer });
@@ -1714,7 +1701,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 					FlexKit::float2 UV;
 				};
 
-				FlexKit::VBPushBuffer VBBuffer = data.ReserveVertexBuffer(sizeof(Vertex) * 24 * selection.viewportObjects.size());
+				FlexKit::VBPushBuffer VBBuffer = resources.ReserveVB(sizeof(Vertex) * 24 * selection.viewportObjects.size());
 
 				for (auto& object : selection.viewportObjects)
 				{
@@ -1789,7 +1776,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 						.transform	= GetWT(node)
 					};
 
-					auto constantBuffer = data.ReserveConstantBuffer(256);
+					auto constantBuffer = resources.ReserveCB(256);
 					const FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
 					ctx.SetGraphicsConstantBufferView(2, constants);

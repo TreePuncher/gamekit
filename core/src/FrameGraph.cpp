@@ -209,6 +209,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void FrameGraph::AddConstantBuffer(ConstantBufferHandle constantBuffer)
+	{
+		resources.AddConstantBuffer(constantBuffer);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraph::AddVertexBuffer(VertexBufferHandle vertexBuffer)
+	{
+		resources.AddVertexBuffer(vertexBuffer);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void FrameGraph::AddTaskDependency(UpdateTask& task)
 	{
 		globalDependencies.push_back(&task);

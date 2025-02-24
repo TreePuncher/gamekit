@@ -37,7 +37,6 @@ namespace FlexKit
 				GatherPassesTask&				passes,
 				CameraHandle					camera,
 				ResourceHandle					depthTarget,
-				ReserveConstantBufferFunction	reserveCB,
 				iAllocator*						allocator);
 
 		OITBlend& OIT_WB_Blend(

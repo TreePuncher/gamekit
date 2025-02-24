@@ -380,9 +380,33 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 	cameraRig	= GetZeroedNode();
 	cameras.SetCameraNode(camera, GetZeroedNode());
 
+	constantBufferPool = framework.GetRenderSystem().CreateGPUResource(GPUResourceDesc::StructuredResource(MEGABYTE * 32));
+	const auto range = framework.GetRenderSystem().GetDeviceRange(constantBufferPool);
+
+	persistentConstants.Initialize(
+		constantBufferPool,
+		range.gpuBegin,
+		256,
+		framework.core.GetBlockMemory());
+
+	auto cbBlock	= persistentConstants.Alloc_ST(1, framework.GetRenderSystem().GetCurrentCounter());
+	auto copyHandle = framework.GetRenderSystem().GetImmediateCopyQueue();
+	auto& copyCtx	= framework.GetRenderSystem()._GetCopyContext(copyHandle);
+
+	struct TestData
+	{
+		uint32_t x;
+	} stuff;
+
+	if (cbBlock.has_value())
+	{
+		copyCtx.CopyBuffer(cbBlock.value(), &stuff, sizeof(stuff));
+		constants = cbBlock.value();
+	}
+
 	auto cameraNode = cameras.GetCamera(camera).Node;
-	FlexKit::SetParentNode(cameraRig, cameraNode);
-	FlexKit::TranslateWorld(cameraNode, float3(0, 0, 15));
+	SetParentNode(cameraRig, cameraNode);
+	TranslateWorld(cameraNode, float3(0, 0, 15));
 
 	if (const auto import = ImportCSV(R"(assets\hair.csv)", framework.core.GetTempMemory()); import)
 	{
@@ -407,9 +431,11 @@ HairRenderingTest::~HairRenderingTest()
 {
 	ReleaseStyle(style, framework.GetRenderSystem());
 
+
 	framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 	framework.GetRenderSystem().ReleaseResource(depthBuffer);
 	framework.GetRenderSystem().ReleaseCB(constantBuffer);
+	framework.GetRenderSystem().ReleaseResource(constantBufferPool);
 }
 
 
@@ -566,33 +592,32 @@ UpdateTask* HairRenderingTest::Update(FlexKit::EngineCore& core, FlexKit::Update
 
 	cameraUpdate.AddInput(transformUpdate);
 
-	if(framework.debugUI)
-		framework.debugUI->Update(*renderWindow, core, dispatcher, dT);
-
-	counter++;
-
-
-	ImGui::NewFrame();
-	ImGui::Begin("Hello");
-
-	auto str = fmt::format(
-		"FrameRate: {}hz\n"
-		"Update Time: {}ms\n",
-		fps, framework.stats.du_average);
-
-	ImGui::Text(str.c_str());
-
-	ImGui::End();
-	ImGui::EndFrame();
-	ImGui::Render();
-
-	T += dT;
-
-	if (T >= 1.0f)
+	if (framework.UpdateDebugUI(*renderWindow, core, dispatcher, dT))
 	{
-		T = 0;
-		fps = counter;
-		counter = 0;
+		counter++;
+
+		ImGui::NewFrame();
+		ImGui::Begin("Hello");
+
+		auto str = fmt::format(
+			"FrameRate: {}hz\n"
+			"Update Time: {}ms\n",
+			fps, framework.stats.du_average);
+
+		ImGui::Text(str.c_str());
+
+		ImGui::End();
+		ImGui::EndFrame();
+		ImGui::Render();
+
+		T += dT;
+
+		if (T >= 1.0f)
+		{
+			T = 0;
+			fps = counter;
+			counter = 0;
+		}
 	}
 
 	if(auto uiUpdate = ui.Update(core, dispatcher, dT); uiUpdate)
@@ -610,9 +635,7 @@ void HairRenderingTest::Simulate(
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
 	double									dT,
-	FlexKit::FrameGraph&					frameGraph,
-	FlexKit::ReserveVertexBufferFunction&	reserveVB,
-	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+	FlexKit::FrameGraph&					frameGraph)
 {
 	struct RenderStrands
 	{
@@ -620,16 +643,12 @@ void HairRenderingTest::Simulate(
 		FlexKit::FrameResourceHandle			destinationTarget;
 		FlexKit::FrameResourceHandle			strandBuffer;
 		FlexKit::FrameResourceHandle			styleBuffer;
-		FlexKit::ReserveVertexBufferFunction	reserveVB;
-		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
 	static double T = 0.0f;
 
 	auto& drawStrands = frameGraph.AddNode<RenderStrands>(
 		RenderStrands{
-			.reserveVB = reserveVB,
-			.reserveCB = reserveCB 
 		},
 		[&](FrameGraphNodeBuilder& builder, RenderStrands& data)
 		{
@@ -700,9 +719,7 @@ void HairRenderingTest::DrawStrands(
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
 	double									dT,
-	FlexKit::FrameGraph&					frameGraph,
-	FlexKit::ReserveVertexBufferFunction&	reserveVB,
-	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+	FlexKit::FrameGraph&					frameGraph)
 {
 	
 	struct RenderStrands
@@ -710,14 +727,10 @@ void HairRenderingTest::DrawStrands(
 		FlexKit::FrameResourceHandle			renderTarget;
 		FlexKit::FrameResourceHandle			strandBuffer;
 		FlexKit::FrameResourceHandle			depthBuffer;
-		FlexKit::ReserveVertexBufferFunction	reserveVB;
-		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
 	frameGraph.AddNode(
 		RenderStrands{
-			.reserveVB = reserveVB,
-			.reserveCB = reserveCB 
 		},
 		[&](FrameGraphNodeBuilder& builder, RenderStrands& data)
 		{
@@ -759,22 +772,17 @@ void HairRenderingTest::DrawStrandsOIT(
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
 	const double							dT,
-	FlexKit::FrameGraph&					frameGraph,
-	FlexKit::ReserveVertexBufferFunction&	reserveVB,
-	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+	FlexKit::FrameGraph&					frameGraph)
 {
 	
 	struct RenderStrands
 	{
-		FlexKit::FrameResourceHandle			b0Buffer;
-		FlexKit::FrameResourceHandle			momentBuffer;
-		FlexKit::FrameResourceHandle			accumBuffer;
+		FlexKit::FrameResourceHandle	b0Buffer;
+		FlexKit::FrameResourceHandle	momentBuffer;
+		FlexKit::FrameResourceHandle	accumBuffer;
 
-		FlexKit::FrameResourceHandle			renderTarget;
-		FlexKit::FrameResourceHandle			strandBuffer;
-
-		FlexKit::ReserveVertexBufferFunction	reserveVB;
-		FlexKit::ReserveConstantBufferFunction	reserveCB;
+		FlexKit::FrameResourceHandle	renderTarget;
+		FlexKit::FrameResourceHandle	strandBuffer;
 	};
 
 	struct MBOITSample
@@ -789,8 +797,6 @@ void HairRenderingTest::DrawStrandsOIT(
 
 	frameGraph.AddNode(
 		RenderStrands{
-			.reserveVB = reserveVB,
-			.reserveCB = reserveCB 
 		},
 		[&](FrameGraphNodeBuilder& builder, RenderStrands& data)
 		{
@@ -893,21 +899,16 @@ void HairRenderingTest::WorkGraph(
 	FlexKit::EngineCore&					core,
 	FlexKit::UpdateDispatcher&				dispatcher,
 	const double							dT,
-	FlexKit::FrameGraph&					frameGraph,
-	FlexKit::ReserveVertexBufferFunction&	reserveVB,
-	FlexKit::ReserveConstantBufferFunction&	reserveCB)
+	FlexKit::FrameGraph&					frameGraph)
 {
 	struct DataStruct
 	{
-		FlexKit::ReserveConstantBufferFunction	reserveCB;
-
 		FlexKit::FrameResourceHandle workGroupStorage;
 		FlexKit::FrameResourceHandle renderTarget;
 	};
 
 	frameGraph.AddNode(
 		DataStruct{
-			.reserveCB = reserveCB,
 		},
 		[&](FrameGraphNodeBuilder& builder, DataStruct& data)
 		{
@@ -919,7 +920,7 @@ void HairRenderingTest::WorkGraph(
 		},
 		[=, this](DataStruct& data, const ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
 		{
-			auto CBBuffer = data.reserveCB(1024);
+			auto CBBuffer = resources.ReserveCB(1024);
 			
 			struct TestData
 			{
@@ -932,7 +933,7 @@ void HairRenderingTest::WorkGraph(
 
 			D3D12_SET_PROGRAM_DESC programDesc;
 			programDesc.Type									= D3D12_PROGRAM_TYPE_WORK_GRAPH;
-			programDesc.WorkGraph.BackingMemory					= resources.GetDevicePointerRange(data.workGroupStorage);
+			programDesc.WorkGraph.BackingMemory					= DeviceAddressRangeToDX(resources.GetDevicePointerRange(data.workGroupStorage));
 			programDesc.WorkGraph.Flags							= D3D12_SET_WORK_GRAPH_FLAG_INITIALIZE;
 			programDesc.WorkGraph.ProgramIdentifier				= workGraphObjects.main;
 			programDesc.WorkGraph.NodeLocalRootArgumentsTable	= { 0 };
@@ -969,13 +970,11 @@ UpdateTask* HairRenderingTest::Draw(
 	frameGraph.AddMemoryPool(&UAVPool);
 	frameGraph.AddMemoryPool(&RTPool);
 	frameGraph.AddOutput(renderWindow->GetBackBuffer());
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0.0f, 0.0f, 0.0f, 0.0f });
-	ClearVertexBuffer(frameGraph, vertexBuffer);
 	ClearDepthBuffer(frameGraph, depthBuffer, 1.0f);
-
-	auto reserveVB = CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
-	auto reserveCB = CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
 
 	runOnceQueue.Process(dispatcher, frameGraph);
 
@@ -984,26 +983,23 @@ UpdateTask* HairRenderingTest::Draw(
 	case Mode::Default:
 	{
 		if (!pause)
-			Simulate(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+			Simulate(update, core, dispatcher, dT, frameGraph);
 
-		DrawStrands(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+		DrawStrands(update, core, dispatcher, dT, frameGraph);
 	}	break;
 	case Mode::WorkGraph:
 	{
-		WorkGraph(update, core, dispatcher, dT, frameGraph, reserveVB, reserveCB);
+		WorkGraph(update, core, dispatcher, dT, frameGraph);
 	}	break;
 	}
 
-	if(framework.debugUI)
-		framework.debugUI->DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
 
 	RmlPassData passData{
-		.constantBuffer = reserveCB,
-		.vertexBuffer	= reserveVB,
 		.renderTarget	= renderWindow->GetBackBuffer()
 	};
 
 	ui.Draw(update, core, passData, dT, frameGraph);
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 	PresentBackBuffer(frameGraph, *renderWindow);
 	return nullptr;
@@ -1016,8 +1012,6 @@ UpdateTask* HairRenderingTest::Draw(
 void HairRenderingTest::PostDrawUpdate(EngineCore& core, double dT)
 {
 	renderWindow->Present(core.vSync, 0);
-
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
 }
 
 

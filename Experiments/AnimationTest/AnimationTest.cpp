@@ -81,7 +81,6 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
-	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
 
 	inputMap		{ framework.core.GetBlockMemory() },
 
@@ -216,69 +215,70 @@ FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::U
 
 	cameras.MarkDirty(activeCamera);
 
-	debugUI.Update(*renderWindow, core, dispatcher, dT);
-
-	ImGui::NewFrame();
-	ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 600.0f, 0});
-	ImGui::SetNextWindowSize({ 600, 400 });
-
-	ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
-
-	const auto memoryStats = framework.core.GetBlockMemory().GetStats();
-
-	auto memoryInUse = (memoryStats.smallBlocksAllocated * 64 +
-		memoryStats.mediumBlocksAllocated * 2048 +
-		memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
-
-	auto [position, velocity, gravity, hangState, jumpSpeed, airMovementRatio, moveRate, climbDown] =
-		Apply(playerObject,
-			[&](CameraControllerView& cameraController,
-				PlayerView&				playerView){
-					return std::make_tuple(
-									cameraController->GetPosition(), cameraController->velocity, cameraController->gravity,
-									playerView->hangPossible, playerView->jumpSpeed, playerView->airMovementRatio, playerView->moveRate, playerView->climbDownPossible); },
-					[]{ return std::make_tuple(float3::Zero(), float3::Zero(), float3::Zero(), false, 0.0f, 0.0f, 0.0f, false);  });
-
-	auto str = fmt::format(
-		"Debug Stats\n"
-		"SmallBlocks: {} / {}\n"
-		"MediumBlocks: {} / {}\n"
-		"LargeBlocks: {} / {}\n"
-		"Memory in use: {}mb\n"
-		"Player Position: {}, {}, {}\n"
-		"Player Velocity: {}, {}, {}\n"
-		"Player Gravity: {}, {}, {}\n"
-		"{}"
-		"{}"
-		"Press M to toggle mouse look",
-		memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
-		memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
-		memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
-		memoryInUse,
-		position.x, position.y, position.z,
-		velocity.x, velocity.y, velocity.z,
-		gravity.x, gravity.y, gravity.z,
-		hangState ? "Hang Found!\n" : "No Hang\n",
-		climbDown ? "Climb Down Ledge Found!\n" : "");
-
-	ImGui::Text(str.c_str());
-	if (ImGui::SliderFloat("Jump height", &jumpSpeed, 10.0f, 50.0f))
-		Apply(playerObject, [&](PlayerView& playerView) { playerView->jumpSpeed = jumpSpeed; });
-
-	if (ImGui::SliderFloat("In Air speed ratio", &airMovementRatio, 0.0f, 1.0f) ||
-		ImGui::SliderFloat("MoveRate", &moveRate, 10, 100))
+	if(framework.UpdateDebugUI(*renderWindow, core, dispatcher, dT))
 	{
-		Apply(playerObject,
-			[&](CameraControllerView& cameraController)
-			{
-				cameraController->moveRate = moveRate;
-				cameraController->airMovementRatio = airMovementRatio;
-			});
-	}
+		ImGui::NewFrame();
+		ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 600.0f, 0});
+		ImGui::SetNextWindowSize({ 600, 400 });
 
-	ImGui::End();
-	ImGui::EndFrame();
-	ImGui::Render();
+		ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+		const auto memoryStats = framework.core.GetBlockMemory().GetStats();
+
+		auto memoryInUse = (memoryStats.smallBlocksAllocated * 64 +
+			memoryStats.mediumBlocksAllocated * 2048 +
+			memoryStats.largeBlocksAllocated * KILOBYTE * 128) / MEGABYTE;
+
+		auto [position, velocity, gravity, hangState, jumpSpeed, airMovementRatio, moveRate, climbDown] =
+			Apply(playerObject,
+				[&](CameraControllerView& cameraController,
+					PlayerView&				playerView){
+						return std::make_tuple(
+										cameraController->GetPosition(), cameraController->velocity, cameraController->gravity,
+										playerView->hangPossible, playerView->jumpSpeed, playerView->airMovementRatio, playerView->moveRate, playerView->climbDownPossible); },
+						[]{ return std::make_tuple(float3::Zero(), float3::Zero(), float3::Zero(), false, 0.0f, 0.0f, 0.0f, false);  });
+
+		auto str = fmt::format(
+			"Debug Stats\n"
+			"SmallBlocks: {} / {}\n"
+			"MediumBlocks: {} / {}\n"
+			"LargeBlocks: {} / {}\n"
+			"Memory in use: {}mb\n"
+			"Player Position: {}, {}, {}\n"
+			"Player Velocity: {}, {}, {}\n"
+			"Player Gravity: {}, {}, {}\n"
+			"{}"
+			"{}"
+			"Press M to toggle mouse look",
+			memoryStats.smallBlocksAllocated, memoryStats.totalSmallBlocks,
+			memoryStats.mediumBlocksAllocated, memoryStats.totalMediumBlocks,
+			memoryStats.largeBlocksAllocated, memoryStats.totalLargeBlocks,
+			memoryInUse,
+			position.x, position.y, position.z,
+			velocity.x, velocity.y, velocity.z,
+			gravity.x, gravity.y, gravity.z,
+			hangState ? "Hang Found!\n" : "No Hang\n",
+			climbDown ? "Climb Down Ledge Found!\n" : "");
+
+		ImGui::Text(str.c_str());
+		if (ImGui::SliderFloat("Jump height", &jumpSpeed, 10.0f, 50.0f))
+			Apply(playerObject, [&](PlayerView& playerView) { playerView->jumpSpeed = jumpSpeed; });
+
+		if (ImGui::SliderFloat("In Air speed ratio", &airMovementRatio, 0.0f, 1.0f) ||
+			ImGui::SliderFloat("MoveRate", &moveRate, 10, 100))
+		{
+			Apply(playerObject,
+				[&](CameraControllerView& cameraController)
+				{
+					cameraController->moveRate = moveRate;
+					cameraController->airMovementRatio = airMovementRatio;
+				});
+		}
+
+		ImGui::End();
+		ImGui::EndFrame();
+		ImGui::Render();
+	}
 
 	return &thirdPersonCameraUpdate;
 }
@@ -290,6 +290,8 @@ FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::U
 FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	frameGraph.AddOutput(renderWindow->GetBackBuffer());
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -297,8 +299,6 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 		.RenderTarget	= renderWindow->GetBackBuffer(),
 		.DepthTarget	= depthBuffer,
 	};
-	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
 	auto& physicsUpdate = physx.Update(dispatcher, dT);
 	physicsUpdate.AddInput(*update);
@@ -322,9 +322,6 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 
 		.gbuffer = gbuffer,
 
-		.reserveVB = reserveVB, 
-		.reserveCB = reserveCB, 
-
 		.transformDependency	= transformUpdate,
 		.cameraDependency		= cameraUpdate
 	};
@@ -338,10 +335,10 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 		core.GetTempMemoryMT()
 	);
 
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
-	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera, reserveVB, reserveCB);
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
+	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera);
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 	LineSegments segments{ core.GetTempMemory() };
 	auto constants = GetCameraConstants(activeCamera);
@@ -381,7 +378,7 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 	}
 	*/
 
-	DrawShapes(DRAW_LINE_PSO, frameGraph, reserveVB, reserveCB, targets.RenderTarget, core.GetTempMemoryMT(),
+	DrawShapes(DRAW_LINE_PSO, frameGraph, targets.RenderTarget, core.GetTempMemoryMT(),
 		LineShape{ segments });
 
 	FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
@@ -461,7 +458,7 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 				return true;
 			}
 			else
-				return debugUI.HandleInput(evt);
+				return framework.HandleDebugInput(evt);
 		}	break;
 		case Event::Mouse:
 		{
@@ -471,7 +468,7 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 	}
 
 	if(!renderWindow->mouseCapture)
-		return debugUI.HandleInput(evt);
+		return framework.HandleDebugInput(evt);
 	else
 		return false;
 }

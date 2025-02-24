@@ -35,7 +35,6 @@ public:
 	const FlexKit::RootSignature*	sortingRootSignature;
 
 	FlexKit::Win32RenderWindow*		renderWindow;
-	FlexKit::ImGUIIntegrator		debugUI;
 
 	FlexKit::ReadBackResourceHandle	readBackBuffer;
 	FlexKit::QueryHandle			timingQueries;

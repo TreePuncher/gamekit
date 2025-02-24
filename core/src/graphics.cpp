@@ -588,6 +588,9 @@ namespace FlexKit
 		const size_t UserIdx	= handles[Handle];
 		auto& buffer			= buffers[UserIdx];
 
+		if (buffer.offset == 0)
+			return; // unused
+
 		buffer.locks[buffer.currentRes] = renderSystem->GetCurrentCounter();
 		buffer.currentRes = (buffer.currentRes + 1) % 3;
 
@@ -3254,6 +3257,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetGraphicsConstantBufferView(size_t idx, DevicePointer devicePointer)
+	{
+		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, devicePointer);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
 	{
 		DeviceContext->SetGraphicsRootDescriptorTable(
@@ -3389,6 +3401,15 @@ namespace FlexKit
 #endif
 
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeConstantBufferView(size_t idx, DevicePointer pointer)
+	{
+		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, pointer);
 	}
 
 
@@ -4414,10 +4435,10 @@ namespace FlexKit
 		dispatchDesc.Height = WHD[1];
 		dispatchDesc.Depth  = WHD[2];
 
-		dispatchDesc.CallableShaderTable		= desc.callableShaderTable;
-		dispatchDesc.HitGroupTable				= desc.hitGroupTable;
-		dispatchDesc.MissShaderTable			= desc.missTable;
-		dispatchDesc.RayGenerationShaderRecord	= desc.rayGenerationRecord;
+		dispatchDesc.CallableShaderTable		= DeviceAddressRangeStrideToDX(desc.callableShaderTable);
+		dispatchDesc.HitGroupTable				= DeviceAddressRangeStrideToDX(desc.hitGroupTable);
+		dispatchDesc.MissShaderTable			= DeviceAddressRangeStrideToDX(desc.missTable);
+		dispatchDesc.RayGenerationShaderRecord	= DeviceAddressRangeToDX(desc.rayGenerationRecord);
 
 		DeviceContext->DispatchRays(&dispatchDesc);
 	}
@@ -5308,6 +5329,24 @@ namespace FlexKit
 		}
 
 		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CopyContext::CopyBuffer(GPURange destRange, void* source_ptr, uint64_t size)
+	{
+		auto uploadSize		= Min(destRange.size, size);
+		auto uploadSpace	= Reserve(uploadSize);
+		auto dest			= RenderSystem::globalInstance->GetDeviceResource(destRange.resource);
+
+		commandList->CopyBufferRegion(
+			dest,
+			destRange.offset,
+			uploadSpace.resource,
+			uploadSpace.offset,
+			uploadSize);
 	}
 
 
@@ -6480,6 +6519,19 @@ namespace FlexKit
 	void RenderSystem::MarkTextureUsed(ResourceHandle Handle)
 	{
 		Textures.MarkRTUsed(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const
+	{
+		auto deviceResource = GetDeviceResource(resource);
+		auto resourceSize	= GetResourceSize(resource);
+		auto gpuAddress		= deviceResource->GetGPUVirtualAddress();
+
+		return { gpuAddress, resourceSize };
 	}
 
 
@@ -7725,6 +7777,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void RenderSystem::ResetVertexBuffer(VertexBufferHandle constant)
+	{
+		VertexBuffers.Reset(constant);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void RenderSystem::ResetQuery(QueryHandle handle)
 	{
 		Queries.LockUntil(handle, directSubmissionCounter);
@@ -8589,6 +8650,10 @@ namespace FlexKit
 	void VertexBufferStateTable::Reset(VertexBufferHandle Handle)
 	{
 		auto& UserBuffer = UserBuffers[Handles[Handle]];
+
+		if (UserBuffer.Offset == 0)
+			return; // Unused
+
 		if(UserBuffer.WrittenTo)
 		{	// UnMap Current Buffer
 			auto  ResourceIdx = UserBuffer.GetCurrentBuffer();

@@ -48,7 +48,6 @@ GenerationTest::GenerationTest(FlexKit::GameFramework& IN_framework) :
 	vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
 	runOnceQueue	{ framework.core.GetBlockMemory() },
 	scene			{ framework.core.GetBlockMemory() },
-	debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
 
 	inputMap		{ framework.core.GetBlockMemory() }
 {
@@ -334,7 +333,7 @@ FlexKit::UpdateTask* GenerationTest::Update(FlexKit::EngineCore& core, FlexKit::
 
 	cameras.MarkDirty(activeCamera);
 
-	debugUI.Update(*renderWindow, core, dispatcher, dT);
+	framework.UpdateDebugUI(*renderWindow, core, dispatcher, dT);
 
 	ImGui::NewFrame();
 	ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 400.0f, 0});
@@ -386,8 +385,9 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 		.RenderTarget = renderWindow->GetBackBuffer(),
 		.DepthTarget = depthBuffer,
 	};
-	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
+
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	/*
 	auto& physicsUpdate = physx.Update(dispatcher, dT);
@@ -428,7 +428,7 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 	*/
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 	FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
 
@@ -483,7 +483,7 @@ bool GenerationTest::EventHandler(FlexKit::Event evt)
 		return true;
 	}
 	else
-		return debugUI.HandleInput(evt);
+		return framework.HandleDebugInput(evt);
 }
 
 

@@ -26,7 +26,6 @@ namespace FlexKit
 	class ThreadSafeAllocator;
 }
 
-struct TemporaryBuffers;
 struct PlayerContext;
 
 
@@ -81,7 +80,6 @@ public:
 		FlexKit::FrameGraph&			frameGraph,
 		FlexKit::GameObject&			gameObject,
 		double							dT,
-		TemporaryBuffers&				temporaryBuffers,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 
@@ -89,7 +87,6 @@ public:
 		FlexKit::UpdateDispatcher&		dispatcher,
 		FlexKit::FrameGraph&			frameGraph,
 		double							dT,
-		TemporaryBuffers&				temporaryBuffers,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 
@@ -97,7 +94,6 @@ public:
 		FlexKit::UpdateDispatcher&		dispatcher,
 		FlexKit::FrameGraph&			frameGraph,
 		double							dT,
-		TemporaryBuffers&				temporaryBuffers,
 		FlexKit::ResourceHandle			renderTarget,
 		FlexKit::ThreadSafeAllocator&	allocator);
 

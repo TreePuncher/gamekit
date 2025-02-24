@@ -72,7 +72,6 @@ namespace FlexKit
 		FrameGraph&						frameGraph,
 		UpdateDispatcher&				dispatcher,
 		GatherPassesTask&				passes,
-		ReserveConstantBufferFunction&	reserveConstants,
 		PoolAllocatorInterface&			pool,
 		iAllocator&						allocator)
 	{
@@ -90,7 +89,7 @@ namespace FlexKit
 
 						const size_t jointCount	= poseState->JointCount;
 						const size_t poseSize	= sizeof(float4x4_GPU) * jointCount;
-						float4x4_GPU* pose = (float4x4_GPU*)allocator.malloc(poseSize);
+						float4x4_GPU* pose		= (float4x4_GPU*)allocator.malloc(poseSize);
 
 						for (size_t I = 0; I < jointCount; I++)
 							pose[I] = poseState->CurrentPose[I] * skeleton->IPose[I];
@@ -160,7 +159,6 @@ namespace FlexKit
 			UpdateDispatcher&				dispatcher,
 			GatherPassesTask&				passes,
 			UpdateTask&						loadedMorphs,
-			ReserveConstantBufferFunction&	reserveConstants,
 			PoolAllocatorInterface&			pool,
 			iAllocator&						allocator)
 	{

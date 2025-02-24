@@ -324,8 +324,6 @@ namespace FlexKit
 								LightUpdate&							lightUpdate,
 								UpdateTask&								cameraUpdate,
 								GatherPassesTask&						passes,
-								ReserveConstantBufferFunction&			reserveCB,
-								ReserveVertexBufferFunction&			reserveVB,
 								std::span<AdditionalShadowMapPass>		additional,
 								const double							t,
 								MemoryPoolAllocator&					shadowMapPool,
@@ -430,9 +428,7 @@ namespace FlexKit
 
 		DataDrivenMultiPassDescription<Common_Data, PassData, VisibilityHandle> passDesc =
 		{
-			.sharedData = {
-				.reserveCB = reserveCB,
-				.reserveVB = reserveVB },
+			.sharedData = {},
 			.getPVS		= getPVS,
 			.getPasses	= getPasses,
 		};
@@ -525,7 +521,7 @@ namespace FlexKit
 			if (end == pvs.end())
 			{
 				for (auto& additionalDraws : common.additional)
-					additionalDraws(common.reserveCB, common.reserveVB, passTarget, light.type, resources, ctx, allocator);
+					additionalDraws(passTarget, light.type, resources, ctx, allocator);
 
 				switch (light.type)
 				{
@@ -715,7 +711,7 @@ namespace FlexKit
 			float4x4_GPU M[256];
 		};
 
-		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedDrawList.size());
+		CBPushBuffer animatedConstantBuffer = resources.ReserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedDrawList.size());
 		if(animatedDrawList.size())
 		{
 			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS, allocator);
@@ -904,7 +900,7 @@ namespace FlexKit
 			float4x4_GPU M[256];
 		};
 
-		CBPushBuffer animatedConstantBuffer = common.reserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
+		CBPushBuffer animatedConstantBuffer = resources.ReserveCB((AlignedSize<Brush::VConstantsLayout>() + AlignedSize<PoseConstants>()) * animatedBrushes.size());
 		if(animatedBrushes.size())
 		{
 			auto PSOAnimated = resources.GetPipelineState(SHADOWMAPANIMATEDPASS, allocator);

@@ -22,7 +22,7 @@ namespace FlexKit
         void Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT);
         bool HandleInput(FlexKit::Event evt);
 
-        void DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&, FlexKit::ReserveVertexBufferFunction, FlexKit::ReserveConstantBufferFunction, FlexKit::ResourceHandle renderTarget);
+        void DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&, FlexKit::ResourceHandle renderTarget);
 
     private:
         ResourceHandle imGuiFont;

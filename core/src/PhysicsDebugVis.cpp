@@ -125,21 +125,16 @@ namespace FlexKit
 		ResourceHandle							renderTarget,
 		ResourceHandle							depthTarget,
 		LayerHandle								layer,
-		CameraHandle							camera,
-		const ReserveVertexBufferFunction&		reserveVB,
-		const ReserveConstantBufferFunction&	reserveCB)
+		CameraHandle							camera)
 	{
 		return frameGraph.AddNode<PhysicsDebugOverlayPass>(
-			PhysicsDebugOverlayPass{
-				reserveVB,
-				reserveCB
-			},
+			{},
 			[&](FrameGraphNodeBuilder& builder, PhysicsDebugOverlayPass& data)
 			{
 				data.renderTarget	= builder.RenderTarget(renderTarget);
 				data.depthTarget	= builder.DepthTarget(depthTarget);
 			},
-			[layer, camera](PhysicsDebugOverlayPass& pass, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, [[maybe_unused]]auto& allocator)
+			[layer, camera](PhysicsDebugOverlayPass& pass, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, [[maybe_unused]]auto& allocator)
 			{
 				auto& layer_ref	= FlexKit::PhysXComponent::GetComponent().GetLayer_ref(layer);
 				auto& geometry	= layer_ref.debugGeometry;
@@ -148,8 +143,8 @@ namespace FlexKit
 				{
 					ctx.BeginEvent_DEBUG("Physics Debug Overlay");
 
-					auto VBuffer = pass.reserveVB(geometry.size() * sizeof(geometry[0]));
-					auto CBuffer = pass.reserveCB(sizeof(GetCameraConstants(camera)) + sizeof(Brush::VConstantsLayout));
+					auto VBuffer = resources.ReserveVB(geometry.size() * sizeof(geometry[0]));
+					auto CBuffer = resources.ReserveCB(sizeof(GetCameraConstants(camera)) + sizeof(Brush::VConstantsLayout));
 
 					struct Constants
 					{
@@ -164,17 +159,17 @@ namespace FlexKit
 					ConstantBufferDataSet	cameraConstants	{ GetCameraConstants(camera), CBuffer };
 					ConstantBufferDataSet	entityConstants	{ passConsants, CBuffer };
 
-					const auto rt	= frameResources.GetResource(pass.renderTarget);
-					static auto PSO = frameResources.GetPipelineState(Wireframe, allocator);
-					ctx.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
+					const auto rt	= resources.GetResource(pass.renderTarget);
+					static auto PSO = resources.GetPipelineState(Wireframe, allocator);
+					ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 					ctx.SetScissorAndViewports({ rt });
-					ctx.SetRenderTargets({ rt }, true, frameResources.GetResource(pass.depthTarget));
+					ctx.SetRenderTargets({ rt }, true, resources.GetResource(pass.depthTarget));
 					ctx.SetVertexBuffers({ vertices });
 					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 					ctx.SetGraphicsConstantBufferView(2, entityConstants);
 
 					// Draw triangles
-					ctx.SetPipelineState(frameResources.GetPipelineState(Solid, allocator));
+					ctx.SetPipelineState(resources.GetPipelineState(Solid, allocator));
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 					ctx.Draw(layer_ref.debugTriCount);
 

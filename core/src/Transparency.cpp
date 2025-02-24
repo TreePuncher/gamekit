@@ -10,8 +10,6 @@ namespace FlexKit
 
 	struct OITPass
 	{
-		ReserveConstantBufferFunction       reserveCB;
-
 		UpdateTaskTyped<GetDrawListTaskData>& drawList;
 
 		CameraHandle			camera;
@@ -278,13 +276,10 @@ namespace FlexKit
 		GatherPassesTask&				passes,
 		CameraHandle					camera,
 		ResourceHandle					depthTarget,
-		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
 		return frameGraph.AddNode<OITPass>(
 			OITPass{
-				reserveCB,
-
 				passes,
 				camera
 			},
@@ -350,7 +345,7 @@ namespace FlexKit
 				ctx.SetPipelineState(resources.GetPipelineState(OITDRAW, tempAllocator));
 
 				CBPushBuffer constantBuffer{
-					data.reserveCB(
+					resources.ReserveCB(
 						AlignedSize<Brush::VConstantsLayout>() * drawList.size() +
 						AlignedSize<Camera::ConstantBuffer>() )};
 

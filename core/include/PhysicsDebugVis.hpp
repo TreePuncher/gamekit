@@ -8,8 +8,6 @@ namespace FlexKit
 {
 	struct PhysicsDebugOverlayPass
 	{
-		ReserveVertexBufferFunction		reserveVB;
-		ReserveConstantBufferFunction	reserveCB;
 		FrameResourceHandle				renderTarget;
 		FrameResourceHandle				depthTarget;
 	};
@@ -21,9 +19,7 @@ namespace FlexKit
 		ResourceHandle						renderTarget,
 		ResourceHandle						depthTarget,
 		LayerHandle							layer,
-		CameraHandle						camera,
-		const ReserveVertexBufferFunction&,
-		const ReserveConstantBufferFunction&);
+		CameraHandle						camera);
 }
 
 

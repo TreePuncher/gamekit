@@ -33,7 +33,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
 	renderWindow = renderer.CreateRenderWindow();
 	renderWindow->SetOnDraw(
-		[&](FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers& temporary, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		[&](FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
 		{
 			FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
 
@@ -44,16 +44,11 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 			struct DrawTexture
 			{
 				FlexKit::FrameResourceHandle                renderTarget;
-				FlexKit::ReserveConstantBufferFunction      ReserveConstantBuffer;
-				FlexKit::ReserveVertexBufferFunction        ReserveVertexBuffer;
 			};
 
 
 			auto& draw = frameGraph.AddNode<DrawTexture>(
-				DrawTexture{
-					FlexKit::InvalidHandle,
-					temporary.ReserveConstantBuffer,
-					temporary.ReserveVertexBuffer },
+				DrawTexture{ FlexKit::InvalidHandle },
 				[&](FlexKit::FrameGraphNodeBuilder& Builder, DrawTexture& data)
 				{
 					data.renderTarget = Builder.RenderTarget(renderTarget);
@@ -94,10 +89,10 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 						FlexKit::float4 Specular;
 					} constants;
 
-					FlexKit::VBPushBuffer           vertexBuffer = data.ReserveVertexBuffer(1024);
+					FlexKit::VBPushBuffer           vertexBuffer = frameResources.ReserveVB(1024);
 					FlexKit::VertexBufferDataSet    vertexBufferSet{verticeData, sizeof(verticeData), vertexBuffer };
 
-					FlexKit::CBPushBuffer           constantBuffer = data.ReserveConstantBuffer(1024);
+					FlexKit::CBPushBuffer           constantBuffer = frameResources.ReserveCB(1024);
 					FlexKit::ConstantBufferDataSet  constantBufferSet{ constants, constantBuffer };
 
 					context.ClearRenderTarget(frameResources.GetResource(data.renderTarget));

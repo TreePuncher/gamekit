@@ -395,16 +395,45 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool GameFramework::HandleDebugInput(const Event& evt)
+	{
+		if (ImGuiAvailable())
+			return debugUI->HandleInput(evt);
+		else
+			return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool GameFramework::UpdateDebugUI(
+		IRenderWindow&		renderWindow,
+		EngineCore&			core,
+		UpdateDispatcher&	dispatcher,
+		double				dt)
+	{
+		if (ImGuiAvailable())
+		{
+			debugUI->Update(renderWindow, core, dispatcher, dt);
+			return true;
+		}
+		else
+			return false;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void GameFramework::DrawDebugUI(
 		double							dT,
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
-		ReserveVertexBufferFunction		reserveVB,
-		ReserveConstantBufferFunction	reserveCB,
 		ResourceHandle					renderTarget)
 	{
 		if(ImGuiAvailable())
-			debugUI->DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, core.activeWindow->GetBackBuffer());
+			debugUI->DrawImGui(dT, dispatcher, frameGraph, renderTarget);
 	}
 
 

@@ -140,7 +140,6 @@ namespace FlexKit
 		const GatherPassesTask&				passes;
 		const CameraHandle					camera;
 
-		ReserveConstantBufferFunction		reserveCB;
 		PassHistory*						history;
 
 		FrameResourceHandle entityConstants;
@@ -165,7 +164,6 @@ namespace FlexKit
 		FrameResourceHandle			shadowMatrices;
 
 		CameraHandle					camera;
-		ReserveConstantBufferFunction	reserveCB;
 		IndirectLayout&					indirectLayout;
 
 		const size_t counterOffset = 0;
@@ -217,7 +215,6 @@ namespace FlexKit
 
 	struct DEBUGVIS_DrawBVH
 	{
-		ReserveConstantBufferFunction   reserveCB;
 		LightBufferUpdate&              lightBufferUpdateData;
 
 		FrameResourceHandle	            lightBVH;
@@ -241,7 +238,6 @@ namespace FlexKit
 	{
 		BrushConstants&					entityConstants;
 		CameraHandle					camera;
-		ReserveConstantBufferFunction	reserveCB;
 		FrameResourceHandle				clustersObject;
 	};
 
@@ -254,8 +250,6 @@ namespace FlexKit
 		GatherPassesTask&				passes;
 		BrushConstants&					brushConstants;
 		PassHistory&					occlusionHistory;
-
-		ReserveConstantBufferFunction&	reserveCB;
 
 		FrameResourceHandle				occlussionResults;
 		FrameResourceHandle				depthBuffer;
@@ -337,8 +331,7 @@ namespace FlexKit
 								RenderSystem&					renderSystem,
 								uint2							WH,
 								CameraHandle					camera,
-								MemoryPoolAllocator&			UAVPool,
-								ReserveConstantBufferFunction&	reserveCB);
+								MemoryPoolAllocator&			UAVPool);
 
 
 		GBufferPass& FillGBuffer1(
@@ -351,7 +344,6 @@ namespace FlexKit
 								BrushConstants&					entityConstants,
 								PassHistory*					passHistory,
 								const ResourceAllocation&		animationResources,
-								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
 
 		
@@ -361,7 +353,6 @@ namespace FlexKit
 								BrushConstants&					brushConstants,
 								GatherPassesTask&				passes,
 								CameraHandle					camera,
-								ReserveConstantBufferFunction&	reserveConstants,
 								PassHistoryTable&				occlusionTable,
 								ResourceHandle					depthBuffer,
 								ThreadSafeAllocator&			temporary);
@@ -377,7 +368,6 @@ namespace FlexKit
 								BrushConstants&					entityConstants,
 								PassHistory&					passHistory,
 								const ResourceAllocation&		animationResources,
-								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
 
 
@@ -388,7 +378,6 @@ namespace FlexKit
 								ResourceHandle					renderTarget,
 								GatherPassesTask&				passes,
 								BrushConstants&					entityConstants,
-								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator);
 
 
@@ -399,7 +388,6 @@ namespace FlexKit
 								const Scene&					scene,
 								const GatherVisibleLightsTask&	visibleLights,
 								ResourceHandle					depthBuffer,
-								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						tempMemory,
 								bool							releaseTemporaries = true);
 
@@ -413,8 +401,6 @@ namespace FlexKit
 								ResourceHandle					depthTarget,
 								ResourceHandle					renderTarget,
 								LightBufferUpdate&				lightPass,
-								ReserveConstantBufferFunction	reserveCB,
-								ReserveVertexBufferFunction		reserveVB,
 								float							t,
 								iAllocator*						allocator);
 
@@ -425,7 +411,6 @@ namespace FlexKit
 								const CameraHandle				camera,
 								ResourceHandle					renderTarget,
 								LightBufferUpdate&				lightBufferUpdate,
-								ReserveConstantBufferFunction	reserveCB,
 								ClusterDebugDrawMode			mode,
 								iAllocator*						tempMemory);
 
@@ -436,8 +421,6 @@ namespace FlexKit
 								SceneBVH&						bvh,
 								CameraHandle					camera,
 								ResourceHandle					renderTarget,
-								ReserveConstantBufferFunction	reserveCB,
-								ReserveVertexBufferFunction		reserveVB,
 								BVHVisMode						mode,
 								iAllocator*						allocator);
 
