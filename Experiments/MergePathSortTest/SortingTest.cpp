@@ -23,7 +23,6 @@ SortTest::SortTest(FlexKit::GameFramework& IN_framework) :
 	runOnceQueue				{ IN_framework.core.GetBlockMemory() },
 	timingQueries				{ IN_framework.core.RenderSystem.CreateTimeStampQuery(512) },
 	readBackBuffer				{ IN_framework.core.RenderSystem.CreateReadBackBuffer(512) },
-	debugUI						{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
 	gpuAllocator				{ IN_framework.core.RenderSystem, 512 * MEGABYTE, 64 * KILOBYTE, FlexKit::DeviceHeapFlags::UAVBuffer, IN_framework.core.GetBlockMemory() }
 {
 	if (renderWindow = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); !renderWindow)
@@ -79,42 +78,45 @@ SortTest::~SortTest()
 FlexKit::UpdateTask* SortTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 	FlexKit::UpdateInput();
-	debugUI.Update(*renderWindow, core, dispatcher, dT);
-	ImGui::NewFrame();
-	ImGui::Begin("Hello");
-
-	double meanTime = 0.0f;
-	double graph_x[256];
-	double graph_y[256];
-	memset(graph_x, 0.0f, sizeof(graph_x));
-
-	for (size_t I = 0; I < samples.size(); I++)
+	if (framework.UpdateDebugUI(*renderWindow, core, dispatcher, dT))
 	{
-		meanTime += samples[I];
-		graph_y[I] = samples[I];
-		graph_x[I] = I * 4.0 / 144.0;
+
+		ImGui::NewFrame();
+		ImGui::Begin("Hello");
+
+		double meanTime = 0.0f;
+		double graph_x[256];
+		double graph_y[256];
+		memset(graph_x, 0.0f, sizeof(graph_x));
+
+		for (size_t I = 0; I < samples.size(); I++)
+		{
+			meanTime += samples[I];
+			graph_y[I] = samples[I];
+			graph_x[I] = I * 4.0 / 144.0;
+		}
+
+		meanTime /= samples.size();
+
+		auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime / 1000.0);
+		ImGui::Text(str.c_str());
+
+		if (ImPlot::BeginPlot("Timing History"))
+		{
+			ImPlot::PlotLine("", graph_x, graph_y, (int)samples.size());
+			ImPlot::EndPlot();
+		}
+
+		if (ImPlot::BeginPlot("Timing Histogram"))
+		{
+			ImPlot::PlotHistogram("", graph_y, (int)samples.size());
+			ImPlot::EndPlot();
+		}
+
+		ImGui::End();
+		ImGui::EndFrame();
+		ImGui::Render();
 	}
-
-	meanTime /= samples.size();
-
-	auto str = fmt::format("Mean Sort Time: {}ms\n", meanTime / 1000.0);
-	ImGui::Text(str.c_str());
-
-	if (ImPlot::BeginPlot("Timing History"))
-	{
-		ImPlot::PlotLine("", graph_x, graph_y, (int)samples.size());
-		ImPlot::EndPlot();
-	}
-
-	if (ImPlot::BeginPlot("Timing Histogram"))
-	{
-		ImPlot::PlotHistogram("", graph_y, (int)samples.size());
-		ImPlot::EndPlot();
-	}
-
-	ImGui::End();
-	ImGui::EndFrame();
-	ImGui::Render();
 
 	return nullptr;
 }
@@ -131,10 +133,10 @@ constexpr uint32_t bufferSize	= 1024 * blockCount;
 
 FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	FlexKit::ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0, 0, 0, 0 });
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
-	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
-	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, framework.GetRenderSystem(), framework.core.GetTempMemory());
+	FlexKit::ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0, 0, 0, 0 });
 
 	struct RenderStrands
 	{
@@ -142,7 +144,6 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 		FlexKit::FrameResourceHandle			destinationBuffer;
 		FlexKit::FrameResourceHandle			mergePathBuffer;
 		FlexKit::FrameResourceHandle			timingResults;
-		FlexKit::ReserveConstantBufferFunction	reserveCB;
 	};
 
 	frameGraph.AddMemoryPool(&gpuAllocator);
@@ -152,7 +153,6 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 	{
 		frameGraph.AddNode(
 			RenderStrands{
-				.reserveCB = reserveCB
 			},
 			[&](FlexKit::FrameGraphNodeBuilder& builder, RenderStrands& data)
 			{
@@ -251,7 +251,7 @@ FlexKit::UpdateTask* SortTest::Draw(FlexKit::UpdateTask* update, FlexKit::Engine
 			});
 	}
 
-	debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 	PresentBackBuffer(frameGraph, *renderWindow);
 
@@ -282,7 +282,7 @@ bool SortTest::EventHandler(FlexKit::Event evt)
 		return true;
 	}
 	else
-		return debugUI.HandleInput(evt);
+		return framework.HandleDebugInput(evt);
 }
 
 

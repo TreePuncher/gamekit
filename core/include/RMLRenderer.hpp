@@ -21,8 +21,6 @@ namespace FlexKit
 
 	struct RmlPassData
 	{
-		struct FlexKit::ReserveConstantBufferFunction&	constantBuffer;
-		struct FlexKit::ReserveVertexBufferFunction&	vertexBuffer;
 		FlexKit::ResourceHandle							renderTarget;
 	};
 

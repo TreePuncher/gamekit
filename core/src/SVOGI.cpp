@@ -261,7 +261,7 @@ namespace FlexKit
 
 		ctx.SetComputeDescriptorTable(4, resourceHeap);
 		const auto cameraConstantValues = GetCameraConstants(data.camera);
-		CBPushBuffer constantBuffer{ data.reserveCB(AlignedSize<Camera::ConstantBuffer>()) };
+		CBPushBuffer constantBuffer{ resources.ReserveCB(AlignedSize<Camera::ConstantBuffer>()) };
 		const ConstantBufferDataSet cameraConstants{ cameraConstantValues, constantBuffer };
 
 		ctx.SetComputeConstantBufferView(0, cameraConstants);
@@ -325,10 +325,9 @@ namespace FlexKit
 	StaticVoxelizer::VoxelizePass& GILightingEngine::VoxelizeScene(
 		FrameGraph&                     frameGraph,
 		Scene&                          scene,
-		ReserveConstantBufferFunction   reserveCB,
 		GatherPassesTask&               passes)
 	{
-		return staticVoxelizer.VoxelizeScene(frameGraph, scene, octreeBuffer, { 64, 64, 64 }, passes, reserveCB);
+		return staticVoxelizer.VoxelizeScene(frameGraph, scene, octreeBuffer, { 64, 64, 64 }, passes);
 	}
 
 
@@ -340,13 +339,10 @@ namespace FlexKit
 				FrameGraph&                     frameGraph,
 				const CameraHandle              camera,
 				ResourceHandle                  depthTarget,
-				ReserveConstantBufferFunction   reserveCB,
 				iAllocator*                     allocator)
 	{
 		return frameGraph.AddNode<UpdateVoxelVolume>(
-			UpdateVoxelVolume{
-				reserveCB, camera
-			},
+			UpdateVoxelVolume{ camera },
 			[&](FrameGraphNodeBuilder& builder, UpdateVoxelVolume& data)
 			{
 				data.octree             = builder.UnorderedAccess(octreeBuffer);
@@ -381,13 +377,12 @@ namespace FlexKit
 				ResourceHandle                  depthTarget, 
 				FrameResourceHandle             renderTarget,
 				GBuffer&                        gbuffer,
-				ReserveConstantBufferFunction   reserveCB,
 				iAllocator*                     allocator,
 				uint32_t                        mipOffset)
 	{
 		return frameGraph.AddNode<SVO_RayTrace>(
 			SVO_RayTrace{
-				reserveCB, camera
+				camera
 			},
 			[&](FrameGraphNodeBuilder& builder, SVO_RayTrace& data)
 			{
@@ -413,7 +408,7 @@ namespace FlexKit
 				};
 
 				CBPushBuffer constantBuffer = 
-					data.reserveCB(
+					resources.ReserveCB(
 						AlignedSize<Camera::ConstantBuffer>() +
 						AlignedSize<debugConstants>());
 
@@ -949,12 +944,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticVoxelizer::VoxelizePass& StaticVoxelizer::VoxelizeScene(FrameGraph& frameGraph, Scene& scene, ResourceHandle octreeBuffer, uint3 XYZ, GatherPassesTask& passes, ReserveConstantBufferFunction reserveCB)
+	StaticVoxelizer::VoxelizePass& StaticVoxelizer::VoxelizeScene(FrameGraph& frameGraph, Scene& scene, ResourceHandle octreeBuffer, uint3 XYZ, GatherPassesTask& passes)
 	{
 		return frameGraph.AddNode<VoxelizePass>(
 			VoxelizePass{
 				passes,
-				reserveCB
 			},
 			[&](FrameGraphNodeBuilder& builder, VoxelizePass& data)
 			{
@@ -977,7 +971,6 @@ namespace FlexKit
 					.sampleBuffer       = data.sampleBuffer,
 					.argBuffer          = data.argBuffer,
 					.tempBuffer         = data.tempBuffer,
-					.reserveCB          = data.reserveCB,
 				};
 
 				GatherSamples(
@@ -1027,7 +1020,7 @@ namespace FlexKit
 				});
 		}
 
-		CBPushBuffer constantBuffer{ resources.reserveCB(AlignedSize<float4x4>() * brushes.size()) };
+		CBPushBuffer constantBuffer{ resourcesHandler.ReserveCB(AlignedSize<float4x4>() * brushes.size()) };
 
 		ctx.BeginEvent_DEBUG("Voxel Pass");
 
@@ -1071,13 +1064,13 @@ namespace FlexKit
 				const float4x4  WT      = GetWT(brushComponent[brush].Node).Transpose();
 				const float4    albedo  = GetMaterialProperty<float4>(brushComponent[brush].material, GetCRCGUID(PBR_ALBEDO)).value_or(float4{ 1.0f, 0.0f, 1.0f, 0.0f });
 
-				struct sVoxelConstants
+				struct VoxelConstants
 				{
 					float4x4    WT;
 					float4      albedo;
 				};
 
-				const ConstantBufferDataSet entityConstants{ sVoxelConstants{ WT, albedo }, constantBuffer };
+				const ConstantBufferDataSet entityConstants{ VoxelConstants{ WT, albedo }, constantBuffer };
 
 				ctx.SetGraphicsConstantBufferView(1, entityConstants);
 

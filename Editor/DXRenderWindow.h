@@ -9,13 +9,8 @@
 class FlexKit::UpdateDispatcher;
 class FlexKit::FrameGraph;
 
-struct TemporaryBuffers
-{
-	FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
-	FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
-};
 
-using FNRender_t = std::function<void (FlexKit::UpdateDispatcher& Dispatcher, double dT, TemporaryBuffers&, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& threadSafeAllocator)>;
+using FNRender_t = std::function<void (FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& threadSafeAllocator)>;
 using FNResize_t = std::function<void (FlexKit::uint2 newSize)>;
 
 
@@ -29,7 +24,7 @@ public:
 
 	void Release();
 
-	void Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ThreadSafeAllocator& threadSafeAllocator);
+	void Draw(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& graph, FlexKit::ThreadSafeAllocator& threadSafeAllocator);
 	void Present();
 
 	bool isValid() { return renderWindow != nullptr; }

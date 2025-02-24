@@ -263,9 +263,8 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		.DepthTarget = depthBuffer,
 	};
 
-	ReserveConstantBufferFunction	reserveCB = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-	ReserveVertexBufferFunction		reserveVB = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
-
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	static double T = 0.0;
 	T += dT;
@@ -282,9 +281,6 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 		.t		= T,
 
 		.gbuffer = gbuffer,
-
-		.reserveVB = reserveVB,
-		.reserveCB = reserveCB,
 
 		.transformDependency	= transformUpdate,
 		.cameraDependency		= cameraUpdate,
@@ -315,14 +311,14 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	);
 
 
-	framework.DrawDebugUI(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 	PresentBackBuffer(frameGraph, *renderWindow);
 
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetTempMemoryMT());
 
 	if (streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 
 	return nullptr;
 }

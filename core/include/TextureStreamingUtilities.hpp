@@ -414,8 +414,6 @@ namespace FlexKit
 			BrushConstants&					constants,
 			GatherPassesTask&				passes,
 			const ResourceAllocation&		animationResources,
-			ReserveConstantBufferFunction&	reserveCB,
-			ReserveVertexBufferFunction&	reserveVB,
 			double							dt,
 			iAllocator&						tempAllocator);
 
@@ -428,8 +426,6 @@ namespace FlexKit
 			BrushConstants&					constants,
 			GatherPassesTask&				passes,
 			const ResourceAllocation&		animationResources,
-			ReserveConstantBufferFunction&	reserveCB,
-			ReserveVertexBufferFunction&	reserveVB,
 			iAllocator&						tempAllocator);
 
 

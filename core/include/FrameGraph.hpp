@@ -285,27 +285,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI class FrameResources
+	class FrameResources
 	{
 	public:
-		FrameResources(RenderSystem& IN_renderSystem, iAllocator* IN_allocator) : 
-			allocator			{ IN_allocator		},
-			memoryPools			{ IN_allocator		},
-			outputObjects		{ IN_allocator		},
-			renderSystem		{ IN_renderSystem	},
-			objects				{ IN_allocator		},
-			virtualResources	{ IN_allocator		} {}
+		FrameResources(RenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
+			allocator				{ IN_allocator },
+			memoryPools				{ IN_allocator },
+			outputObjects			{ IN_allocator },
+			renderSystem			{ IN_renderSystem },
+			objects					{ IN_allocator },
+			virtualResources		{ IN_allocator },
+			cbAllocators			{ IN_allocator },
+			vbAllocators			{ IN_allocator } {
+		}
 
 		PassObjectList					objects;
 		Vector<FrameResourceHandle>		outputObjects;
 		TemporaryPassObjectList			virtualResources;
 		Vector<PoolAllocatorInterface*>	memoryPools;
+
+		Vector<ReserveConstantBufferFunction>	cbAllocators;
+		Vector<ReserveVertexBufferFunction>		vbAllocators;
+
 		std::mutex						m;
 
 		RenderSystem&	renderSystem;
 		iAllocator*		allocator;
 
-		uint32_t virtualResourceCount = 0;
+		uint32_t		virtualResourceCount = 0;
 
 		/************************************************************************************************/
 
@@ -331,6 +338,26 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		void AddConstantBuffer(ConstantBufferHandle constantBuffer)
+		{
+			renderSystem.ResetConstantBuffer(constantBuffer);
+			cbAllocators.emplace_back(CreateConstantBufferReserveObject(constantBuffer, renderSystem, allocator));
+		}
+
+
+		/************************************************************************************************/
+
+
+		void AddVertexBuffer(VertexBufferHandle vertexBuffer)
+		{
+			renderSystem.ResetVertexBuffer(vertexBuffer);
+			vbAllocators.emplace_back(CreateVertexBufferReserveObject(vertexBuffer, renderSystem, allocator));
+		}
+
+
+		/************************************************************************************************/
+
+
 		void AddRenderTarget(ResourceHandle handle, DeviceLayout layout = DeviceLayout_Common)
 		{
 			objects.push_back(
@@ -347,7 +374,7 @@ namespace FlexKit
 		FrameResourceHandle AddConstantBuffer()
 		{
 			auto handle = FrameResourceHandle{ (uint32_t)objects.size() };
-			objects.push_back(FrameObject::ConstantBufferObject(handle, * allocator));
+			objects.push_back(FrameObject::ConstantBufferObject(handle, *allocator));
 
 			return handle;
 		}
@@ -359,7 +386,7 @@ namespace FlexKit
 		FrameResourceHandle AddReadBackBuffer(ReadBackResourceHandle)
 		{
 			auto handle = FrameResourceHandle{ (uint32_t)objects.size() };
-			objects.push_back(FrameObject::ConstantBufferObject(handle, * allocator));
+			objects.push_back(FrameObject::ConstantBufferObject(handle, *allocator));
 
 			MarkResourceObjectAsOutput(handle);
 
@@ -409,8 +436,8 @@ namespace FlexKit
 
 		FrameResourceHandle AddResource(ResourceHandle handle)
 		{
-			const DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
-			const TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout = renderSystem.GetObjectLayout(handle);
+			const TextureDimension	dimensions = renderSystem.GetTextureDimension(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
@@ -418,8 +445,8 @@ namespace FlexKit
 			{
 				const auto resourceHandle =
 					FrameResourceHandle{
-						objects.push_back(FrameObject::TextureObject(handle, layout, dimensions, *allocator))};
-				
+						objects.push_back(FrameObject::TextureObject(handle, layout, dimensions, *allocator)) };
+
 				objects[resourceHandle].handle = resourceHandle;
 
 				return resourceHandle;
@@ -434,8 +461,8 @@ namespace FlexKit
 		{
 			std::scoped_lock lock{};
 
-			const DeviceLayout		layout		= renderSystem.GetObjectLayout(handle);
-			const TextureDimension	dimensions	= renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout = renderSystem.GetObjectLayout(handle);
+			const TextureDimension	dimensions = renderSystem.GetTextureDimension(handle);
 
 			const auto resourceHandle =
 				FrameResourceHandle{
@@ -553,9 +580,9 @@ namespace FlexKit
 				[&](const FrameObject& LHS)
 				{
 					auto CorrectType = (
-						LHS.type == OT_Resource	||
-						LHS.type == OT_RenderTarget		||
-						LHS.type == OT_DepthBuffer      ||
+						LHS.type == OT_Resource ||
+						LHS.type == OT_RenderTarget ||
+						LHS.type == OT_DepthBuffer ||
 						LHS.type == OT_BackBuffer);
 
 					return (CorrectType && LHS.shaderResource == Handle);
@@ -661,6 +688,7 @@ namespace FlexKit
 			return *renderSystem;
 		}
 
+
 		uint2 GetTextureWH(FrameResourceHandle handle) const
 		{
 			if (auto res = GetResource(handle); res != InvalidHandle)
@@ -668,9 +696,29 @@ namespace FlexKit
 			else
 				return { 0, 0 };
 		}
+
+
+		CBPushBuffer ReserveCB(const size_t size)
+		{
+			for (auto& allocator : cbAllocators)
+				return (allocator)(size);
+
+			FK_LOG_ERROR("ReserveCB Failed, no buffers added!");
+			return {};
+		}
+
+
+		VBPushBuffer ReserveVB(const size_t size)
+		{
+			for (auto& allocator : vbAllocators)
+				return (allocator)(size);
+
+			FK_LOG_ERROR("ReserveVB Failed, no buffers added!");
+			return {};
+		}
+
+
 	};/************************************************************************************************/
-
-
 
 
 	FLEXKITAPI class ResourceHandler
@@ -694,15 +742,21 @@ namespace FlexKit
 				auto	device_ptr	= GetDeviceResource(handle);
 				size_t	size		= globalResources.renderSystem.GetResourceSize(GetResource(handle));
 
-				return { .range{ device_ptr->GetGPUVirtualAddress(), size }};
+				return DeviceAddressRange{
+					.address	= device_ptr->GetGPUVirtualAddress(),
+					.size		= size};
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(ResourceHandle handle) const
 		{
-			auto device_ptr = GetDeviceResource(handle);
-			globalResources.renderSystem.GetResourceSize(handle);
+			auto deviceResource = GetDeviceResource(handle);
+			auto size			= globalResources.renderSystem.GetResourceSize(handle);
+			auto devicePtr		= deviceResource->GetGPUVirtualAddress();
 
-			return { };
+			return {
+				.address	= devicePtr,
+				.size		= size
+			};
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(const ConstantBufferDataSet& dataSet) const
@@ -711,7 +765,10 @@ namespace FlexKit
 			D3D12_GPU_VIRTUAL_ADDRESS ptr = resource->GetGPUVirtualAddress();
 
 			ptr += dataSet.Offset();
-			return { { ptr, dataSet.Size() }};
+			return DeviceAddressRange{
+				.address	= ptr,
+				.size		= dataSet.Size()
+			};
 		}
 
 
@@ -985,6 +1042,18 @@ namespace FlexKit
 				renderSystem().SetDebugName(handle, debugName);
 		}
 
+
+		auto ReserveCB(const size_t size) const
+		{
+			return globalResources.ReserveCB(size);
+		}
+
+
+		auto ReserveVB(const size_t size) const
+		{
+			return globalResources.ReserveVB(size);
+		}
+
 		private:
 
 		LocallyTrackedResource& _FindSubNodeResource(FrameResourceHandle handle) const
@@ -1097,7 +1166,7 @@ namespace FlexKit
 
 	};
 
-	FLEXKITAPI class FrameGraphNode
+	class FrameGraphNode
 	{
 	public:
 		typedef void (*FN_NodeGetWorkItems)	(FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& OUT_workItem, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator);
@@ -1152,7 +1221,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI class FrameGraphResourceContext
+	class FrameGraphResourceContext
 	{
 	public:
 		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, RenderSystem& IN_renderSystem, iAllocator& Temp) :
@@ -1340,7 +1409,7 @@ namespace FlexKit
 	DeviceLayout	GuessLayoutFromAccess(DeviceAccessState access);
 	uint32_t		GetNeededFlags(const GPUResourceDesc& desc);
 
-	FLEXKITAPI class FrameGraphNodeBuilder
+	class FrameGraphNodeBuilder
 	{
 	public:
 		FrameGraphNodeBuilder(
@@ -1408,11 +1477,15 @@ namespace FlexKit
 
 		FrameResourceHandle	ReadBack(ReadBackResourceHandle);
 
+		auto ReserveCB(const size_t size) { return GetResources().ReserveCB(size); }
+		auto ReserveVB(const size_t size) { return GetResources().ReserveVB(size); }
+
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
-		RenderSystem& GetRenderSystem();
+		RenderSystem&	GetRenderSystem();
+		FrameResources& GetResources() { return *resources; }
 
 		operator FrameResources&	() const;
 		operator RenderSystem&		();
@@ -1633,7 +1706,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI class FrameGraph
+	class FrameGraph
 	{
 	public:
 		FrameGraph(RenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
@@ -2368,6 +2441,8 @@ namespace FlexKit
 
 		void AddMemoryPool		(PoolAllocatorInterface& poolAllocator);
 		void AddMemoryPool		(PoolAllocatorInterface* poolAllocator);
+		void AddConstantBuffer	(ConstantBufferHandle);
+		void AddVertexBuffer	(VertexBufferHandle);
 		void AddTaskDependency	(UpdateTask& task);
 
 		FrameResourceHandle		AddResource	(ResourceHandle resource);
@@ -2563,6 +2638,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	[[nodiscard]]
+	inline auto CreateOnceReserveBuffer2(FrameResources& resources, iAllocator& allocator)
+	{
+		return MakeLazyObject<CBPushBuffer>(
+			allocator,
+			[&resources](size_t size) mutable
+			{
+				return resources.ReserveCB(size);
+			});
+	}
+
+
+	using CreateOnceReserveBufferFunction2 = decltype(CreateOnceReserveBuffer2(std::declval<FrameResources&>(), std::declval<iAllocator&>()));
+
+
+	/************************************************************************************************/
+
+
 	struct ShapeVert {
 		float2 POS;
 		float2 UV;
@@ -2614,8 +2707,6 @@ namespace FlexKit
 
 		virtual void AddShapeDraw(
 			ShapeList&				        DrawList,
-			ReserveVertexBufferFunction&    reserveCB,
-			ReserveConstantBufferFunction&  reserveVB,
 			FrameResources&			        Resources) = 0;
 	};
 
@@ -2626,8 +2717,8 @@ namespace FlexKit
 	class ShapeDrawList final : public ShapeProtoType
 	{
 	public:
-		ShapeDrawList(iAllocator* Memory = SystemAllocator) :
-			shapes{ Memory } {}
+		ShapeDrawList(iAllocator* allocator = SystemAllocator) :
+			shapes{ allocator } {}
 
 		~ShapeDrawList()
 		{
@@ -2642,19 +2733,15 @@ namespace FlexKit
 	protected:
 		void AddShapeDraw(
 			ShapeList&				        shapeList,
-			ReserveVertexBufferFunction&    reserveVB,
-			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        Resources) override
 		{
 			for (auto shape : shapes)
 				shape->AddShapeDraw(
 					shapeList, 
-					reserveVB,
-					reserveCB,
 					Resources);
 		}
 
-		FlexKit::Vector<ShapeProtoType*> shapes;
+		Vector<ShapeProtoType*> shapes;
 	};
 
 
@@ -2733,11 +2820,9 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&						shapeList, 
-			ReserveVertexBufferFunction&	reserveVB,
-			ReserveConstantBufferFunction&	reserveCB,
-			FrameResources&					Resources) override
+			FrameResources&					resources) override
 		{
-			VBPushBuffer VBBuffer   = reserveVB(sizeof(ShapeVert) * 3 * Divisions);
+			VBPushBuffer VBBuffer   = resources.ReserveVB(sizeof(ShapeVert) * 3 * Divisions);
 
 			const float Step = 2.0f * (float)pi / Divisions;
 			const auto range = MakeRange(0, Divisions);
@@ -2762,7 +2847,7 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			auto constantBuffer = reserveCB(256);
+			auto constantBuffer = resources.ReserveCB(256);
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 
 			shapeList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, Divisions * 3});
@@ -2787,12 +2872,10 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&				        shapeList,
-			ReserveVertexBufferFunction&    reserveVB,
-			ReserveConstantBufferFunction&  reserveCB,
-			FrameResources&			        Resources) override
+			FrameResources&			        resources) override
 		{
-			auto VBBuffer = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
-			auto range = MakeRange(0, Lines.size());
+			auto VBBuffer	= resources.ReserveVB(sizeof(ShapeVert) * 2 * Lines.size());
+			auto range		= MakeRange(0, Lines.size());
 
 			VertexBufferDataSet vertices{
 				SET_TRANSFORM_OP,
@@ -2818,7 +2901,7 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			auto constantBuffer = reserveCB(AlignedSize<Constants>());
+			auto constantBuffer = resources.ReserveCB(AlignedSize<Constants>());
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
@@ -2841,11 +2924,9 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&						shapeList,
-			ReserveVertexBufferFunction&	reserveVB,
-			ReserveConstantBufferFunction&	reserveCB,
-			FrameResources&					Resources) override
+			FrameResources&					resources) override
 		{
-			auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
+			auto VBBuffer   = resources.ReserveVB(sizeof(ShapeVert) * 2 * Lines.size());
 			auto range      = MakeRange(0, Lines.size());
 
 			VertexBufferDataSet vertices{
@@ -2872,7 +2953,7 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			auto constantBuffer = reserveCB(256);
+			auto constantBuffer = resources.ReserveCB(256);
 			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
 			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
 		}
@@ -2894,9 +2975,7 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&				        shapeList, 
-			ReserveVertexBufferFunction&    reserveVB,
-			ReserveConstantBufferFunction&  reserveCB,
-			FrameResources&			        Resources) override
+			FrameResources&			        resources) override
 		{
 			float2 RectUpperLeft	= POS;
 			float2 RectBottomRight	= POS + WH;
@@ -2918,8 +2997,8 @@ namespace FlexKit
 				float4x4::Identity()
 			};
 
-			auto constantBuffer     = reserveCB(sizeof(Constants));
-			auto vertexBuffer       = reserveVB(sizeof(ShapeVert) * 6);
+			auto constantBuffer     = resources.ReserveCB(sizeof(Constants));
+			auto vertexBuffer       = resources.ReserveVB(sizeof(ShapeVert) * 6);
 
 			shapeList.emplace_back(
 					ShapeDraw::RenderMode::Triangle,
@@ -2940,7 +3019,7 @@ namespace FlexKit
 	class SolidRectangleListShape final : public ShapeProtoType
 	{
 	public:
-		SolidRectangleListShape(Vector<FlexKit::Rectangle>&& rects_in) :
+		SolidRectangleListShape(Vector<Rectangle>&& rects_in) :
 			rects	{ std::move(rects_in) }{}
 
 		
@@ -2948,8 +3027,6 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&				        shapeList, 
-			ReserveVertexBufferFunction&    reserveVB,
-			ReserveConstantBufferFunction&  reserveCB,
 			FrameResources&			        resources) override
 		{
 			Constants CB_Data = {
@@ -2957,9 +3034,9 @@ namespace FlexKit
 			float4(1, 1, 1, 1),
 			float4x4::Identity() };
 
-			auto constantBuffer = reserveCB(sizeof(CB_Data));
+			auto constantBuffer = resources.ReserveCB(sizeof(CB_Data));
 			auto constants      = ConstantBufferDataSet{CB_Data, constantBuffer };
-			auto vertexBuffer   = reserveVB(sizeof(CB_Data) * 6 * rects.size());
+			auto vertexBuffer   = resources.ReserveVB(sizeof(CB_Data) * 6 * rects.size());
 
 			auto vertices = VertexBufferDataSet(
 				SET_TRANSFORM_OP, rects,
@@ -3004,8 +3081,6 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&				            shapeList,
-			ReserveVertexBufferFunction&        reserveCB,
-			ReserveConstantBufferFunction&      reserveVB,
 			FrameResources&			            resources) override
 		{
 			/*
@@ -3063,16 +3138,12 @@ namespace FlexKit
 	void DrawShapes(
 		PSOHandle                       state, 
 		FrameGraph&                     frameGraph,
-		ReserveVertexBufferFunction     reserveVB,
-		ReserveConstantBufferFunction   reserveCB,
 		ResourceHandle                  renderTarget, 
 		iAllocator*                     allocator, 
 		TY_OTHER ...                    args)
 	{
 		struct ShapeParams
 		{
-			ReserveVertexBufferFunction     reserveVB;
-			ReserveConstantBufferFunction   reserveCB;
 			PSOHandle				        state;
 			ShapeList				        draws;
 
@@ -3081,19 +3152,17 @@ namespace FlexKit
 
 		auto& Pass = frameGraph.AddNode<ShapeParams>(
 			ShapeParams{
-				reserveVB,
-				reserveCB,
 				state,
 				ShapeList{ allocator },
 			},
-			[&](FrameGraphNodeBuilder& Builder, ShapeParams& data)
+			[&](FrameGraphNodeBuilder& builder, ShapeParams& data)
 			{
 				// Single Thread Section
 				// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
 				// for thread safety
-				data.renderTarget	= Builder.RenderTarget(renderTarget);
+				data.renderTarget	= builder.RenderTarget(renderTarget);
 
-				(args.AddShapeDraw(data.draws, reserveVB, reserveCB, frameGraph.resources), ...);
+				(args.AddShapeDraw(data.draws, frameGraph.resources), ...);
 			},
 			[=](const ShapeParams& data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
 			{	// Multi-threadable Section

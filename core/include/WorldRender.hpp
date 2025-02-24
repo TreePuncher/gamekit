@@ -41,9 +41,6 @@ namespace FlexKit
 		GatherPassesTask&	passes;
 		GBuffer&			gbuffer;
 
-		ReserveConstantBufferFunction&	reserveCB;
-		ReserveVertexBufferFunction&	reserveVB;
-
 		ResourceHandle	depthTarget		= InvalidHandle;
 		CameraHandle	activeCamera	= InvalidHandle;
 	};
@@ -55,9 +52,6 @@ namespace FlexKit
 		FrameGraph&			frameGraph;
 		UpdateDispatcher&	dispatcher;
 		GatherPassesTask&	passes;
-
-		ReserveConstantBufferFunction&	reserveCB;
-		ReserveVertexBufferFunction&	reserveVB;
 
 		ResourceHandle	renderTarget	= InvalidHandle;
 		ResourceHandle	depthTarget		= InvalidHandle;
@@ -75,9 +69,6 @@ namespace FlexKit
 
 		// Resources
 		GBuffer&                        gbuffer;
-
-		ReserveVertexBufferFunction     reserveVB;
-		ReserveConstantBufferFunction   reserveCB;
 
 		DebugVisMode            debugDisplay    = DebugVisMode::Disabled;
 		BVHVisMode              BVHVisMode      = BVHVisMode::Both;
@@ -247,9 +238,6 @@ namespace FlexKit
 
 	struct BilateralBlurPass
 	{
-		ReserveConstantBufferFunction   reserveCB;
-		ReserveVertexBufferFunction     reserveVB;
-
 		FrameResourceHandle             DestinationObject;
 		FrameResourceHandle             TempObject1;
 		FrameResourceHandle             TempObject2;
@@ -296,12 +284,12 @@ namespace FlexKit
 			static_vector<uint32_t, 16> subMaterial;
 		};
 
-		FrameGraphNodeHandle			node;
-		FrameResourceHandle				constants;
-		CreateOnceReserveBufferFunction	getConstantBuffer;
-		GatherPassesTask&				passes;
-		Vector<uint32_t>				entityTable;
-		size_t							reservationSize = (size_t)-1;
+		FrameGraphNodeHandle				node;
+		FrameResourceHandle					constants;
+		CreateOnceReserveBufferFunction2	getConstantBuffer;
+		GatherPassesTask&					passes;
+		Vector<uint32_t>					entityTable;
+		size_t								reservationSize = (size_t)-1;
 
 
 		CBPushBuffer&					GetConstantBuffer(size_t IN_reservationSize);
@@ -359,7 +347,6 @@ namespace FlexKit
 				FrameGraph&						frameGraph,
 				UpdateDispatcher&				dispatcher,
 				GatherPassesTask&				passes,
-				ReserveConstantBufferFunction&	reserveConstants,
 				iAllocator&						allocator);
 
 		DepthPass&					DepthPrePass(
@@ -368,7 +355,6 @@ namespace FlexKit
 				const CameraHandle				camera,
 				GatherPassesTask&				passes,
 				const ResourceHandle			depthBufferTarget,
-				ReserveConstantBufferFunction	reserveCB,
 				iAllocator*						tempAllocator);
 
 		BackgroundEnvironmentPass& BackgroundPass(
@@ -377,8 +363,6 @@ namespace FlexKit
 				const CameraHandle				camera,
 				const ResourceHandle			renderTarget,
 				const ResourceHandle			hdrMap,
-				ReserveConstantBufferFunction	reserveCB,
-				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
 
 		BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
@@ -389,8 +373,6 @@ namespace FlexKit
 				const ResourceHandle			renderTarget,
 				const ResourceHandle			depthTarget,
 				GBuffer&						gbuffer,
-				ReserveConstantBufferFunction	reserveCB,
-				ReserveVertexBufferFunction		reserveVB,
 				const float						t,
 				iAllocator*						tempMemory);
 
@@ -403,8 +385,6 @@ namespace FlexKit
 				const ResourceHandle			destination,
 				GBuffer&						gbuffer,
 				const ResourceHandle			depthBuffer,
-				ReserveConstantBufferFunction	reserveCB,
-				ReserveVertexBufferFunction		reserveVB,
 				iAllocator*						tempMemory);
 
 		ToneMap& RenderPBR_ToneMapping(
@@ -412,8 +392,6 @@ namespace FlexKit
 				FrameGraph&						frameGraph,
 				FrameResourceHandle				source,
 				ResourceHandle					target,
-				ReserveConstantBufferFunction	reserveCB,
-				ReserveVertexBufferFunction		reserveVB,
 				float							t,
 				iAllocator*						allocator);
 
@@ -424,8 +402,6 @@ namespace FlexKit
 		struct PassData
 		{
 			GatherPassesTask&				passes;
-			ReserveConstantBufferFunction&	reserveCB;
-			ReserveVertexBufferFunction&	reserveVB;
 		};
 
 
@@ -450,10 +426,9 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction&	reserveCB,
 			iAllocator&						allocator)
 		{
-			lightingEngine.BuildScene(frameGraph, scene, passes, reserveCB, allocator);
+			lightingEngine.BuildScene(frameGraph, scene, passes, allocator);
 		}
 
 		LoadPipelineStateRes CreateAverageLumanceLocal	(RenderSystem* rs, iAllocator&);

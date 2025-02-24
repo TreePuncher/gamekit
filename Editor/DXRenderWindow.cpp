@@ -55,7 +55,7 @@ void DXRenderWindow::Release()
 /************************************************************************************************/
 
 
-void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& temporaries, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
+void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
 {
 	if (resizeFinished)
 	{
@@ -76,7 +76,7 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, TemporaryBuffers& tempora
 
 		if (onDraw)
 		{
-			onDraw(Dispatcher, dT, temporaries, frameGraph, renderWindow->GetBackBuffer(), threadSafeAllocator);
+			onDraw(Dispatcher, dT, frameGraph, renderWindow->GetBackBuffer(), threadSafeAllocator);
 		}
 		else
 		{

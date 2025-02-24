@@ -70,8 +70,6 @@ public:
 	FlexKit::GameObject						floorCollider;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
-
-	FlexKit::ImGUIIntegrator		debugUI;
 };
 
 

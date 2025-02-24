@@ -86,12 +86,18 @@ namespace FlexKit
 
 		bool DispatchEvent(const Event& evt);
 
+		bool HandleDebugInput(const Event& evt);
+
+		bool UpdateDebugUI(
+			IRenderWindow&		renderWindow,
+			EngineCore&			core,
+			UpdateDispatcher&	dispatcher,
+			double dt);
+
 		void DrawDebugUI(
 			double							dT,
 			UpdateDispatcher&				dispatcher,
 			FrameGraph&						frameGraph,
-			ReserveVertexBufferFunction		vertexBuffer,
-			ReserveConstantBufferFunction	constantBuffer,
 			ResourceHandle					renderTarget);
 
 		//void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, ResourceHandle renderTarget, FrameGraph& Graph);
@@ -133,7 +139,7 @@ namespace FlexKit
 
 		bool ImGuiAvailable() const noexcept
 		{
-			return (debugUI != nullptr && core.activeWindow != nullptr);
+			return (debugUI != nullptr);
 		}
 
 		ImGUIIntegrator*	debugUI = nullptr;

@@ -160,15 +160,13 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 
 	FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
 
-	TemporaryBuffers temporaries{
-		FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory()),
-		FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory()),
-	};
+	frameGraph.AddConstantBuffer(constantBuffer);
+	frameGraph.AddVertexBuffer(vertexBuffer);
 
 	for (auto renderWindow : renderWindows)
 	{
 		frameGraph.AddOutput(renderWindow->GetBackBuffer());
-		renderWindow->Draw(core, temporaries, dispatcher, dT, frameGraph, threadedAllocator);
+		renderWindow->Draw(core, dispatcher, dT, frameGraph, threadedAllocator);
 	}
 
 	return nullptr;
@@ -190,7 +188,7 @@ void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 
 /**********************************************************************
 
-Copyright (c) 2019-2023 Robert May
+Copyright (c) 2019-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

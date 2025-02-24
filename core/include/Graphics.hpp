@@ -114,6 +114,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	inline D3D12_GPU_VIRTUAL_ADDRESS_RANGE DeviceAddressRangeToDX(const DeviceAddressRange& range)
+	{
+		return { range.address, range.size };
+	}
+
+	inline D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE DeviceAddressRangeStrideToDX(const DeviceAddressRangeStride& rangeStride)
+	{
+		return { rangeStride.address, rangeStride.size, rangeStride.stride };
+	}
+
+
+	/************************************************************************************************/
+
+
 	enum DeviceAccessState
 	{
 		DASReadFlag					= 0x0001,
@@ -856,69 +870,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	struct DevicePointer
-	{
-		D3D12_GPU_VIRTUAL_ADDRESS address = { 0 };
-
-		DevicePointer operator + (std::integral auto offset) const
-		{
-			return { address + offset };
-		}
-
-		DevicePointer operator - (std::integral auto offset) const
-		{
-			return { address - offset };
-		}
-
-		DevicePointer operator * (std::integral auto x) const
-		{
-			return { address * x };
-		}
-
-		operator D3D12_GPU_VIRTUAL_ADDRESS () const
-		{
-			return address;
-		}
-
-		DevicePointer& operator = (const DevicePointer& rhs) noexcept
-		{
-			address = rhs.address;
-			return *this;
-		}
-
-		DevicePointer& operator = (DevicePointer& rhs) noexcept
-		{
-			address = rhs.address;
-			return *this;
-		}
-	};
-
-
-	struct DeviceAddressRange
-	{
-		D3D12_GPU_VIRTUAL_ADDRESS_RANGE range   = { 0, 0 };
-
-		operator D3D12_GPU_VIRTUAL_ADDRESS_RANGE () const
-		{
-			return range;
-		}
-	};
-
-
-	struct DeviceAddressRangeStride
-	{
-		D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE rangeStride = { 0, 0, 0 };
-
-		operator D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE () const
-		{
-			return rangeStride;
-		}
-	};
-
-
-	/************************************************************************************************/
-
-
 	//using DescHeapPOS			= std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>;
 	using VertexResourceBuffer	= ID3D12Resource*;
 
@@ -938,7 +889,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		auto							Alloc		(const size_t size, uint64_t completedIdx) noexcept;
 
 		void							Release_ST	(const DescriptorRange range, uint64_t lockIdx, uint64_t completed) noexcept;
-		void							Release	(const DescriptorRange range, uint64_t lockIdx, uint64_t completed);
+		void							Release		(const DescriptorRange range, uint64_t lockIdx, uint64_t completed);
 
 		ID3D12DescriptorHeap* Heap() { return descHeap; }
 		private:
@@ -969,9 +920,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Node* LocateNode(size_t offset);
 
 		Node						root;
-		FlexKit::Vector<Node*>		freeList;
-		FlexKit::iAllocator*		allocator;
-		FlexKit::RenderSystem*		renderSystem;
+		Vector<Node*>				freeList;
+		iAllocator*					allocator;
+		RenderSystem*				renderSystem;
 		size_t						descriptorSize;
 		D3D12_GPU_DESCRIPTOR_HANDLE	gpuHeap;
 		D3D12_CPU_DESCRIPTOR_HANDLE	cpuHeap;
@@ -1410,6 +1361,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
 
 		UploadReservation   Reserve(const size_t reserveSize, const size_t reserveAignement = 256);
+
+		void                CopyBuffer(GPURange dest, void* source_ptr, uint64_t size);
 		void                CopyBuffer(ResourceHandle , const size_t destinationOffset, UploadReservation);
 		void                CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, UploadReservation);
 		void                CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, ID3D12Resource* source, const size_t sourceOffset, const size_t copySize);
@@ -3656,6 +3609,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DeviceAccessState afterState;
 	};
 
+	struct DeviceResourceRange
+	{
+		uint64_t gpuBegin;
+		uint64_t size;
+	};
+
 	enum class DeviceVendor
 	{
 		AMD,
@@ -3663,6 +3622,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		INTEL,
 		UNKNOWN
 	};
+
 
 	FLEXKITAPI class RenderSystem
 	{
@@ -3729,14 +3689,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const VertexBuffer&);
 
+		size_t					GetTextureFrameGraphIndex(ResourceHandle);
+		void					SetTextureFrameGraphIndex(ResourceHandle, size_t);
 
-		size_t	GetTextureFrameGraphIndex(ResourceHandle);
-		void	SetTextureFrameGraphIndex(ResourceHandle, size_t);
+		void					MarkTextureUsed(ResourceHandle Handle);
 
-		void	MarkTextureUsed(ResourceHandle Handle);
 
-		const size_t	GetResourceSize(ConstantBufferHandle handle) const noexcept;
-		const size_t	GetResourceSize(ResourceHandle desc) const noexcept;
+		DeviceResourceRange	GetDeviceRange(const ResourceHandle) const;
+		const size_t		GetResourceSize(ConstantBufferHandle handle) const noexcept;
+		const size_t		GetResourceSize(ResourceHandle desc) const noexcept;
 
 		const size_t	GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
 		const size_t	GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
@@ -3807,6 +3768,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
 		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
 		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
+
 		ID3D12Resource*		GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
 
@@ -3820,6 +3782,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool							RTAvailable() const noexcept;
 
 		void ResetConstantBuffer(ConstantBufferHandle constant);
+		void ResetVertexBuffer(VertexBufferHandle constant);
 		void ResetQuery(QueryHandle handle);
 
 		void ReleaseCB(ConstantBufferHandle);
@@ -4131,6 +4094,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
+		void SetGraphicsConstantBufferView	(size_t idx, DevicePointer);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
@@ -4146,6 +4110,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
 		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
+		void SetComputeConstantBufferView	(size_t idx, DevicePointer);
+
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
 		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
@@ -6314,7 +6280,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2014-2024 Robert May
+Copyright (c) 2014-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

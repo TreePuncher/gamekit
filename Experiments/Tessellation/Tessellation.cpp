@@ -259,8 +259,8 @@ public:
 			},
 			[&](DrawPatch& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
-				VBPushBuffer Vbuffer{ vertexBuffer, 8196, *ctx.renderSystem };
-				CBPushBuffer Cbuffer{ constantBuffer, 1024 * 16, *ctx.renderSystem };
+				VBPushBuffer Vbuffer{ resources.ReserveVB(8196) };
+				CBPushBuffer Cbuffer{ resources.ReserveCB(1024 * 16) };
 
 				const VertexBufferDataSet VB{ vertices, Vbuffer};
 				const VertexBufferDataSet IB{ indices, Vbuffer};
@@ -329,6 +329,9 @@ public:
 
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* updateTask, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 	{
+		frameGraph.AddConstantBuffer(constantBuffer);
+		frameGraph.AddVertexBuffer(vertexBuffer);
+
 		ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), { 0.1f, 0.1f, 0.1f, 1.0f });
 
 		renderWindow->UpdateCapturedMouseInput(dT);
@@ -354,7 +357,7 @@ public:
 
 	FlexKit::UpdateTask* Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{ 
-		FlexKit::UpdateInput();
+		UpdateInput();
 		renderWindow->UpdateCapturedMouseInput(dT);
 
 		return nullptr;

@@ -878,7 +878,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool, ReserveConstantBufferFunction& reserveCB)
+	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool)
 	{
 		return
 			[&, camera = camera, WH = WH](FrameGraph& frameGraph)
@@ -900,13 +900,11 @@ namespace FlexKit
 
 				struct _CreateClusterBuffer_Desc
 				{
-					ReserveConstantBufferFunction   reserveCB;
 					FrameResourceHandle             clusterBuffer;
 				};
 
 				frameGraph.AddNode<_CreateClusterBuffer_Desc>(
-					_CreateClusterBuffer_Desc
-					{   reserveCB   },
+					_CreateClusterBuffer_Desc{},
 					[&](FrameGraphNodeBuilder& builder, _CreateClusterBuffer_Desc& data)
 					{
 						data.clusterBuffer = builder.UnorderedAccess(resource);
@@ -935,7 +933,7 @@ namespace FlexKit
 							.slicePitch	= XY.Product(),
 						};
 
-						auto constantBuffer		= data.reserveCB(AlignedSize(sizeof(cameraValues)) + AlignedSize(sizeof(constantValues)));
+						auto constantBuffer		= resources.ReserveCB(AlignedSize(sizeof(cameraValues)) + AlignedSize(sizeof(constantValues)));
 						auto passConstants		= FlexKit::ConstantBufferDataSet{ constantValues, constantBuffer };
 						auto cameraConstants	= FlexKit::ConstantBufferDataSet{ cameraValues, constantBuffer };
 
@@ -972,7 +970,6 @@ namespace FlexKit
 								ResourceHandle					renderTarget,
 								GatherPassesTask&				passes,
 								BrushConstants&					entityConstants,
-								ReserveConstantBufferFunction	reserveCB,
 								iAllocator*						allocator)
 	{
 		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(MLAB_DRAW); };
@@ -983,7 +980,6 @@ namespace FlexKit
 			.sharedData = {
 				.entityConstants 	= entityConstants,
 				.camera				= camera,
-				.reserveCB			= reserveCB,
 			},
 			.getPVS = getStaticPass,
 		};
@@ -1008,8 +1004,8 @@ namespace FlexKit
 
 				ctx.SetRenderTargets({}, false);
 
-				auto& brushConstantBuffer = data.entityConstants.GetConstantBuffer();
-				auto brushConstants = CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
+				auto& brushConstantBuffer	= data.entityConstants.GetConstantBuffer();
+				auto brushConstants			= CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
 
 				for(const auto& draw : std::span<const DrawEntry>{ begin, end })
 				{
@@ -1050,7 +1046,6 @@ namespace FlexKit
 		const Scene&						scene,
 		const GatherVisibleLightsTask&		visibleLightsTask,
 		ResourceHandle						depthBuffer,
-		ReserveConstantBufferFunction		reserveCB,
 		iAllocator*							tempMemory,
 		bool								releaseTemporaries)
 	{
@@ -1106,7 +1101,6 @@ namespace FlexKit
 					.visableLights	= visibleLightsTask.GetData().lights,
 					.shadowMatrices	= allocation.handles[0],
 					.camera			= camera,
-					.reserveCB		= reserveCB,
 					.indirectLayout	= dispatch
 			},
 			[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
@@ -1201,13 +1195,13 @@ namespace FlexKit
 
 				const uint32_t nodeReservation = uint32_t(ceilf(std::logf(float(lightCount)) / std::logf(BVH_ELEMENT_COUNT)));
 
-				CBPushBuffer    constantBuffer = data.reserveCB(
+				CBPushBuffer    constantBuffer = resources.ReserveCB(
 					AlignedSize( sizeof(FlexKit::GPULight) * data.visableLights.size() ) +
 					AlignedSize<ConstantsLayout>() * (1 + nodeReservation) +
 					AlignedSize<Camera::ConstantBuffer>());
 
 				auto constantBuffer2ReserveSize = AlignedSize<ConstantsLayout>() * (1 + nodeReservation);
-				CBPushBuffer    constantBuffer2 = data.reserveCB(constantBuffer2ReserveSize);
+				CBPushBuffer    constantBuffer2 = resources.ReserveCB(constantBuffer2ReserveSize);
 
 				const ConstantBufferDataSet constants				{ constantsValues, constantBuffer };
 				const ConstantBufferDataSet cameraConstantsBuffer	{ cameraConstants, constantBuffer };
@@ -1375,7 +1369,7 @@ namespace FlexKit
 				};
 
 				// Build Light Lists
-				CBPushBuffer constantBuffer3 = data.reserveCB(AlignedSize<LightListConstructionConstants>());
+				CBPushBuffer constantBuffer3 = resources.ReserveCB(AlignedSize<LightListConstructionConstants>());
 
 				ConstantBufferDataSet   lightListConstantSet{ lightListConstants, constantBuffer3 };
 
@@ -1493,7 +1487,6 @@ namespace FlexKit
 		BrushConstants&					entityConstants,
 		PassHistory*					passHistory,
 		const ResourceAllocation&		animationResources,
-		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
 		using std::views::zip;
@@ -1504,7 +1497,6 @@ namespace FlexKit
 				gbuffer,
 				passes,
 				camera,
-				reserveCB,
 				passHistory,
 			},
 			[&](FrameGraphNodeBuilder& builder, GBufferPass& data)
@@ -1543,7 +1535,7 @@ namespace FlexKit
 					AlignedSize<Camera::ConstantBuffer>() +
 					AlignedSize<ForwardDrawConstants>();
 
-				auto passConstantBuffer		= data.reserveCB(passBufferSize);
+				auto passConstantBuffer		= resources.ReserveCB(passBufferSize);
 				//auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
 
 				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(data.camera), passConstantBuffer };
@@ -1824,7 +1816,6 @@ namespace FlexKit
 		BrushConstants&					entityConstants,
 		PassHistory&					passHistory,
 		const ResourceAllocation&		animationResources,
-		ReserveConstantBufferFunction	reserveCB,
 		iAllocator*						allocator)
 	{
 		struct Shared
@@ -1862,7 +1853,6 @@ namespace FlexKit
 				BrushConstants&					brushConstants,
 				GatherPassesTask&				passes,
 				CameraHandle					camera,
-				ReserveConstantBufferFunction&	reserveConstants,
 				PassHistoryTable&				occlusionTable,
 				ResourceHandle					depthBuffer,
 				ThreadSafeAllocator&			temporary)
@@ -1876,7 +1866,6 @@ namespace FlexKit
 					.passes				= passes,
 					.brushConstants		= brushConstants,
 					.occlusionHistory	= *occlusionTable.GetHistory(frameGraph.GetRenderSystem(),	camera),
-					.reserveCB			= reserveConstants
 				},
 			.getPVS =
 				[&passes]()
@@ -1965,8 +1954,6 @@ namespace FlexKit
 		ResourceHandle					depthTarget,
 		ResourceHandle					renderTarget,
 		LightBufferUpdate&				lightPass,
-		ReserveConstantBufferFunction	reserveCB,
-		ReserveVertexBufferFunction		reserveVB,
 		float							t,
 		iAllocator*						allocator)
 	{
@@ -2003,8 +1990,8 @@ namespace FlexKit
 
 				data.pointLightBufferObject		= builder.ReadTransition(lightPass.lightBufferObject,		DASPixelShaderResource);
 
-				data.passConstants				= reserveCB(128 * KILOBYTE);
-				data.passVertices				= reserveVB(sizeof(float4) * 6);
+				data.passConstants				= builder.ReserveCB(128 * KILOBYTE);
+				data.passVertices				= builder.ReserveVB(sizeof(float4) * 6);
 
 				builder.ReadTransition(lightPass.shadowMatrices, DeviceAccessState::DASPixelShaderResource, { FlexKit::Sync_All, FlexKit::Sync_PixelShader });
 
@@ -2157,13 +2144,11 @@ namespace FlexKit
 		const CameraHandle              camera,
 		ResourceHandle                  renderTarget,
 		LightBufferUpdate&              lightBufferUpdate,
-		ReserveConstantBufferFunction   reserveCB,
 		ClusterDebugDrawMode            mode,
 		iAllocator*                     tempMemory)
 	{
 		auto& lightBufferData = frameGraph.AddNode<DEBUGVIS_DrawBVH>(
 			DEBUGVIS_DrawBVH{
-				reserveCB,
 				lightBufferUpdate
 			},
 			[&, this](FrameGraphNodeBuilder& builder, DEBUGVIS_DrawBVH& data)
@@ -2218,7 +2203,7 @@ namespace FlexKit
 					(uint32_t)lightCount
 				};
 
-				CBPushBuffer            constantBuffer = data.reserveCB(1024);
+				CBPushBuffer            constantBuffer = resources.ReserveCB(1024);
 				ConstantBufferDataSet   constants{ constantsValues, constantBuffer };
 
 				auto getArgs = [&]()
@@ -2303,16 +2288,11 @@ namespace FlexKit
 			SceneBVH&                       bvh,
 			CameraHandle                    camera,
 			ResourceHandle                  renderTarget,
-			ReserveConstantBufferFunction   reserveCB,
-			ReserveVertexBufferFunction     reserveVB,
 			BVHVisMode                      mode,
 			iAllocator*                     allocator)
 	{
 		struct DebugVisDesc
 		{
-			ReserveConstantBufferFunction   reserveCB;
-			ReserveVertexBufferFunction     reserveVB;
-
 			FrameResourceHandle             renderTargetObject;
 		};
 
@@ -2324,10 +2304,7 @@ namespace FlexKit
 
 
 		frameGraph.AddNode<DebugVisDesc>(
-			DebugVisDesc{
-				reserveCB,
-				reserveVB,
-			},
+			DebugVisDesc{},
 			[&](FrameGraphNodeBuilder& builder, DebugVisDesc& desc)
 			{
 				desc.renderTargetObject = builder.RenderTarget(renderTarget);
@@ -2338,8 +2315,8 @@ namespace FlexKit
 
 				const auto vertexCount      = bvh.elements.size() + bvh.nodes.size();
 				const auto vertexBufferSize = vertexCount * sizeof(Vertex);
-				auto constantBuffer         = desc.reserveCB(1024);
-				auto vertexBuffer           = desc.reserveVB(vertexBufferSize);
+				auto constantBuffer         = resources.ReserveCB(1024);
+				auto vertexBuffer           = resources.ReserveVB(vertexBufferSize);
 				auto cameraConstants        = GetCameraConstants(camera);
 
 				struct {

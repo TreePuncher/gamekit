@@ -58,8 +58,7 @@ public:
 
 		constantBuffer	{ framework.GetRenderSystem().CreateConstantBuffer(64 * MEGABYTE, false) },
 		vertexBuffer	{ framework.GetRenderSystem().CreateVertexBuffer(64 * MEGABYTE, false) },
-		runOnceQueue	{ framework.core.GetBlockMemory() },
-		debugUI			{ framework.core.RenderSystem, framework.core.GetBlockMemory() }
+		runOnceQueue	{ framework.core.GetBlockMemory() }
 	{
 		using namespace std::views;
 
@@ -198,18 +197,20 @@ public:
 
 		t += dT;
 
-		debugUI.Update(*renderWindow, core, dispatcher, dT);
+		if (framework.UpdateDebugUI(*renderWindow, core, dispatcher, dT))
+		{
 
-		ImGui::NewFrame();
-		ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 600.0f, 0 });
-		ImGui::SetNextWindowSize({ 600, 400 });
+			ImGui::NewFrame();
+			ImGui::SetNextWindowPos({ (float)renderWindow->GetWH()[0] - 600.0f, 0 });
+			ImGui::SetNextWindowSize({ 600, 400 });
 
-		//ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
-		//ImGui::Text("Hello world!");
+			//ImGui::Begin("Debug Stats", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+			//ImGui::Text("Hello world!");
 
-		//ImGui::End();
-		ImGui::EndFrame();
-		ImGui::Render();
+			//ImGui::End();
+			ImGui::EndFrame();
+			ImGui::Render();
+		}
 
 		return nullptr;
 	}
@@ -218,6 +219,8 @@ public:
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) final
 	{
 		frameGraph.AddOutput(renderWindow->GetBackBuffer());
+		frameGraph.AddConstantBuffer(constantBuffer);
+		frameGraph.AddVertexBuffer(vertexBuffer);
 
 		ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
@@ -225,9 +228,6 @@ public:
 			.RenderTarget	= renderWindow->GetBackBuffer(),
 			.DepthTarget	= depthBuffer,
 		};
-
-		ReserveConstantBufferFunction	reserveCB = CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-		ReserveVertexBufferFunction		reserveVB = CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
 
 		static double T = 0.0;
 		T += dT;
@@ -247,9 +247,6 @@ public:
 
 			.gbuffer = gbuffer,
 
-			.reserveVB = reserveVB, 
-			.reserveCB = reserveCB, 
-
 			.transformDependency	= transformUpdate,
 			.cameraDependency		= cameraUpdate
 		};
@@ -263,9 +260,9 @@ public:
 			core.GetTempMemoryMT()
 		);
 		
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, reserveCB, reserveVB, dT, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 
-		debugUI.DrawImGui(dT, dispatcher, frameGraph, reserveVB, reserveCB, renderWindow->GetBackBuffer());
+		framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 
 		FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
 
@@ -322,7 +319,7 @@ public:
 						return true;
 					}
 					else
-						return debugUI.HandleInput(evt);
+						return framework.HandleDebugInput(evt);
 				}	break;
 				case Event::Mouse:
 				{
@@ -330,7 +327,7 @@ public:
 			}
 
 			if(!renderWindow->mouseCapture)
-				return debugUI.HandleInput(evt);
+				return framework.HandleDebugInput(evt);
 			else
 				return false;
 		}
@@ -377,8 +374,6 @@ public:
 	FlexKit::GameObject						light3;
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
-
-	FlexKit::ImGUIIntegrator		debugUI;
 
 	double t = 0.0f;
 };

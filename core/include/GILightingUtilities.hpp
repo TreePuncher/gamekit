@@ -19,13 +19,12 @@ namespace FlexKit
 	public:
 		virtual ~GITechniqueInterface() {}
 
-		virtual void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB) = 0;
+		virtual void Init(FrameGraph& frameGraph) = 0;
 
 		virtual BuildSceneRes BuildScene(
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator) = 0;
 
 		virtual void RayTrace(
@@ -38,7 +37,6 @@ namespace FlexKit
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
 			LightBufferUpdate&				lightBuffers,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator) = 0;
 	};
 
@@ -62,13 +60,12 @@ namespace FlexKit
 		~GlobalIlluminationEngine();
 
 
-		void Init(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB);
+		void Init(FrameGraph& frameGraph);
 
 		BuildSceneRes BuildScene(
 			FrameGraph&						frameGraph,
 			Scene&							scene,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator&						allocator);
 
 		void RayTrace(
@@ -81,7 +78,6 @@ namespace FlexKit
 			FrameResourceHandle				renderTarget,
 			GBuffer&						gbuffer,
 			LightBufferUpdate&				lightBuffers,
-			ReserveConstantBufferFunction	reserveCB,
 			iAllocator*						allocator);
 
 	private:

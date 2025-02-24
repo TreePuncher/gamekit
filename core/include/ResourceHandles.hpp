@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2023 Robert May
+Copyright (c) 2015 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -53,9 +53,25 @@ namespace FlexKit
 	using TriMeshHandle					= Handle_t<16u, GetTypeGUID(TriMesh)>;
 	using VertexBufferHandle			= Handle_t<32u, GetTypeGUID(VertexBuffer)>;
 
+	using DevicePointer					= uint64_t;
 	using CPUDescriptorHandle			= Handle_t<64, GetTypeGUID(CPUDescriptorHandle), uint64_t>;
 	using GPUDescriptorHandle			= Handle_t<64, GetTypeGUID(GPUDescriptorHandle), uint64_t>;
 	using DescHeapPOS					= Pair<CPUDescriptorHandle, GPUDescriptorHandle>;
+
+
+	struct DeviceAddressRange
+	{
+		uint64_t address	= 0;
+		uint64_t size		= 0;
+	};
+
+
+	struct DeviceAddressRangeStride
+	{
+		uint64_t address	= 0;
+		uint64_t size		= 0;
+		uint64_t stride		= 0;
+	};
 
 
 	struct DescriptorRange
@@ -72,5 +88,15 @@ namespace FlexKit
 		}
 
 		operator DescHeapPOS() const noexcept { return begin; }
+	};
+
+	struct GPURange
+	{
+		DevicePointer		devicePtr;
+		uint64_t			offset;
+		uint32_t			size;
+		ResourceHandle		resource;
+
+		operator DevicePointer() const noexcept { return devicePtr; }
 	};
 }

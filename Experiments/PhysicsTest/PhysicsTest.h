@@ -64,8 +64,6 @@ public:
 
 	FlexKit::RunOnceQueue<void(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
 
-	FlexKit::ImGUIIntegrator		debugUI;
-
 	struct DebugRayCast
 	{
 		FlexKit::float3 A = { 0, 0, 0 };

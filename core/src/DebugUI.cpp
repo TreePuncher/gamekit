@@ -292,7 +292,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ImGUIIntegrator::DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph& frameGraph, FlexKit::ReserveVertexBufferFunction reserveVB, FlexKit::ReserveConstantBufferFunction reserveCB, FlexKit::ResourceHandle renderTarget)
+	void ImGUIIntegrator::DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
 	{
 		ImGuiIO& io         = ImGui::GetIO();
 		auto*   drawData    = ImGui::GetDrawData();
@@ -304,15 +304,11 @@ namespace FlexKit
 
 		struct DrawImGui_data
 		{
-			ReserveVertexBufferFunction     ReserveVBSpace;
-			ReserveConstantBufferFunction   ReserveCBSpace;
 			FlexKit::uint2                  WH;
 		};
 
 		auto& UI_Pass = frameGraph.AddNode<DrawImGui_data>(
 			DrawImGui_data{
-				reserveVB,
-				reserveCB,
 				WH },
 			[&](auto& builder, DrawImGui_data& data)
 			{
@@ -338,8 +334,8 @@ namespace FlexKit
 				};
 
 
-				auto  constantBuffer = pass.ReserveCBSpace(1024);
-				auto  constants      = FlexKit::ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
+				auto  constantBuffer = frameResources.ReserveCB(1024);
+				auto  constants      = ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
 				auto& rootSig        = frameResources.renderSystem().Library.RSDefault;
 
 				// Setup draw State
@@ -361,7 +357,7 @@ namespace FlexKit
 
 					auto _debug = (ImDrawVert*)cmdList->VtxBuffer.Data;
 
-					FlexKit::VBPushBuffer           VBSpace = pass.ReserveVBSpace(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t) + 1024);
+					FlexKit::VBPushBuffer           VBSpace = frameResources.ReserveVB(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t) + 1024);
 					FlexKit::VertexBufferDataSet    VBSet{ (ImDrawVert*)cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size * sizeof(ImDrawVert), VBSpace };
 					FlexKit::VertexBufferDataSet    IBSet{ (ImDrawIdx*)cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size * sizeof(ImDrawIdx), VBSpace };
 

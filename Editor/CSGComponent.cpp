@@ -1201,12 +1201,10 @@ public:
 		}
 	}
 
-	void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
+	void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
 	{
 		struct DrawHUD
 		{
-			FlexKit::ReserveVertexBufferFunction    ReserveVertexBuffer;
-			FlexKit::ReserveConstantBufferFunction  ReserveConstantBuffer;
 			FlexKit::FrameResourceHandle            renderTarget;
 			FlexKit::FrameResourceHandle            depthBuffer;
 		};
@@ -1215,10 +1213,7 @@ public:
 		if(selection.GetData().brushes.size())
 		{
 			frameGraph.AddNode<DrawHUD>(
-				DrawHUD{
-					temps.ReserveVertexBuffer,
-					temps.ReserveConstantBuffer
-				},
+				DrawHUD{},
 				[&](FlexKit::FrameGraphNodeBuilder& builder, DrawHUD& data)
 				{
 					data.renderTarget   = builder.RenderTarget(renderTarget);
@@ -1261,7 +1256,7 @@ public:
 						FlexKit::float4x4   transform;
 					};
 
-					auto constantBuffer = data.ReserveConstantBuffer(
+					auto constantBuffer = resources.ReserveCB(
 						FlexKit::AlignedSize<FlexKit::Camera::ConstantBuffer>() +
 						FlexKit::AlignedSize<DrawConstants>() * brushes.size());
 
@@ -1269,8 +1264,8 @@ public:
 					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
 					const size_t selectedNodeIdx    = selection.GetData().selectedBrush;
-					FlexKit::VBPushBuffer TBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
-					FlexKit::VBPushBuffer LBBuffer  = data.ReserveVertexBuffer(sizeof(Vertex) * 1024 * brushes.size());
+					FlexKit::VBPushBuffer TBBuffer  = resources.ReserveVB(sizeof(Vertex) * 1024 * brushes.size());
+					FlexKit::VBPushBuffer LBBuffer  = resources.ReserveVB(sizeof(Vertex) * 1024 * brushes.size());
 
 					size_t idx = 0;
 
@@ -1914,7 +1909,7 @@ public:
 
 	ViewportModeID GetModeID() const override { return CSGSliceModeID; };
 
-	void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, TemporaryBuffers& temps, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
+	void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
 	{
 
 	}

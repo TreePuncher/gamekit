@@ -6,6 +6,7 @@
 #include <expected>
 #include <DebugUI.hpp>
 #include <RMLRenderer.hpp>
+#include <GPUAllocators.hpp>
 
 
 /************************************************************************************************/
@@ -95,36 +96,28 @@ public:
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
-						FlexKit::FrameGraph&					frameGraph,
-						FlexKit::ReserveVertexBufferFunction&	reserveVB,
-						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+						FlexKit::FrameGraph&					frameGraph);
 
 	void DrawStrands(	FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
-						FlexKit::FrameGraph&					frameGraph,
-						FlexKit::ReserveVertexBufferFunction&	reserveVB,
-						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+						FlexKit::FrameGraph&					frameGraph);
 
 	void DrawStrandsOIT(FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
-						FlexKit::FrameGraph&					frameGraph,
-						FlexKit::ReserveVertexBufferFunction&	reserveVB,
-						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+						FlexKit::FrameGraph&					frameGraph);
 
 	void WorkGraph(		FlexKit::UpdateTask*					update,
 						FlexKit::EngineCore&					core,
 						FlexKit::UpdateDispatcher&				dispatcher,
 						const double							dT,
-						FlexKit::FrameGraph&					frameGraph,
-						FlexKit::ReserveVertexBufferFunction&	reserveVB,
-						FlexKit::ReserveConstantBufferFunction&	reserveCB);
+						FlexKit::FrameGraph&					frameGraph);
 
-	void PostDrawUpdate(FlexKit::EngineCore&, double dT) final;
-	bool EventHandler(FlexKit::Event evt) final;
+	void PostDrawUpdate	(FlexKit::EngineCore&, double dT) final;
+	bool EventHandler	(FlexKit::Event evt) final;
 
 
 	FlexKit::RmlIntegrator			ui;
@@ -153,6 +146,11 @@ public:
 	FlexKit::MemoryPoolAllocator	RTPool;
 
 	FlexKit::RunOnceQueue<void (FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&)>	runOnceQueue;
+
+	FlexKit::GPUBlockAllocator		persistentConstants;
+	FlexKit::ResourceHandle			constantBufferPool;
+
+	FlexKit::DevicePointer			constants = 0;
 
 	enum class Mode
 	{

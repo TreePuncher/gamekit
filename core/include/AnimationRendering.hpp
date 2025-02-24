@@ -87,7 +87,6 @@ namespace FlexKit
 			FrameGraph&						frameGraph,
 			UpdateDispatcher&				dispatcher,
 			GatherPassesTask&				passes,
-			ReserveConstantBufferFunction&	reserveConstants,
 			PoolAllocatorInterface&			pool,
 			iAllocator&						allocator);
 
@@ -114,7 +113,6 @@ namespace FlexKit
 			UpdateDispatcher&				dispatcher,
 			GatherPassesTask&				passes,
 			UpdateTask&						loadedMorphs,
-			ReserveConstantBufferFunction&	reserveConstants,
 			PoolAllocatorInterface&			pool,
 			iAllocator&						allocator);
 
