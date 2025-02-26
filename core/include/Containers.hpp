@@ -118,7 +118,7 @@ namespace FlexKit
 		TY* GetBuffer()			const { return nullptr; }
 	};
 
-	// NOTE: Doesn't call destructors automatically, but does free held memory!
+
 	template<typename Ty, size_t InternalBufferSize = 0, typename TYSize = size_t>
 	struct Vector
 	{
@@ -293,6 +293,9 @@ namespace FlexKit
 
 		inline ~Vector()
 		{
+			if (!std::is_trivially_destructible_v<Ty>)
+				clear();
+
 			if (A && Allocator && A != internalBuffer.GetBuffer())
 				Allocator->_aligned_free(A);
 
@@ -842,7 +845,7 @@ namespace FlexKit
 				Allocator->_aligned_free(A);
 
 			A			= internalBuffer.GetBuffer();
-			Allocator	= nullptr;
+			//Allocator	= nullptr;
 			Max			= (TYSize)internalBuffer.size();
 			Size		= 0;
 		}
@@ -2990,6 +2993,7 @@ namespace FlexKit
 			}
 		}
 
+
 		TY_value* insert(const TY_key key, const TY_value& value)
 		{
 			while (true)
@@ -3013,6 +3017,7 @@ namespace FlexKit
 
 			return ret;
 		}
+
 
 		template<typename ... TY_params>
 		TY_value* emplace(const TY_key key, TY_params&& ... args)
@@ -3038,6 +3043,7 @@ namespace FlexKit
 			}
 		}
 
+
 		TY_value* Find_Or(const TY_key key, auto&& initialValue)
 		{
 			auto res = find(key);
@@ -3046,6 +3052,7 @@ namespace FlexKit
 
 			return res;
 		}
+
 
 		template<typename TY_callable>
 		TY_value* Find_Or(const TY_key key, TY_callable&& callable)
@@ -3061,10 +3068,12 @@ namespace FlexKit
 			return res;
 		}
 
+
 		TY_value* operator [] (const TY_key key) const noexcept
 		{
 			return find(key);
 		}
+
 
 		TY_value* find (const TY_key key) const noexcept
 		{
@@ -3074,13 +3083,12 @@ namespace FlexKit
 			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 					uint64_t idx	= hash % max;
 
-			const uint64_t end = Min(idx + 4, max);
-			while (keys[idx] != key && idx < end) idx++;
+			for (uint64_t i = 0; keys[idx] != key && i < max; idx = (idx + 1) % max, i++);
 
-			if (idx >= end || keys[idx] != key)
-				return nullptr;
-			else
+			if (keys[idx] == key)
 				return (values + idx);
+			else
+				return nullptr;
 		}
 
 
@@ -3089,9 +3097,7 @@ namespace FlexKit
 			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 					uint64_t idx	= hash % max;
 
-			const uint64_t end = Min(idx + 4, max);
-
-			for (; keys[idx] != key && idx < end; idx++);
+			for (uint64_t i = 0; keys[idx] != key && i < max; idx = (idx + 1) % max, i++);
 		
 			if (keys[idx] == key)
 			{
@@ -3111,6 +3117,7 @@ namespace FlexKit
 		{
 			return max;
 		}
+
 
 		void reserve(const uint32_t newSize)
 		{
@@ -3159,20 +3166,20 @@ namespace FlexKit
 
 		void Release()
 		{
-			if (used)
+			if (used != 0 && !std::is_trivially_destructible_v<TY_value>)
 			{
-				if constexpr (!std::is_trivially_destructible_v<TY_value>)
+				for (size_t itr = 0; itr < max; itr++)
 				{
-					for (size_t itr = 0; itr < max; itr++)
+					if (keys[itr] != (TY_key)0xffffffffffffffff)
 					{
-						if (keys[itr] != (TY_key)0xffffffffffffffff)
-						{
-							keys[itr] = (TY_key)0xffffffffffffffff;
-							values[itr].~TY_value();
-						}
+						keys[itr] = (TY_key)0xffffffffffffffff;
+						values[itr].~TY_value();
 					}
 				}
+			}
 
+			if (max != 0)
+			{
 				allocator->_aligned_free(keys);
 				allocator->_aligned_free(values);
 			}

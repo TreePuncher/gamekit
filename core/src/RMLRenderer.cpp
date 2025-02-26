@@ -41,6 +41,9 @@ namespace FlexKit
 	public:
 		explicit RmlRenderer(RenderSystem& IN_renderSystem);
 
+		~RmlRenderer() override {}
+
+
 		void Begin(FlexKit::Context& IN_ctx, BeginResources& resources, FlexKit::iAllocator& IN_allocator);
 
 		void End();
@@ -128,85 +131,81 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlRenderer::RmlRenderer(FlexKit::RenderSystem& IN_renderSystem) :
+	RmlRenderer::RmlRenderer(RenderSystem& IN_renderSystem) :
 		renderSystem	{ IN_renderSystem			},
 		textures		{ IN_renderSystem.Memory	},
 		geometry		{ IN_renderSystem.Memory	}
 	{
 		renderSystem.RegisterPSOLoader(RMLDrawPSO,
-			[&](FlexKit::RenderSystem* renderSystem, FlexKit::iAllocator& allocator) -> FlexKit::LoadPipelineStateRes
+			[&](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				FlexKit::PipelineBuilder builder{ allocator };
-				builder.AddInputTopology(FlexKit::ETopology::EIT_TRIANGLE);
-				builder.AddInputLayout(
-					{	.inputs		= {
-							FlexKit::EInputElement{
-								.name				= "POSITION",
-								.format				= FlexKit::DeviceFormat::R16G16_FLOAT,
-								.alignedByteOffset	= 0,
+				return PipelineBuilder{ allocator }
+					.AddInputTopology(ETopology::EIT_TRIANGLE)
+					.AddInputLayout(
+						{	.inputs		= {
+								EInputElement{
+									.name				= "POSITION",
+									.format				= DeviceFormat::R16G16_FLOAT,
+									.alignedByteOffset	= 0,
+								},
+								EInputElement{
+									.name				= "TEXCOORD",
+									.format				= DeviceFormat::R16G16_FLOAT,
+									.alignedByteOffset	= 4,
+								},
+								EInputElement{
+									.name				= "COLOR",
+									.format				= DeviceFormat::R8G8B8A8_UNORM,
+									.alignedByteOffset	= 8,
+								},
 							},
-							FlexKit::EInputElement{
-								.name				= "TEXCOORD",
-								.format				= FlexKit::DeviceFormat::R16G16_FLOAT,
-								.alignedByteOffset	= 4,
-							},
-							FlexKit::EInputElement{
-								.name				= "COLOR",
-								.format				= FlexKit::DeviceFormat::R8G8B8A8_UNORM,
-								.alignedByteOffset	= 8,
-							},
-						},
-						.count		= 3 });
-				builder.AddVertexShader	("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true });
-				builder.AddPixelShader	("PMain", R"(assets/shaders/RMLUI/Pixel.hlsl)");
-				builder.AddBlendState	(FlexKit::BlendState::Blend());
-				builder.AddRasterizerState({
-					.CullMode = FlexKit::ECullMode::NONE }); 
-				builder.AddRenderTargetState({
-					.targetCount	= 1,
-					.targetFormats	= { FlexKit::DeviceFormat::R16G16B16A16_FLOAT }});
-				
-
-				auto res = builder.Build(*renderSystem);
-				return res;
+							.count		= 3 })
+					.AddVertexShader	("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
+					.AddPixelShader	("PMain", R"(assets/shaders/RMLUI/Pixel.hlsl)")
+					.AddBlendState	(BlendState::Blend())
+					.AddRasterizerState({
+						.CullMode = ECullMode::NONE })
+					.AddRenderTargetState({
+						.targetCount	= 1,
+						.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT }})
+					.SetDebugName("RML_State_0")
+					.Build(*renderSystem);
 			});
 
 		renderSystem.RegisterPSOLoader(RMLDraw2PSO,
-			[&](FlexKit::RenderSystem* renderSystem, FlexKit::iAllocator& allocator) -> FlexKit::LoadPipelineStateRes
+			[&](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				FlexKit::PipelineBuilder builder{ allocator };
-				builder.AddInputTopology(FlexKit::ETopology::EIT_TRIANGLE);
-				builder.AddInputLayout(
-					{	.inputs		= {
-							FlexKit::EInputElement{
-								.name				= "POSITION",
-								.format				= FlexKit::DeviceFormat::R16G16_FLOAT,
-								.alignedByteOffset	= 0,
+				return PipelineBuilder{ allocator }
+					.AddInputTopology(ETopology::EIT_TRIANGLE)
+					.AddInputLayout(
+						{	.inputs		= {
+								EInputElement{
+									.name				= "POSITION",
+									.format				= DeviceFormat::R16G16_FLOAT,
+									.alignedByteOffset	= 0,
+								},
+								EInputElement{
+									.name				= "TEXCOORD",
+									.format				= DeviceFormat::R16G16_FLOAT,
+									.alignedByteOffset	= 4,
+								},
+								EInputElement{
+									.name				= "COLOR",
+									.format				= DeviceFormat::R8G8B8A8_UNORM,
+									.alignedByteOffset	= 8,
+								},
 							},
-							FlexKit::EInputElement{
-								.name				= "TEXCOORD",
-								.format				= FlexKit::DeviceFormat::R16G16_FLOAT,
-								.alignedByteOffset	= 4,
-							},
-							FlexKit::EInputElement{
-								.name				= "COLOR",
-								.format				= FlexKit::DeviceFormat::R8G8B8A8_UNORM,
-								.alignedByteOffset	= 8,
-							},
-						},
-						.count		= 3 });
-				builder.AddVertexShader	("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true });
-				builder.AddPixelShader	("TexturedPMain", R"(assets/shaders/RMLUI/Pixel.hlsl)");
-				builder.AddBlendState	(FlexKit::BlendState::Blend());
-				builder.AddRasterizerState({
-					.CullMode = FlexKit::ECullMode::NONE }); 
-				builder.AddRenderTargetState({
-					.targetCount	= 1,
-					.targetFormats	= { FlexKit::DeviceFormat::R16G16B16A16_FLOAT }});
-				
-
-				auto res = builder.Build(*renderSystem);
-				return res;
+							.count		= 3 })
+					.AddVertexShader("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
+					.AddPixelShader	("TexturedPMain", R"(assets/shaders/RMLUI/Pixel.hlsl)")
+					.AddBlendState	(BlendState::Blend())
+					.AddRasterizerState({
+						.CullMode = ECullMode::NONE })
+					.AddRenderTargetState({
+						.targetCount	= 1,
+						.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT }})
+					.SetDebugName("RML_State_1")
+					.Build(*renderSystem);
 			});
 
 		renderSystem.QueuePSOLoad(RMLDrawPSO);
@@ -217,7 +216,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RmlRenderer::Begin(FlexKit::Context& IN_ctx, BeginResources& resources, FlexKit::iAllocator& IN_allocator)
+	void RmlRenderer::Begin(Context& IN_ctx, BeginResources& resources, iAllocator& IN_allocator)
 	{
 		ctx = &IN_ctx;
 		ctx->SetRenderTargets({ resources.renderTarget }, false);
@@ -227,7 +226,7 @@ namespace FlexKit
 
 		renderTarget	= resources.renderTarget;
 		copyHandle		= renderSystem.OpenUploadQueue();
-		transform		= FlexKit::float4x4::Identity();
+		transform		= float4x4::Identity();
 	}
 
 
@@ -241,7 +240,7 @@ namespace FlexKit
 
 		ctx			= nullptr;
 		pass		= nullptr;
-		copyHandle	= FlexKit::InvalidHandle;
+		copyHandle	= InvalidHandle;
 
 	}
 
@@ -346,6 +345,7 @@ namespace FlexKit
 		vbView.SizeInBytes		= geometryEntry->vertexCount * sizeof(RMLVertex);
 		vbView.StrideInBytes	= sizeof(RMLVertex);
 
+		ctx->SetInputPrimitive(EInputPrimitive::INPUTPRIMITIVETRIANGLELIST);
 		ctx->SetVertexBuffers2({ &vbView, 1 });
 		ctx->SetIndexBuffer(geometryEntry->indexBuffer);
 
@@ -414,7 +414,7 @@ namespace FlexKit
 			memcpy(&transform, IN_transform, sizeof(transform));
 		}
 		else
-			transform = FlexKit::float4x4::Identity();
+			transform = float4x4::Identity();
 	}
 
 
@@ -438,22 +438,22 @@ namespace FlexKit
 			if (!img)
 				return false;
 
-			const size_t rowPitch	= FlexKit::AlignedSize(w * sizeof(FlexKit::RGBA), 256);
+			const size_t rowPitch	= AlignedSize(w * sizeof(RGBA), 256);
 			const size_t bufferSize = rowPitch * h;
 
-			FlexKit::TextureBuffer sourceBuffer{ { w, h }, (std::byte*)img, (size_t)FlexKit::Max(channels, 3)};
+			TextureBuffer sourceBuffer{ { w, h }, (std::byte*)img, (size_t)Max(channels, 3)};
 
-			FlexKit::TextureBuffer buffer{
-				FlexKit::uint2{ (uint32_t)w, (uint32_t)h },
+			TextureBuffer buffer{
+				uint2{ (uint32_t)w, (uint32_t)h },
 				(std::byte*)renderSystem.Memory->_aligned_malloc(rowPitch * h, 256),
 				bufferSize,
 				sizeof(FlexKit::RGBA),
 				renderSystem.Memory
 			};
 
-			FlexKit::TextureBufferView<FlexKit::RGB>	inputView	{ sourceBuffer };
-			FlexKit::TextureBufferView<FlexKit::RGBA>	inputView2	{ sourceBuffer };
-			FlexKit::TextureBufferView<FlexKit::RGBA>	outputView	{ buffer, rowPitch };
+			TextureBufferView<RGB>	inputView	{ sourceBuffer };
+			TextureBufferView<RGBA>	inputView2	{ sourceBuffer };
+			TextureBufferView<RGBA>	outputView	{ buffer, rowPitch };
 
 			for (int y = 0; y < h; y++)
 			{
@@ -535,7 +535,7 @@ namespace FlexKit
 		if (!ctx)
 		{
 			auto resource = renderSystem.CreateGPUResource(
-				FlexKit::GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, FlexKit::DeviceFormat::R8G8B8A8_UNORM));
+				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
 			size_t bufferSize	= source_dimensions.x * source_dimensions.y * 4;
 			auto uploadSpace	= ctx->ReserveDirectUploadSpace(bufferSize);
@@ -544,9 +544,9 @@ namespace FlexKit
 				return false;
 
 			memcpy(uploadSpace.buffer, source.data(), source.size());
-			ctx->AddCopyResourceBarrier(resource, FlexKit::DASCommon, FlexKit::DASCopyDest);
+			ctx->AddCopyResourceBarrier(resource, DASCommon, DASCopyDest);
 			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
-			ctx->AddCopyResourceBarrier(resource, FlexKit::DASCopyDest, FlexKit::DASCommon);
+			ctx->AddCopyResourceBarrier(resource, DASCopyDest, DASCommon);
 
 			const auto res = renderSystem._AllocateDescriptorRange(1);
 			if (!res.has_value())
@@ -562,7 +562,7 @@ namespace FlexKit
 		else
 		{
 			auto resource = renderSystem.CreateGPUResource(
-				FlexKit::GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, FlexKit::DeviceFormat::R8G8B8A8_UNORM));
+				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
 			size_t bufferSize = source_dimensions.x * source_dimensions.y * 4;
 
