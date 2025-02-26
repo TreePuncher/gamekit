@@ -1794,13 +1794,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RootSignature::Release()
+	void RootSignature::Release() const
 	{
-		if(!Signature->Release())
+		if(Signature && !Signature->Release())
 		{
-			Heaps.Release();
-			RenderSystem::_GetInstance()._ReleaseRootSignature((uint64_t)this);
-			allocator->free(this);
+			auto* mutable_this = const_cast<RootSignature*>(this);
+
+			mutable_this->Heaps.Release();
+
+			auto t = (uint64_t)Signature;
+			mutable_this->Signature = nullptr;
+			RenderSystem::_GetInstance()._ReleaseRootSignature(t);
+			allocator->free(mutable_this);
 		}
 	}
 
@@ -2223,7 +2228,10 @@ namespace FlexKit
 			}
 
 			if (pso && debugName)
+			{
 				SETDEBUGNAME(pso, debugName);
+				rootSig->SetDebugStr(debugName);
+			}
 
 			allocator->free(inputElements);
 			inputElements = nullptr;
@@ -6295,11 +6303,11 @@ namespace FlexKit
 		VertexBuffers.Release();
 		Textures.Release();
 		PipelineStates.ReleasePSOs();
-		rootSignatures.Release();
 		ReadBackTable.Release();
 		Queries.Release();
 		directUploadBuffer.Release();
 		heaps.Release();
+		rootSignatures.Release();
 
 		if(GraphicsQueue)	GraphicsQueue->Release();
 		if(ComputeQueue)	ComputeQueue->Release();
@@ -10775,12 +10783,13 @@ namespace FlexKit
 
 	RootSignature* RenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
 	{
-		std::shared_lock lock{ rootSignatureLock };
+		{
+			std::shared_lock lock{ rootSignatureLock };
 
-		if (auto res = rootSignatures[(uint64_t)rootSig]; res != nullptr)
-			return res->get();
+			if (auto res = rootSignatures[(uint64_t)rootSig]; res != nullptr)
+				return res->get();
+		}
 
-		lock.unlock();
 
 		auto& object			= Memory->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps), Memory);
 		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });

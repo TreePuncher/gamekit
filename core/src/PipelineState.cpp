@@ -62,6 +62,12 @@ namespace FlexKit
 		if (auto _ptr = next; _ptr)
 			_ptr->Release(allocator);
 
+		if (rootSignature)
+		{
+			rootSignature->Release();
+			rootSignature = nullptr;
+		}
+
 		allocator->free(this);
 	}
 

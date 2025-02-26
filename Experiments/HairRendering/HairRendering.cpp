@@ -429,6 +429,7 @@ HairRenderingTest::HairRenderingTest(GameFramework& IN_framework, bool enableWor
 
 HairRenderingTest::~HairRenderingTest()
 {
+	renderWindow->Release();
 	ReleaseStyle(style, framework.GetRenderSystem());
 
 

@@ -1685,24 +1685,23 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		template<size_t SIZE>
 		bool SetParameterAsDescriptorTable(
-			size_t Index, const DesciptorHeapLayout<SIZE>& Layout, size_t unused = -1, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
+			size_t index, const DesciptorHeapLayout<SIZE>& layout, size_t unused = -1, PIPELINE_DESTINATION accessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::DescriptorHeap;
-			Desc.DescriptorHeap.HeapIdx			= Heaps.size();
-			Desc.DescriptorHeap.Accessibility	= AccessableStages;
-			Heaps.push_back({ Index, Layout });
+			Desc.DescriptorHeap.HeapIdx			= Heaps.push_back({ index, layout });
+			Desc.DescriptorHeap.Accessibility	= accessableStages;
 
-			if (RootEntries.size() <= Index)
+			if (RootEntries.size() <= index)
 			{
 				if (!RootEntries.full()) {
-					RootEntries.resize(Index + 1);
+					RootEntries.resize(index + 1);
 				}
 				else
 					return false;
 			}
 
-			RootEntries[Index] = Desc;
+			RootEntries[index] = Desc;
 
 			return true;
 		}
@@ -1783,7 +1782,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator ID3D12RootSignature* ()	const { return Signature; }
 		ID3D12RootSignature* Get_ptr()		const { return Signature; };
 
-		void Release();
+		void Release() const;
 
 		const DesciptorHeapLayout<16>&	GetDescHeap(size_t idx) const
 		{
@@ -1792,9 +1791,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		size_t							GetDesciptorTableSize(size_t idx) const;
 
+		void							SetDebugStr(const char* IN_debugStr) const
+		{
+#ifdef _DEBUG
+			debugStr = IN_debugStr;
+#endif
+		}
+
 		ID3D12RootSignature*			Signature = nullptr;
 		iAllocator*						allocator = nullptr;
 		Vector<RootSignatureHeapEntry>	Heaps;
+
+#ifdef _DEBUG
+		mutable const char*				debugStr  = nullptr;
+#endif
 	};
 
 
