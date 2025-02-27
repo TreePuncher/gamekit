@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <directx/d3d12.h>
 #include <directx/d3dx12.h>
 #include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
+#include <DirectXMath.h>
 #include <dxgi1_6.h>
 #include <concepts>
 #include <expected>

@@ -1737,10 +1737,8 @@ public:
 			ImGuiIO& io = ImGui::GetIO();
 			auto str = evt->text().toStdString();
 
-			for (auto c : str) {
+			for (auto c : str)
 				io.AddInputCharacter(c);
-				io.KeysDown[c] = true;
-			}
 		}   break;
 		}
 	}
@@ -1749,9 +1747,6 @@ public:
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		auto str = evt->text().toStdString();
-
-		for (auto c : str)
-			io.KeysDown[c] = false;
 	}
 
 

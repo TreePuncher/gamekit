@@ -8,16 +8,16 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	inline ImTextureID TextreHandleToIM(FlexKit::ResourceHandle texture)
+	inline ImTextureID TextreHandleToIM(ResourceHandle texture)
 	{
-		return reinterpret_cast<ImTextureID>((size_t)texture.INDEX);
+		return (ImTextureID)texture.INDEX;
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Create_DrawImGUI(FlexKit::RenderSystem* renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes Create_DrawImGUI(RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		auto DrawRectVShader = renderSystem->LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
 		auto DrawRectPShader = renderSystem->LoadShader("ImGui_PS", "ps_6_0", "assets\\shaders\\imguiShaders.hlsl");
@@ -89,7 +89,6 @@ namespace FlexKit
 		FlexKit::CopyContextHandle  uploadQueue = renderSystem.ImmediateUpload;
 		ImGuiIO& io                     = ImGui::GetIO();
 		io.FontGlobalScale              = 1.5f;
-		io.KeyMap[ImGuiKey_Backspace]   = VK_BACK;
 
 		renderSystem.RegisterPSOLoader(DRAW_imgui, Create_DrawImGUI);
 		renderSystem.QueuePSOLoad(DRAW_imgui);
@@ -234,10 +233,7 @@ namespace FlexKit
 			case Event::Keyboard:
 			{
 				if (evt.mData1.mKC[0] == KC_BACKSPACE && ((evt.Action == Event::Pressed) | (evt.Action == Event::Release)))
-				{
-					io.KeysDown[io.KeyMap[ImGuiKey_Backspace]] =
-						evt.Action == Event::Pressed ? true : false;
-				}
+					io.AddKeyEvent(ImGuiKey_Backspace, evt.Action == Event::Pressed ? true : false);
 
 				switch (evt.Action)
 				{

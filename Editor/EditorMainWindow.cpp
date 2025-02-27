@@ -370,7 +370,7 @@ void EditorMainWindow::AddModelViewer()
 /************************************************************************************************/
 
 
-TextureViewer* EditorMainWindow::AddTextureViewer(TextureResource* res)
+TextureViewer* EditorMainWindow::AddTextureViewer(FlexKit::TextureResource* res)
 {
 	auto docklet        = new QDockWidget{ this };
 	auto textureViewer  = new TextureViewer{ renderer, this };

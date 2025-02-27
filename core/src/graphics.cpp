@@ -29,18 +29,13 @@
 #include <directx/d3d12.h>
 #include <directx/d3dx12.h>
 #include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
+#include <DirectXMath.h>
 
-
-#include <directx/d3d12.h>
-#include <directx/d3dx12.h>
-#include <directx/d3d12sdklayers.h>
-#include <DirectXMath/DirectXMath.h>
 
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 614; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 615; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\"; }
 
 namespace FlexKit

@@ -7,7 +7,7 @@
 #include "ResourceIDs.h"
 #include "Serialization.hpp"
 
-#include <DirectXMath/DirectXMath.h>
+#include <DirectXMath.h>
 
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "oleaut32.lib")

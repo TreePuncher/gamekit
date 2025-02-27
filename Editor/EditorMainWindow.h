@@ -27,8 +27,11 @@
 
 /************************************************************************************************/
 
+namespace FlexKit
+{
+	class TextureResource;
+}
 
-class TextureResource;
 class EditorScriptEngine;
 class EditorPrefabEditor;
 class EditorProject;
@@ -95,7 +98,7 @@ public:
 	void					AddSceneOutliner();
 	void					AddTaskManager();
 
-	TextureViewer*			AddTextureViewer(TextureResource* res = nullptr);
+	TextureViewer*			AddTextureViewer(class FlexKit::TextureResource* res = nullptr);
 	QTextEdit*				AddTextView();
 	DXRenderWindow*			AddViewPort();
 
