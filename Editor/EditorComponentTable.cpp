@@ -1,12 +1,16 @@
+#include "BuildSettings.hpp"
 #include "EditorComponentTable.hpp"
 #include "EditorProject.h"
 #include "EditorInspectorView.h"
+#include "EditorViewport.h"
 
 #include <EditorReflection.hpp>
 #include <Components.hpp>
 #include <print>
 #include <scn/scan.h>
 
+
+using namespace FlexKit;
 
 std::string GenerateTypeID()
 {
@@ -39,7 +43,7 @@ ComplexVariableMethods::~ComplexVariableMethods()
 constexpr uint32_t ReflectedComponentID = GetTypeGUID(ReflectedComponentID);
 
 class EditorReflectedComponent :
-	public FlexKit::Serializable<EditorReflectedComponent, FlexKit::EntityComponent, ReflectedComponentID>
+	public Serializable<EditorReflectedComponent, EntityComponent, ReflectedComponentID>
 {
 public:
 	EditorReflectedComponent(uint32_t IN_componentID = 0) :
@@ -53,12 +57,12 @@ public:
 		ar& componentData;
 	}
 
-	FlexKit::Blob GetBlob() override
+	Blob GetBlob() override
 	{
 		return componentData;
 	}
 
-	FlexKit::Blob	componentData;
+	Blob componentData;
 };
 
 
@@ -76,13 +80,13 @@ public:
 	{
 		EditorInspectorView::AddComponent(*this);
 		IEntityComponentRuntimeUpdater::updaters[componentID] =
-			[componentID = this->componentID](FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& runtime, ViewportSceneContext& scene)
+			[componentID = this->componentID](EntityComponent& component, ComponentViewBase& runtime, ViewportSceneContext& scene)
 			{
 				std::print("Reflected component updating serialized data: {}\n", componentID);
 				ReflectedComponent::Update(component, runtime, scene);
 			};
 
-		FlexKit::EntityComponent::RegisterFactory(
+		EntityComponent::RegisterFactory(
 			componentID, 
 			[this]()
 			{
@@ -90,10 +94,10 @@ public:
 			});
 	}
 
-	FlexKit::ComponentID ComponentID()	const noexcept { return componentID; }
-	const std::string& ComponentName()	const noexcept { return name; }
+	FlexKit::ComponentID	ComponentID()	const noexcept { return componentID; }
+	const std::string&		ComponentName()	const noexcept { return name; }
 
-	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& scene, bool constructRemot)
+	ComponentViewBase*	Construct(GameObject& gameObject, ComponentConstructionContext& scene, bool constructRemot)
 	{
 		return runtimeComponent.AddComponentView(gameObject);
 	}
@@ -104,7 +108,7 @@ public:
 	}
 
 
-	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+	static void Update(EntityComponent& component, ComponentViewBase& base, ViewportSceneContext& scene)
 	{
 		auto& editorComponent	= static_cast<EditorReflectedComponent&>(component); // This gets serialized
 		auto& runtimeComponent	= static_cast<RuntimeComponentView&>(base);
@@ -112,7 +116,7 @@ public:
 		editorComponent.componentData = runtimeComponent.blob;
 	}
 
-	void Inspect(ComponentViewPanelContext& layout, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& component, bool remoteObject)
+	void Inspect(ComponentViewPanelContext& layout, GameObject& gameObject, ComponentViewBase& component, bool remoteObject)
 	{
 		RuntimeComponentView* componentView = static_cast<RuntimeComponentView*>(gameObject.GetView(componentID));
 

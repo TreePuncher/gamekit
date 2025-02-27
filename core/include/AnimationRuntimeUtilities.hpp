@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 
-#include <DirectXMath/DirectXMath.h>
+#include <DirectXMath.h>
 #include <functional>
 
 // TODOs:

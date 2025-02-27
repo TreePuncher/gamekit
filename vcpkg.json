@@ -44,15 +44,5 @@
     "usd",
     "zlib-ng"
   ],
-  "builtin-baseline": "91d888703f251c13111c1b889be1f350c4ceb7ab",
-  "overrides": [
-    {
-      "name": "physx",
-      "version": "5.2.1"
-    },
-    {
-      "name": "tbb",
-      "version-string": "2020_U3"
-    }
-  ]
+  "builtin-baseline": "d5ec528843d29e3a52d745a64b469f810b2cedbf"
 }

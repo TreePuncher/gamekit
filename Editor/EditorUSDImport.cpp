@@ -3,6 +3,8 @@
 #include <boost/core/enable_if.hpp>
 #include <filesystem>
 
+#undef emit
+
 #include <pxr/base/tf/type.h>
 #include <pxr/base/tf/debug.h>
 #include <pxr/base/tf/diagnosticbase.h>

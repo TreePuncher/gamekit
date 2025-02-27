@@ -2,7 +2,8 @@
 #define XMMATHCONVERSION_H
 
 #include "MathUtilities.hpp"
-#include <DirectXMath/DirectXMath.h>
+#include <DirectXMath.h>
+//#include <DirectXMath/DirectXMath.h>
 
 namespace FlexKit
 {

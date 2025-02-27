@@ -32,3 +32,8 @@ Hit F7 to build. Vcpkg will grab all other dependencies.
 ![TextureStreaming And Tiled Resources](/screenshots/StreamingTiledTextures.jpg)
 ### Basic Profiler
 ![Basic in engine profiler](/screenshots/profiler.png)
+### Editor written in Qt
+![Editor](/screenshots/Editor.jpg)
+### Terrain rendering
+![Shaded](/screenshots/cbtTerrain.jpg)
+![Wireframe](/screenshots/cbtTerrainWireframe.jpg)
