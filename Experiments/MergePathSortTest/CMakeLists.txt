@@ -16,4 +16,6 @@ target_include_directories(MergePath PUBLIC ${PROJECT_SOURCE_DIR})
 
 target_link_libraries(MergePath PRIVATE flex)
 
+add_dependencies(MergePath ASSETS)
+
 Flex_LinkAssets(MergePath)

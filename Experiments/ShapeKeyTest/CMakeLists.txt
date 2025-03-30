@@ -20,5 +20,5 @@ target_include_directories(
 
 set_property(TARGET ShapeKeys PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(ShapeKeys PRIVATE flex flex_optional)
-
+add_dependencies(ShapeKeys ASSETS)
 Flex_LinkAssets(ShapeKeys)

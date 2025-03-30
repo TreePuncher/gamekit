@@ -89,10 +89,11 @@ if(WIN32)
 	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
 	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
 	target_link_libraries(editor PRIVATE Boost::process)
+	add_dependencies(editor ASSETS)
 
 	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
 	target_compile_definitions(editor PUBLIC UNICODE)
-    target_compile_options(editor PUBLIC /UTF-8 /bigobj)
+        target_compile_options(editor PUBLIC /UTF-8 /bigobj)
 
 	if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MDd.lib)

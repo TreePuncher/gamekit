@@ -15,4 +15,6 @@ target_include_directories(HairRendering PUBLIC ${PROJECT_SOURCE_DIR})
 
 target_link_libraries(HairRendering PRIVATE flex)
 
+add_dependencies(HairRendering ASSETS)
+
 Flex_LinkAssets(HairRendering)
