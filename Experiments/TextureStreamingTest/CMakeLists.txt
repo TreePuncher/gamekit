@@ -20,5 +20,6 @@ target_include_directories(
 
 set_property(TARGET TextureStreamingTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(TextureStreamingTest PRIVATE flex flex_optional)
+add_dependencies(TextureStreamingTest ASSETS)
 
 Flex_LinkAssets(TextureStreamingTest)

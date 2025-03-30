@@ -12,7 +12,18 @@ option(BuildEditor "Build Editor" ON)
 add_subdirectory(Core)
 add_subdirectory(Components)
 
+
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    file(TO_NATIVE_PATH ${FLEX_ROOT}/shaders ASSETSRCPATH)
+    file(TO_NATIVE_PATH ${FLEX_ROOT}/assets/shaders ASSETDSTPATH)
+
+    if(NOT EXISTS "${FLEX_ROOT}/assets")
+        file(MAKE_DIRECTORY "${FLEX_ROOT}/assets")
+    endif()
+
+    add_custom_target(ASSETS ALL
+        COMMAND mklink /j ${ASSETDSTPATH} ${ASSETSRCPATH} || echo "")
+	
     if(BuildEditor)
         message("Building Editor")
         add_subdirectory(EditorReflection)

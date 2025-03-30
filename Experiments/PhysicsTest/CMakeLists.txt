@@ -21,4 +21,6 @@ target_include_directories(
 
 target_link_libraries(PhysicsTest PRIVATE flex flex_optional)
 
+add_dependencies(MergePath ASSETS)
+
 Flex_LinkAssets(PhysicsTest)

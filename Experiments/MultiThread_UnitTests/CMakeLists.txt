@@ -19,5 +19,3 @@ target_include_directories(MultiThread_UnitTests PUBLIC ${PROJECT_SOURCE_DIR})
 target_link_libraries(MultiThread_UnitTests PRIVATE flex)
 target_link_libraries(MultiThread_UnitTests PRIVATE MSUnitTestFramework::MSUnitTestFramework)
 add_test(NAME mytest COMMAND "${VSTest_EXECUTABLE}" "$<TARGET_FILE:MultiThread_UnitTests>")
-
-file(CREATE_LINK ${FLEX_ROOT}/assets ${CMAKE_CURRENT_BINARY_DIR}/assets SYMBOLIC)

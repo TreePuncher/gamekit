@@ -21,5 +21,6 @@ target_include_directories(
 
 set_property(TARGET AnimationTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(AnimationTest PRIVATE flex flex_optional)
+add_dependencies(AnimationTest ASSETS)
 
 Flex_LinkAssets(AnimationTest)
