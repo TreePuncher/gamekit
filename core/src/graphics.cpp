@@ -9,6 +9,7 @@
 #include "Logging.hpp"
 #include "MemoryUtilities.hpp"
 #include "MeshUtilities.hpp"
+#include "PushBuffers.hpp"
 #include "ThreadUtilities.hpp"
 
 
@@ -531,7 +532,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
+	SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
 	{
 		const auto res = Push(CB, nullptr, reserveSize);
 
@@ -5711,13 +5712,24 @@ namespace FlexKit
 			copyCommandList->Close();
 			commandAllocator->Reset();
 
-			copyContexts.push_back({
-				commandAllocator,
-				copyCommandList,
-				0,
-				CreateEvent(nullptr, FALSE, FALSE, nullptr),
-				UploadBuffer{ Device },
-				Vector<ID3D12Resource*>{ allocator }});
+			CopyContext copyCtx;
+			copyCtx.commandAllocator	= commandAllocator;
+			copyCtx.commandList			= copyCommandList;
+			copyCtx.eventHandle			= CreateEvent(nullptr, FALSE, FALSE, nullptr);
+			copyCtx.uploadBuffer		= UploadBuffer{ Device };
+			copyCtx.freeResources		= Vector<ID3D12Resource*>{ allocator };
+
+			copyContexts.emplace_back(std::move(copyCtx));
+			/*
+			copyContexts.push_back(
+				CopyContext{
+					commandAllocator,
+					copyCommandList,
+					0,
+					CreateEvent(nullptr, FALSE, FALSE, nullptr),
+					UploadBuffer{ Device },
+					Vector<ID3D12Resource*>{ allocator }});
+			*/
 			}
 
 		Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
@@ -6568,7 +6580,7 @@ namespace FlexKit
 
 	const size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
-		const D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+		const D3D12_RESOURCE_DESC Resource_DESC = GetD3D12ResourceDesc(desc);
 		auto res = pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC);
 
 		return res.SizeInBytes;
@@ -6863,7 +6875,7 @@ namespace FlexKit
 		}
 		else
 		{
-			size_t byteSize							= desc.CalculateByteSize();
+			size_t byteSize							= CalculateByteSize(desc);
 
 			D3D12_HEAP_PROPERTIES heapProperties	={};
 			heapProperties.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -6877,7 +6889,7 @@ namespace FlexKit
 				(desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE) |
 				(desc.type == ResourceType::UnorderedAccessRenderTarget ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
-			const D3D12_CLEAR_VALUE* clearValue = desc.clearValue ? &desc.clearValue.value() : nullptr;
+			const D3D12_CLEAR_VALUE clearValue = desc.clearValue.has_value() ? ClearValue2DXClearValue(desc.clearValue.value()) : D3D12_CLEAR_VALUE{};
 			
 			D3D12_BARRIER_LAYOUT initialLayout = DeviceLayout2DX(desc.initialLayout);
 			ID3D12Resource* NewResource[3]		= { nullptr, nullptr, nullptr };
@@ -6894,13 +6906,13 @@ namespace FlexKit
 				case ResourceAllocationType::Tiled:
 				{
 					ProfileFunctionLabeled(Tiled);
-					D3D12_RESOURCE_DESC Resource_DESC = desc.GetD3D12ResourceDesc();
+					D3D12_RESOURCE_DESC Resource_DESC = GetD3D12ResourceDesc(desc);
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 					HRESULT HR = pDevice14->CreateReservedResource2(
 									&Resource_DESC,
 									initialLayout,
-									clearValue,
+									desc.clearValue.has_value() ? &clearValue : nullptr,
 									nullptr,
 									0,
 									nullptr,
@@ -6915,14 +6927,14 @@ namespace FlexKit
 				case ResourceAllocationType::Committed:
 				{
 					ProfileFunctionLabeled(Committed);
-					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
+					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
 
 					auto HR = pDevice14->CreateCommittedResource3(
 						&heapProperties,
 						flags,
 						&Resource_DESC,
 						initialLayout,
-						clearValue,
+						desc.clearValue.has_value() ? &clearValue : nullptr,
 						nullptr, // protected sessction,
 						0, // castable formats,
 						nullptr,
@@ -6940,14 +6952,14 @@ namespace FlexKit
 					//std::unique_lock lock{ m };
 
 					ProfileFunctionLabeled(Placed);
-					D3D12_RESOURCE_DESC1 Resource_DESC = desc.GetD3D12ResourceDesc1();
+					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
 
 					HRESULT HR = pDevice14->CreatePlacedResource2(
 						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
 						initialLayout,
-						clearValue,
+						desc.clearValue.has_value() ? &clearValue : nullptr,
 						0,
 						nullptr,
 						IID_PPV_ARGS(&NewResource[itr]));
@@ -6982,8 +6994,8 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		size_t byteSize						= desc.CalculateByteSize();
-		D3D12_RESOURCE_DESC1 Resource_DESC	= desc.GetD3D12ResourceDesc1();
+		size_t byteSize						= CalculateByteSize(desc);
+		D3D12_RESOURCE_DESC1 Resource_DESC	= GetD3D12ResourceDesc1(desc);
 
 		D3D12_HEAP_PROPERTIES HEAP_Props	= {};
 		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -6994,7 +7006,7 @@ namespace FlexKit
 
 		const auto flags = D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES | (desc.type == ResourceType::UnorderedAccess ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_SHADER_ATOMICS : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE);
 
-		const D3D12_CLEAR_VALUE* pCV = desc.clearValue ? &desc.clearValue.value() : nullptr;
+		const D3D12_CLEAR_VALUE clearValue = desc.clearValue.has_value() ? ClearValue2DXClearValue(desc.clearValue.value()) : D3D12_CLEAR_VALUE{};
 
 		D3D12_BARRIER_LAYOUT initialLayout = DeviceLayout2DX(desc.initialLayout);
 
@@ -7052,7 +7064,7 @@ namespace FlexKit
 					desc.placed.offset,
 					&Resource_DESC,
 					initialLayout,
-					pCV,
+					desc.clearValue.has_value() ? &clearValue : nullptr,
 					0,
 					nullptr,
 					IID_PPV_ARGS(&NewResource[itr]));
@@ -7522,6 +7534,21 @@ namespace FlexKit
 		SETDEBUGNAME(resource, "ReadBackHeap");
 
 		return ReadBackTable.AddReadBack(bufferSize, resource);
+	}
+
+
+	/************************************************************************************************/
+
+
+	SubAllocation RenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept
+	{
+		return ConstantBuffers.Reserve(CB, reserveSize);
+	}
+
+
+	SubAllocation RenderSystem::ReserveVertexBuffer(VertexBufferHandle VB, size_t reserveSize)		noexcept
+	{
+		return VertexBuffers.Reserve(VB, reserveSize);
 	}
 
 
@@ -8711,7 +8738,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferStateTable::SubAllocation VertexBufferStateTable::Reserve(VertexBufferHandle Handle, size_t size) noexcept
+	SubAllocation VertexBufferStateTable::Reserve(VertexBufferHandle Handle, size_t size) noexcept
 	{
 		auto	idx			= Handles[Handle];
 		auto&	userBuffer  = UserBuffers[idx];

@@ -1409,7 +1409,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t FrameGraph::SubmitDirect(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	uint32_t FrameGraph::SubmitDirect(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator)
 	{
 		if (pendingDirectNodes.empty())
 			return -1;
@@ -1434,7 +1434,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t FrameGraph::SubmitCompute(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	uint32_t FrameGraph::SubmitCompute(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator)
 	{
 		if (pendingComputeNodes.empty())
 			return -1;
@@ -1465,10 +1465,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask& FrameGraph::Finish(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator)
+	UpdateTask& FrameGraph::Finish(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator)
 	{
-		SubmitDirect(dispatcher, renderSystem, persistentAllocator);
-		SubmitCompute(dispatcher, renderSystem, persistentAllocator);
+		SubmitDirect(dispatcher, persistentAllocator);
+		SubmitCompute(dispatcher, persistentAllocator);
 
 		struct SubmitData
 		{
@@ -1497,7 +1497,7 @@ namespace FlexKit
 				builder.SetDebugString("Frame Graph Task");
 
 				data.frameGraph		= framegraph;
-				data.renderSystem	= renderSystem;
+				data.renderSystem	= resources.renderSystem;
 
 				for (auto dependency : globalDependencies)
 					builder.AddInput(*dependency);

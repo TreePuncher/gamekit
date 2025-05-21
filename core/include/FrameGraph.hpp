@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,11 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RENDERGRAPH_H
 #define RENDERGRAPH_H
 
-#include "Graphics.hpp"
-#include "GraphicsComponents.hpp"
 #include "Containers.hpp"
 #include "Components.hpp"
 #include "DefaultPipelineStates.hpp"
+#include "Graphics.hpp"
+#include "GraphicsComponents.hpp"
+#include "PushBuffers.hpp"
+
 #include <type_traits>
 
 
@@ -307,7 +309,7 @@ namespace FlexKit
 		Vector<ReserveConstantBufferFunction>	cbAllocators;
 		Vector<ReserveVertexBufferFunction>		vbAllocators;
 
-		std::mutex						m;
+		std::mutex		m;
 
 		RenderSystem&	renderSystem;
 		iAllocator*		allocator;
@@ -732,8 +734,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		template<typename TY>
-		ID3D12Resource*			GetDeviceResource(TY handle) const							{ return globalResources.GetDeviceResource(handle); }
-		ID3D12Resource*			GetDeviceResource(FrameResourceHandle handle) const			{ return globalResources.GetDeviceResource(GetResource(handle)); }
+		DeviceResource_ptr		GetDeviceResource(TY handle) const							{ return globalResources.GetDeviceResource(handle); }
+		DeviceResource_ptr		GetDeviceResource(FrameResourceHandle handle) const			{ return globalResources.GetDeviceResource(GetResource(handle)); }
 
 		DevicePointer			GetDevicePointer		(auto handle) const	{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
 
@@ -744,7 +746,7 @@ namespace FlexKit
 
 				return DeviceAddressRange{
 					.address	= device_ptr->GetGPUVirtualAddress(),
-					.size		= size};
+					.size		= size	};
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(ResourceHandle handle) const
@@ -772,7 +774,7 @@ namespace FlexKit
 		}
 
 
-		ID3D12PipelineState*	GetPipelineState(PSOHandle state, iAllocator& temp) const	{ return globalResources.GetPipelineState(state, temp); }
+		DevicePipelineState_ptr	GetPipelineState(PSOHandle state, iAllocator& temp) const			{ return globalResources.GetPipelineState(state, temp); }
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize)	{ return globalResources.GetVertexBufferOffset(handle, vertexSize); }
 		size_t					GetVertexBufferOffset(VertexBufferHandle handle)					{ return globalResources.GetVertexBufferOffset(handle); }
@@ -827,6 +829,7 @@ namespace FlexKit
 		}
 
 
+#if USING(ENABLEDX12)
 		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context& ctx, size_t vertexSize) const
 		{
 			auto& res			= _FindSubNodeResource(handle);
@@ -847,7 +850,7 @@ namespace FlexKit
 
 			return view;
 		}
-
+#endif
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
@@ -1433,7 +1436,7 @@ namespace FlexKit
 
 		FrameGraphNodeHandle	GetNodeHandle() const;
 
-		FrameResourceHandle		GetHandle(ResourceHandle) const;
+		FrameResourceHandle GetHandle(ResourceHandle) const;
 
 		FrameResourceHandle CreateConstantBuffer();
 		FrameResourceHandle ReadConstantBuffer(FrameResourceHandle);
@@ -2448,12 +2451,12 @@ namespace FlexKit
 		FrameResourceHandle		AddResource	(ResourceHandle resource);
 		FrameResourceHandle		AddOutput	(ResourceHandle resource);
 
-		uint32_t				SubmitDirect	(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator);
-		uint32_t				SubmitCompute	(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator* persistentAllocator);
+		uint32_t				SubmitDirect	(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator);
+		uint32_t				SubmitCompute	(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator);
 
 		void SyncDirectTo(uint32_t);
 
-		UpdateTask&		Finish(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator* persistentAllocator);
+		UpdateTask&		Finish(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator);
 		RenderSystem&	GetRenderSystem() noexcept { return resources.renderSystem; }
 
 		FrameResources				resources;

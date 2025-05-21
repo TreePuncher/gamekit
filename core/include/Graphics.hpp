@@ -6,17 +6,18 @@
 
 #include "BuildSettings.hpp"
 #include "Containers.hpp"
+#include "Geometry.hpp"
 #include "Handle.hpp"
 #include "Intersection.hpp"
 #include "Logging.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 #include "PipelineState.hpp"
+#include "RenderSystemInterface.hpp"
 #include "Transforms.hpp"
 #include "Type.hpp"
 #include "KeycodesEnums.hpp"
 #include "ThreadUtilities.hpp"
-#include "Geometry.hpp"
 #include "TextureUtilities.hpp"
 
 #include <algorithm>
@@ -80,7 +81,20 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	 
+
+	struct SODesc
+	{
+		D3D12_SO_DECLARATION_ENTRY* Descs;
+		size_t							Element_Count;
+		size_t							SO_Count;
+		size_t							Flags;
+		UINT							Strides[16];
+	};
+
+
+	/************************************************************************************************/
+
+
 #pragma warning(disable:4067)
 FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 #ifdef USING(DEBUGGRAPHICS)
@@ -124,134 +138,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		return { rangeStride.address, rangeStride.size, rangeStride.stride };
 	}
 
-
-	/************************************************************************************************/
-
-
-	enum DeviceAccessState
-	{
-		DASReadFlag					= 0x0001,
-		DASWriteFlag				= 0x0002,
-
-		DASRetired					= 0x1000,
-		DASPresent					= 0x1005,
-		DASRenderTarget				= 0x0006,
-		DASPixelShaderResource		= 0x0009,
-		DASUAV						= 0x000A,
-		DASSTREAMOUT				= 0x000B,
-		DASVERTEXBUFFER				= 0x000C,
-		DASCONSTANTBUFFER			= 0x000C,
-		DASDEPTHBUFFER				= 0x0030,
-		DASDEPTHBUFFERREAD			= 0x0030 | DASReadFlag,
-		DASDEPTHBUFFERWRITE			= 0x0030 | DASWriteFlag,
-
-		DASACCELERATIONSTRUCTURE_WRITE	= 0x00D0 | DASWriteFlag,
-		DASACCELERATIONSTRUCTURE_READ	= 0x00D0 | DASReadFlag,
-
-		DASPREDICATE				= 0x0010 | DASReadFlag,
-		DASINDIRECTARGS				= 0x0020 | DASReadFlag,
-
-		DASNonPixelShaderResource	= 0x0040 | DASWriteFlag,
-
-		DASCopyDest					= 0x0050 | DASWriteFlag,
-		DASCopySrc					= 0x0050 | DASReadFlag,
-
-		DASINDEXBUFFER				= 0x0060 | DASReadFlag,
-
-		DASGenericRead				= 0x0070 | DASReadFlag,
-		DASCommon					= 0x0080 | DASReadFlag,
-
-		DASShadingRateSrc			= 0x00A0 | DASReadFlag,
-		DASShadingRateDst			= 0x00A0 | DASWriteFlag,
-
-		DASDecodeWrite				= 0x00B0 | DASWriteFlag,
-
-		DASProcessRead				= 0x00E0 | DASReadFlag,
-		DASProcessWrite				= 0x00E0 | DASWriteFlag,
-
-		DASEncodeRead				= 0x0100 | DASReadFlag,
-		DASEncodeWrite				= 0x0100 | DASWriteFlag,
-
-		DASResolveRead				= 0x0200 | DASReadFlag,
-		DASResolveWrite				= 0x0200 | DASWriteFlag,
-
-		DASNOACCESS					= 0xF000,
-		DASERROR					= 0xFFFF ,
-		DASUNKNOWN					= 0x0040,
-	};
-
-	enum DeviceSyncPoint
-	{
-		Sync_None,
-		Sync_Auto,
-		Sync_All,
-		Sync_Draw,
-		Sync_Compute,
-
-		Sync_VertexShader,
-		Sync_PixelShader,
-		Sync_DepthStencil,
-		Sync_RenderTarget,
-		Sync_Raytracing,
-		Sync_Copy,
-		Sync_Resolve,
-		Sync_ExecuteIndirect,
-		Sync_Predication,
-		Sync_All_Shading,
-		Sync_NonPixelShading,
-		Sync_EmitRaytracingAccellerationStructurePostBuildInfo,
-		Sync_VideoDecode,
-		Sync_VideoProcess,
-		Sync_VideoEncode,
-		Sync_BuildRaytracingAccellerationStructure,
-		Sync_CopyRaytracingAccellerationStructure,
-		Sync_Split,
-
-		Sync_Unknown
-	};
-
-
-	/************************************************************************************************/
-
-
-	enum DeviceLayout
-	{
-		DeviceLayout_Common,
-		DeviceLayout_Present,
-		DeviceLayout_GenericRead,
-		DeviceLayout_RenderTarget,
-		DeviceLayout_UnorderedAccess,
-		DeviceLayout_DepthStencilWrite,
-		DeviceLayout_DepthStencilRead,
-		DeviceLayout_ShaderResource,
-		DeviceLayout_CopySrc,
-		DeviceLayout_CopyDst,
-		DeviceLayout_ResolveSrc,
-		DeviceLayout_ResolveDst,
-		DeviceLayout_ShadingRateSrc,
-		DeviceLayout_VideoDecodeRead,
-		DeviceLayout_DecodeWrite,
-		DeviceLayout_ProcessRead,
-		DeviceLayout_ProcessWrite,
-		DeviceLayout_EncodeRead,
-		DeviceLayout_EncodeWrite,
-		DeviceLayout_DirectQueueCommon,
-		DeviceLayout_DirectQueueGenericRead,
-		DeviceLayout_DirectQueueUnorderedAccess,
-		DeviceLayout_DirectQueueShaderResource,
-		DeviceLayout_DirectQueueCopySrc,
-		DeviceLayout_DirectQueueCopyDst,
-		DeviceLayout_ComputeQueueCommon,
-		DeviceLayout_ComputeQueueGenericRead,
-		DeviceLayout_ComputeQueueUnorderedAccess,
-		DeviceLayout_ComputeQueueShaderResource,
-		DeviceLayout_ComputeQueueCopySrc,
-		DeviceLayout_ComputeQueueCopyDst,
-		DeviceLayout_VideoQueueCommon,
-		DeviceLayout_Undefined,
-
-		DeviceLayout_Unknown = 0xffffffff,
-	};
 
 	/************************************************************************************************/
 
@@ -782,27 +668,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum PIPELINE_DESTINATION : unsigned char
-	{
-		PIPELINE_DEST_NONE = 0x00,// All Nodes are Initialised to NONE
-		PIPELINE_DEST_IA = 0x01,
-		PIPELINE_DEST_HS = 0x02,
-		PIPELINE_DEST_GS = 0x04,
-		PIPELINE_DEST_VS = 0x08,
-		PIPELINE_DEST_PS = 0x10,
-		PIPELINE_DEST_CS = 0x20,
-		PIPELINE_DEST_OM = 0x30,
-		PIPELINE_DEST_DS = 0x40,
-		PIPELINE_DEST_AS = 0x40,
-		PIPELINE_DEST_MS = 0x50,
-
-		PIPELINE_DEST_ALL = 0xFF
-	};
-
-
-	/************************************************************************************************/
-
-
 	inline D3D12_SHADER_VISIBILITY PipelineDest2ShaderVis(PIPELINE_DESTINATION PD)
 	{
 		switch (PD)
@@ -833,6 +698,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		std::unreachable();
 	}
+
 
 	inline PIPELINE_DESTINATION ShaderVis2PipelineDest(D3D12_SHADER_VISIBILITY visibility)
 	{
@@ -870,7 +736,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	//using DescHeapPOS			= std::pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>;
 	using VertexResourceBuffer	= ID3D12Resource*;
 
 
@@ -931,69 +796,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
-	/************************************************************************************************/
-
-
-	const static size_t MaxBufferedSize = 3;
-
-	template<typename TY_>
-	struct FrameBufferedObject
-	{
-		FrameBufferedObject() { BufferCount = MaxBufferedSize; Idx = 0; for (auto& r : Resources) r = nullptr; }
-
-
-		FrameBufferedObject(const std::initializer_list<TY_*>& IL) : FrameBufferedObject() {
-			auto IL_I = IL.begin();
-			for (size_t I = 0; I < MaxBufferedSize && IL_I != IL.end(); ++I, IL_I++)
-				Resources[I] = *IL_I;
-		}
-
-		size_t Idx;
-		size_t BufferCount;
-		TY_*   Resources[MaxBufferedSize];
-		size_t _Pad;
-
-		size_t	operator ++() { IncrementCounter(); return (Idx); }			// Post Increment
-		size_t	operator ++(int) { size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
-
-		TY_*& operator [] (size_t Index) { return Resources[Index]; }
-
-		//operator ID3D12Resource*()				{ return Get(); }
-		TY_* operator -> ()				{ return Get(); }
-		const TY_* operator -> () const	{ return Get(); }
-
-		operator bool()				{ return (Resources[0] != nullptr); }
-		size_t		size()			{ return BufferCount; }
-
-		TY_*		Get()			{ return Resources[Idx]; }
-		TY_*		Get() const		{ return Resources[Idx]; }
-
-		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
-		void Release()
-		{
-			for (auto& r : Resources)
-			{
-				if (r)
-					r->Release();
-				r = nullptr;
-			};
-		}
-
-		void Release_Delayed(RenderSystem* RS)
-		{
-			for (auto& r : Resources)
-				if (r) Push_DelayedRelease(RS, r);
-		}
-
-
-		void _SetDebugName(const char* _str) {
-			size_t Str_len = strnlen_s(_str, 64);
-			for (auto& r : Resources) {
-				SetDebugName(r, _str, Str_len);
-			}
-		}
-	};
-
 	// Old
 	typedef FrameBufferedObject<ID3D12Resource>								FrameBufferedResource;
 	typedef FrameBufferedResource											IndexBuffer;
@@ -1001,98 +803,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	typedef FrameBufferedResource											ShaderResourceBuffer;
 	typedef FrameBufferedResource											StreamOutBuffer;
 	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
-
-	/************************************************************************************************/
-
-
-	struct ConstantBuffer_desc
-	{
-		bool	Structured;
-		size_t  StructureSize;
-
-		void*	pInital;
-		size_t	InitialSize;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct RenderTargetDesc
-	{
-		uint32_t		height;
-		uint32_t		width;
-		uint32_t		mip_Levels;
-		std::byte*		usr;
-	};
-
-
-	/************************************************************************************************/
-
-
-	enum class UPDATESTAGE
-	{
-		BEGIN,
-		CONSTANTBUFFERSUPDATE,
-		PORTALSUPDATED,
-		TRANSFORMSUPDATED,
-		RENDERVIEWSUPDATED,
-		PRESENT
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct Graphics_Desc
-	{
-		iAllocator*		Memory;
-		iAllocator*		TempMemory;
-		uint32_t		SlaveThreadCount;
-		bool			Fullscreen						= false;
-		bool			DX_DebugMode					= false;
-		bool			DX_GPUvalidation				= false;
-		bool			DX_SynchronizedQueueValidation	= false;
-	};
-
-	enum class SHADER_TYPE
-	{
-		SHADER_TYPE_Compute,
-		SHADER_TYPE_Domain,
-		SHADER_TYPE_Geometry,
-		SHADER_TYPE_Hull,
-		SHADER_TYPE_Pixel,
-		SHADER_TYPE_Vertex,
-		SHADER_TYPE_Unknown
-	};
-
-	struct ShaderDesc
-	{
-		char			ID[128];
-		char			entry[128];
-		char			IncludeFile[128];
-		char			shaderVersion[16];
-		SHADER_TYPE		ShaderType;
-	};
-
-	struct SODesc
-	{
-		D3D12_SO_DECLARATION_ENTRY*		Descs;
-		size_t							Element_Count;
-		size_t							SO_Count;
-		size_t							Flags;
-		UINT							Strides[16];
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct Viewport
-	{
-		size_t X, Y, Height, Width;
-		float  Min, Max;
-	};
 
 
 	/************************************************************************************************/
@@ -1127,84 +837,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint2				WH;
 		uint8_t				mipCount;
 		DXGI_FORMAT			Format;
-	};
-
-
-	/************************************************************************************************/
-
-	struct IRenderWindow
-	{
-		virtual ~IRenderWindow() {};
-
-		virtual ResourceHandle      GetBackBuffer() const = 0;
-		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) = 0;
-		virtual uint2               GetWH() const = 0;
-		virtual void                Resize(const uint2 WH) = 0;
-
-		virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
-
-		operator ResourceHandle () { return GetBackBuffer(); }
-
-		float2  GetPixelSize() const { return float2{ 1.0f, 1.0f } / GetWH(); }
-		float   GetAspectRatio() const { const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
-	};
-
-	/************************************************************************************************/
-
-
-	enum ETopology
-	{
-		EIT_LINE			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE,
-		EIT_TRIANGLE		= D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-		EIT_POINT			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT,
-		EIT_PATCH			= D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH,
-	};
-
-	enum EInputPrimitive
-	{
-		INPUTPRIMITIVELINELIST			= D3D_PRIMITIVE_TOPOLOGY_LINELIST,
-		INPUTPRIMITIVELINELIST_ADJ		= D3D_PRIMITIVE_TOPOLOGY_LINELIST_ADJ,
-
-		INPUTPRIMITIVETRIANGLELIST		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
-		INPUTPRIMITIVETRIANGLESTRIP		= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
-
-		INPUTPRIMITIVETRIANGLELIST_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ,
-		INPUTPRIMITIVETRIANGLESTRIP_ADJ	= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ,
-
-		INPUTPRIMITIVEPOINTLIST			= D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
-
-		INPUTPRIMITIVEPATCH_CP_1		= D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_2		= D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_3		= D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_4		= D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_5		= D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_6		= D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_7		= D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_8		= D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_9		= D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_10		= D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_11		= D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_12		= D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_13		= D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_14		= D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_15		= D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_16		= D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_17		= D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_18		= D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_19		= D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_20		= D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_21		= D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_22		= D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_23		= D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_24		= D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_25		= D3D_PRIMITIVE_TOPOLOGY_25_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_26		= D3D_PRIMITIVE_TOPOLOGY_26_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_27		= D3D_PRIMITIVE_TOPOLOGY_27_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_28		= D3D_PRIMITIVE_TOPOLOGY_28_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_29		= D3D_PRIMITIVE_TOPOLOGY_29_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_30		= D3D_PRIMITIVE_TOPOLOGY_30_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_31		= D3D_PRIMITIVE_TOPOLOGY_31_CONTROL_POINT_PATCHLIST,
-		INPUTPRIMITIVEPATCH_CP_32		= D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST,
 	};
 
 
@@ -1291,23 +923,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum class ReserveErrors
-	{
-		Success,
-		OutOfSpace,
-		Unknown
-	};
-
-	struct UploadReservation
-	{
-		ID3D12Resource*	resource		= nullptr;
-		size_t			size			= 0;
-		size_t			offset			= 0;
-		char*			buffer			= 0;
-
-		operator bool() const { return size > 0; }
-	};
-
 
 	struct UploadBuffer
 	{
@@ -1336,25 +951,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12Device*	parentDevice	= nullptr;
 	};
 
-	struct PackedResourceTileInfo
-	{
-		uint32_t startingLevel;
-		uint32_t endingLevel;
-		uint32_t startingTileIndex;
-	};
-
-	struct SyncPoint
-	{
-		uint64_t		syncCounter	= 0;
-		ID3D12Fence*	fence		= nullptr;
-
-		operator bool() const noexcept { return fence != nullptr; }
-	};
-
-
 	class CopyEngine;
 
-	class CopyContext
+	class CopyContext : public ICopyContext
 	{
 	public:
 
@@ -1400,9 +999,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-		void		Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> sync = {});
-		void		Signal(ID3D12Fence* fence, const size_t counter);
-		void		Signal(SyncPoint);
+		void Submit(CopyContextHandle* begin, CopyContextHandle* end, std::optional<SyncPoint> sync = {});
+		void Signal(ID3D12Fence* fence, const size_t counter);
+		void Signal(SyncPoint);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
 
@@ -1421,173 +1020,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum class DescHeapEntryType : uint32_t
-	{
-		ConstantBuffer,
-		ShaderResource,
-		UAVBuffer,
-		HeapError
-	};
-
-
-	enum class RootSignatureEntryType : uint32_t
-	{
-		DescriptorHeap,
-		ConstantBuffer,
-		StructuredBuffer,
-		UnorderedAcess,
-		UINT,
-		Error
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct Descriptor
-	{
-		DescHeapEntryType Type;
-
-		union Anonymouse
-		{
-			Anonymouse() {}
-			ConstantBufferHandle		ConstantBuffer;
-			ID3D12Resource*				Resource_ptr;
-			D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
-			D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
-		}Value;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct HeapDescriptor
-	{
-		uint32_t				Register	= -1;
-		uint32_t				Count		= 0;
-		uint32_t				Space		= 0;
-		DescHeapEntryType		Type		= DescHeapEntryType::HeapError;
-	};
-
-
-	/************************************************************************************************/
-
-
-	template<size_t ENTRYCOUNT = 16>
-	class DesciptorHeapLayout
-	{
-	public:
-		DesciptorHeapLayout() {}
-
-		template<size_t RHS_SIZE>
-		DesciptorHeapLayout(const DesciptorHeapLayout<RHS_SIZE>& RHS)
-		{
-			static_assert(ENTRYCOUNT >= RHS_SIZE);
-
-			Entries = RHS.Entries;
-
-#ifdef _DEBUG
-			Check();
-#endif
-		}
-
-
-		bool SetParameterAsCBV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
-		{
-			HeapDescriptor Desc;
-			Desc.Register = BaseRegister;
-			Desc.Space    = RegisterSpace;
-			Desc.Type     = DescHeapEntryType::ConstantBuffer;
-			Desc.Count	  = RegisterCount;
-
-			if (Entries.size() <= Index)
-			{
-				if (!Entries.full())
-					Entries.resize(Index + 1);
-				else
-					return false;
-			}
-			Entries[Index] = Desc;
-
-			return true;
-		}
-
-
-		bool SetParameterAsSRV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
-		{
-			HeapDescriptor Desc;
-			Desc.Register	= uint32_t(BaseRegister);
-			Desc.Space		= uint32_t(RegisterSpace);
-			Desc.Type		= DescHeapEntryType::ShaderResource;
-			Desc.Count		= RegisterCount;
-
-			if (Entries.size() <= Index)
-			{
-				if (Entries.full())
-					return false;
-
-				Entries.resize(Index + 1);
-			}
-
-			Entries[Index] = Desc;
-
-			return true;
-		}
-
-
-		bool SetParameterAsShaderUAV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
-		{
-			HeapDescriptor Desc;
-			Desc.Register = BaseRegister;
-			Desc.Space    = RegisterSpace;
-			Desc.Count    = RegisterCount;
-			Desc.Type     = DescHeapEntryType::UAVBuffer;
-
-			if (Entries.size() <= Index)
-			{
-				if (Entries.full())
-					return false;
-
-				Entries.resize(Index + 1);
-			}
-
-			Entries[Index] = Desc;
-
-			return true;
-		}
-
-
-		bool Check()
-		{
-			return (!IsXInSet(DescHeapEntryType::HeapError, Entries, [](auto a, auto b) -> bool
-				{ return a == b.Type; }));
-		}
-
-
-		const size_t size() const
-		{
-			size_t out = 0;
-			for (auto& e : Entries)
-				out += e.Count + e.Space;
-
-			FK_ASSERT(out);
-
-			return out;
-		}
-
-
-		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
-	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI class DescriptorHeap
+	class DescriptorHeap : IDescriptorHeap
 	{
 	public:
 		DescriptorHeap() {}
@@ -1668,12 +1101,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-
 	struct RootSignatureHeapEntry
 	{
 		size_t					idx;
 		DesciptorHeapLayout<16> Heap;
 	};
+
 
 	class RootSignatureBuilder
 	{
@@ -1765,7 +1198,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class RootSignature
+	class RootSignature : IRootSignature
 	{
 	public:
 		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps, iAllocator* IN_allocator) :
@@ -1811,79 +1244,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	struct TextureObject
-	{
-		TextureObject(ResourceHandle IN_texture) :
-			Texture     { IN_texture    },
-			UAV         { false         } {}
-
-		ResourceHandle Texture;
-
-		const bool UAV = false;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct VertexBufferEntry
-	{
-		VertexBufferHandle	VertexBuffer	= InvalidHandle;
-		UINT				Stride			= 0;
-		UINT				Offset			= 0;
-	};
-
-	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
-	typedef static_vector<ResourceHandle, 16>       RenderTargetList;
-
-
-	struct VertexBufferResource
-	{
-		ResourceHandle		resource = InvalidHandle;
-		UINT				stride = 0;
-		UINT				offset = 0;
-	};
-
-
-	/************************************************************************************************/
-
-
-	enum IndirectLayoutEntryType
-	{
-		ILE_DrawCall,
-		ILE_DrawIndexedCall,
-		ILE_DispatchCall,
-		ILE_DispatchMesh,
-		ILE_DispatchRays,
-		ILE_UpdateVBBindings,
-		ILE_RootDescriptorUINT,
-		ILE_UNKNOWN,
-	};
-
-	class IndirectDrawDescription
-	{
-	public:
-		struct Constant
-		{
-			uint32_t rootParameterIdx;
-			uint32_t destinationOffset;
-			uint32_t numValues;
-		};
-
-		IndirectDrawDescription(IndirectLayoutEntryType IN_type = ILE_UNKNOWN) : type{IN_type} {}
-		IndirectDrawDescription(Constant IN_constant) : type{ ILE_RootDescriptorUINT }, description{ IN_constant } {}
-
-		IndirectLayoutEntryType type;
-
-
-		union 
-		{
-			Constant constantValue;
-		} description = {};
-	};
-
-
-	FLEXKITAPI class IndirectLayout
+	class IndirectLayout : IIndirectLayout
 	{
 	public:
 		IndirectLayout() noexcept :
@@ -1949,38 +1310,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	}
 
 
-	struct DepthStencilView_Options
-	{
-		size_t ArraySliceOffset = 0;
-		size_t MipOffset        = 0;
-
-		ResourceHandle depthStencil;
-
-		size_t arraySize	= -1;
-	};
-
-
 	/************************************************************************************************/
 
 
-	struct AccelerationStructureDesc
-	{
-	};
-
-
-	struct DispatchDesc
-	{
-		DeviceAddressRangeStride     callableShaderTable;
-		DeviceAddressRangeStride     hitGroupTable;
-		DeviceAddressRangeStride     missTable;
-		DeviceAddressRange           rayGenerationRecord;
-	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI class VertexBufferStateTable
+	class VertexBufferStateTable
 	{
 	public:
 
@@ -1995,13 +1328,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		{
 			Release();
 		}
-
-		struct SubAllocation
-		{
-			char*	Data;
-			size_t	offsetBegin;
-			size_t	reserveSize;
-		};
 
 		VertexBufferHandle	CreateVertexBuffer	(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
 		bool				PushVertex			(VertexBufferHandle Handle, void* _ptr, size_t ElementSize);
@@ -2083,7 +1409,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	FLEXKITAPI struct ConstantBufferTable
+	struct ConstantBufferTable
 	{
 		ConstantBufferTable(iAllocator* allocator, RenderSystem* IN_renderSystem) :
 			handles			{ allocator			},
@@ -2113,12 +1439,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			buffers.Release();
 		}
 
-		struct SubAllocation
-		{
-			char*	Data;
-			size_t	offsetBegin;
-			size_t	reserveSize;
-		};
 
 		struct UserConstantBuffer
 		{
@@ -2163,17 +1483,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	/************************************************************************************************/
 
-
-	enum class QueryType
-	{
-		OcclusionQuery,
-		BinaryOcclusionQuery,
-		PipelineStats,
-		TimeStats,
-	};
-
 	// WARNING, NOT IMPLEMENTED FULLY!
-	FLEXKITAPI struct QueryTable
+	struct QueryTable
 	{
 		QueryTable(iAllocator* persistent, RenderSystem* RS_in) :
 			users			{ persistent },
@@ -2282,26 +1593,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum TextureFlags
-	{
-		TF_NONE			= 0x00,
-		TF_INUSE		= 0x01,
-		TF_RenderTarget = 0x02,
-		TF_BackBuffer	= 0x04,
-		TF_DepthBuffer	= 0x08,
-	};
-
-
-	enum class TextureDimension
-	{
-		Buffer,
-		Texture1D,
-		Texture2D,
-		Texture2DArray,
-		Texture3D,
-		TextureCubeMap,
-		Unknown,
-	};
 
 
 	inline D3D12_RTV_DIMENSION _Dimension2DeviceRTVDimension(TextureDimension dimension)
@@ -2328,548 +1619,163 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum class ResourceAllocationType
+	inline D3D12_CLEAR_VALUE ClearValue2DXClearValue(const ClearValue& CV)
 	{
-		Committed,
-		Placed,
-		Tiled
-	};
-
-	enum class ResourceType
-	{
-		RenderTarget,
-		DepthTarget,
-		UnorderedAccess,
-		UnorderedAccessRenderTarget,
-		ShaderResource,
-		RayTracingStructure,
-	};
-
-	struct GPUResourceDesc
-	{
-		ResourceType			type;
-		TextureDimension		Dimensions		= TextureDimension::Texture2D;
-		ResourceAllocationType	allocationType	= ResourceAllocationType::Committed;
-		DeviceFormat			format;
-		DeviceLayout			initialLayout	= DeviceLayout_Common;
-
-		// Dimensions
-		uint2					WH;
-		uint8_t					arraySize		= 1;
-		uint8_t					bufferCount		= 1;
-		uint8_t					MipLevels		= 1;
-
-		bool					backBuffer		= false;
-		bool					PreCreated		= false;
-		bool					denyShaderUsage = false;
-
-		std::optional<D3D12_CLEAR_VALUE>	clearValue;
-
-		union
-		{
-			struct
-			{
-				ID3D12Resource**	resources;
-				std::byte*			initial;
-			};
-		};
-
-		struct
-		{
-			size_t				offset;
-			DeviceHeapHandle	heap;
-			DeviceAccessState	initialState;
-			ID3D12Heap*			customHeap;
-		} placed;
-
-
-		size_t	byteSize;
-		bool	rayTraceStructure = false;
-
-		size_t CalculateByteSize() const
-		{
-			const auto dxgiFormat = TextureFormat2DXGIFormat(format);
-
-			switch (Dimensions)
-			{
-			case TextureDimension::Buffer:
-				return WH[0];
-			case TextureDimension::Texture1D:
-				return WH[0] * GetFormatElementSize(dxgiFormat);
-			case TextureDimension::Texture2D:
-				return WH.Product() * GetFormatElementSize(dxgiFormat);
-			case TextureDimension::Texture3D:
-				return WH.Product() * GetFormatElementSize(dxgiFormat) * arraySize;
-			case TextureDimension::TextureCubeMap:
-				return WH.Product() * GetFormatElementSize(dxgiFormat) * 6;
-			};
-
-			return -1;
-		}
-
-		D3D12_RESOURCE_DESC GetD3D12ResourceDesc() const
-		{
-			const auto dxgiFormat = TextureFormat2DXGIFormat(format);
-			D3D12_RESOURCE_DESC desc;
-
-			switch (Dimensions)
-			{
-			case TextureDimension::Buffer:
-				desc = CD3DX12_RESOURCE_DESC::Buffer(WH[0]);
-
-				break;
-			case TextureDimension::Texture1D:
-				desc = CD3DX12_RESOURCE_DESC::Tex1D(
-					dxgiFormat,
-					WH[0],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::Texture2D:
-				desc = CD3DX12_RESOURCE_DESC::Tex2D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::Texture3D:
-				desc = CD3DX12_RESOURCE_DESC::Tex3D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::TextureCubeMap:
-				desc = CD3DX12_RESOURCE_DESC::Tex2D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					6,
-					MipLevels);
-				break;
-			};
-
-			desc.Flags = type	== ResourceType::RenderTarget					? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type	== ResourceType::UnorderedAccess				? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type	== ResourceType::UnorderedAccessRenderTarget	? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type	== ResourceType::DepthTarget					? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE;
-
-			desc.MipLevels = Min(Max(MipLevels, 1), 15);
-
-			return desc;
-		}
-
-		D3D12_RESOURCE_DESC1 GetD3D12ResourceDesc1() const
-		{
-			const auto dxgiFormat = TextureFormat2DXGIFormat(format);
-			D3D12_RESOURCE_DESC1 desc;
-
-			switch (Dimensions)
-			{
-			case TextureDimension::Buffer:
-				desc = CD3DX12_RESOURCE_DESC1::Buffer(WH[0]);
-
-				break;
-			case TextureDimension::Texture1D:
-				desc = CD3DX12_RESOURCE_DESC1::Tex1D(
-					dxgiFormat,
-					WH[0],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::Texture2D:
-				desc = CD3DX12_RESOURCE_DESC1::Tex2D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::Texture3D:
-				desc = CD3DX12_RESOURCE_DESC1::Tex3D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					arraySize,
-					MipLevels);
-
-				break;
-			case TextureDimension::TextureCubeMap:
-				desc = CD3DX12_RESOURCE_DESC1::Tex2D(
-					dxgiFormat,
-					WH[0],
-					WH[1],
-					6,
-					MipLevels);
-				break;
-			};
-
-			desc.Flags = type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::UnorderedAccessRenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= type == ResourceType::RayTracingStructure ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-			desc.Flags |= denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
-
-			desc.MipLevels	= Min(Max(MipLevels, 1), 15);
-
-			return desc;
-		}
-
-		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			return {
-				.type			= ResourceType::RenderTarget,
-				.Dimensions		= TextureDimension::Texture2D,
-				.allocationType = allocationType,
-				.format			= IN_format,
-				.WH				= IN_WH,
-				.bufferCount	= 3,
-				.MipLevels		= 1,
-
-				.clearValue		= { D3D12_CLEAR_VALUE{
-										.Format = TextureFormat2DXGIFormat(IN_format),
-										.Color{ 0.0f, 0.0f, 0.0f, 0.0f }}}
-			};
-		}
-
-
-		static GPUResourceDesc DepthTarget(uint2 IN_WH, DeviceFormat IN_format, const uint8_t arraySize = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			return {
-				.type			= ResourceType::DepthTarget,
-				.Dimensions		= TextureDimension::Texture2D,
-				.allocationType = allocationType,
-				.format			= IN_format,
-				.initialLayout	= DeviceLayout_DepthStencilWrite,
-
-				.WH				= IN_WH,
-				.arraySize		= arraySize,
-				.bufferCount	= 3,
-				.MipLevels		= 1,
-
-				.clearValue		= { D3D12_CLEAR_VALUE{
-										.Format = TextureFormat2DXGIFormat(IN_format),
-										.DepthStencil{ .Depth = 1.0f, .Stencil = 0xff }}}
-			};
-		}
-
-
-		static GPUResourceDesc ShaderResource(uint2 IN_WH, DeviceFormat IN_format, uint8_t mipCount = 1, size_t arraySize = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			return {
-				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Texture2D,
-				.allocationType = allocationType,
-				.format			= IN_format,
-
-				.WH				= IN_WH,
-				.arraySize		= (uint8_t)arraySize,
-				.bufferCount	= 1,
-				.MipLevels		= mipCount,
-			};
-		}
-
-		static GPUResourceDesc ShaderResource3D(uint3 IN_XYZ, DeviceFormat IN_format, uint8_t mipCount = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			return {
-				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Texture3D,
-				.allocationType = allocationType,
-				.format			= IN_format,
-
-				.WH				= { IN_XYZ[0], IN_XYZ[1] },
-				.arraySize		= (uint8_t)IN_XYZ[2], 
-				.bufferCount	= 1,
-				.MipLevels		= mipCount,
-			};
-		}
-
-
-		static GPUResourceDesc StructuredResource(const uint32_t bufferSize)
-		{
-			return {
-				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Buffer,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= DeviceFormat::UNKNOWN,
-				.initialLayout	= DeviceLayout_Undefined,
-
-				.WH				= { bufferSize, 1 },
-				.arraySize		= 1,
-				.bufferCount	= 1,
-				.MipLevels		= 1,
-			};	
-		}
-
-
-		static GPUResourceDesc RayTracingStructure(const size_t bufferSize)
-		{
-			GPUResourceDesc desc{
-				.type			= ResourceType::RayTracingStructure,
-				.Dimensions		= TextureDimension::Buffer, // dimensions
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= DeviceFormat::UNKNOWN,
-				.initialLayout	= DeviceLayout_Undefined,
-
-				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= 1,
-				.MipLevels		= 1,
-			};
-
-			desc.rayTraceStructure = true;
-
-			return desc;
-		}
-
-		static GPUResourceDesc UAVResource(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::UNKNOWN, bool renderTarget = false, uint32_t bufferCount = 1)
-		{
-			return {
-				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Buffer,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= IN_format,
-				.initialLayout	= DeviceLayout_Undefined,
-
-
-				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= 1,
-			};	
-		}
-
-		static GPUResourceDesc UAVResource2(const size_t bufferSize, DeviceFormat IN_format = DeviceFormat::R32_UINT, bool renderTarget = false, uint32_t bufferCount = 1)
-		{
-			return {
-				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture1D,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= IN_format,
-
-				.WH				= uint2{ (uint32_t)bufferSize, 1 },
-				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= 1,
-			};
-		}
-
-
-		static GPUResourceDesc UAVTexture(const uint2 IN_WH, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1, uint32_t bufferCount = 1)
-		{
-			return {
-				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture2D,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= IN_format,
-
-				.WH				= IN_WH,
-				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= (uint8_t)mipCount,
-
-				.clearValue		= renderTarget ? std::optional<D3D12_CLEAR_VALUE>{ D3D12_CLEAR_VALUE{
-									.Format = TextureFormat2DXGIFormat(IN_format),
-									.Color{ 0.0f, 0.0f, 0.0f, 0.0f }} }
-								:	std::optional<D3D12_CLEAR_VALUE>{},
-			};
-		}
-
-
-		static GPUResourceDesc UAVTexture3D(const uint3 IN_XYZ, const DeviceFormat IN_format, bool renderTarget = false, uint32_t mipCount = 1, uint32_t bufferCount = 1)
-		{
-			return {
-				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture3D,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= IN_format,
-
-				.WH				= { IN_XYZ[0], IN_XYZ[1] },
-				.arraySize		= (uint8_t)IN_XYZ[2],
-				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= (uint8_t)mipCount,
-			};
-		}
-
-		static GPUResourceDesc BackBuffered(uint2 WH, DeviceFormat format, ID3D12Resource** sources, const uint8_t resourceCount)
-		{
-			GPUResourceDesc desc = {
-				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture2D,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= format,
-				.initialLayout	= DeviceLayout_Present,
-
-
-				.WH				= WH,
-				.bufferCount	= resourceCount,
-				.MipLevels		= 1,
-
-				.backBuffer		= true,
-				.PreCreated		= true,
-			};
-
-			desc.resources = sources;
-
-			return desc;
-		}
-
-
-		static GPUResourceDesc DDS(uint2 WH, DeviceFormat format, uint8_t mipCount, TextureDimension dimensions, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			 return {
-				.type			= ResourceType::ShaderResource,
-				.Dimensions		= dimensions,
-				.allocationType = ResourceAllocationType::Committed,
-				.format			= format,
-
-				.WH				= WH,
-				.MipLevels		= mipCount,
-			};
-		}
-
-
-		static GPUResourceDesc BuildFromMemory(const GPUResourceDesc& format, ID3D12Resource** sources, const uint32_t resourceCount)
-		{
-			GPUResourceDesc desc	= format;
-			desc.PreCreated			= true;
-			desc.resources			= sources;
-			desc.bufferCount		= resourceCount;
-
-			return desc;
-		}
-
-
-		static GPUResourceDesc CubeMap(uint2 WH, DeviceFormat format, uint8_t mipCount, bool renderTarget, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			 return {
-				.type			= renderTarget ? ResourceType::RenderTarget : ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::TextureCubeMap,
-				.allocationType = allocationType,
-				.format			= format,
-
-				.WH				= WH,
-				.arraySize		= 6,
-				.MipLevels		= mipCount,
-			};
-		}
-
-		static GPUResourceDesc CubeMapUAV(uint2 WH, DeviceFormat format, uint8_t mipCount, bool renderTarget = false, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
-		{
-			 return {
-				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::TextureCubeMap,
-				.allocationType = allocationType,
-				.format			= format,
-
-				.WH				= WH,
-				.arraySize		= 6,
-				.MipLevels		= mipCount,
-				.clearValue		= D3D12_CLEAR_VALUE{ .Format = TextureFormat2DXGIFormat(format), .Color = { 0.0f, 0.0f, 0.0f, 0.0f } }
-			};
-		}
-	};
-
-
-	struct TileID_t
-	{
-		union {
-			uint32_t bytes;
-
-			struct
-			{
-				unsigned int ytile		: 12;
-				unsigned int xtile		: 12;
-				unsigned int mipLevel	: 7;
-				unsigned int packed		: 1;
-			}   segments;
-		};
-
-		uint32_t GetTileX() const
-		{
-			return (bytes >> 12) & 0xfff;
-		}
-
-		uint32_t GetTileY() const
-		{
-			return bytes & 0xfff;
-		}
-
-		uint32_t GetMipLevel() const
-		{
-			static_assert(sizeof(segments) == sizeof(uint32_t));
-			return segments.mipLevel;
-		}
-
-		bool valid() const
-		{
-			return segments.xtile < 128 && segments.ytile < 128 && segments.mipLevel <= 14;
-		}
-
-		bool packed() const
-		{
-		   return (bytes >> 31) & 0x01;
-		}
-
-		bool operator == (const TileID_t& rhs) const
-		{
-			return bytes == rhs.bytes;
-		}
-
-		operator uint3 () const
-		{
-			return {
-				GetTileX(),
-				GetTileY(),
-				(UINT)GetMipLevel()
-			};
-		}
-
-		operator uint32_t() const
-		{
-			return bytes;
-		}
-	};
-
-	inline TileID_t CreateTileID(uint32_t x, uint32_t y, uint32_t mipLevel)
-	{
-		return TileID_t{ (mipLevel & 0x7f) << 24 | (x & 0x0f) << 12 | y };
-	}
-
-	inline TileID_t CreatePackedID()
-	{
-		TileID_t id = { 0 };
-		id.segments.packed = 1;
-		return id;
+		D3D12_CLEAR_VALUE out;
+		memcpy(&out, &CV, sizeof(out));
+		out.Format = TextureFormat2DXGIFormat(CV.format);
+
+		return out;
 	}
 
 
-	enum class TileMapState
-	{
-		InUse,
-		Null,
-		Updated
-	};
+	/************************************************************************************************/
 
-	struct TileMapping
-	{
-		TileID_t			tileID;
-		DeviceHeapHandle	heap;
-		TileMapState		state;
-		uint32_t			heapOffset;
 
-		uint64_t sortingID() const
+	inline D3D12_RESOURCE_DESC1 GetD3D12ResourceDesc1(const GPUResourceDesc& desc)
+	{
+		const auto dxgiFormat = TextureFormat2DXGIFormat(desc.format);
+		D3D12_RESOURCE_DESC1 out;
+
+		switch (desc.Dimensions)
 		{
-			return (uint64_t)heap.to_uint() << 32 | tileID;
+		case TextureDimension::Buffer:
+			out = CD3DX12_RESOURCE_DESC1::Buffer(desc.WH[0]);
+
+			break;
+		case TextureDimension::Texture1D:
+			out = CD3DX12_RESOURCE_DESC1::Tex1D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::Texture2D:
+			out = CD3DX12_RESOURCE_DESC1::Tex2D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::Texture3D:
+			out = CD3DX12_RESOURCE_DESC1::Tex3D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::TextureCubeMap:
+			out = CD3DX12_RESOURCE_DESC1::Tex2D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				6,
+				desc.MipLevels);
+			break;
 		};
-	};
+
+		out.Flags = desc.type == ResourceType::RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type == ResourceType::UnorderedAccess ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type == ResourceType::DepthTarget ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type == ResourceType::UnorderedAccessRenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type == ResourceType::RayTracingStructure ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
+
+		out.MipLevels	= Min(Max(desc.MipLevels, 1), 15);
+
+		return out;
+	}
 
 
-	using TileMapList = Vector<TileMapping>;
+	/************************************************************************************************/
+
+
+	inline D3D12_RESOURCE_DESC GetD3D12ResourceDesc(const GPUResourceDesc& desc)
+	{
+		const auto dxgiFormat = TextureFormat2DXGIFormat(desc.format);
+		D3D12_RESOURCE_DESC out;
+
+		switch (desc.Dimensions)
+		{
+		case TextureDimension::Buffer:
+			out = CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]);
+
+			break;
+		case TextureDimension::Texture1D:
+			out = CD3DX12_RESOURCE_DESC::Tex1D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::Texture2D:
+			out = CD3DX12_RESOURCE_DESC::Tex2D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::Texture3D:
+			out = CD3DX12_RESOURCE_DESC::Tex3D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				desc.arraySize,
+				desc.MipLevels);
+
+			break;
+		case TextureDimension::TextureCubeMap:
+			out = CD3DX12_RESOURCE_DESC::Tex2D(
+				dxgiFormat,
+				desc.WH[0],
+				desc.WH[1],
+				6,
+				desc.MipLevels);
+			break;
+		};
+
+		out.Flags  = desc.type	== ResourceType::RenderTarget					? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type	== ResourceType::UnorderedAccess				? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type	== ResourceType::UnorderedAccessRenderTarget	? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+		out.Flags |= desc.type	== ResourceType::DepthTarget					? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE;
+
+		out.MipLevels = Min(Max(desc.MipLevels, 1), 15);
+
+		return out;
+	}
+
+
+	inline size_t CalculateByteSize(const GPUResourceDesc& desc)
+	{
+		const auto dxgiFormat = TextureFormat2DXGIFormat(desc.format);
+
+		switch (desc.Dimensions)
+		{
+		case TextureDimension::Buffer:
+			return desc.WH[0];
+		case TextureDimension::Texture1D:
+			return desc.WH[0] * GetFormatElementSize(dxgiFormat);
+		case TextureDimension::Texture2D:
+			return desc.WH.Product() * GetFormatElementSize(dxgiFormat);
+		case TextureDimension::Texture3D:
+			return desc.WH.Product() * GetFormatElementSize(dxgiFormat) * desc.arraySize;
+		case TextureDimension::TextureCubeMap:
+			return desc.WH.Product() * GetFormatElementSize(dxgiFormat) * 6;
+		};
+
+		return -1;
+	}
+
+
+	/************************************************************************************************/
 
 
 	struct UAVResourceLayout
@@ -3031,22 +1937,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum BufferResourceFlags
-	{
-		UAV_Resource,
-		Byte_Buffer,
-		TripleBuffer,
-	};
-
-
-	enum BufferDimension
-	{
-		Resource_1D,
-		Resource_2D,
-		Resource_3D,
-		BYTEBUFFER,
-	};
-
 	struct BufferResourceDesc
 	{
 		union 
@@ -3200,19 +2090,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	namespace DeviceHeapFlags
-	{
-		enum DeviceHeapFlagEnums: uint32_t
-		{
-			NONE			= 0,
-			RenderTarget	= 1,
-			UAVBuffer		= 2,
-			UAVTextures		= 4,
-			ALL				= 0xff
-		};
-	}
-
-
 	struct DeviceHeap
 	{
 		ID3D12Heap*			heap;
@@ -3227,11 +2104,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 	};
 
-	enum struct ResourceHeapTier
-	{
-		HeapTier1,
-		HeapTier2,
-	};
 
 	class HeapTable
 	{
@@ -3260,15 +2132,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 	/************************************************************************************************/
-
-	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
-
-	struct MappedReadBackBuffer
-	{
-		void*					buffer;
-		const size_t			bufferSize;
-		ReadBackResourceHandle	handle;
-	};
 
 
 	class ReadBackStateTable
@@ -3475,26 +2338,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	enum SubmitCopyFlags
-	{
-		SYNC_Graphics   = 0x01,
-		SYNC_Compute    = 0x02
-	};
-
-	struct PipelineStateLibraryDesc
-	{
-
-	};
-
-
-	struct PipelineStateLibrary
-	{
-	};
-
-
-	/************************************************************************************************/
-
-
 	inline uint2 GetFormatTileSize(DeviceFormat format)
 	{
 		//switch (format)
@@ -3504,137 +2347,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		//}
 	}
 
-	struct BLAS_PreBuildInfo
-	{
-		size_t BLAS_byteSize;
-		size_t scratchPad_byteSize;
-		size_t update_byteSize;
-	};
 
 	constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
-	struct AvailableFeatures
-	{
-		enum struct Raytracing
-		{
-			RT_FeatureLevel_NOTAVAILABLE,
-			RT_FeatureLevel_1,
-			RT_FeatureLevel_1_1,
-		} RT_Level = Raytracing::RT_FeatureLevel_NOTAVAILABLE;
 
-		enum ConservativeRasterization
-		{
-			ConservativeRast_AVAILABLE,
-			ConservativeRast_NOTAVAILABLE,
-		} conservativeRast = ConservativeRast_NOTAVAILABLE;
-
-		enum struct HLSLCompiler
-		{
-			HLSL_CompilerEnabled,
-			HLSL_CompilerDisabled
-		} Compiler = HLSLCompiler::HLSL_CompilerDisabled;
-
-		enum WorkGraphs
-		{
-			WorkGraphs_NOTAVAILABLE,
-			WorkGraphs_AVAILABLE,
-		} workGraph = WorkGraphs_AVAILABLE;
-
-		enum IndirectLevel
-		{
-			IndirectLevel_1,
-			IndirectLevel_1_1,
-		} indirectLevel = IndirectLevel_1;
-
-		ResourceHeapTier resourceHeapTier;
-	};
-
-	struct ShaderOptions
-	{
-		bool enable16BitTypes	= false;
-		bool hlsl2021			= false;
-		bool enableDebug		= false;
-		bool loadRootSignature	= false;
-	};
-
-	enum class BarrierType
-	{
-		Global,
-		Texture,
-		Buffer,
-		Unknown,
-	};
-
-	struct BarrierSubResourceRange
-	{
-	};
-
-	struct Barrier
-	{
-		Barrier() {}
-
-		DeviceAccessState accessBefore	= DeviceAccessState::DASUNKNOWN;
-		DeviceAccessState accessAfter	= DeviceAccessState::DASUNKNOWN;
-
-		DeviceSyncPoint	src	= DeviceSyncPoint::Sync_Unknown;
-		DeviceSyncPoint	dst	= DeviceSyncPoint::Sync_Unknown;
-
-		BarrierType type = BarrierType::Unknown;
-
-		ResourceHandle resource;
-
-		union
-		{
-			struct Texture
-			{
-				DeviceLayout layoutBefore;
-				DeviceLayout layoutAfter;
-
-				uint32_t				flags;
-				BarrierSubResourceRange	range;
-			} texture;
-
-			struct Buffer
-			{
-				uint64_t rangeBegin	= 0;
-				uint64_t rangeEnd	= UINT64_MAX;
-			} buffer;
-		};
-
-		uint32_t subResource = -1;
-	};
-
-	struct CopyBarrier
-	{
-		ResourceHandle	handle;
-		ID3D12Resource*	_ptr;
-
-		enum class ResourceType
-		{
-			PTR,
-			HNDL
-		} type;
-
-		DeviceAccessState beforeState;
-		DeviceAccessState afterState;
-	};
-
-	struct DeviceResourceRange
-	{
-		uint64_t gpuBegin;
-		uint64_t size;
-	};
-
-	enum class DeviceVendor
-	{
-		AMD,
-		NVIDIA,
-		INTEL,
-		UNKNOWN
-	};
-
-
-	FLEXKITAPI class RenderSystem
+	FLEXKITAPI class RenderSystem : public IRenderSystem
 	{
 	public:
 		RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads);
@@ -3756,6 +2473,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] QueryHandle				CreateTimeStampQuery(size_t count);
 		[[nodiscard]] IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* signature = nullptr);
 		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
+
+		virtual SubAllocation ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
+		virtual SubAllocation ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
@@ -4007,13 +2727,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
 
-	enum class PredicateOp
-	{
-		EqualZero,
-		NotEqualZero
-	};
-
-	FLEXKITAPI class Context
+	class Context : IDirectContext
 	{
 	public:
 		Context(RenderSystem*				renderSystem_IN	= nullptr, 
@@ -4366,124 +3080,7 @@ private:
 	/************************************************************************************************/
 
 
-	enum class ELineAliasMode
-	{
-		ALIASED					= 0,
-		ALPHA_ANTIALIASED		= 1,
-		QUADRILATERAL_WIDE		= 2,
-		QUADRILATERAL_NARROW	= 3
-	};
-
-	enum class EFillMode
-	{
-		WIREFRAME = 2,
-		SOLID = 3
-	};
-
-
-	enum class ECullMode
-	{
-		NONE	= 1,
-		FRONT	= 2,
-		BACK	= 3
-	};
-
-
-	enum class EComparison : uint32_t
-	{
-		NONE			= 0,
-		NEVER			= 1,
-		LESS			= 2,
-		EQUAL			= 3,
-		LESS_EQUAL		= 4,
-		GREATER			= 5,
-		NOT_EQUAL		= 6,
-		GREATER_EQUAL	= 7,
-		ALWAYS			= 8,
-		COUNT
-	};
-
-	enum class EInputClassification
-	{
-		PerVertex,
-		PerInstance
-	};
-
-	enum class EDepthWriteMask : uint32_t
-	{
-		Zero	= 0,
-		All		= 1
-	};
-
-
-	enum class EStencilOP : uint32_t
-	{
-		KEEP		= 1,
-		ZERO		= 2,
-		REPLACE		= 3,
-		INCR_SAT	= 4,
-		DECR_SAT	= 5,
-		INVERT		= 6,
-		INCR		= 7,
-		DECR		= 8
-	};
-
-
-	enum class EBlend : uint32_t
-	{
-		ZERO				= 1,
-		ONE					= 2,
-		SRC_COLOR			= 3,
-		INV_SRC_COLOR		= 4,
-		SRC_ALPHA			= 5,
-		INV_SRC_ALPHA		= 6,
-		DEST_ALPHA			= 7,
-		INV_DEST_ALPHA		= 8,
-		DEST_COLOR			= 9,
-		INV_DEST_COLOR		= 10,
-		SRC_ALPHA_SAT		= 11,
-		BLEND_FACTOR		= 14,
-		INV_BLEND_FACTOR	= 15,
-		SRC1_COLOR			= 16,
-		INV_SRC1_COLOR		= 17,
-		SRC1_ALPHA			= 18,
-		INV_SRC1_ALPHA		= 19,
-		ALPHA_FACTOR		= 20,
-		INV_ALPHA_FACTOR	= 21
-	};
-
-
-	enum class EBlendOP : uint32_t
-	{
-		ADD				= 1,
-		SUBTRACT		= 2,
-		REV_SUBTRACT	= 3,
-		MIN				= 4,
-		MAX				= 5
-	};
-
-
-	enum class ELogicOP : uint32_t
-	{
-		CLEAR			= 0,
-		SET				= 1,
-		COPY			= 2,
-		COPY_INVERTED	= 3,
-		NOOP			= 4,
-		INVERT			= 5,
-		AND				= 6,
-		NAND			= 7,
-		OR				= 8,
-		NOR				= 9,
-		XOR				= 10,
-		EQUIV			= 11,
-		AND_REVERSE		= 12,
-		AND_INVERTED	= 13,
-		OR_REVERSE		= 14,
-		OR_INVERTED		= 15
-	};
-
-
+	
 	inline D3D12_INPUT_CLASSIFICATION ToDX(EInputClassification classifiction)
 	{
 		switch (classifiction)
@@ -4497,115 +3094,7 @@ private:
 		std::unreachable();
 	}
 
-	struct EInputElement
-	{
-		const char*				name				= 0;
-		uint8_t					index				= 0;
-		DeviceFormat			format				= DeviceFormat::UNKNOWN;
-		uint16_t				slot				= 0;
-		uint16_t				alignedByteOffset	= 0;
-		EInputClassification	inputSlotClass		= EInputClassification::PerVertex;
-		uint16_t				instanceStepRate	= 0;
-	};
-
-
-	struct InputLayoutState
-	{
-		EInputElement	inputs[16];
-		uint8_t			count = 0;
-	};
-
-
-	struct RasterizerState
-	{
-		EFillMode		fill						= EFillMode::SOLID;
-		ECullMode		CullMode					= ECullMode::BACK;
-		bool			frontCounterClockWise		= false;
-		bool			depthClipEnable				= true;
-		bool			multisampleEnable			= false;
-		bool			conservativeRasterEnable	= false;
-		ELineAliasMode	antialiasedLineMode			= ELineAliasMode::ALIASED;
-		float			depthBias					= 0.0f;
-		float			depthBiasClamp				= 0.0f;
-		float			slopeScaledDepthBias		= 0.0f;
-		uint32_t		forcedSampleCount			= 0;
-
-		static RasterizerState Default() { return {}; }
-	};
-
-
-	struct DepthStencilOP
-	{
-		EStencilOP	stencilFailOp		= EStencilOP::KEEP;
-		EStencilOP	stencilDepthFailOp	= EStencilOP::KEEP;
-		EStencilOP	stencilPassOp		= EStencilOP::KEEP;
-		EComparison	stencilFunc			= EComparison::ALWAYS;
-	};
-
-
-	struct DepthStencilState
-	{
-		bool				depthEnable			= false;
-		EDepthWriteMask		depthWriteMask		= EDepthWriteMask::All;
-		EComparison			depthFunc			= EComparison::LESS;
-		bool				stencilEnable		= false;
-		uint8_t				stencilReadMask		= 0xff;
-		uint8_t				stencilWriteMask	= 0xff;
-
-		DepthStencilOP	frontFace	= {};
-		DepthStencilOP	backFace	= {};
-	};
-
-
-	enum class EColorWriteEnable : uint8_t
-	{
-		RED		= 1,
-		GREEN	= 2,
-		BLUE	= 4,
-		ALPHA	= 8,
-		ALL		= (RED | GREEN | BLUE | ALPHA)
-	};
-
-	struct RenderTargetStateDesc
-	{
-		uint32_t			blendEnable				= false;
-		uint32_t			logicOpEnable			= false;
-		EBlend				srcBlend				= EBlend::ONE;
-		EBlend				dstBlend				= EBlend::ZERO;
-		EBlendOP			blendOp					= EBlendOP::ADD;
-		EBlend				srcBlendAlpha			= EBlend::ONE;
-		EBlend				dstBlendAlpha			= EBlend::ZERO;
-		EBlendOP			blendOpAlpha			= EBlendOP::ADD;
-		ELogicOP			logicOp					= ELogicOP::NOOP;
-		EColorWriteEnable	renderTargetWriteMask	= EColorWriteEnable::ALL;
-	};
-
-	struct BlendState
-	{
-		bool					alphaToCoverageEnable	= false;
-		bool					independentBlendEnable	= false;
-		RenderTargetStateDesc	renderTarget[8];
-
-		static BlendState Default() { return {}; }
-		static BlendState Blend();
-	};
-
-
-	struct RenderTargetState
-	{
-		uint8_t			targetCount = 0;
-		DeviceFormat	targetFormats[16];
-	};
-
-
-	struct WorkGraph_Desc
-	{
-		const char* programName = nullptr;
-		uint32_t	nodeCount	= 0;
-		uint32_t	flags		= 0;
-	};
-
-	struct PipelineBuilder
+	struct PipelineBuilder : IPipelineBuilder
 	{
 		PipelineBuilder(iAllocator& allocator);
 		~PipelineBuilder();
@@ -5266,6 +3755,7 @@ private:
 	/************************************************************************************************/
 
 
+/*
 	struct PointLightEntry
 	{
 		float4 POS;// + R 
@@ -5292,401 +3782,7 @@ private:
 
 	const size_t PLB_Stride  = sizeof(float[8]);
 	const size_t SPLB_Stride = sizeof(float[12]);
-
-
-	/************************************************************************************************/
-
-
-	class CBPushBuffer
-	{
-	public:
-		CBPushBuffer(ConstantBufferHandle cBuffer = InvalidHandle, char* IN_buffer = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
-			CB				{ cBuffer		},
-			buffer			{ IN_buffer		},
-			pushBufferSize	{ reservedSize	},
-			pushBufferBegin	{ offsetBegin	} {}
-
-
-		CBPushBuffer(ConstantBufferHandle IN_CB, size_t reserveSize, RenderSystem& renderSystem)
-		{
-			auto reservedBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize);
-
-			CB				= IN_CB;
-			buffer			= reservedBuffer.Data;
-			pushBufferSize	= reserveSize;
-			pushBufferBegin	= reservedBuffer.offsetBegin;
-		}
-
-
-		CBPushBuffer(const CBPushBuffer&)							= delete;
-		CBPushBuffer& operator = (const CBPushBuffer& pushBuffer)	= delete;
-
-
-		CBPushBuffer(CBPushBuffer&& pushBuffer) 
-		{
-			CB				= pushBuffer.CB;
-			buffer			= pushBuffer.buffer;
-			pushBufferBegin = pushBuffer.pushBufferBegin;
-			pushBufferSize	= pushBuffer.pushBufferSize;
-			pushBufferUsed	= pushBuffer.pushBufferUsed;
-
-			pushBuffer.CB				= InvalidHandle;
-			pushBuffer.buffer			= nullptr;
-			pushBuffer.pushBufferBegin	= 0;
-			pushBuffer.pushBufferSize	= 0;
-			pushBuffer.pushBufferUsed	= 0;
-		}
-
-
-		CBPushBuffer& operator = (CBPushBuffer&& pushBuffer)
-		{
-			CB				= pushBuffer.CB;
-			buffer			= pushBuffer.buffer;
-			pushBufferBegin = pushBuffer.pushBufferBegin;
-			pushBufferSize	= pushBuffer.pushBufferSize;
-			pushBufferUsed	= pushBuffer.pushBufferUsed;
-
-			pushBuffer.CB				= InvalidHandle;
-			pushBuffer.buffer			= nullptr;
-			pushBuffer.pushBufferBegin	= 0;
-			pushBuffer.pushBufferSize	= 0;
-			pushBuffer.pushBufferUsed	= 0;
-
-			return *this; 
-		}
-
-		operator ConstantBufferHandle () const	{ return CB; }
-		operator ConstantBufferHandle ()		{ return CB; }
-
-
-		ConstantBufferHandle Handle() const { return CB; }
-
-		template<typename TY>
-		static constexpr size_t CalculateOffset()
-		{
-			return Max((sizeof(TY) / 256) * 256, 256);
-		}
-
-		static constexpr size_t CalculateOffset(const size_t size)
-		{
-			return Max((size / 256) * 256, 256);
-		}
-
-		template<typename _TY>
-		size_t Push(const _TY& data)
-		{
-			constexpr size_t alignedSize = CalculateOffset<_TY>();
-			if (pushBufferUsed + alignedSize > pushBufferSize)
-			{
-				FK_LOG_ERROR("Failed To Push Constants");
-				return -1;
-			}
-
-			const size_t offset = pushBufferUsed;
-			memcpy(buffer + pushBufferBegin + offset, (char*)&data, sizeof(data));
-			pushBufferUsed += CalculateOffset<_TY>();
-
-			return offset + pushBufferBegin;
-		}
-
-		size_t Push(char* _ptr, const size_t size)
-		{
-			if (pushBufferUsed + AlignedSize(size) > pushBufferSize)
-				return -1;
-
-			const size_t offset = pushBufferUsed;
-			memcpy(buffer + pushBufferBegin + offset, _ptr, size);
-			pushBufferUsed += AlignedSize(size);
-
-			return offset + pushBufferBegin;
-		}
-
-		size_t begin() const { return pushBufferBegin; }
-
-	private:
-		ConstantBufferHandle	CB				= InvalidHandle;
-		char*					buffer			= nullptr;
-		size_t					pushBufferBegin = 0;
-		size_t					pushBufferSize	= 0;
-		size_t					pushBufferUsed	= 0;
-	};
-
-
-	class VBPushBuffer
-	{
-	public:
-		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) noexcept :
-			VB					{ vBuffer		},
-			buffer				{ buffer_ptr	},
-			pushBufferSize		{ reservedSize	},
-			pushBufferOffset	{ offsetBegin	} {}
-
-
-		VBPushBuffer(VertexBufferHandle IN_VB, size_t IN_reserveSize, RenderSystem& renderSystem)
-		{
-			auto reservedBuffer = renderSystem.VertexBuffers.Reserve(IN_VB, IN_reserveSize);
-			VB					= IN_VB;
-			pushBufferSize		= IN_reserveSize;
-			buffer				= reservedBuffer.Data;
-			pushBufferOffset	= reservedBuffer.offsetBegin;
-		}
-
-
-		VBPushBuffer(const VBPushBuffer&)						= delete;
-		VBPushBuffer& operator = (VBPushBuffer& pushBuffer)		= delete;
-
-
-		VBPushBuffer(VBPushBuffer&& pushBuffer)
-		{
-			VB				 = pushBuffer.VB;
-			buffer			 = pushBuffer.buffer;
-			pushBufferOffset = pushBuffer.pushBufferOffset;
-			pushBufferSize	 = pushBuffer.pushBufferSize;
-			pushBufferUsed	 = pushBuffer.pushBufferUsed;
-
-			pushBuffer.VB				= InvalidHandle;
-			pushBuffer.buffer			= nullptr;
-			pushBuffer.pushBufferOffset	= 0;
-			pushBuffer.pushBufferSize	= 0;
-			pushBuffer.pushBufferUsed	= 0;
-		}
-
-
-		VBPushBuffer& operator = (VBPushBuffer&& pushBuffer) 
-		{ 
-			VB				 = pushBuffer.VB;
-			buffer			 = pushBuffer.buffer;
-			pushBufferOffset = pushBuffer.pushBufferOffset;
-			pushBufferSize	 = pushBuffer.pushBufferSize;
-			pushBufferUsed	 = pushBuffer.pushBufferUsed;
-
-			pushBuffer.VB				= InvalidHandle;
-			pushBuffer.buffer			= nullptr;
-			pushBuffer.pushBufferOffset	= 0;
-			pushBuffer.pushBufferSize	= 0;
-			pushBuffer.pushBufferUsed	= 0;
-
-			return *this; 
-		}
-
-		operator VertexBufferHandle ()			{ return VB; }
-		operator VertexBufferHandle () const	{ return VB; }
-
-		VertexBufferHandle Handle() const { return VB;  }
-
-		template<typename _TY>
-		size_t Push(const _TY& data) noexcept
-		{
-			if (pushBufferUsed + sizeof(data) > pushBufferSize)
-				return -1;
-
-			size_t offset = pushBufferUsed;
-			memcpy(pushBufferOffset + buffer + pushBufferUsed, (char*)&data, sizeof(data));
-			pushBufferUsed += sizeof(data);
-
-			return offset;
-		}
-
-
-		size_t Push(char* _ptr, size_t size) noexcept
-		{
-			if (pushBufferUsed + size > pushBufferSize)
-				return -1;
-
-			size_t offset = pushBufferUsed;
-			memcpy(pushBufferOffset + buffer + pushBufferUsed, _ptr, size);
-			pushBufferUsed += (size + 255) & ~255;
-
-			return offset;
-		}
-
-
-		size_t begin() { return pushBufferOffset; }
-
-
-		size_t GetOffset()const noexcept
-		{
-			return pushBufferUsed + pushBufferOffset;
-		}
-
-		VertexBufferHandle	VB					= InvalidHandle;
-		char*				buffer				= 0;
-		size_t				pushBufferOffset	= 0;
-		size_t				pushBufferSize		= 0;
-		size_t				pushBufferUsed		= 0;
-	};
-
-
-	/************************************************************************************************/
-
-
-	inline CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count, RenderSystem& renderSystem)
-	{
-		size_t reserveSize = (pushSize / 256 + 1) * 256 * count;
-		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize);
-
-		return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
-	}
-
-
-	inline VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, Context& ctx)
-	{
-		auto buffer = ctx.renderSystem->VertexBuffers.Reserve(VB, reserveSize);
-		return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
-	}
-
-
-	/************************************************************************************************/
-
-
-
-	class ConstantBufferDataSet
-	{
-	public:
-		ConstantBufferDataSet() {}
-
-		template<typename TY>
-		ConstantBufferDataSet(const TY& initialData, CBPushBuffer& buffer) :
-			constantBuffer	{ buffer.Handle()			},
-			constantsOffset	{ buffer.Push(initialData)	},
-			size            { AlignedSize<TY>()			} {}
-
-		ConstantBufferDataSet(const size_t& IN_offset, ConstantBufferHandle IN_buffer, size_t IN_size = 0) :
-			constantBuffer  { IN_buffer },
-			constantsOffset { IN_offset },
-			size            { IN_size   } {} 
-
-		explicit ConstantBufferDataSet(char* initialData, const size_t bufferSize, CBPushBuffer& buffer) :
-			constantBuffer  { buffer.Handle()						},
-			constantsOffset { buffer.Push(initialData, bufferSize)	},
-			size            { AlignedSize(bufferSize)				} {}
-
-		~ConstantBufferDataSet() = default;
-
-		ConstantBufferDataSet(const ConstantBufferDataSet& rhs)					= default;
-		ConstantBufferDataSet& operator = (const ConstantBufferDataSet& rhs)	= default;
-
-		ConstantBufferHandle	Handle() const { return constantBuffer;	}
-		size_t					Offset() const { return constantsOffset; }
-		size_t					Size() const { return size; }
-
-	private:
-		ConstantBufferHandle	constantBuffer		= InvalidHandle;
-		size_t					constantsOffset		= 0;
-		size_t					size                = 0;
-	};
-
-
-	/************************************************************************************************/
-
-
-
-	template<typename TY>
-	auto CreateCBIterator(const CBPushBuffer& source)
-	{
-		struct CB_Proxy
-		{
-			CB_Proxy operator[](const size_t idx) const noexcept
-			{
-				return { offset, idx, CB };
-			}
-
-			operator ConstantBufferDataSet () const		{ return { offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB, 0u }; }
-			operator ConstantBufferDataSet ()			{ return { offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB, 0u }; }
-
-			const size_t				offset;
-			const size_t				idx;
-			const ConstantBufferHandle	CB = InvalidHandle;
-		};
-
-		return CB_Proxy{ source.begin(), 0, source };
-	}
-
-
-	/************************************************************************************************/
-
-
-	struct SET_MAP_t{
-	}const SET_MAP_OP;
-
-	struct SET_TRANSFORM_t {
-	}const SET_TRANSFORM_OP;
-
-	class VertexBufferDataSet
-	{
-	public:
-		VertexBufferDataSet() {}
-
-		template<typename TY>
-		VertexBufferDataSet(const TY& initialData, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer },
-			offsetBegin		{ buffer.GetOffset() },
-			vertexStride    { sizeof(initialData[0]) }
-		{
-
-			for (auto& vertex : initialData) 
-				buffer.Push(vertex);
-		}
-
-		template<typename TY>
-		VertexBufferDataSet(const TY* buffer, size_t bufferSize, VBPushBuffer& pushBuffer) :
-			vertexBuffer	{ pushBuffer },
-			offsetBegin		{ pushBuffer.GetOffset() }
-		{
-			vertexStride = sizeof(TY);
-
-			if (pushBuffer.Push((char*)buffer, bufferSize) == -1)
-				throw std::exception("buffer too short to accomdate push!");
-		}
-
-		template<typename TY, typename FN_TransformVertex>
-		VertexBufferDataSet(const SET_MAP_t, const TY& initialData, const FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer },
-			offsetBegin		{ buffer.GetOffset() }
-		{
-			vertexStride = sizeof(decltype(TransformVertex(initialData[0])));
-
-			for (const auto& vertex : initialData) {
-				auto transformedVertex = TransformVertex(vertex);
-				if (buffer.Push(transformedVertex) == -1)
-					throw std::exception("buffer too short to accomdate push!");
-			}
-		}
-
-
-		template<typename TY_CONTAINER, typename FN_TransformVertex>
-		VertexBufferDataSet(const SET_TRANSFORM_t, const TY_CONTAINER& initialData, const FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer.Handle()		},
-			offsetBegin		{ buffer.GetOffset()	}
-		{
-			using TY = decltype(TransformVertex(initialData.front(), buffer));
-			vertexStride = sizeof(decltype(TransformVertex(initialData.front(), buffer)));
-
-			for (const auto& vertex : initialData)
-				TransformVertex(vertex, buffer);
-		}
-
-
-		~VertexBufferDataSet() = default;
-
-		VertexBufferDataSet(const VertexBufferDataSet& rhs)					= default;
-		VertexBufferDataSet& operator = (const VertexBufferDataSet& rhs)	= default;
-
-		operator VertexBufferEntry () const
-		{
-			return { vertexBuffer, (UINT)vertexStride, (UINT)offsetBegin };
-		}
-
-
-		operator VertexBufferHandle const ()	{ return vertexBuffer;	}
-		operator size_t const ()				{ return offsetBegin;	}
-
-	private:
-		uint64_t			offsetBegin		= 0;
-		uint64_t			vertexStride	= 0;
-		VertexBufferHandle	vertexBuffer	= InvalidHandle;
-	};
-
+*/
 
 	/************************************************************************************************/
 
@@ -6190,99 +4286,6 @@ private:
 
 	FLEXKITAPI void ReleaseTriMesh			( TriMesh*	p );
 	FLEXKITAPI void DelayedReleaseTriMesh	( RenderSystem* RS, TriMesh* T );
-
-
-	/************************************************************************************************/
-
-
-	inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& lod : Mesh->lods) for (auto& buffer : lod.buffers) buffer = nullptr; }
-
-
-	/************************************************************************************************/
-
-	[[nodiscard]]
-	inline auto CreateVertexBufferReserveObject(
-		VertexBufferHandle	vertexBuffer,
-		RenderSystem*		renderSystem,
-		iAllocator*			allocator)
-	{
-		return MakeSynchonized(
-			[=](size_t reserveSize) -> VBPushBuffer
-			{
-				return VBPushBuffer(vertexBuffer, reserveSize, *renderSystem);
-			},
-			allocator);
-	}
-
-	[[nodiscard]]
-	inline auto CreateConstantBufferReserveObject(
-		ConstantBufferHandle	constantBuffer,
-		RenderSystem*			renderSystem,
-		iAllocator*				allocator)
-	{
-		return MakeSynchonized(
-			[=](const size_t reserveSize) -> CBPushBuffer
-			{
-				auto push = CBPushBuffer(constantBuffer, reserveSize, *renderSystem);
-				return std::move(push);
-			},
-			allocator);
-	}
-
-	using ReserveVertexBufferFunction	= decltype(CreateVertexBufferReserveObject(InvalidHandle, nullptr, nullptr));
-	using ReserveConstantBufferFunction	= decltype(CreateConstantBufferReserveObject(InvalidHandle, nullptr, nullptr));
-
-	[[nodiscard]]
-	inline auto CreateOnceReserveBuffer(ReserveConstantBufferFunction& reserveConstants, iAllocator* allocator)
-	{
-		return MakeLazyObject<CBPushBuffer>(
-			allocator,
-			[reserveConstants = reserveConstants](size_t reserveSize) mutable
-			{
-				return reserveConstants(reserveSize);
-			});
-	}
-
-	using CreateOnceReserveBufferFunction = decltype(CreateOnceReserveBuffer(*((ReserveConstantBufferFunction*)nullptr), nullptr));
-
-
-	/************************************************************************************************/
-
-
-
-	template<typename TY_Signature>
-	class RunOnceQueue
-	{
-	public:
-		using Callable_TY = FlexKit::TypeErasedCallable<TY_Signature>;
-
-		RunOnceQueue(iAllocator& allocator) : events{ &allocator } {}
-		~RunOnceQueue() = default;
-
-		RunOnceQueue(const RunOnceQueue&)   = delete;
-		RunOnceQueue(RunOnceQueue&&)        = default;
-
-		RunOnceQueue& operator = (const RunOnceQueue&)  = delete;
-		RunOnceQueue& operator = (RunOnceQueue&&)       = default;
-
-
-		void push_back(Callable_TY&& runOnce)
-		{
-			events.push_back(std::move(runOnce));
-		}
-
-
-		template<typename ... TY_Args>
-		void Process(TY_Args&& ... args) requires std::is_invocable_v<Callable_TY, TY_Args...>
-		{
-			for (auto& evt : events)
-				evt(std::forward<TY_Args>(args)...);
-
-			events.clear();
-		}
-	private:
-		Vector<Callable_TY> events;
-	};
 
 
 }	/************************************************************************************************/

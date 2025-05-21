@@ -5,65 +5,10 @@
 #include "containers.hpp"
 #include "MathUtilities.hpp"
 #include "memoryutilities.hpp"
+#include <RenderSystemInterface.hpp>
 
 namespace FlexKit
-{
-	/************************************************************************************************/
-
-
-	enum class DeviceFormat
-	{
-		R8_UINT,
-		R16_FLOAT,
-		R16_UINT,
-		R16G16_UINT,
-		R32_UINT,
-		R32G32_UINT,
-		R8G8B8A_UINT,
-		R8G8B8A8_UINT,
-		R8G8B8A8_UNORM,
-		R8G8B8A8_UNORM_SRGB,
-		R16G16B16A16_UNORM,
-		R8G8_UNORM,
-		D24_UNORM_S8_UINT,
-		R32_FLOAT,
-		D32_FLOAT,
-
-		R10G10B10A2_UNORM,
-		R10G10B10A2_UINT,
-
-		R16G16_FLOAT,
-		R16G16B16A16_FLOAT,
-		R32G32_FLOAT,
-		R32G32B32_FLOAT,
-		R32G32B32A32_FLOAT,
-		BC1_TYPELESS,
-		BC1_UNORM,
-		BC1_UNORM_SRGB,
-		BC2_TYPELESS,
-		BC2_UNORM,
-		BC2_UNORM_SRGB,
-		BC3_TYPELESS,
-		BC3_UNORM,
-		BC3_UNORM_SRGB,
-		BC4_TYPELESS,
-		BC4_UNORM,
-		BC4_SNORM,
-		BC5_TYPELESS,
-		BC5_UNORM,
-		BC5_SNORM,
-		BC7_UNORM,
-		BC7_SNORM,
-
-
-		R32G32B32_UINT,
-		R32G32B32A32_UINT,
-
-		UNKNOWN
-	};
-
-
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
 	class TextureBuffer
@@ -328,7 +273,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -292,9 +292,9 @@ namespace FlexKit
 				const auto counterDesc =
 					[&] {
 					auto renderTarget = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT);
-					renderTarget.clearValue = D3D12_CLEAR_VALUE{
-						.Format = DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT,
-						.Color  = { 1.0f, 1.0f, 1.0f, 1.0f },
+					renderTarget.clearValue = ClearValue{
+						.format = DeviceFormat::R16G16B16A16_FLOAT,
+						.color  = { 1.0f, 1.0f, 1.0f, 1.0f },
 					};
 
 					return renderTarget; }();

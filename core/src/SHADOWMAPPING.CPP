@@ -343,9 +343,9 @@ namespace FlexKit
 					ProfileFunction();
 						
 					constexpr float f_max = std::numeric_limits<float>::max();
-					static const D3D12_CLEAR_VALUE clearValue{
-						.Format = DXGI_FORMAT_R32_FLOAT,
-						.Color	{ f_max, f_max, f_max, f_max }
+					static const ClearValue clearValue{
+						.format = DeviceFormat::R32_FLOAT,
+						.color	{ f_max, f_max, f_max, f_max }
 					};
 
 					LightComponent& lightComponent = LightComponent::GetComponent();

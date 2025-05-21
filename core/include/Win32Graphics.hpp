@@ -272,7 +272,7 @@ namespace FlexKit
 		}
 
 
-		IDXGISwapChain4* _GetSwapChain() const override
+		IDXGISwapChain4* _GetSwapChain() const
 		{
 			return swapChain;
 		}
