@@ -148,7 +148,7 @@ UpdateTask* EditorPlayerState::Draw(UpdateTask* update, EngineCore& core, Update
 
 	renderer.DrawScene(dispatcher, frameGraph, drawSceneDesc, { renderWindow->GetBackBuffer(), depthBuffer }, core.GetBlockMemory(), core.GetTempMemoryMT());
 
-	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetBlockMemory());
+	frameGraph.SubmitDirect(dispatcher, core.GetBlockMemory());
 
 	drawRequested = false;
 

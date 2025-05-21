@@ -222,7 +222,7 @@ namespace FlexKit
 
 		Free_DelayedReleaseResources(core.RenderSystem);
 
-		auto temp = &frameGraph.Finish(dispatcher, core.RenderSystem, core.GetBlockMemory());
+		auto temp = &frameGraph.Finish(dispatcher, core.GetBlockMemory());
 		return temp;
 	}
 

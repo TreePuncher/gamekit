@@ -147,6 +147,7 @@ target_sources(
     "include/PlanetComponent.hpp"
     "include/ProfilingUtilities.hpp"
     "include/RayTracingUtilities.hpp"
+    "include/RenderSystemInterface.hpp"
     "include/ResourceHandles.hpp"
     "include/RMLRenderer.hpp"
     "include/RuntimeComponentIDs.hpp"
