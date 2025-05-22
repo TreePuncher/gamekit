@@ -48,8 +48,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS						= DrawRectVShader;
-			PSO_Desc.PS						= DrawRectPShader;
+			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -120,8 +120,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS						= DrawRectVShader;
-			PSO_Desc.PS						= DrawRectPShader;
+			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -168,8 +168,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *rootSignature;
-			PSO_Desc.VS						= VShader;
-			PSO_Desc.PS						= PShader;
+			PSO_Desc.VS						= Shader2ByteCode(VShader);
+			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -211,7 +211,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= *RS->Library.RSDefault;
-		PSO_Desc.CS				= CShader;
+		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -232,7 +232,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -263,9 +263,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
-			PSO_Desc.VS						= VShader;
-			PSO_Desc.PS						= PShader;
-			PSO_Desc.GS						= GShader;
+			PSO_Desc.VS						= Shader2ByteCode(VShader);
+			PSO_Desc.PS						= Shader2ByteCode(PShader);
+			PSO_Desc.GS						= Shader2ByteCode(GShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -298,7 +298,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -320,7 +320,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -351,9 +351,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
-			PSO_Desc.VS						= VShader;
-			PSO_Desc.PS						= PShader;
-			PSO_Desc.GS						= GShader;
+			PSO_Desc.VS						= Shader2ByteCode(VShader);
+			PSO_Desc.PS						= Shader2ByteCode(PShader);
+			PSO_Desc.GS						= Shader2ByteCode(GShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -386,7 +386,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.RSDefault,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -409,7 +409,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -432,7 +432,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.RSDefault,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -455,7 +455,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -477,7 +477,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -500,7 +500,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -530,9 +530,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
-			PSO_Desc.VS						= VShader;
-			PSO_Desc.PS						= PShader;
-			PSO_Desc.GS						= GShader;
+			PSO_Desc.VS						= Shader2ByteCode(VShader);
+			PSO_Desc.PS						= Shader2ByteCode(PShader);
+			PSO_Desc.GS						= Shader2ByteCode(GShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
@@ -578,9 +578,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
-			PSO_Desc.VS                    = VShader;
-			PSO_Desc.PS                    = PShader;
-			PSO_Desc.GS                    = GShader;
+			PSO_Desc.VS                    = Shader2ByteCode(VShader);
+			PSO_Desc.PS                    = Shader2ByteCode(PShader);
+			PSO_Desc.GS                    = Shader2ByteCode(GShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -613,7 +613,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ComputeSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -636,7 +636,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.RSDefault,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;

@@ -87,8 +87,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS                            = cullTerrain_shader_VS;
-			PSO_Desc.GS                            = cullTerrain_shader_GS;
+			PSO_Desc.VS                            = Shader2ByteCode(cullTerrain_shader_VS);
+			PSO_Desc.GS                            = Shader2ByteCode(cullTerrain_shader_GS);
 			PSO_Desc.SampleMask                    = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets              = 0;
@@ -138,9 +138,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
-			PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
-			PSO_Desc.PS							   = forwardRenderTerrain_shader_PS;
+			PSO_Desc.VS                            = Shader2ByteCode(forwardRenderTerrain_shader_VS);
+			PSO_Desc.GS                            = Shader2ByteCode(forwardRenderTerrain_shader_GS);
+			PSO_Desc.PS							   = Shader2ByteCode(forwardRenderTerrain_shader_PS);
 			PSO_Desc.RasterizerState			   = Rast_Desc;
 			PSO_Desc.SampleMask                    = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
@@ -195,9 +195,9 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS						= forwardRenderTerrain_shader_VS;
-			PSO_Desc.GS						= forwardRenderTerrain_shader_GS;
-			PSO_Desc.PS						= ShaderPaint_Wire;
+			PSO_Desc.VS						= Shader2ByteCode(forwardRenderTerrain_shader_VS);
+			PSO_Desc.GS						= Shader2ByteCode(forwardRenderTerrain_shader_GS);
+			PSO_Desc.PS						= Shader2ByteCode(ShaderPaint_Wire);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.SampleMask				= UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;

@@ -1881,7 +1881,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1921,7 +1921,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1936,7 +1936,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1951,7 +1951,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1966,7 +1966,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1981,7 +1981,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -1996,7 +1996,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -2011,7 +2011,7 @@ namespace FlexKit
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
-		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)shaders.back() };
+		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
 		blob += streamObject;
 
 		return *this;
@@ -5747,7 +5747,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			*RS->Library.ClearBuffer,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -6522,7 +6522,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetVertexBufferSize(const VertexBufferHandle VB)
+	size_t RenderSystem::GetVertexBufferSize(const VertexBufferHandle VB) const noexcept
 	{
 		return VertexBuffers.GetBufferSize(VB);
 	}
@@ -6540,7 +6540,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const
+	DeviceAddressRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const noexcept
 	{
 		auto deviceResource = GetDeviceResource(resource);
 		auto resourceSize	= GetResourceSize(resource);
@@ -6553,13 +6553,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const size_t RenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
+	DeviceAddressRange	RenderSystem::GetDeviceRange(const ConstantBufferHandle handle) const noexcept
+	{
+		DeviceResource_ptr	resource		= GetDeviceResource(handle);
+		const size_t		resourceSize	= ConstantBuffers.GetBufferSize(handle);
+		D3D12_GPU_VIRTUAL_ADDRESS ptr		= resource->GetGPUVirtualAddress();
+
+		return DeviceAddressRange{
+			.address	= ptr,
+			.size		= resourceSize
+		};
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t RenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
 	{
 		return ConstantBuffers.GetBufferOffset(handle);
 	}
 
 
-	const size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+	size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
 	{
 		return Textures.GetResourceSize(handle);
 	}
@@ -6568,7 +6584,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
+	size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
 	{
 		auto resource				= GetDeviceResource(handle);
 		D3D12_RESOURCE_DESC desc	= resource->GetDesc();
@@ -6578,7 +6594,7 @@ namespace FlexKit
 	}
 
 
-	const size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
+	size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
 		const D3D12_RESOURCE_DESC Resource_DESC = GetD3D12ResourceDesc(desc);
 		auto res = pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC);
@@ -6590,7 +6606,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const size_t	RenderSystem::GetTextureElementSize(ResourceHandle handle) const
+	size_t	RenderSystem::GetTextureElementSize(ResourceHandle handle) const
 	{
 		auto Format = Textures.GetFormat(handle);
 		return GetFormatElementSize(Format);
@@ -6600,7 +6616,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
+	uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
 		if (handle == InvalidHandle)
 			return { 0, 0 };
@@ -6784,7 +6800,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetTextureFrameGraphIndex(ResourceHandle Texture)
+	size_t RenderSystem::GetTextureFrameGraphIndex(ResourceHandle Texture) noexcept
 	{
 		return Textures.GetFrameGraphIndex(Texture, directSubmissionCounter);
 	}
@@ -6793,7 +6809,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index)
+	void RenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index) noexcept
 	{
 		Textures.SetFrameGraphIndex(Texture, directSubmissionCounter, Index);
 	}
@@ -8287,7 +8303,7 @@ namespace FlexKit
 
 			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-			Shader out{ byteCodeBlob, Memory };
+			Shader out = CreateShader( byteCodeBlob, Memory );
 			byteCodeBlob->Release();
 			result->Release();
 
@@ -8389,7 +8405,7 @@ namespace FlexKit
 
 			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-			Shader out{ byteCodeBlob };
+			Shader out = CreateShader(byteCodeBlob, Memory);
 			byteCodeBlob->Release();
 			result->Release();
 

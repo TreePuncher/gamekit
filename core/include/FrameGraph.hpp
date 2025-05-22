@@ -763,12 +763,10 @@ namespace FlexKit
 
 		DeviceAddressRange		GetDevicePointerRange(const ConstantBufferDataSet& dataSet) const
 		{
-			ID3D12Resource* resource = globalResources.renderSystem.GetDeviceResource(dataSet.Handle());
-			D3D12_GPU_VIRTUAL_ADDRESS ptr = resource->GetGPUVirtualAddress();
+			const auto range = globalResources.renderSystem.GetDeviceRange(dataSet.Handle());
 
-			ptr += dataSet.Offset();
 			return DeviceAddressRange{
-				.address	= ptr,
+				.address	= range.address + dataSet.Offset(),
 				.size		= dataSet.Size()
 			};
 		}
@@ -984,6 +982,7 @@ namespace FlexKit
 				return { res->access, res->layout };
 		}
 
+#if USING(ENABLEDX12)
 		D3D12_STREAM_OUTPUT_BUFFER_VIEW WriteStreamOut(FrameResourceHandle handle, Context* ctx, size_t inputStride) const
 		{
 			auto& localResourceObj  = _FindSubNodeResource(handle);
@@ -1016,6 +1015,7 @@ namespace FlexKit
 
 			return view;
 		}
+#endif
 
 		RenderSystem& renderSystem() const { return *globalResources.renderSystem; }
 
@@ -2562,30 +2562,6 @@ namespace FlexKit
 	{
 		return Resources.renderSystem.ConstantBuffers.AlignNext(CB);
 	}
-
-
-	/************************************************************************************************/
-
-	[[deprecated]]
-	inline bool PushConstantBufferData(char* _ptr, size_t size, ConstantBufferHandle buffer, FrameResources& resources)
-	{
-		const auto res = resources.renderSystem.ConstantBuffers.Push(buffer, _ptr, size);
-		FK_ASSERT(res, "Failed to Push Constants!");
-		return res.has_value();
-	}
-
-
-	/************************************************************************************************/
-
-
-	template<typename TY_CB>
-	[[deprecated]] bool PushConstantBufferData(const TY_CB& constants, ConstantBufferHandle buffer, FrameResources& resources)
-	{
-		const auto res = resources.renderSystem.ConstantBuffers.Push(buffer, (void*)&constants, sizeof(TY_CB));
-		FK_ASSERT(res, "Failed to Push Constants!");
-		return res.has_value();
-	}
-
 
 	/************************************************************************************************/
 

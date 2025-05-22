@@ -50,8 +50,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -98,8 +98,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -146,8 +146,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -194,8 +194,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -251,8 +251,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -299,8 +299,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-			PSO_Desc.VS                    = DrawRectVShader;
-			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
+			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -347,7 +347,7 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC GDesc = {};
 		GDesc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
-		GDesc.VS                    = VShader;
+		GDesc.VS                    = Shader2ByteCode(VShader);
 		GDesc.PS                    = { nullptr, 0 };
 		GDesc.RasterizerState       = Rast_Desc;
 		GDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -545,8 +545,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature			= *renderSystem->Library.RSDefault;
-			PSO_Desc.VS						= VShader;
-			PSO_Desc.PS						= PShader;
+			PSO_Desc.VS						= Shader2ByteCode(VShader);
+			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
 			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask				= UINT_MAX;
