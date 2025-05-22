@@ -12,9 +12,10 @@ namespace FlexKit
 	using std::views::zip;
 
 
-	LoadPipelineStateRes ShadowMapper::CreateRowSums(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ShadowMapper::CreateRowSums(IRenderSystem& irs, iAllocator&)
 	{
-		auto CShader = RS->LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto CShader = RS.LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
@@ -22,7 +23,7 @@ namespace FlexKit
 		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, rootSignature };
@@ -32,9 +33,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateColumnSums(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ShadowMapper::CreateColumnSums(IRenderSystem& irs, iAllocator&)
 	{
-		auto CShader = RS->LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto CShader = RS.LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
@@ -42,7 +44,7 @@ namespace FlexKit
 		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, rootSignature };
@@ -52,10 +54,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto VShader = RS.LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto PShader = RS.LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -102,7 +105,7 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "ShadowMapPass");
@@ -114,10 +117,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
-		auto PShader = RS->LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto VShader = RS.LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
+		auto PShader = RS.LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -167,7 +171,7 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "ShadowMapAnimatedPass");

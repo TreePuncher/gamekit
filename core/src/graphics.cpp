@@ -5741,21 +5741,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateClearBufferPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateClearBufferPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ClearBuffer,
+			*RS.Library.ClearBuffer,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS->Library.ClearBuffer };
+		return { PSO, RS.Library.ClearBuffer };
 	}
 
 
@@ -11156,7 +11157,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::Submit(std::span<Context*> contexts, std::optional<SyncPoint> syncOptional)
+	SyncPoint RenderSystem::Submit(std::span<IDirectContext*> contexts, std::optional<SyncPoint> syncOptional)
 	{
 		ProfileFunction();
 
@@ -11174,10 +11175,11 @@ namespace FlexKit
 
 		for (auto context : contexts)
 		{
-			dispatchIdx = Max(context->dispatchIdx, dispatchIdx);
+			auto deviceContext = static_cast<Context*>(context);
+			dispatchIdx = Max(deviceContext->dispatchIdx, dispatchIdx);
 
-			cls.push_back(context->GetCommandList());
-			context->Close();
+			cls.push_back(deviceContext->GetCommandList());
+			deviceContext->Close();
 		}
 
 		if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
@@ -11196,7 +11198,7 @@ namespace FlexKit
 			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
-			context->_QueueReadBacks();
+			static_cast<Context*>(context)->_QueueReadBacks();
 
 		directUploadBuffer.Last = directUploadBuffer.Position;
 

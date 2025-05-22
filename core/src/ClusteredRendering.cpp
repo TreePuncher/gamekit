@@ -13,10 +13,12 @@ namespace FlexKit
 	using namespace std::views;
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = RS.LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS.LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 
 		/*
@@ -47,7 +49,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -67,22 +69,24 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "GBufferPassPSO");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = RS->LoadShader("GBufferFill_PS",       "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = RS.LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS.LoadShader("GBufferFill_PS",       "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 
 		/*
@@ -119,7 +123,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -139,23 +143,25 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		if (FAILED(HR))
 			return {};
 
 		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
-		auto PShader = RS->LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
+		auto PShader = RS.LoadShader("DeferredShade_PS",   "ps_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -193,7 +199,7 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DeferredShadingPSO");
@@ -205,55 +211,61 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto CShader = RS->LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto CShader = RS.LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
-		PSO_Desc.pRootSignature	= *RS->Library.RSDefault;
+		PSO_Desc.pRootSignature	= *RS.Library.RSDefault;
 		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DeferredShadingComputePSO");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "ClearClusteredCounters");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain3", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS.LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS.LoadShader("GMain3", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -262,7 +274,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.GS						= Shader2ByteCode(GShader);
@@ -280,68 +292,74 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "CreateLightBuffers_DEBUGVIS");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE1");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE2");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS.LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS.LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -350,7 +368,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.GS						= Shader2ByteCode(GShader);
@@ -368,159 +386,173 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "CreateLightBVH_DEBUGVIS");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			*RS.Library.RSDefault,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateClusterArguments");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateLightListArgs");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			*RS.Library.RSDefault,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateLightLists");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "ResolutionMatch_UNUSED");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "ResolutionMatchClear_UNUSED");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
-		auto GShader = RS->LoadShader("GMain2", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto PShader = RS.LoadShader("PMain", "ps_6_1", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
+		auto GShader = RS.LoadShader("GMain2", "gs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -529,7 +561,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.GS						= Shader2ByteCode(GShader);
@@ -547,23 +579,25 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "CreateClusters");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
-		auto GShader = RS->LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
-		auto PShader = RS->LoadShader("PMain", "ps_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
+		auto GShader = RS.LoadShader("GMain", "gs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
+		auto PShader = RS.LoadShader("PMain", "ps_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "MIN", 0,     DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	 D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -577,7 +611,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.GS                    = Shader2ByteCode(GShader);
@@ -595,66 +629,72 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "CreateBVH_DEBUGVIS");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.ComputeSignature,
+			*RS.Library.ComputeSignature,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateClusterBuffer");
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(IRenderSystem& irs, iAllocator&)
 	{
-		Shader computeShader = RS->LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			*RS.Library.RSDefault,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
 		SETDEBUGNAME(PSO, "CreateComputeTiledDeferred");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
+		auto& RS = static_cast<RenderSystem&>(irs);
+
 		PipelineBuilder builder{ allocator };
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
 		builder.AddVertexShader("VMain", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
@@ -675,8 +715,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
+		auto& RS = static_cast<RenderSystem&>(irs);
+
 		PipelineBuilder builder{ allocator };
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
 		builder.AddInputLayout({

@@ -1,40 +1,17 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2018 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "CoreSceneObjects.hpp"
 #include "DefaultPipelineStates.hpp"
+#include "Graphics.hpp"
 
 
 namespace FlexKit
-{
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawTriStatePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateDrawTriStatePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -49,7 +26,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -66,22 +43,23 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawRect");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTexturedTriStatePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateTexturedTriStatePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",			"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -97,7 +75,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -114,22 +92,23 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawRectTextured");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
-		auto DrawRectPShader = RS->LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
+		auto DrawRectPShader = RS.LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -145,7 +124,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -162,22 +141,23 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawTextured");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawLineStatePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateDrawLineStatePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -193,7 +173,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -210,12 +190,12 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawLine");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
@@ -229,10 +209,11 @@ namespace FlexKit
 		float2 UV
 	};
 	*/
-	LoadPipelineStateRes CreateDraw2StatePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateDraw2StatePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("V10Main",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawRect",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("V10Main",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawRect",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -250,7 +231,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -267,22 +248,23 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "Draw2");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawTri3DStatePSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateDrawTri3DStatePSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("V11Main",	        "vs_6_0",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawFlatTriangle",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("V11Main",				"vs_6_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawFlatTriangle",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 0,	                D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -298,7 +280,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -315,21 +297,22 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawMeshFlat");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes LoadOcclusionState(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes LoadOcclusionState(IRenderSystem& irs, iAllocator&)
 	{
-		Shader VShader = RS->LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
+		auto& RS = static_cast<RenderSystem&>(irs);
+		Shader VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{
@@ -346,7 +329,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC GDesc = {};
-		GDesc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+		GDesc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 		GDesc.VS                    = Shader2ByteCode(VShader);
 		GDesc.PS                    = { nullptr, 0 };
 		GDesc.RasterizerState       = Rast_Desc;
@@ -361,12 +344,12 @@ namespace FlexKit
 		GDesc.DepthStencilState     = Depth_Desc;
 		
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&GDesc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&GDesc, IID_PPV_ARGS(&PSO));
 		CheckHR(HR, ASSERTONFAIL("Failed to Create PSO for Occlusion Culling!"));
 
 		SETDEBUGNAME(PSO, "DrawOcclusion");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
@@ -529,10 +512,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes LoadClearRenderTarget_RG32(RenderSystem* renderSystem, iAllocator&)
+	LoadPipelineStateRes LoadClearRenderTarget_RG32(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = renderSystem->LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
-		auto PShader = renderSystem->LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
+
+		auto VShader = renderSystem.LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
+		auto PShader = renderSystem.LoadShader("ClearRenderTargetUINT2", "ps_6_0", "assets\\shaders\\ClearRenderTarget.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -544,7 +529,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *renderSystem->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *renderSystem.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -564,15 +549,39 @@ namespace FlexKit
 
 
 		ID3D12PipelineState* PSO = nullptr;
-		const auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		const auto HR = renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "ClearRenderTargetUINT2");
 
-		return { PSO, renderSystem->Library.RS6CBVs4SRVs };
+		return { PSO, renderSystem.Library.RS6CBVs4SRVs };
 	}
 
 
 
-	/************************************************************************************************/
-}
+}	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

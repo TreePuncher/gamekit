@@ -17,6 +17,7 @@ struct ID3D12PipelineState;
 namespace FlexKit
 {
 	struct iAllocator;
+	struct IRootSignature;
 
 
 #if USING(ENABLEDX12)
@@ -702,6 +703,14 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	struct LoadPipelineStateRes
+	{
+		DevicePipelineState_ptr		pipelineState;
+		const IRootSignature*		rootSignature;
+	};
+
+	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes(struct IRenderSystem&, iAllocator&), 32>;
 
 	struct AvailableFeatures
 	{
@@ -1544,9 +1553,51 @@ namespace FlexKit
 	{
 	};
 
+	struct IRootSignature
+	{
+	};
+
+	struct IDescriptorHeap
+	{
+	};
 
 	struct IRenderSystem
 	{
+		//ID3D12PipelineState*									GetPSO					(PSOHandle StateID, iAllocator& temp);
+		//const RootSignature* const								GetPSORootSignature		(PSOHandle StateID) const;
+		//std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature	(PSOHandle StateID, iAllocator& temp) const;
+
+		virtual void BuildLibrary		(PSOHandle State, const PipelineStateLibraryDesc) = 0;
+		virtual void RegisterPSOLoader	(PSOHandle State, LOADSTATE_FN FN) = 0;
+		virtual void QueuePSOLoad		(PSOHandle State) = 0;
+
+		// Sync functions
+		virtual size_t		GetCurrentCounter()			= 0;
+		virtual void		SyncUploadTo(SyncPoint)		= 0;
+		virtual SyncPoint	SyncUploadPoint()			= 0;
+		virtual SyncPoint	SyncUploadTicket()			= 0;
+
+
+		virtual void		SyncDirectTo(SyncPoint)		= 0;
+		virtual SyncPoint	SyncDirectPoint()			= 0;
+		virtual SyncPoint	SyncSubmittedDirectPoint()	= 0;
+		virtual SyncPoint	SyncDirectTicket()			= 0;
+
+		virtual void		SignalDirect(uint64_t)		= 0;
+
+		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)										= 0;
+		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
+		virtual void		EndFrame()																	= 0;
+		virtual void		Signal(SyncPoint)															= 0;
+
+		virtual void		WaitForGPU()				= 0;
+		virtual void		WaitFor(const uint64_t)	= 0;
+		virtual void		WaitFor(const SyncPoint&)	= 0;
+
+		virtual void		SetDebugName(ResourceHandle, const char*)		= 0;
+		virtual void		SetDebugName(DeviceHeapHandle, const char*)	= 0;
+
+		// Info queries
 		virtual	size_t				GetVertexBufferSize		(const VertexBufferHandle)		const noexcept = 0;
 		//virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const VertexBuffer&)			const noexcept;
 
@@ -1575,6 +1626,7 @@ namespace FlexKit
 		virtual TextureDimension	GetTextureDimension		(ResourceHandle handle) const = 0;
 		virtual	size_t				GetTextureArraySize		(ResourceHandle handle) const = 0;
 
+		// Resource upload
 		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) = 0; // Uses Upload Queue
 		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount) = 0; // Uses Upload Queue
 		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) = 0;
@@ -1587,10 +1639,12 @@ namespace FlexKit
 		virtual SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept = 0;
 		virtual SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept = 0;
 
+		// Shader
 		virtual Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual Shader								LoadShaderLibrary(const char* file, const ShaderOptions& options = {}) = 0;
 		virtual std::expected<Shader, std::string>	LoadRootSignature(const char* file, const char* entry) = 0;
 
+		// Creation
 		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags) = 0;
 		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true) = 0;
 		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true) = 0;
@@ -1606,16 +1660,6 @@ namespace FlexKit
 		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count) = 0;
 		//[[nodiscard]] virtual IIndirectLayout*			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize) = 0;
-	};
-
-
-	struct IRootSignature
-	{
-	};
-
-
-	struct IDescriptorHeap
-	{
 	};
 
 

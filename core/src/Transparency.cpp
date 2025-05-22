@@ -46,21 +46,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes	CreateOITBlendPSO			(RenderSystem* RS, iAllocator& allocator);
-	LoadPipelineStateRes	CreateOITDrawPSO			(RenderSystem* RS, iAllocator& allocator);
-	LoadPipelineStateRes	CreateOITDrawAnimatedPSO	(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITBlendPSO			(IRenderSystem& RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawPSO			(IRenderSystem& RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateOITDrawAnimatedPSO	(IRenderSystem& RS, iAllocator& allocator);
 
-	LoadPipelineStateRes	CreateMarkClustersPSO		(RenderSystem* RS, iAllocator& allocator);
-	LoadPipelineStateRes	CreateMLABDrawPSO			(RenderSystem* RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateMarkClustersPSO		(IRenderSystem& RS, iAllocator& allocator);
+	LoadPipelineStateRes	CreateMLABDrawPSO			(IRenderSystem& RS, iAllocator& allocator);
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITDrawPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateOITDrawPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
-		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto VShader = RS.LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS.LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -78,7 +79,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *RS.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -118,17 +119,17 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITDrawAnimatedPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateOITDrawAnimatedPSO(IRenderSystem& RS, iAllocator& allocator)
 	{
 		return {};
 	}
@@ -137,10 +138,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITBlendPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateOITBlendPSO(IRenderSystem& RS, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
-		auto PShader = RS->LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
+		auto VShader = RS.LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
+		auto PShader = RS.LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 
@@ -149,7 +150,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *static_cast<RenderSystem&>(RS).Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -177,20 +178,20 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = static_cast<RenderSystem&>(RS).pDevice14->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, static_cast<RenderSystem&>(RS).Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateMLABDrawPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateMLABDrawPSO(IRenderSystem& RS, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
-		auto PShader = RS->LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto VShader = RS.LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
+		auto PShader = RS.LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -208,7 +209,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *static_cast<RenderSystem&>(RS).Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -248,10 +249,10 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = static_cast<RenderSystem&>(RS).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, static_cast<RenderSystem&>(RS).Library.RSDefault };
 	}
 
 

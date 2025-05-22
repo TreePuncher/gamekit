@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceHandles.hpp"
 #include <atomic>
 #include <condition_variable>
+#include <RenderSystemInterface.hpp>
 
 struct ID3D12PipelineStateObject;
 
@@ -51,15 +52,8 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-	struct LoadPipelineStateRes
-	{
-		ID3D12PipelineState*	pipelineState;
-		const RootSignature*	rootSignature;
-	};
-
-	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes (RenderSystem*, iAllocator&), 32>;
-
 	/************************************************************************************************/
+
 
 	class PipelineStateObject
 	{

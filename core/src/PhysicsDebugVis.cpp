@@ -8,10 +8,12 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateWireframeDebugVis(RenderSystem* RS, iAllocator& temp)
+	LoadPipelineStateRes CreateWireframeDebugVis(IRenderSystem& irs, iAllocator& temp)
 	{
-		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = RS.LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
 
 		const D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 0,					D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -29,7 +31,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -46,22 +48,23 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawLinearDepthWireFrameDebug");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 	
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateSolidDebugVis(RenderSystem* RS, iAllocator& temp)
+	LoadPipelineStateRes CreateSolidDebugVis(IRenderSystem& irs, iAllocator& temp)
 	{
-		auto DrawRectVShader = RS->LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS->LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto DrawRectVShader = RS.LoadShader("V12Main",			"vs_6_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = RS.LoadShader("DrawLinearDepth",	"ps_6_0",	"assets\\shaders\\pshader.hlsl");
 
 		const D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 0,					D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -78,7 +81,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -95,12 +98,12 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawLinearDepth");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 	static const PSOHandle Wireframe	= PSOHandle(GetTypeGUID(CreateWireframeDebugVis));
@@ -186,3 +189,27 @@ namespace FlexKit
 
 }	/************************************************************************************************/
 
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

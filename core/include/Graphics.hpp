@@ -1198,7 +1198,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class RootSignature : IRootSignature
+	class RootSignature : public IRootSignature
 	{
 	public:
 		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps, iAllocator* IN_allocator) :
@@ -2080,16 +2080,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	// Basic Draw States
-	// TODO: MOVE THESE OUT OF THIS HEADER!
-	LoadPipelineStateRes CreateDrawTriStatePSO	(RenderSystem* RS);
-	LoadPipelineStateRes CreateDrawLineStatePSO	(RenderSystem* RS);
-	LoadPipelineStateRes CreateDraw2StatePSO	(RenderSystem* RS);
-
-
-	/************************************************************************************************/
-
-
 	struct DeviceHeap
 	{
 		ID3D12Heap*			heap;
@@ -2371,7 +2361,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			op();
 		}
 
-		size_t													GetCurrentCounter();
 		ID3D12PipelineState*									GetPSO(PSOHandle StateID, iAllocator& temp);
 		const RootSignature* const								GetPSORootSignature(PSOHandle StateID) const;
 		std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
@@ -2380,36 +2369,38 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
 		void QueuePSOLoad(PSOHandle State);
 
-		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const;
-		PackedResourceTileInfo  GetPackedTileInfo(ResourceHandle)	const;
-
-		void		SyncUploadTo(SyncPoint);
-		SyncPoint	SyncUploadPoint();
-		SyncPoint	SyncUploadTicket();
+		virtual size_t		GetCurrentCounter();
+		virtual void		SyncUploadTo(SyncPoint);
+		virtual SyncPoint	SyncUploadPoint();
+		virtual SyncPoint	SyncUploadTicket();
 
 
-		void		SyncDirectTo(SyncPoint);
-		SyncPoint	SyncDirectPoint();
-		SyncPoint	SyncSubmittedDirectPoint();
-		SyncPoint	SyncDirectTicket();
+		virtual void		SyncDirectTo(SyncPoint);
+		virtual SyncPoint	SyncDirectPoint();
+		virtual SyncPoint	SyncSubmittedDirectPoint();
+		virtual SyncPoint	SyncDirectTicket();
 
-		void		SignalDirect(uint64_t);
+		virtual void		SignalDirect(uint64_t);
 
 
-		SyncPoint	GetSubmissionTicket(uint32_t count = 1);
-		SyncPoint	Submit(std::span<Context*> CLs, std::optional<SyncPoint> sync = {});
-		void		EndFrame();
-		void		Signal(SyncPoint);
+		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1);
+		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {});
+		virtual void		EndFrame();
+		virtual void		Signal(SyncPoint);
 
 		void		_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
-		void WaitForGPU();
-		void WaitFor(const uint64_t);
-		void WaitFor(const SyncPoint&);
+		virtual void WaitForGPU();
+		virtual void WaitFor(const uint64_t);
+		virtual void WaitFor(const SyncPoint&);
 
 
-		void SetDebugName(ResourceHandle, const char*);
-		void SetDebugName(DeviceHeapHandle, const char*);
+		virtual void SetDebugName(ResourceHandle, const char*);
+		virtual void SetDebugName(DeviceHeapHandle, const char*);
+
+
+		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const;
+		PackedResourceTileInfo  GetPackedTileInfo(ResourceHandle)	const;
 
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
@@ -2731,7 +2722,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	using ReadBackEventHandler = TypeErasedCallable<void (ReadBackResourceHandle), 64>;
 
 
-	class Context : IDirectContext
+	class Context : public IDirectContext
 	{
 	public:
 		Context(RenderSystem*				renderSystem_IN	= nullptr, 

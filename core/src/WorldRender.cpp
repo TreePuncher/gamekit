@@ -6,29 +6,33 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateLightPassPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateLightPassPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto lightPassShader = RS->LoadShader("tiledLightCulling", "cs_6_0", "assets\\shaders\\lightPass.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto lightPassShader = RS.LoadShader("tiledLightCulling", "cs_6_0", "assets\\shaders\\lightPass.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
 		PSO_desc.CS				= Shader2ByteCode(lightPassShader);
-		PSO_desc.pRootSignature = *RS->Library.ComputeSignature;
+		PSO_desc.pRootSignature = *RS.Library.ComputeSignature;
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS->Library.ComputeSignature };
+		return { PSO, RS.Library.ComputeSignature };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardDrawPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes CreateForwardDrawPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = RS->LoadShader("Forward_PS", "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = RS.LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectPShader = RS.LoadShader("Forward_PS", "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -57,7 +61,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -84,21 +88,23 @@ namespace FlexKit
 
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "ForwardDraw");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDepthPrePassPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateDepthPrePassPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto DrawRectVShader = RS->LoadShader("DepthPass_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = RS.LoadShader("DepthPass_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 
 		/*
@@ -125,7 +131,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -141,22 +147,24 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DepthPrePass");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateBilaterialBlurHorizontalPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
-		auto PShader = RS->LoadShader("BilateralBlurHorizontal_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("BlurVShader",					"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto PShader = RS.LoadShader("BilateralBlurHorizontal_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -168,7 +176,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	                = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -186,22 +194,24 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "HorizontalBlur");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateBilaterialBlurVerticalPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
-		auto PShader = RS->LoadShader("BilateralBlurVertical_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("BlurVShader",				"vs_6_0", "assets\\shaders\\BilateralBlur.hlsl");
+		auto PShader = RS.LoadShader("BilateralBlurVertical_PS",	"ps_6_0", "assets\\shaders\\BilateralBlur.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -213,7 +223,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	                = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -230,22 +240,24 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "VerticalBlur");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateEnvironmentPassPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateEnvironmentPassPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("passthrough_VS", "vs_6_0", "assets\\shaders\\DeferredRender.hlsl");
-		auto PShader = RS->LoadShader("environment_PS", "ps_6_0", "assets\\shaders\\DeferredRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("passthrough_VS", "vs_6_0", "assets\\shaders\\DeferredRender.hlsl");
+		auto PShader = RS.LoadShader("environment_PS", "ps_6_0", "assets\\shaders\\DeferredRender.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -258,7 +270,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -284,22 +296,24 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "EnvironmentalLightingPass");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardDrawInstancedPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateForwardDrawInstancedPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("VMain",		"vs_6_0", "assets\\shaders\\DrawInstancedVShader.hlsl");
-		auto PShader = RS->LoadShader("FlatWhite",	"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("VMain",		"vs_6_0", "assets\\shaders\\DrawInstancedVShader.hlsl");
+		auto PShader = RS.LoadShader("FlatWhite",	"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -333,7 +347,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -354,68 +368,73 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		if (FAILED(HR))
+		if (auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO)); FAILED(HR))
 			return {};
 
 		SETDEBUGNAME(PSO, "DrawFlatWhite");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateBuildZLayer(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateBuildZLayer(IRenderSystem& irs, iAllocator& allocator)
 	{
-		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			*RS.Library.RSDefault,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDepthBufferCopy(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateDepthBufferCopy(IRenderSystem& irs, iAllocator& allocator)
 	{
-		Shader computeShader = RS->LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		Shader computeShader = RS.LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			*RS.Library.RSDefault,
 			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOcclusionDrawPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateOcclusionDrawPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
+		auto& RS = static_cast<RenderSystem&>(irs);
+
 		FK_ASSERT(0);
 
 		return { nullptr, nullptr };
 
-		auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
+		auto DrawRectVShader = RS.LoadShader("Forward_VS", "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
 
 		/*
 		typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -441,7 +460,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -456,23 +475,25 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "OcclusionCulling");
 
-		return { PSO, RS->Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library.RS6CBVs4SRVs };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateTexture2CubeMapIrradiancePSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("texture2CubeMap_VS", "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto GShader = RS->LoadShader("texture2CubeMap_GS", "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto PShader = RS->LoadShader("texture2CubeMapDiffuse_PS", "ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("texture2CubeMap_VS",			"vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto GShader = RS.LoadShader("texture2CubeMap_GS",			"gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto PShader = RS.LoadShader("texture2CubeMapDiffuse_PS",	"ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -486,7 +507,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.GS                    = Shader2ByteCode(GShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
@@ -503,23 +524,25 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapIrradiance");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
 	/************************************************************************************************/
 
 	
-	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO(RenderSystem* RS, iAllocator& allocator)
+	LoadPipelineStateRes CreateTexture2CubeMapGGXPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto VShader = RS->LoadShader("texture2CubeMap_VS",     "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto GShader = RS->LoadShader("texture2CubeMap_GS",     "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
-		auto PShader = RS->LoadShader("texture2CubeMapGGX_PS",  "ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto& RS = static_cast<RenderSystem&>(irs);
+
+		auto VShader = RS.LoadShader("texture2CubeMap_VS",     "vs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto GShader = RS.LoadShader("texture2CubeMap_GS",     "gs_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
+		auto PShader = RS.LoadShader("texture2CubeMapGGX_PS",  "ps_6_0", "assets\\shaders\\texture2Cubemap.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -533,7 +556,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS->Library.RSDefault;
+			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.GS                    = Shader2ByteCode(GShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
@@ -550,12 +573,12 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapGGX");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS.Library.RSDefault };
 	}
 
 
@@ -1419,31 +1442,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes WorldRender::CreateAverageLumanceLocal(RenderSystem* renderSystem, iAllocator&)
+	LoadPipelineStateRes WorldRender::CreateAverageLumanceLocal(IRenderSystem& irs, iAllocator&)
 	{
-		auto lightPassShader = renderSystem->LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
+		auto lightPassShader = renderSystem.LoadShader("LuminanceAverage", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
 		PSO_desc.CS             = Shader2ByteCode(lightPassShader);
 		PSO_desc.pRootSignature = *rootSignatureToneMapping;
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+		auto HR = renderSystem.pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, rootSignatureToneMapping };
 	}
 
-	LoadPipelineStateRes WorldRender::CreateAverageLumanceGlobal(RenderSystem* renderSystem, iAllocator&)
+	LoadPipelineStateRes WorldRender::CreateAverageLumanceGlobal(IRenderSystem& irs, iAllocator&)
 	{
-		auto lightPassShader = renderSystem->LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
+		auto lightPassShader = renderSystem.LoadShader("AverageLuminance", "cs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
 		PSO_desc.CS             = Shader2ByteCode(lightPassShader);
 		PSO_desc.pRootSignature = *rootSignatureToneMapping;
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
+		auto HR = renderSystem.pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "CalculateLuminance");
@@ -1451,10 +1476,11 @@ namespace FlexKit
 		return { PSO, rootSignatureToneMapping };
 	}
 
-	LoadPipelineStateRes WorldRender::CreateToneMapping(RenderSystem* renderSystem, iAllocator&)
+	LoadPipelineStateRes WorldRender::CreateToneMapping(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = renderSystem->LoadShader("FullScreen", "vs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
-		auto PShader = renderSystem->LoadShader("ToneMap", "ps_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
+		auto VShader = renderSystem.LoadShader("FullScreen", "vs_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
+		auto PShader = renderSystem.LoadShader("ToneMap", "ps_6_0", "assets\\shaders\\ToneMapping-CreatePyramid.hlsl");
 
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -1479,7 +1505,7 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "ToneMapping");

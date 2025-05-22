@@ -124,7 +124,7 @@ namespace FlexKit
 
 				state			= PipelineStateObject::PSO_States::Loaded;
 				PSO				= res.pipelineState;
-				rootSignature	= res.rootSignature;
+				rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 				CV.notify_all();
 				return;
 			}
@@ -262,7 +262,7 @@ namespace FlexKit
 					PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
 					auto& loader	= PSO->loader;
-					auto res		= loader(RS, temp);
+					auto res		= loader(*RS, temp);
 
 					PSO->stale = false;
 
@@ -282,7 +282,7 @@ namespace FlexKit
 
 					PSO->state			= PipelineStateObject::PSO_States::Loaded;
 					PSO->PSO			= res.pipelineState;
-					PSO->rootSignature	= res.rootSignature;
+					PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 					PSO->CV.notify_all();
 
 					return res.pipelineState;
@@ -500,7 +500,7 @@ namespace FlexKit
 				return;
 			}
 
-			auto res = loader(RS, threadLocalAllocator);
+			auto res = loader(*RS, threadLocalAllocator);
 
 			if (!res.pipelineState) {
 				if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)
@@ -511,7 +511,7 @@ namespace FlexKit
 			}
 
 			PSO->PSO			= res.pipelineState;
-			PSO->rootSignature	= res.rootSignature;
+			PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 
 			if (PSO->stale && loader != PSO->loader)
 				continue;

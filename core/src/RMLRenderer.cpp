@@ -137,8 +137,9 @@ namespace FlexKit
 		geometry		{ IN_renderSystem.Memory	}
 	{
 		renderSystem.RegisterPSOLoader(RMLDrawPSO,
-			[&](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
+			[&](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return PipelineBuilder{ allocator }
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(
@@ -160,7 +161,7 @@ namespace FlexKit
 								},
 							},
 							.count		= 3 })
-					.AddVertexShader	("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
+					.AddVertexShader("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
 					.AddPixelShader	("PMain", R"(assets/shaders/RMLUI/Pixel.hlsl)")
 					.AddBlendState	(BlendState::Blend())
 					.AddRasterizerState({
@@ -173,8 +174,9 @@ namespace FlexKit
 			});
 
 		renderSystem.RegisterPSOLoader(RMLDraw2PSO,
-			[&](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
+			[&](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return PipelineBuilder{ allocator }
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(

@@ -321,11 +321,11 @@ namespace FlexKit
 	void CBTBuffer::PipelineStates::_InitializeStates(PipelineStates& states, RenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(
-			SumReductionCBT, [](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
+			SumReductionCBT, [](IRenderSystem& renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
 			{
 				return PipelineBuilder{ allocator }.
 						AddComputeShader("SumReduction", "assets\\shaders\\cbt\\CBT_SumReduction.hlsl", { .hlsl2021 = true }).
-						Build(*renderSystem);
+						Build(static_cast<RenderSystem&>(renderSystem));
 			});
 
 
@@ -512,7 +512,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2024 Robert May
+Copyright (c) 2024 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
