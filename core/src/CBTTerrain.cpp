@@ -55,8 +55,9 @@ namespace FlexKit
 	{
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainUpdateArgs,
-			[](RenderSystem* renderSystem, iAllocator& tempAllocator)
+			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
+				auto& renderSystem= static_cast<RenderSystem&>(irs);
 				return FlexKit::PipelineBuilder{ tempAllocator }.
 					AddComputeShader("AdaptiveUpdateGetArgs", R"(assets\shaders\CBT\CBT_GetArguments.hlsl)", { .hlsl2021 = true }).
 					Build(*renderSystem);
@@ -64,8 +65,9 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainUpdate,
-			[](RenderSystem* renderSystem, iAllocator& tempAllocator)
+			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return FlexKit::PipelineBuilder{ tempAllocator }.
 					AddComputeShader("UpdateAdaptiveTerrain", R"(assets\shaders\CBT\CBT_TerrainAdapt.hlsl)", { .hlsl2021 = true }).
 					Build(*renderSystem);
@@ -73,16 +75,18 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainDrawArgs,
-			[](RenderSystem* renderSystem, iAllocator& tempAllocator)
+			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return FlexKit::PipelineBuilder{ tempAllocator }.
 					AddComputeShader("AdaptiveDrawGetArgs", R"(assets\shaders\CBT\CBT_GetArguments.hlsl)", { .hlsl2021 = true }).
 					Build(*renderSystem);
 			});
 
 		renderSystem.RegisterPSOLoader(
-			RenderTerrain, [](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
+			RenderTerrain, [](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return PipelineBuilder{ allocator }.
 						AddInputTopology(ETopology::EIT_TRIANGLE).
 						AddVertexShader("DrawCBTTerrain_VS", "assets\\shaders\\cbt\\CBT_DebugVis.hlsl", { .hlsl2021 = true }).
@@ -102,8 +106,9 @@ namespace FlexKit
 			});
 
 		renderSystem.RegisterPSOLoader(
-			RenderTerrainWireframe, [](RenderSystem* renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
+			RenderTerrainWireframe, [](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
+				auto& renderSystem = static_cast<RenderSystem&>(irs);
 				return PipelineBuilder{ allocator }.
 						AddInputTopology(ETopology::EIT_TRIANGLE).
 						AddVertexShader("DrawCBTTerrain_VS", "assets\\shaders\\cbt\\CBT_TerrainForward.hlsl", { .hlsl2021 = true }).

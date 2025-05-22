@@ -158,10 +158,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
-		auto PShader = RS->LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto VShader = RS.LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
+		auto PShader = RS.LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -173,7 +174,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
 
-		if(RS->features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
+		if(RS.features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
 			Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -194,7 +195,7 @@ namespace FlexKit
 		PSO_Desc.SampleDesc				= { 1, 0 };
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback PS");
 
@@ -205,10 +206,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(RenderSystem* RS, iAllocator&)
+	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto VShader = RS->LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
-		auto PShader = RS->LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
+		auto& RS = static_cast<RenderSystem&>(irs);
+		auto VShader = RS.LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
+		auto PShader = RS.LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -227,7 +229,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); // enable conservative rast
 
-		if(RS->features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
+		if(RS.features.conservativeRast == AvailableFeatures::ConservativeRast_AVAILABLE)
 			Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -248,7 +250,7 @@ namespace FlexKit
 		PSO_Desc.SampleDesc				= { 1, 0 };
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
 		FK_ASSERT(SUCCEEDED(HR));
 

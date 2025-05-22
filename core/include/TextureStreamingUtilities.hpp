@@ -474,8 +474,8 @@ namespace FlexKit
 		void StartAsyncTask	(ReadBackResourceHandle resource);
 		void CopyResults	(ReadBackResourceHandle resource);
 
-		LoadPipelineStateRes CreateTextureFeedbackPassPSO			(RenderSystem*, iAllocator&);
-		LoadPipelineStateRes CreateTextureFeedbackAnimatedPassPSO	(RenderSystem*, iAllocator&);
+		LoadPipelineStateRes CreateTextureFeedbackPassPSO			(IRenderSystem&, iAllocator&);
+		LoadPipelineStateRes CreateTextureFeedbackAnimatedPassPSO	(IRenderSystem&, iAllocator&);
 
 		inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
 

@@ -435,31 +435,31 @@ namespace FlexKit
 		IndirectLayout	gather;
 		IndirectLayout	draw;
 
-		static LoadPipelineStateRes CreateLightPassPSO                  (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateGBufferPassPSO                (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateGBufferSkinnedPassPSO         (RenderSystem* RS, iAllocator&);
-			   LoadPipelineStateRes CreateDeferredShadingPassPSO        (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateDeferredShadingPassComputePSO (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateComputeTiledDeferredPSO       (RenderSystem* RS, iAllocator&);
+		static LoadPipelineStateRes CreateLightPassPSO                  (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateGBufferPassPSO                (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateGBufferSkinnedPassPSO         (IRenderSystem& RS, iAllocator&);
+			   LoadPipelineStateRes CreateDeferredShadingPassPSO        (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateDeferredShadingPassComputePSO (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateComputeTiledDeferredPSO       (IRenderSystem& RS, iAllocator&);
 
-		static LoadPipelineStateRes CreateOcclusionQueryPSO				(RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateOcclusionQueryInstancedPSO	(RenderSystem* RS, iAllocator&);
+		static LoadPipelineStateRes CreateOcclusionQueryPSO				(IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateOcclusionQueryInstancedPSO	(IRenderSystem& RS, iAllocator&);
 
-		static LoadPipelineStateRes CreateLight_DEBUGARGSVIS_PSO    (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateLightBVH_PHASE1_PSO       (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateLightBVH_PHASE2_PSO       (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateLightBVH_DEBUGVIS_PSO     (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateLightListArgs_PSO         (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateCluster_DEBUGVIS_PSO      (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateCluster_DEBUGARGSVIS_PSO  (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateClusterLightListsPSO      (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateResolutionMatch_PSO       (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateClearResolutionMatch_PSO  (RenderSystem* RS, iAllocator&);
+		static LoadPipelineStateRes CreateLight_DEBUGARGSVIS_PSO    (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateLightBVH_PHASE1_PSO       (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateLightBVH_PHASE2_PSO       (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateLightBVH_DEBUGVIS_PSO     (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateLightListArgs_PSO         (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateCluster_DEBUGVIS_PSO      (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateCluster_DEBUGARGSVIS_PSO  (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateClusterLightListsPSO      (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateResolutionMatch_PSO       (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateClearResolutionMatch_PSO  (IRenderSystem& RS, iAllocator&);
 
-		static LoadPipelineStateRes CreateClustersPSO               (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateClusterBufferPSO          (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateClearClusterCountersPSO   (RenderSystem* RS, iAllocator&);
-		static LoadPipelineStateRes CreateDEBUGBVHVIS               (RenderSystem* RS, iAllocator&);
+		static LoadPipelineStateRes CreateClustersPSO               (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateClusterBufferPSO          (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateClearClusterCountersPSO   (IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateDEBUGBVHVIS               (IRenderSystem& RS, iAllocator&);
 	};
 }
 

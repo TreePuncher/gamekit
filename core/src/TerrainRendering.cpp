@@ -33,10 +33,10 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	LoadPipelineStateRes CreateCullTerrainComputePSO(RenderSystem* renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes CreateCullTerrainComputePSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		auto cullTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\cullterrain.hlsl");
-		auto cullTerrain_shader_GS = renderSystem->LoadShader("CullTerrain", "gs_6_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_VS = renderSystem.LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_GS = renderSystem.LoadShader("CullTerrain", "gs_6_0", "assets\\cullterrain.hlsl");
 
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
@@ -86,7 +86,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature                = *static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO;
 			PSO_Desc.VS                            = Shader2ByteCode(cullTerrain_shader_VS);
 			PSO_Desc.GS                            = Shader2ByteCode(cullTerrain_shader_GS);
 			PSO_Desc.SampleMask                    = UINT_MAX;
@@ -103,22 +103,22 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = static_cast<RenderSystem&>(renderSystem).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
 		SETDEBUGNAME(PSO, "CullTerrain");
 
-		return { PSO, renderSystem->Library.RS4CBVs_SO };
+		return { PSO, static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardRenderTerrainPSO(RenderSystem* renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes CreateForwardRenderTerrainPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain", "gs_6_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_PS = renderSystem->LoadShader("PS_RenderTerrain", "ps_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_VS = renderSystem.LoadShader("CP_PassThroughVS", "vs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_GS = renderSystem.LoadShader("GS_RenderTerrain", "gs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_PS = renderSystem.LoadShader("PS_RenderTerrain", "ps_6_0", "assets\\forwardRenderTerrain.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{
@@ -137,7 +137,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = *renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature                = *static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO;
 			PSO_Desc.VS                            = Shader2ByteCode(forwardRenderTerrain_shader_VS);
 			PSO_Desc.GS                            = Shader2ByteCode(forwardRenderTerrain_shader_GS);
 			PSO_Desc.PS							   = Shader2ByteCode(forwardRenderTerrain_shader_PS);
@@ -156,22 +156,22 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = static_cast<RenderSystem&>(renderSystem).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
 		SETDEBUGNAME(PSO, "DrawTerrain");
 
-		return { PSO, renderSystem->Library.RS4CBVs_SO };
+		return { PSO, static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO };
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		auto forwardRenderTerrain_shader_VS = renderSystem->LoadShader("CP_PassThroughVS",		"vs_6_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = renderSystem->LoadShader("GS_RenderTerrain",		"gs_6_0", "assets\\forwardRenderTerrain.hlsl");
-		auto ShaderPaint_Wire				= renderSystem->LoadShader("PS_RenderTerrainDEBUG",	"ps_6_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
+		auto forwardRenderTerrain_shader_VS = renderSystem.LoadShader("CP_PassThroughVS",		"vs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_GS = renderSystem.LoadShader("GS_RenderTerrain",		"gs_6_0", "assets\\forwardRenderTerrain.hlsl");
+		auto ShaderPaint_Wire				= renderSystem.LoadShader("PS_RenderTerrainDEBUG",	"ps_6_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
 
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
@@ -194,7 +194,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *renderSystem->Library.RS4CBVs_SO;
+			PSO_Desc.pRootSignature			= *static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO;
 			PSO_Desc.VS						= Shader2ByteCode(forwardRenderTerrain_shader_VS);
 			PSO_Desc.GS						= Shader2ByteCode(forwardRenderTerrain_shader_GS);
 			PSO_Desc.PS						= Shader2ByteCode(ShaderPaint_Wire);
@@ -213,11 +213,11 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = static_cast<RenderSystem&>(renderSystem).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 
 		SETDEBUGNAME(PSO, "DrawTerrainWireframe");
 
-		return { PSO, renderSystem->Library.RS4CBVs_SO };
+		return { PSO, static_cast<RenderSystem&>(renderSystem).Library.RS4CBVs_SO };
 	}
 
 

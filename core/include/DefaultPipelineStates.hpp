@@ -25,8 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DEFAULTPIPELINESTATES
 #define DEFAULTPIPELINESTATES
 
-#include "Graphics.hpp"
-#include "PipelineState.hpp"
+#include "RenderSystemInterface.hpp"
 #include "ResourceHandles.hpp"
 
 
@@ -51,15 +50,12 @@ namespace FlexKit
 
 	inline constexpr PSOHandle DRAW_TRI3D_PSO				= PSOHandle(GetTypeGUID(DRAW_TRI3D_PSO));
 
-	LoadPipelineStateRes CreateDrawTriStatePSO		(RenderSystem* RS, iAllocator&);
-	LoadPipelineStateRes CreateTexturedTriStatePSO	(RenderSystem* RS, iAllocator&);
-	LoadPipelineStateRes CreateDrawLineStatePSO		(RenderSystem* RS, iAllocator&);
-	LoadPipelineStateRes CreateDraw2StatePSO		(RenderSystem* RS, iAllocator&);
-
-	LoadPipelineStateRes CreateDrawTri3DStatePSO	(RenderSystem* RS, iAllocator&);
-
-
-	LoadPipelineStateRes LoadClearRenderTarget_RG32 (RenderSystem* renderSystem, iAllocator&);
+	LoadPipelineStateRes CreateDrawTriStatePSO		(IRenderSystem& RS, iAllocator&);
+	LoadPipelineStateRes CreateTexturedTriStatePSO	(IRenderSystem& RS, iAllocator&);
+	LoadPipelineStateRes CreateDrawLineStatePSO		(IRenderSystem& RS, iAllocator&);
+	LoadPipelineStateRes CreateDraw2StatePSO		(IRenderSystem& RS, iAllocator&);
+	LoadPipelineStateRes CreateDrawTri3DStatePSO	(IRenderSystem& RS, iAllocator&);
+	LoadPipelineStateRes LoadClearRenderTarget_RG32 (IRenderSystem& RS, iAllocator&);
 
 
 	/************************************************************************************************/

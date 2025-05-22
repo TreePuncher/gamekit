@@ -865,11 +865,13 @@ namespace FlexKit
 		}
 
 
-		LoadPipelineStateRes CreateInlineTest(RenderSystem* renderSystem, iAllocator& allocator)
+		LoadPipelineStateRes CreateInlineTest(IRenderSystem& irs, iAllocator& allocator)
 		{
+			auto& renderSystem = static_cast<RenderSystem&>(irs);
+
 			const char file[] = R"(assets\shaders\RTX\InlineTracingTest.hlsl)";
 
-			auto shader = renderSystem->LoadShader("main", "cs_6_5", file);
+			auto shader = renderSystem.LoadShader("main", "cs_6_5", file);
 			D3D12_SHADER_BYTECODE shaderByteCode = Shader2ByteCode(shader);
 
 			D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -878,7 +880,7 @@ namespace FlexKit
 			};
 
 			ID3D12PipelineState* PSO = nullptr;
-			auto HR = renderSystem->pDevice14->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+			auto HR = renderSystem.pDevice14->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
 
 			FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 

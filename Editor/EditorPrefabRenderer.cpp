@@ -19,10 +19,11 @@
 /************************************************************************************************/
 
 
-FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAllocator&)
+FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllocator&)
 {
-	auto DrawRectVShader = RS->LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
-	auto DrawRectPShader = RS->LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto& RS = static_cast<RenderSystem&>(irs);
+	auto DrawRectVShader = RS.LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
+	auto DrawRectPShader = RS.LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -61,7 +62,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAlloca
 	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+		PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 		PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 		PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 		PSO_Desc.RasterizerState       = Rast_Desc;
@@ -79,22 +80,23 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(RenderSystem* RS, iAlloca
 	}
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+	auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 	FK_ASSERT(SUCCEEDED(HR));
 
 	SETDEBUGNAME(PSO, "DrawGrayPrefab");
 
-	return { PSO, RS->Library.RS6CBVs4SRVs };
+	return { PSO, RS.Library.RS6CBVs4SRVs };
 }
 
 
 /************************************************************************************************/
 
 
-FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
+FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 {
-	auto DrawRectVShader = RS->LoadShader("Forward_VS", "vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
-	auto DrawRectPShader = RS->LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
+	auto& RS = static_cast<RenderSystem&>(irs);
+	auto DrawRectVShader = RS.LoadShader("Forward_VS",	"vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
+	auto DrawRectPShader = RS.LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
 
 	/*
 	typedef struct D3D12_INPUT_ELEMENT_DESC
@@ -126,7 +128,7 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
 	Depth_Desc.DepthEnable	= true;
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = *RS->Library.RS6CBVs4SRVs;
+		PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
 		PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 		PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 		PSO_Desc.RasterizerState       = Rast_Desc;
@@ -144,12 +146,12 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(RenderSystem* RS, iAllocator&)
 	}
 
 	ID3D12PipelineState* PSO = nullptr;
-	auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+	auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 	FK_ASSERT(SUCCEEDED(HR));
 
 	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
-	return { PSO, RS->Library.RS6CBVs4SRVs };
+	return { PSO, RS.Library.RS6CBVs4SRVs };
 }
 
 

@@ -1225,9 +1225,9 @@ namespace FlexKit
 
 		struct SubmissionContext
 		{
-			static_vector<Context*, 16> contexts;
-			SyncPoint					prev;
-			SyncPoint					sync;
+			static_vector<IDirectContext*, 16>	contexts;
+			SyncPoint							prev;
+			SyncPoint							sync;
 		};
 
 		Vector<SubmissionContext>		queuedSubmissions{ threadLocalAllocator };
@@ -1241,7 +1241,7 @@ namespace FlexKit
 			{
 			case Submission::Queue::Direct:
 			{
-				static_vector<Context*, 16> contexts{};
+				static_vector<IDirectContext*, 16> contexts{};
 
 				struct SubmissionWorkRange
 				{

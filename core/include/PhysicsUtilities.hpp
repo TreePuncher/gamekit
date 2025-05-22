@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MemoryUtilities.hpp"
 #include "ThreadUtilities.hpp"
 #include "ResourceHandles.hpp"
+#include "Serialization.hpp"
 
 #include <physx/PxPhysicsAPI.h>
 #include <physx/characterkinematic/PxController.h>

@@ -85,9 +85,9 @@ namespace FlexKit
 	};
 
 
-	LoadPipelineStateRes CreateCullTerrainComputePSO			(RenderSystem* renderSystem, iAllocator&);
-	LoadPipelineStateRes CreateForwardRenderTerrainPSO			(RenderSystem* renderSystem, iAllocator&);
-	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO	(RenderSystem* renderSystem, iAllocator&);
+	LoadPipelineStateRes CreateCullTerrainComputePSO			(IRenderSystem& renderSystem, iAllocator&);
+	LoadPipelineStateRes CreateForwardRenderTerrainPSO			(IRenderSystem& renderSystem, iAllocator&);
+	LoadPipelineStateRes CreateForwardRenderTerrainWireFramePSO	(IRenderSystem& renderSystem, iAllocator&);
 
 
 	struct TileMaps

@@ -1,6 +1,8 @@
 #include "PCH.h"
 #include "EditorRenderer.h"
 #include <SharedEngineMemory.hpp>
+#include <DefaultPipelineStates.hpp>
+
 
 /************************************************************************************************/
 

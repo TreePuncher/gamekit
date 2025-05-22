@@ -3215,16 +3215,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	// Basic Draw States
-	// TODO: MOVE THESE OUT OF THIS HEADER!
-	LoadPipelineStateRes CreateDrawTriStatePSO	(RenderSystem* RS);
-	LoadPipelineStateRes CreateDrawLineStatePSO	(RenderSystem* RS);
-	LoadPipelineStateRes CreateDraw2StatePSO	(RenderSystem* RS);
-
-
-	/************************************************************************************************/
-
-
 	namespace DeviceHeapFlags
 	{
 		enum DeviceHeapFlagEnums: uint32_t

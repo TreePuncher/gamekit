@@ -34,7 +34,7 @@ add_library(flex
     "src/DDSUtilities.cpp"
     "src/DebugPanel.cpp"
     "src/DebugUI.cpp"
-    "src/defaultpipelinestates.cpp"
+    "src/Defaultpipelinestates.cpp"
     "src/DungeonGen.cpp"
     "src/EngineCore.cpp"
     "src/Framegraph.cpp"

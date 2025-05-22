@@ -22,8 +22,9 @@ namespace FlexKit
 
 
 
-	LoadPipelineStateRes CreateTestStatePSO(RenderSystem* renderSystem, iAllocator& tempAllocator)
+	LoadPipelineStateRes CreateTestStatePSO(IRenderSystem& irs, iAllocator& tempAllocator)
 	{
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
 		PipelineBuilder builder{ tempAllocator };
 		builder.AddVertexShader	("VTestMain", R"(assets\shaders\CBT\ConcurrentBinaryTree.hlsl)");
 
@@ -49,8 +50,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateSumReductionCBTPSO(RenderSystem* renderSystem, iAllocator& tempAllocator)
+	LoadPipelineStateRes CreateSumReductionCBTPSO(IRenderSystem& irs, iAllocator& tempAllocator)
 	{
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
 		PipelineBuilder builder{ tempAllocator };
 		builder.AddComputeShader("ComputeSumReductionCBT", R"(assets\shaders\CBT\ConcurrentBinaryTree.hlsl)");
 

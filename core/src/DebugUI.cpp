@@ -17,10 +17,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Create_DrawImGUI(RenderSystem* renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes Create_DrawImGUI(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto DrawRectVShader = renderSystem->LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
-		auto DrawRectPShader = renderSystem->LoadShader("ImGui_PS", "ps_6_0", "assets\\shaders\\imguiShaders.hlsl");
+		auto& renderSystem = static_cast<RenderSystem&>(irs);
+
+		auto DrawRectVShader = renderSystem.LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
+		auto DrawRectPShader = renderSystem.LoadShader("ImGui_PS", "ps_6_0", "assets\\shaders\\imguiShaders.hlsl");
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -37,7 +39,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable  = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *renderSystem->Library.RSDefault;
+			PSO_Desc.pRootSignature			= *renderSystem.Library.RSDefault;
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -63,12 +65,12 @@ namespace FlexKit
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		auto HR = renderSystem.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
 		SETDEBUGNAME(PSO, "DrawIMGUI");
 
-		return { PSO, renderSystem->Library.RSDefault };
+		return { PSO, renderSystem.Library.RSDefault };
 	}
 
 
