@@ -2411,71 +2411,75 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetDebugName(ResourceHandle, const char*);
 		void SetDebugName(DeviceHeapHandle, const char*);
 
-		size_t						GetVertexBufferSize(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
+
+		virtual size_t				GetVertexBufferSize(const VertexBufferHandle) const noexcept;
 		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const VertexBuffer&);
 
-		size_t					GetTextureFrameGraphIndex(ResourceHandle);
-		void					SetTextureFrameGraphIndex(ResourceHandle, size_t);
+		virtual size_t			GetTextureFrameGraphIndex(ResourceHandle) noexcept;
+		virtual void			SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept;
 
-		void					MarkTextureUsed(ResourceHandle Handle);
-
-
-		DeviceResourceRange	GetDeviceRange(const ResourceHandle) const;
-		const size_t		GetResourceSize(ConstantBufferHandle handle) const noexcept;
-		const size_t		GetResourceSize(ResourceHandle desc) const noexcept;
-
-		const size_t	GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
-		const size_t	GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
+		virtual void			MarkTextureUsed(ResourceHandle Handle);
 
 
-		const size_t	GetTextureElementSize(ResourceHandle   Handle) const;
-		const uint2		GetTextureWH(ResourceHandle   Handle) const;
+		virtual DeviceAddressRange	GetDeviceRange(const ResourceHandle) const noexcept final;
+		virtual DeviceAddressRange	GetDeviceRange(const ConstantBufferHandle) const noexcept final;
 
-		DeviceFormat	GetTextureFormat(ResourceHandle Handle) const;
-		DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
-		uint8_t			GetTextureMipCount(ResourceHandle Handle) const;
-		uint2			GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const;
-		uint2			GetHeapOffset(ResourceHandle Handle, uint subResourceID = 0) const;
+		virtual size_t	GetResourceSize(ConstantBufferHandle handle)	const noexcept final;
+		virtual size_t	GetResourceSize(ResourceHandle desc)			const noexcept final;
 
-		void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
-		void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp);
-		const TileMapList&	GetTileMappings(const ResourceHandle Handle);
+		virtual size_t	GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
+		virtual size_t	GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
+
+		virtual size_t	GetTextureElementSize	(ResourceHandle handle) const;
+		virtual uint2	GetTextureWH			(ResourceHandle handle) const;
+
+		virtual DeviceFormat	GetTextureFormat	(ResourceHandle Handle) const;
+		virtual uint8_t			GetTextureMipCount	(ResourceHandle Handle) const;
+		virtual uint2			GetTextureTilingWH	(ResourceHandle Handle, const uint mipLevel) const;
+		virtual uint2			GetHeapOffset		(ResourceHandle Handle, uint subResourceID = 0) const;
+
+				DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
+
+		virtual void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
+		virtual void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp);
+		virtual const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
 
-		TextureDimension	GetTextureDimension(ResourceHandle handle) const;
-		size_t				GetTextureArraySize(ResourceHandle handle) const;
+		virtual TextureDimension	GetTextureDimension(ResourceHandle handle) const final;
+		virtual	size_t				GetTextureArraySize(ResourceHandle handle) const final;
 
-		void			UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize); // Uses Upload Queue
-		void			UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
-		void			UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState);
+		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) final; // Uses Upload Queue
+		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount) final; // Uses Upload Queue
+		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) final;
 
-		Shader								LoadShader			(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
-		Shader								LoadShaderLibrary	(const char* file, const ShaderOptions& options = {});
-		std::expected<Shader, std::string>	LoadRootSignature	(const char* file, const char* entry);
+		virtual Shader								LoadShader			(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {});
+		virtual Shader								LoadShaderLibrary	(const char* file, const ShaderOptions& options = {}) { return {}; }
+		virtual std::expected<Shader, std::string>	LoadRootSignature	(const char* file, const char* entry);
 
 		PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
-		[[nodiscard]] DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
-		[[nodiscard]] ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
-		[[nodiscard]] VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true);
-		[[nodiscard]] ResourceHandle			CreateDepthBuffer(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
-		[[nodiscard]] ResourceHandle			CreateDepthBufferArray(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
-		[[nodiscard]] ResourceHandle			CreateGPUResource(const GPUResourceDesc& desc);
-		[[nodiscard]] ResourceHandle			CreateGPUResourceHandle();
-		[[nodiscard]] QueryHandle				CreateOcclusionBuffer(size_t Size);
-		[[nodiscard]] ResourceHandle			CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true);
-		[[nodiscard]] ResourceHandle			CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
-		[[nodiscard]] SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
-		[[nodiscard]] QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
-		[[nodiscard]] QueryHandle				CreateTimeStampQuery(size_t count);
-		[[nodiscard]] IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* signature = nullptr);
-		[[nodiscard]] ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
+		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
+		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true);
+		[[nodiscard]] virtual ResourceHandle			CreateDepthBuffer(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
+		[[nodiscard]] virtual ResourceHandle			CreateDepthBufferArray(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
+		[[nodiscard]] virtual ResourceHandle			CreateGPUResource(const GPUResourceDesc& desc);
+		[[nodiscard]] virtual ResourceHandle			CreateGPUResourceHandle();
+		[[nodiscard]] virtual QueryHandle				CreateOcclusionBuffer(size_t Size);
+		[[nodiscard]] virtual ResourceHandle			CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] virtual ResourceHandle			CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false);
+		[[nodiscard]] virtual SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
+		[[nodiscard]] virtual QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
+		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count);
+		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* signature = nullptr);
+		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 
-		virtual SubAllocation ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
-		virtual SubAllocation ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
+		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
+		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
+
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
@@ -3638,99 +3642,30 @@ private:
 	/************************************************************************************************/
 
 
-	struct Shader
+	inline D3D12_SHADER_BYTECODE Shader2ByteCode(const Shader& shader)
 	{
-		Shader() = default;
+		return{ (BYTE*)shader.buffer, shader.bufferSize };
+	}
 
-		Shader(ID3DBlob* blob, iAllocator* IN_allocator = SystemAllocator) :
-			allocator{ IN_allocator }
-		{
-			buffer = (char*)allocator->malloc(blob->GetBufferSize());
-			memcpy(buffer, blob->GetBufferPointer(), blob->GetBufferSize());
-			bufferSize = blob->GetBufferSize();
-		}
+	inline Shader CreateShader(ID3DBlob* blob, iAllocator* allocator = SystemAllocator)
+	{
+		return { (char*)blob->GetBufferPointer(), blob->GetBufferSize(), allocator };
+	}
 
-		Shader(IDxcBlob* blob, iAllocator* IN_allocator = SystemAllocator) :
-			allocator{ IN_allocator }
-		{
-			buffer = (char*)allocator->malloc(blob->GetBufferSize());
-			memcpy(buffer, blob->GetBufferPointer(), blob->GetBufferSize());
-			bufferSize = blob->GetBufferSize();
-		}
+	inline Shader CreateShader(IDxcBlob* blob, iAllocator* allocator = SystemAllocator)
+	{
+		return { (char*)blob->GetBufferPointer(), blob->GetBufferSize(), allocator };
+	}
 
-		Shader(const Shader& rhs)
-		{
-			buffer = (char*)rhs.allocator->malloc(rhs.bufferSize);
 
-			memcpy(buffer, rhs.buffer, rhs.bufferSize);
-			bufferSize = rhs.bufferSize;
-		}
-
-		Shader(Shader&& rhs)
-		{
-			allocator	= rhs.allocator;
-			buffer		= rhs.buffer;
-			bufferSize	= rhs.bufferSize;
-
-			rhs.allocator	= nullptr;
-			rhs.buffer		= nullptr;
-			rhs.bufferSize	= 0;
-		}
-
-		~Shader()
-		{
-			if (allocator)
-			{
-				allocator->free(buffer);
-
-				allocator   = nullptr;
-				buffer      = nullptr;
-				bufferSize = 0;
-			}
-
-		}
-
-		operator bool() const { return ( buffer != nullptr ); }
-		operator D3D12_SHADER_BYTECODE() const
-		{
-			return{ (BYTE*)buffer, bufferSize };
-		}
-
-		Shader& operator = (const Shader& rhs)
-		{
-			buffer = (char*)rhs.allocator->malloc(rhs.bufferSize);
-
-			memcpy(buffer, rhs.buffer, rhs.bufferSize);
-			bufferSize = rhs.bufferSize;
-
-			return *this;
-		}
-
-		Shader& operator = (Shader&& rhs)
-		{
-			buffer        = rhs.buffer;
-			bufferSize    = rhs.bufferSize;
-			allocator     = rhs.allocator;
-
-			rhs.buffer     = nullptr;
-			rhs.bufferSize = 0;
-			rhs.allocator  = nullptr;
-
-			return *this;
-		}
-
-		char*   buffer = nullptr;
-		size_t  bufferSize = 0;
-
-		iAllocator* allocator = nullptr;
-	};
+	/************************************************************************************************/
 
 
 	inline ID3D12PipelineState* LoadComputeShader(const Shader& computeShader, const RootSignature& rootSignature, RenderSystem& renderSystem)
 	{
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			rootSignature,
-			computeShader
+			Shader2ByteCode(computeShader)
 		};
 
 		ID3D12PipelineState* PSO = nullptr;

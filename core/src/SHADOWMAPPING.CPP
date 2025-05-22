@@ -19,7 +19,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= *rootSignature;
-		PSO_Desc.CS				= CShader;
+		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -39,7 +39,7 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_Desc = {};
 		PSO_Desc.pRootSignature	= *rootSignature;
-		PSO_Desc.CS				= CShader;
+		PSO_Desc.CS				= Shader2ByteCode(CShader);
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateComputePipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -85,8 +85,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                         = *rootSignature;
-			PSO_Desc.VS                                     = VShader;
-			PSO_Desc.PS                                     = PShader;
+			PSO_Desc.VS                                     = Shader2ByteCode(VShader);
+			PSO_Desc.PS                                     = Shader2ByteCode(PShader);
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -150,8 +150,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature                         = *rootSignature;
-			PSO_Desc.VS                                     = VShader;
-			PSO_Desc.PS                                     = PShader;
+			PSO_Desc.VS                                     = Shader2ByteCode(VShader);
+			PSO_Desc.PS                                     = Shader2ByteCode(PShader);
 			PSO_Desc.BlendState                             = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask                             = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType                  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;

@@ -347,7 +347,8 @@ namespace FlexKit
 		{
 			const char awesomeRaytracingCode[] = R"(assets\shaders\RTX\MyFirstRTX.hlsl)";
 
-			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem.LoadShader(nullptr, "lib_6_5", awesomeRaytracingCode);
+			auto shader = renderSystem.LoadShader(nullptr, "lib_6_5", awesomeRaytracingCode);
+			D3D12_SHADER_BYTECODE shaderByteCode = Shader2ByteCode(shader);
 
 			D3D12_EXPORT_DESC exports[] =
 			{
@@ -868,7 +869,8 @@ namespace FlexKit
 		{
 			const char file[] = R"(assets\shaders\RTX\InlineTracingTest.hlsl)";
 
-			D3D12_SHADER_BYTECODE shaderByteCode = renderSystem->LoadShader("main", "cs_6_5", file);
+			auto shader = renderSystem->LoadShader("main", "cs_6_5", file);
+			D3D12_SHADER_BYTECODE shaderByteCode = Shader2ByteCode(shader);
 
 			D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 				*globalRootSig,
