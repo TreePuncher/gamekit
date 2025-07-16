@@ -48,12 +48,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::HandleBarriers(FrameResources& Resources, Context& Ctx)
+	void FrameGraphNode::HandleBarriers(FrameResources& Resources, IDirectContext& ctx)
 	{
 		//for (const auto& virtualResource : acquiredObjects)
 		//	Ctx.AddAliasingBarrier(virtualResource.overlap, virtualResource.resource);
 
-		Ctx.AddBarriers(barriers);
+		ctx.AddBarriers(barriers);
 	}
 
 
@@ -69,7 +69,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::AcquireResources(FrameResources& resources, Context& ctx)
+	void FrameGraphNode::AcquireResources(FrameResources& resources, IDirectContext& ctx)
 	{
 	}
 
@@ -77,7 +77,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::ReleaseResources(FrameResources& resources, Context& ctx)
+	void FrameGraphNode::ReleaseResources(FrameResources& resources, IDirectContext& ctx)
 	{
 	}
 
@@ -85,7 +85,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::RestoreResourceStates(Context* ctx, FrameResources& frameResources, LocallyTrackedObjectList& locallyTrackedObjects)
+	void FrameGraphNode::RestoreResourceStates(IDirectContext& ctx, FrameResources& frameResources, LocallyTrackedObjectList& locallyTrackedObjects)
 	{
 		ProfileFunction();
 
@@ -122,7 +122,7 @@ namespace FlexKit
 				switch (object->dimensions)
 				{
 					case TextureDimension::Buffer:
-						ctx->AddBufferBarrier(resource, currentAccess, finalAccess, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
+						ctx.AddBufferBarrier(resource, currentAccess, finalAccess, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 						break;
 					case TextureDimension::Texture1D:
 					case TextureDimension::Texture2D:
@@ -130,7 +130,7 @@ namespace FlexKit
 					case TextureDimension::TextureCubeMap:
 					case TextureDimension::Texture2DArray:
 					{
-						ctx->AddTextureBarrier(resource, currentAccess, finalAccess, currentLayout, finalLayout, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
+						ctx.AddTextureBarrier(resource, currentAccess, finalAccess, currentLayout, finalLayout, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 					}	break;
 				default:
 					break;
@@ -159,10 +159,10 @@ namespace FlexKit
 					// Layout Transition required
 				case DeviceLayout_DepthStencilRead:
 				case DeviceLayout_DepthStencilWrite:
-						ctx->AddTextureBarrier(object_ref.shaderResource, accessState, DASNOACCESS, retired.neededLayout, DeviceLayout_Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+						ctx.AddTextureBarrier(object_ref.shaderResource, accessState, DASNOACCESS, retired.neededLayout, DeviceLayout_Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				default:
-						ctx->AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+						ctx.AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				}
 			}
@@ -282,7 +282,7 @@ namespace FlexKit
 		for (auto& temporary : temporaryObjects)
 		{
 			auto& object_ref = resources->objects[temporary.handle];
-			object_ref.pool->Release(object_ref.shaderResource, FrameGraph->GetRenderSystem().directSubmissionCounter, false);
+			object_ref.pool->Release(object_ref.shaderResource, FrameGraph->GetRenderSystem().GetCurrentCounter(), false);
 			object_ref.virtualState = VirtualResourceState::Virtual_Released;
 		}
 
@@ -1137,10 +1137,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RenderSystem& FrameGraphNodeBuilder::GetRenderSystem() { return resources->renderSystem; }
+	IRenderSystem& FrameGraphNodeBuilder::GetRenderSystem() { return resources->renderSystem; }
 
-	FrameGraphNodeBuilder::operator FrameResources& () const { return *resources; }
-	FrameGraphNodeBuilder::operator RenderSystem& () { return *resources->renderSystem; }
+	FrameGraphNodeBuilder::operator FrameResources& () const	{ return *resources; }
+	FrameGraphNodeBuilder::operator IRenderSystem& ()			{ return resources->renderSystem; }
 
 
 	/************************************************************************************************/
@@ -1148,10 +1148,7 @@ namespace FlexKit
 
 	void FrameGraphNodeBuilder::Requires(PSOHandle handle)
 	{
-		auto obj = GetRenderSystem().PipelineStates.GetPSOObject(handle);
-
-		if (obj && obj->state != PipelineStateObject::PSO_States::Loaded)
-			GetRenderSystem().QueuePSOLoad(handle);
+		GetRenderSystem().LoadPSOIfRequired(handle);
 	}
 
 
@@ -1282,7 +1279,7 @@ namespace FlexKit
 				class RenderWorker : public iWork
 				{
 				public:
-					RenderWorker(SubmissionWorkRange IN_work, Context& IN_ctx, FrameResources& IN_resources, std::atomic_uint& IN_count) :
+					RenderWorker(SubmissionWorkRange IN_work, IDirectContext& IN_ctx, FrameResources& IN_resources, std::atomic_uint& IN_count) :
 						iWork		{ nullptr },
 						work		{ IN_work },
 						resources	{ IN_resources },
@@ -1308,7 +1305,7 @@ namespace FlexKit
 
 					std::atomic_uint&	workerCount;
 					SubmissionWorkRange work;
-					Context&			ctx;
+					IDirectContext&		ctx;
 					FrameResources&		resources;
 				};
 
@@ -1326,7 +1323,7 @@ namespace FlexKit
 
 				for (auto& workerTask : workerTaskList)
 				{
-					auto& context = renderSystem.GetCommandList(submissionTicket);
+					auto& context = renderSystem.GetDirectCommandList(submissionTicket);
 					contexts.push_back(&context);
 
 #if USING(DEBUGGRAPHICS)
@@ -1497,7 +1494,7 @@ namespace FlexKit
 				builder.SetDebugString("Frame Graph Task");
 
 				data.frameGraph		= framegraph;
-				data.renderSystem	= resources.renderSystem;
+				data.renderSystem	= (RenderSystem*)&resources.renderSystem;
 
 				for (auto dependency : globalDependencies)
 					builder.AddInput(*dependency);
@@ -1557,7 +1554,7 @@ namespace FlexKit
 				}
 
 				resource.virtualState = VirtualResourceState::Virtual_Released;
-				resource.pool->Release(resource.shaderResource, GetRenderSystem().directSubmissionCounter, false);
+				resource.pool->Release(resource.shaderResource, GetRenderSystem().GetCurrentCounter(), false);
 			}
 		}
 	}
@@ -1711,9 +1708,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle PushBuffer)
+	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle pushBuffer)
 	{
-		FG.resources.renderSystem.VertexBuffers.Reset(PushBuffer);
+		FG.resources.renderSystem.ResetVertexBuffer(pushBuffer);
 	}
 
 

@@ -3807,7 +3807,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void					SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
 		CopyContextHandle		OpenUploadQueue();
 		CopyContextHandle		GetImmediateCopyQueue();
-		Context&				GetCommandList(std::optional<SyncPoint> ticket = {});
+		virtual IContext&		GetDirectCommandList(std::optional<SyncPoint> ticket = {}) final;
 
 		// Internal
 		static RenderSystem&	_GetInstance() { return *globalInstance; }
@@ -3815,7 +3815,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
-		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
 		RootSignature*			_CreateRootSignature(ID3D12RootSignature* rootsig, RootSignatureBuilder& builder);
 		RootSignature*			_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);

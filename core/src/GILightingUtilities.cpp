@@ -791,9 +791,9 @@ namespace FlexKit
 								if(lod.blAS != InvalidHandle)
 									hitTable.emplace_back(
 										idx % 2 == 0 ? hitFunction1 : hitFunction2,
-										lod.vertexBuffer[0]->GetGPUVirtualAddress(),
-										lod.vertexBuffer[lod.GetIndexBufferIndex()]->GetGPUVirtualAddress(),
-										lod.vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)->GetDevicePointer(),
+										GetDevicePointer(lod.bufferSet[0]),
+										GetDevicePointer(lod.bufferSet[lod.GetIndexBufferIndex()]),
+										GetDevicePointer(lod.bufferSet.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL).value()),
 										std::array<float, 4>{ (rand() % 32) / 32.0f, (rand() % 1024) / 1024.0f, (rand() % 1024) / 1024.0f  },
 										std::array<uint32_t, 2>{ (uint32_t)idx, 1 });
 							}
@@ -1078,3 +1078,27 @@ namespace FlexKit
 
 }   /************************************************************************************************/
 
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

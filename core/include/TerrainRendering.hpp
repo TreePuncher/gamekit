@@ -677,7 +677,8 @@ namespace FlexKit
 				ConstantBufferDataSet localConstants	= ConstantBufferDataSet{ LocalConstants{}, data.constants };
 				ConstantBufferDataSet cameraConstants	= data.GetConstants(data.constants);
 
-				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+				FK_ASSERT(0, "UNFINISHED");
+				//ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
 
 				ctx->SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 				ctx->SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);

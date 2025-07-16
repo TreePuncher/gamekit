@@ -62,7 +62,7 @@ namespace FlexKit
 			: passState{ IN_allocator }
 			, allocator{ IN_allocator } {}
 
-		PassHistory* GetHistory(class RenderSystem&, CameraHandle);
+		PassHistory* GetHistory(class IRenderSystem&, CameraHandle);
 
 		void ResetAll();
 

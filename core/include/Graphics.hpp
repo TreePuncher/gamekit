@@ -873,6 +873,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept
+	{
+		return vb_ref.resource->GetGPUVirtualAddress();
+	}
+
+
 	typedef static_vector<D3D12_INPUT_ELEMENT_DESC, 16> InputDescription;
 
 	struct TriangleMeshMetaData
@@ -883,45 +889,79 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
-	struct VertexBuffer
+	struct VertexBufferSet : IVertexBufferSet
 	{
 		struct BuffEntry
 		{
-			ID3D12Resource*		Buffer;
-			uint32_t			BufferSizeInBytes;
-			uint32_t			BufferStride;
-			VERTEXBUFFER_TYPE	Type;
+			ID3D12Resource*		apiResource;
+			uint32_t			bufferSizeInBytes;
+			uint32_t			bufferStride;
+			VERTEXBUFFER_TYPE	type;
 
-			size_t Size() const { return BufferSizeInBytes / BufferStride; }
+			size_t Size() const { return bufferSizeInBytes / bufferStride; }
 
-			DevicePointer GetDevicePointer() const noexcept { return { Buffer->GetGPUVirtualAddress() }; }
+			DevicePointer		GetDevicePointer()			const noexcept { return { apiResource->GetGPUVirtualAddress() }; }
+			DeviceResource_ptr	GetDeviceResourcePointer()	const noexcept { return { apiResource }; }
 
-			operator bool() const noexcept		{ return Buffer != nullptr; }
-			operator ID3D12Resource* const ()	{ return Buffer; }
+			operator bool() const noexcept			{ return apiResource != nullptr; }
+			operator DeviceResource_ptr const ()	{ return apiResource; }
 		};
 
-		auto Find(const VERTEXBUFFER_TYPE type) const
+
+		virtual std::optional<VertexBuffer> Find(const VERTEXBUFFER_TYPE type) const final
 		{
-			return std::find_if(
-				VertexBuffers.begin(),
-				VertexBuffers.end(),
+			auto res = std::find_if(
+				buffers.begin(),
+				buffers.end(),
 				[&](auto& buffer)
 				{
-					return buffer.Type == type;
+					return buffer.type == type;
 				});
+
+			if (res != buffers.end())
+			{
+				VertexBuffer out{
+					.byteSize	= res->bufferSizeInBytes,
+					.byteStride	= res->bufferStride,
+					.resource	= res->apiResource,
+					.type		= res->type
+				};
+
+				return out;
+			}
+
+			return {};
 		}
 
-		void clear() { VertexBuffers.clear(); }
+
+		virtual uint8_t	GetIndexBufferIndex() const final
+		{
+			return MD.IndexBuffer_Index;
+		}
 
 
-		ID3D12Resource*	operator[](size_t idx)	{ return VertexBuffers[idx].Buffer; }
-		static_vector<BuffEntry, 16>	VertexBuffers;
+		virtual const VertexBuffer& operator []	(uint8_t idx) const final
+		{
+			auto& buffer = buffers[idx];
+			return {
+				.byteSize	= buffer.bufferSizeInBytes,
+				.byteStride = buffer.bufferStride,
+				.resource	= buffer.apiResource,
+				.type		= buffer.type 
+			};
+		}
+
+		virtual void Clear() final { buffers.clear(); }
+
+
+		//ID3D12Resource*	operator[](size_t idx)	{ return buffers[idx].apiResource; }
+
+		static_vector<BuffEntry, 16>	buffers;
 		TriangleMeshMetaData			MD;
 	};
 
 
 	/************************************************************************************************/
-
 
 
 	struct UploadBuffer
@@ -951,7 +991,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12Device*	parentDevice	= nullptr;
 	};
 
+
 	class CopyEngine;
+
 
 	class CopyContext : public ICopyContext
 	{
@@ -1217,10 +1259,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Release() const;
 
-		const DesciptorHeapLayout<16>&	GetDescHeap(size_t idx) const
+		virtual const DesciptorHeapLayout<16>&	GetDescHeap(uint32_t idx) const noexcept final
 		{
 			return Heaps[idx].Heap;
 		}
+
+		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept final
+		{
+			return Get_ptr();
+		}
+
 
 		size_t							GetDesciptorTableSize(size_t idx) const;
 
@@ -1358,8 +1406,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		struct VertexBuffer
 		{
-			ID3D12Resource* Resource		= nullptr;
-			size_t			ResourceSize	= 0;
+			ID3D12Resource* resource		= nullptr;
+			size_t			resourceSize	= 0;
 			size_t			lockCounter;
 		};
 
@@ -1796,7 +1844,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	using GPUResourceExtra_t = std::variant<UAVResourceLayout, UAVTextureLayout>;
 
 
-	FLEXKITAPI class ResourceStateTable
+	class ResourceStateTable
 	{
 	public:
 		ResourceStateTable(iAllocator* IN_allocator) :
@@ -2341,7 +2389,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
 
-	FLEXKITAPI class RenderSystem : public IRenderSystem
+	class RenderSystem : public IRenderSystem
 	{
 	public:
 		RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads);
@@ -2361,13 +2409,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			op();
 		}
 
-		ID3D12PipelineState*									GetPSO(PSOHandle StateID, iAllocator& temp);
-		const RootSignature* const								GetPSORootSignature(PSOHandle StateID) const;
-		std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
+		const IPipelineState*								GetPSO(PSOHandle StateID, iAllocator& temp);
+		const IRootSignature* const							GetPSORootSignature(PSOHandle StateID) const;
+		std::tuple<IPipelineState*, const IRootSignature*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
-		void QueuePSOLoad(PSOHandle State);
+		virtual void LoadPSOIfRequired(PSOHandle State) final;
+		virtual void QueuePSOLoad(PSOHandle State) final;
 
 		virtual size_t		GetCurrentCounter();
 		virtual void		SyncUploadTo(SyncPoint);
@@ -2406,7 +2455,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 
 		virtual size_t				GetVertexBufferSize(const VertexBufferHandle) const noexcept;
-		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const VertexBuffer&);
+		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const IVertexBufferSet&);
 
 		virtual size_t			GetTextureFrameGraphIndex(ResourceHandle) noexcept;
 		virtual void			SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept;
@@ -2465,12 +2514,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
 		[[nodiscard]] virtual QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
 		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count);
-		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* signature = nullptr);
+		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
+		virtual UploadReservation	ReserveDirectUploadSpace(size_t resourceSize, size_t alignment)		noexcept final;
 
+		virtual const IRootSignature* Library(ROOTLIBRARYSIG ID) const noexcept final;
 
 		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
 
@@ -2479,23 +2530,28 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void						CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer);
 		void						FlushPendingReadBacks();
 
-		void SetObjectLayout(SOResourceHandle	handle, DeviceLayout state);
-		void SetObjectLayout(ResourceHandle		handle, DeviceLayout state);
+		virtual void SetObjectLayout(SOResourceHandle	handle, DeviceLayout state) noexcept;
+		virtual void SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept;
 
+		virtual DeviceLayout	GetObjectLayout(const QueryHandle		handle) const noexcept;
+		virtual DeviceLayout	GetObjectLayout(const SOResourceHandle	handle) const noexcept;
+		virtual DeviceLayout	GetObjectLayout(const ResourceHandle	handle) const noexcept;
+																				  
 
-		DeviceLayout		GetObjectLayout(const QueryHandle		handle) const;
-		DeviceLayout		GetObjectLayout(const SOResourceHandle	handle) const;
-		DeviceLayout		GetObjectLayout(const ResourceHandle	handle) const;
+		DeviceHeap_ptr		GetDeviceResource(const DeviceHeapHandle        handle) const;
+		DeviceResource_ptr	GetDeviceResource(const ReadBackResourceHandle	handle) const;
+		DeviceResource_ptr	GetDeviceResource(const ConstantBufferHandle	handle) const;
+		DeviceResource_ptr	GetDeviceResource(const ResourceHandle		    handle) const;
+		DeviceResource_ptr	GetDeviceResource(const SOResourceHandle		handle) const;
 
-
-		ID3D12Heap*			GetDeviceResource(const DeviceHeapHandle        handle) const;
-		ID3D12Resource*		GetDeviceResource(const ReadBackResourceHandle	handle) const;
-		ID3D12Resource*		GetDeviceResource(const ConstantBufferHandle	handle) const;
-		ID3D12Resource*		GetDeviceResource(const ResourceHandle		    handle) const;
-		ID3D12Resource*		GetDeviceResource(const SOResourceHandle		handle) const;
-
-		ID3D12Resource*		GetSOCounterResource(const SOResourceHandle handle) const;
+		DeviceResource_ptr	GetSOCounterResource(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize(const SOResourceHandle handle) const;
+		virtual size_t		GetVertexBufferOffset(const VertexBufferHandle Handle) const;
+
+		virtual bool		VertexBufferPush(VertexBufferHandle, void* _ptr, size_t elementSize);
+
+		virtual size_t		ConstantBufferAlign(ConstantBufferHandle) noexcept;
+
 
 		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
 		void				SetUAVBufferLayout(const ResourceHandle, const UAVResourceLayout) noexcept;
@@ -2520,7 +2576,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void					SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1, std::optional<SyncPoint> syncBefore = {}, std::optional<SyncPoint> syncAfter = {});
 		CopyContextHandle		OpenUploadQueue();
 		CopyContextHandle		GetImmediateCopyQueue();
-		Context&				GetCommandList(std::optional<SyncPoint> ticket = {});
+		virtual IDirectContext& GetDirectCommandList(std::optional<SyncPoint> ticket = {}) final;
 
 		// Internal
 		static RenderSystem&	_GetInstance() { return *globalInstance; }
@@ -2528,7 +2584,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
-		UploadReservation		_ReserveDirectUploadSpace(size_t resourceSize, size_t alignment);
 
 		RootSignature*			_CreateRootSignature(ID3D12RootSignature* rootsig, RootSignatureBuilder& builder);
 		RootSignature*			_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp);
@@ -2636,7 +2691,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			const RootSignature* RSDefault			= nullptr;	// Default Signature for Rasting
 			const RootSignature* ComputeSignature	= nullptr;	//
 			const RootSignature* ClearBuffer		= nullptr;
-		}Library;
+		}rootLibrary;
 
 		Vector<Context>				Contexts;
 		size_t						contextIdx = 0;
@@ -2740,7 +2795,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Release();
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
-		void BuildBLAS(VertexBuffer& buffer, ResourceHandle destination, ResourceHandle scratchSpace);
+		void BuildBLAS(IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace);
 
 		void DiscardResource(ResourceHandle resource);
 
@@ -2764,10 +2819,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void ClearUAVBufferRange	(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
 		void SetRootSignature			(RootSigHandle);
-		void SetRootSignature			(const RootSignature*);
+		void SetRootSignature			(const IRootSignature*);
 		void SetComputeRootSignature	(RootSigHandle);
-		void SetComputeRootSignature	(const RootSignature*);
-		void SetPipelineState			(ID3D12PipelineState* PSO);
+		void SetComputeRootSignature	(const IRootSignature*);
+		void SetPipelineState			(const IPipelineState* const PSO);
 		void SetComputePipelineState	(const PSOHandle, iAllocator& temp);
 		void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp);
 
@@ -2897,8 +2952,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			const size_t			tileOffset,
 			const UploadReservation src);
 
+		void CopyTile(
+			ResourceHandle			dest,
+			const uint3				destTile,
+			const size_t			tileOffset,
+			const UploadReservation src);
+
 		void ImmediateWrite(
-			static_vector<ResourceHandle>	handles,
+			static_vector<ResourceHandle>		handles,
 			static_vector<size_t>				value,
 			static_vector<DeviceAccessState>	currentStates,
 			static_vector<DeviceAccessState>	finalStates);
@@ -2941,11 +3002,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(const uint3);
-		void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
+		void Dispatch				(const IPipelineState* const PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
+		//void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
 		void DispatchRays			(const uint3, const DispatchDesc desc);
 		void DispatchMesh			(const uint3);
 
-		void FlushBarriers();
+		virtual void FlushBarriers() noexcept final;
 
 		void SetPredicate(bool Enable, ResourceHandle Handle = InvalidHandle, size_t = 0, PredicateOp op = PredicateOp::EqualZero);
 
@@ -2968,13 +3030,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void		Close();
 		Context&	Reset(DescriptorRange range, const size_t newDispatchIdx, ID3D12DescriptorHeap* heap);
 
-		void SetDebugName(const char* ID)
+		virtual void SetDebugName(const char* ID) noexcept final
 		{
 			SETDEBUGNAME(DeviceContext, ID);
 		}
 
 
-		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256);
+		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256) noexcept;
 		const RootSignature*	CurrentGraphicsRootSig() const		{ return CurrentRootSignature; }
 		const RootSignature*	CurrentComputeRootSig() const		{ return CurrentComputeRootSignature; }
 
@@ -3433,16 +3495,16 @@ private:
 			LOD_Runtime() = default;
 
 			LOD_Runtime(const LOD_Runtime& rhs) :
-				buffers         { rhs.buffers       },
+				views			{ rhs.views			},
 				lodFileOffset   { rhs.lodFileOffset },
 				lodSize         { rhs.lodSize       },
 				state           { rhs.state.load()  },
 				subMeshes       { rhs.subMeshes     },
-				vertexBuffer    { rhs.vertexBuffer  } {}
+				bufferSet		{ rhs.bufferSet		} {}
 
 			LOD_Runtime& operator =(const LOD_Runtime& rhs)
 			{
-				buffers         = rhs.buffers;
+				views			= rhs.views;
 
 				lodFileOffset   = rhs.lodFileOffset;
 				lodSize         = rhs.lodSize;
@@ -3450,14 +3512,14 @@ private:
 				state           = rhs.state.load();
 				subMeshes       = rhs.subMeshes;
 
-				vertexBuffer    = rhs.vertexBuffer;
+				bufferSet		= rhs.bufferSet;
 
 				return *this;
 			}
 
 			bool HasTangents() const
 			{
-				for (auto view : buffers)
+				for (auto view : views)
 				{
 					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
 						return true;
@@ -3468,7 +3530,7 @@ private:
 
 			bool HasNormals() const
 			{
-				for (auto view : buffers)
+				for (auto view : views)
 				{
 					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
 						return true;
@@ -3479,7 +3541,7 @@ private:
 
 			VertexBufferView* GetNormals()
 			{
-				for (auto view : buffers)
+				for (auto view : views)
 				{
 					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
 						return view;
@@ -3491,7 +3553,7 @@ private:
 
 			VertexBufferView* GetIndices()
 			{
-				for (auto view : buffers)
+				for (auto view : views)
 				{
 					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
 						return view;
@@ -3502,7 +3564,7 @@ private:
 
 			VertexBufferView* GetPoints()
 			{
-				for (auto view : buffers)
+				for (auto view : views)
 				{
 					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
 						return view;
@@ -3513,12 +3575,12 @@ private:
 
 			size_t GetIndexBufferIndex() const
 			{
-				return vertexBuffer.MD.IndexBuffer_Index;
+				return bufferSet.MD.IndexBuffer_Index;
 			}
 
 			size_t GetIndexCount() const
 			{
-				return vertexBuffer.MD.InputElementCount;
+				return bufferSet.MD.InputElementCount;
 			}
 
 			size_t lodFileOffset;
@@ -3532,8 +3594,8 @@ private:
 				GPUResourceEvicted
 			};
 
-			static_vector<VertexBufferView*>	buffers;
-			FlexKit::VertexBuffer				vertexBuffer;
+			static_vector<VertexBufferView*>	views;
+			VertexBufferSet						bufferSet;
 			ResourceHandle						blAS = InvalidHandle; // TODO(Wrap this type)
 
 			std::atomic<LOD_State>		state   = LOD_State::Unloaded;
@@ -3780,46 +3842,48 @@ private:
 	/************************************************************************************************/
 
 
-	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t lod, size_t Buffer)	{ return Mesh->lods[lod].vertexBuffer[Buffer]; }
-
-
-	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE Type)
+	inline DeviceResource_ptr GetBuffer(TriMesh* Mesh, size_t lod, size_t Buffer)
 	{
-		ID3D12Resource* Buffer = nullptr;
-		auto& VertexBuffers = Mesh->lods[lod].vertexBuffer.VertexBuffers;
-		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
+		return Mesh->lods[lod].bufferSet[Buffer].resource;
+	}
 
-		if (RES != VertexBuffers.end())
-			Buffer = RES->Buffer;
 
-		return Buffer;
+	inline DeviceResource_ptr FindBuffer(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE type)
+	{
+		auto& buffers = Mesh->lods[lod].bufferSet.buffers;
+		auto res = find(buffers, [type](auto& V) -> bool {return V.type == type;});
+
+		if (res != buffers.end())
+			return res->apiResource;
+		else
+			return nullptr;
 	}
 
 
 	/************************************************************************************************/
 
 
-	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE Type)
+	inline VertexBufferSet::BuffEntry* FindBufferEntry(TriMesh* mesh, size_t lod, VERTEXBUFFER_TYPE type)
 	{
-		ID3D12Resource* Buffer = nullptr;
-		auto& VertexBuffers = Mesh->lods[lod].vertexBuffer.VertexBuffers;
-		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
+		ID3D12Resource* buffer = nullptr;
+		auto& VertexBuffers = mesh->lods[lod].bufferSet.buffers;
+		auto res = find(VertexBuffers, [type](auto& V) -> bool {return V.type == type;});
 
-		if (RES != VertexBuffers.end())
-			Buffer = RES->Buffer;
-
-		return (VertexBuffer::BuffEntry*)RES; // Remove Const of result
+		if (res != VertexBuffers.end())
+			return (VertexBufferSet::BuffEntry*)res; // Remove Const of result
+		else
+			return nullptr;
 	}
 
 
 	/************************************************************************************************/
 
 
-	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
+	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
 	{
-		auto* VB = FindBufferEntry(Mesh, lod, Type);
+		auto* VB = FindBufferEntry(Mesh, lod, type);
 
-		if (VB == Mesh->lods[lod].vertexBuffer.VertexBuffers.end() || VB->Buffer == nullptr) {
+		if (VB == Mesh->lods[lod].bufferSet.buffers.end() || VB->apiResource == nullptr) {
 #ifdef _DBUG
 			return false;
 #else 
@@ -3837,9 +3901,9 @@ private:
 
 		D3D12_VERTEX_BUFFER_VIEW VBView;
 
-		VBView.BufferLocation	= VB->Buffer->GetGPUVirtualAddress();
-		VBView.SizeInBytes		= VB->BufferSizeInBytes;
-		VBView.StrideInBytes	= VB->BufferStride;
+		VBView.BufferLocation	= VB->apiResource->GetGPUVirtualAddress();
+		VBView.SizeInBytes		= VB->bufferSizeInBytes;
+		VBView.StrideInBytes	= VB->bufferStride;
 		out.push_back(VBView);
 
 		return true;
@@ -3847,48 +3911,6 @@ private:
 
 
 	TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
-
-
-	/************************************************************************************************/
-
-
-	typedef Handle_t<8> ShaderHandle;
-	typedef Handle_t<8> ShaderSetHandle;
-
-
-	struct Material
-	{
-		Material() :
-			Colour(1.0f, 1.0f, 1.0f, 1.0f),
-			Metal(1.0f, 1.0f, 1.0f, 0.0f){}
-
-
-		float4	Colour;
-		float4	Metal;
-	};
-
-
-	enum TEXTURETYPE
-	{
-		ETT_ALBEDO,
-		ETT_ROUGHSMOOTH,
-		ETT_NORMAL,
-		ETT_BUMP,
-		ETT_COUNT,
-	};
-
-
-	struct TextureSet
-	{
-		struct {
-			char	Directory[64];
-		}TextureLocations[16];
-
-		size_t		TextureGuids[16];
-
-		ResourceHandle	Textures[16];
-		bool			Loaded[16];
-	};
 
 
 	/************************************************************************************************/
@@ -4109,7 +4131,7 @@ private:
 	/************************************************************************************************/
 	// Depreciated API
 
-	FLEXKITAPI void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
+	FLEXKITAPI void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
 
 	struct SubResourceUpload_Desc
 	{

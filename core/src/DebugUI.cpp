@@ -39,7 +39,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable  = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *renderSystem.Library.RSDefault;
+			PSO_Desc.pRootSignature			= renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -70,7 +70,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawIMGUI");
 
-		return { PSO, renderSystem.Library.RSDefault };
+		return { PSO, renderSystem.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -332,9 +332,9 @@ namespace FlexKit
 				};
 
 
-				auto  constantBuffer = frameResources.ReserveCB(1024);
-				auto  constants      = ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
-				auto& rootSig        = frameResources.renderSystem().Library.RSDefault;
+				auto constantBuffer	= frameResources.ReserveCB(1024);
+				auto constants		= ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
+				auto rootSig		= frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 
 				// Setup draw State
 				auto SetupState = [&] {

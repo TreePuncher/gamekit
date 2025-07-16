@@ -2508,10 +2508,10 @@ namespace FlexKit
 	}
 
 
-	void Context::BuildBLAS(VertexBuffer& vertexBuffer, ResourceHandle destination, ResourceHandle scratchSpace)
+	void Context::BuildBLAS(IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace)
 	{
-		auto indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
-		auto positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+		auto indexBuffer    = bufferSet[bufferSet.GetIndexBufferIndex()];
+		auto positionBuffer = bufferSet.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
 
 		D3D12_RAYTRACING_GEOMETRY_DESC desc;
 		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
@@ -2520,12 +2520,12 @@ namespace FlexKit
 
 		desc.Triangles.Transform3x4 = 0;
 		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-		desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+		desc.Triangles.IndexBuffer  = GetDevicePointer(indexBuffer);
 		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
 		desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
-		desc.Triangles.VertexBuffer.StartAddress    = positionBuffer->GetDevicePointer();
-		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer->BufferStride;
+		desc.Triangles.VertexBuffer.StartAddress    = GetDevicePointer(positionBuffer.value());
+		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer.value().byteStride;
 		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
 		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
@@ -2833,10 +2833,11 @@ namespace FlexKit
 		DeviceContext->SetGraphicsRootSignature(*rootSig);
 	}
 
-	void Context::SetRootSignature(const RootSignature* rootSig)
+	void Context::SetRootSignature(const IRootSignature* rootSig)
 	{
-		CurrentRootSignature	= rootSig;
-		DeviceContext->SetGraphicsRootSignature(*rootSig);
+		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
+		CurrentRootSignature	= dxRootSig;
+		DeviceContext->SetGraphicsRootSignature(*dxRootSig);
 	}
 
 
@@ -2852,16 +2853,19 @@ namespace FlexKit
 	}
 
 
-	void Context::SetComputeRootSignature(const RootSignature* rootSig)
+	void Context::SetComputeRootSignature(const IRootSignature* rootSig)
 	{
-		CurrentComputeRootSignature = rootSig;
-		DeviceContext->SetComputeRootSignature(*rootSig);
+		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
+
+		CurrentComputeRootSignature = dxRootSig;
+		DeviceContext->SetComputeRootSignature(*dxRootSig);
 	}
 
 
 	/************************************************************************************************/
 
 
+	/*
 	void Context::SetPipelineState(ID3D12PipelineState* PSO)
 	{
 		FK_ASSERT(PSO);
@@ -2875,6 +2879,26 @@ namespace FlexKit
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
 	}
+	*/
+
+	/************************************************************************************************/
+
+
+	void Context::SetPipelineState(const IPipelineState* const PSO)
+	{
+		FK_ASSERT(PSO);
+
+		const DXPipelineState* pso = static_cast<const DXPipelineState*>(PSO);
+
+		if (PSO == nullptr)
+			__debugbreak();
+
+		if (CurrentPipelineState == pso->state)
+			return;
+
+		CurrentPipelineState = pso->state;
+		DeviceContext->SetPipelineState(pso->state);
+	}
 
 
 	/************************************************************************************************/
@@ -2882,21 +2906,22 @@ namespace FlexKit
 
 	void Context::SetComputePipelineState(const PSOHandle stateHandle, iAllocator& temp)
 	{
-		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
+		auto [PSO, rootSignature]	= renderSystem->GetPSOAndRootSignature(stateHandle, temp);
+		auto implRootSignature		= static_cast<const RootSignature*>(rootSignature);
 
 		if (PSO == nullptr)
 			__debugbreak();
 
 		if (CurrentComputeRootSignature != rootSignature)
 		{
-			DeviceContext->SetComputeRootSignature(*rootSignature);
-			CurrentComputeRootSignature = rootSignature;
+			DeviceContext->SetComputeRootSignature(*implRootSignature);
+			CurrentComputeRootSignature = implRootSignature;
 		}
 
-		if (CurrentPipelineState != PSO)
+		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
 		{
-			CurrentPipelineState = PSO;
-			DeviceContext->SetPipelineState(PSO);
+			CurrentPipelineState = implPSO;
+			DeviceContext->SetPipelineState(implPSO);
 		}
 	}
 
@@ -2907,6 +2932,7 @@ namespace FlexKit
 	void Context::SetGraphicsPipelineState(const PSOHandle stateHandle, iAllocator& temp)
 	{
 		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
+		auto implRootSignature = static_cast<const RootSignature*>(rootSignature);
 
 		if (PSO == nullptr)
 		{
@@ -2917,16 +2943,16 @@ namespace FlexKit
 #endif
 		}
 
-		if (CurrentRootSignature != rootSignature)
+		if (CurrentRootSignature != implRootSignature)
 		{
-			DeviceContext->SetGraphicsRootSignature(*rootSignature);
-			CurrentRootSignature = rootSignature;
+			DeviceContext->SetGraphicsRootSignature(*implRootSignature);
+			CurrentRootSignature = implRootSignature;
 		}
 
-		if (CurrentPipelineState != PSO)
+		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
 		{
-			CurrentPipelineState = PSO;
-			DeviceContext->SetPipelineState(PSO);
+			CurrentPipelineState = implPSO;
+			DeviceContext->SetPipelineState(implPSO);
 		}
 	}
 
@@ -3642,8 +3668,6 @@ namespace FlexKit
 	{
 		FlushBarriers();
 
-		auto desc = dest->GetDesc();
-
 		D3D12_TILED_RESOURCE_COORDINATE coordinate;
 		coordinate.X			= (UINT)destTile[0];
 		coordinate.Y			= (UINT)destTile[1];
@@ -3659,6 +3683,42 @@ namespace FlexKit
 
 		DeviceContext->CopyTiles(
 			dest,
+			&coordinate,
+			&regionSize,
+			src.resource,
+			src.offset,
+			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyTile(
+		ResourceHandle			dest,
+		const uint3				destTile,
+		const size_t			tileOffset,
+		const UploadReservation src)
+	{
+		FlushBarriers();
+
+		auto resource_ptr	= renderSystem->GetDeviceResource(dest);
+
+		D3D12_TILED_RESOURCE_COORDINATE coordinate;
+		coordinate.X			= (UINT)destTile[0];
+		coordinate.Y			= (UINT)destTile[1];
+		coordinate.Z			= (UINT)0;
+		coordinate.Subresource	= (UINT)destTile[2];
+		
+		D3D12_TILE_REGION_SIZE regionSize;
+		regionSize.NumTiles		= 1;
+		regionSize.UseBox		= false;
+		regionSize.Width		= 1;
+		regionSize.Height		= 1;
+		regionSize.Depth		= 1;
+
+		DeviceContext->CopyTiles(
+			resource_ptr,
 			&coordinate,
 			&regionSize,
 			src.resource,
@@ -4273,9 +4333,9 @@ namespace FlexKit
 
 		UpdateResourceStates();
 
-		static auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory);
-		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
-		DeviceContext->SetPipelineState(PSO);
+		static auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
+		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
+		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
 
@@ -4311,9 +4371,9 @@ namespace FlexKit
 		end = Min((uint32_t)renderSystem->GetResourceSize(UAV), end);
 		uint2 range{ begin / 16, end / 16};
 
-		auto PSO = renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory);
-		DeviceContext->SetComputeRootSignature(*renderSystem->Library.ClearBuffer);
-		DeviceContext->SetPipelineState(PSO);
+		auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
+		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
+		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
 		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
@@ -4461,7 +4521,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::FlushBarriers()
+	void Context::FlushBarriers() noexcept
 	{
 		UpdateResourceStates();
 	}
@@ -4635,9 +4695,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UploadReservation Context::ReserveDirectUploadSpace(size_t size, size_t alignment)
+	UploadReservation Context::ReserveDirectUploadSpace(size_t size, size_t alignment) noexcept
 	{
-		return renderSystem->_ReserveDirectUploadSpace(size, alignment);
+		return renderSystem->ReserveDirectUploadSpace(size, alignment);
 	}
 
 
@@ -4987,7 +5047,7 @@ namespace FlexKit
 			builder.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
 			RS4CBVs_SO = builder.Build(RS, temp);
 
-			SETDEBUGNAME(*RS->Library.RS4CBVs_SO, "RS4CBVs_SO");
+			SETDEBUGNAME(*RS4CBVs_SO, "RS4CBVs_SO");
 		}
 		{
 			builder.AllowIA = true;
@@ -5001,7 +5061,7 @@ namespace FlexKit
 			builder.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 			RS2UAVs4SRVs4CBs = builder.Build(RS, temp);
 
-			SETDEBUGNAME(*RS->Library.RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
+			SETDEBUGNAME(*RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
 		{
 			DesciptorHeapLayout<16> DescriptorHeap;
@@ -5747,7 +5807,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.ClearBuffer,
+			RS.Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -5756,7 +5816,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.ClearBuffer };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::ClearBuffer) };
 	}
 
 
@@ -6259,7 +6319,7 @@ namespace FlexKit
 
 		InitiateComplete = true;
 		
-		Library.Initiate(this, *in->Memory, *in->TempMemory);
+		rootLibrary.Initiate(this, *in->Memory, *in->TempMemory);
 		ReadBackTable.Initiate(Device);
 
 		FreeList_GraphicsQueue.Allocator	= in->Memory;
@@ -6341,7 +6401,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* RenderSystem::GetPSO(PSOHandle StateID, iAllocator& temp)
+	const IPipelineState* RenderSystem::GetPSO(PSOHandle StateID, iAllocator& temp)
 	{
 		return PipelineStates.GetPSO(StateID, temp);
 	}
@@ -6350,7 +6410,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RootSignature const * const RenderSystem::GetPSORootSignature(PSOHandle handle) const
+	const IRootSignature * const RenderSystem::GetPSORootSignature(PSOHandle handle) const
 	{
 		return PipelineStates.GetPSORootSig(handle);
 	}
@@ -6358,12 +6418,12 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	std::tuple<ID3D12PipelineState*, const RootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
+	std::tuple<IPipelineState*, const IRootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
 	{
 		auto object_ptr = PipelineStates.GetPSOObject(handle);
 		object_ptr->WaitForLoad(temp);
 
-		return { object_ptr->PSO, object_ptr->rootSignature };
+		return { &object_ptr->PSO, object_ptr->rootSignature };
 	}
 
 
@@ -6381,6 +6441,18 @@ namespace FlexKit
 	void RenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN fn)
 	{
 		PipelineStates.RegisterPSOLoader(State, std::move(fn));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::LoadPSOIfRequired(PSOHandle state)
+	{
+		auto obj = PipelineStates.GetPSOObject(state);
+
+		if (obj && obj->state != PipelineStateObject::PSO_States::Loaded)
+			QueuePSOLoad(state);
 	}
 
 
@@ -6762,22 +6834,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const VertexBuffer& vertexBuffer)
+	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet& vertexBufferSet)
 	{
-		auto& indexBuffer    = vertexBuffer.VertexBuffers[vertexBuffer.MD.IndexBuffer_Index];
-		auto* positionBuffer = vertexBuffer.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+		uint8_t	indexBufferIdx	= vertexBufferSet.GetIndexBufferIndex();
+		auto indexBuffer		= vertexBufferSet[indexBufferIdx];
+		auto positionRes		= vertexBufferSet.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+
+		if (!positionRes.has_value())
+			return {};
+
+		auto& positionBuffer = positionRes.value();
 
 		D3D12_RAYTRACING_GEOMETRY_DESC desc;
 		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-		desc.Triangles.IndexBuffer  = indexBuffer.GetDevicePointer();
+		desc.Triangles.IndexBuffer  = indexBuffer.resource->GetGPUVirtualAddress();
 		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
 		desc.Triangles.VertexFormat					= DXGI_FORMAT_R32G32B32_FLOAT;
-		desc.Triangles.VertexBuffer.StartAddress	= positionBuffer->GetDevicePointer();
-		desc.Triangles.VertexBuffer.StrideInBytes	= positionBuffer->BufferStride;
-		desc.Triangles.VertexCount					= (UINT)positionBuffer->Size();
+		desc.Triangles.VertexBuffer.StartAddress	= positionBuffer.resource->GetGPUVirtualAddress();
+		desc.Triangles.VertexBuffer.StrideInBytes	= positionBuffer.byteStride;
+		desc.Triangles.VertexCount					= (UINT)positionBuffer.byteSize;
 
 
 		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs;
@@ -7245,7 +7323,7 @@ namespace FlexKit
 	} D3D12_DISPATCH_RAYS_DESC;
 
 
-	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const RootSignature* rootSignatureID)
+	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* irootSignatureID)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
@@ -7324,6 +7402,8 @@ namespace FlexKit
 		desc.NumArgumentDescs	= (UINT)entries.size();
 		desc.pArgumentDescs		= signatureEntries.begin();
 		desc.NodeMask			= 0;
+
+		auto rootSignatureID = static_cast<const RootSignature*>(irootSignatureID);
 
 		auto HR = pDevice->CreateCommandSignature(
 			&desc,
@@ -7609,7 +7689,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout layout)
+	void RenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout layout) noexcept
 	{
 		StreamOutTable.SetLayout(handle, layout);
 	}
@@ -7618,7 +7698,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectLayout(ResourceHandle handle, DeviceLayout layout)
+	void RenderSystem::SetObjectLayout(ResourceHandle handle, DeviceLayout layout) noexcept
 	{
 		Textures.SetLayout(handle, layout);
 	}
@@ -7627,7 +7707,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const QueryHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const QueryHandle handle) const noexcept
 	{
 		return Queries.GetLayout(handle);
 	}
@@ -7636,7 +7716,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const SOResourceHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const SOResourceHandle handle) const noexcept
 	{
 		return StreamOutTable.GetLayout(handle);
 	}
@@ -7645,7 +7725,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const ResourceHandle handle) const
+	DeviceLayout RenderSystem::GetObjectLayout(const ResourceHandle handle) const noexcept
 	{
 		return Textures.GetLayout(handle);
 	}
@@ -7752,6 +7832,33 @@ namespace FlexKit
 	size_t RenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetSize(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t	RenderSystem::GetVertexBufferOffset(const VertexBufferHandle handle) const
+	{
+		return VertexBuffers.GetCurrentVertexBufferOffset(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool RenderSystem::VertexBufferPush(VertexBufferHandle buffer, void* _ptr, size_t elementSize)
+	{
+		return VertexBuffers.PushVertex(buffer, _ptr, elementSize);
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t RenderSystem::ConstantBufferAlign(ConstantBufferHandle cb) noexcept
+	{
+		return ConstantBuffers.AlignNext(cb);
 	}
 
 
@@ -8442,45 +8549,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadTextureSet(RenderSystem* RS, TextureSet* TS, iAllocator* Memory)
-	{
-		for (size_t I = 0; I < 16; ++I)
-		{
-			if (TS->TextureGuids[I]) {
-				TS->Loaded[I]	= true;
-				TS->Textures[I] = LoadDDSTextureFromFile(TS->TextureLocations[I].Directory, RS, RS->GetImmediateCopyQueue(), Memory);
-			}
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseTextureSet(TextureSet* TS, iAllocator* Memory)
-	{
-		for (size_t I = 0; I < 16; ++I)
-		{
-			if (TS->TextureGuids[I]) {
-				TS->Loaded[I] = false;
-				FK_ASSERT(0);
-				//TS->Textures[I]->Release();
-			}
-		}
-		Memory->free(TS);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CreateVertexBuffer(RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out)
+	void CreateVertexBuffer(RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out)
 	{
 		// TODO: Add Buffer Layout Structure for more complex Buffer Layouts
 		// TODO: ATM only is able to make Buffers of a single Value
 		InputDescription Input_Desc;
 
-		DVB_Out.VertexBuffers.SetFull();
+		DVB_Out.buffers.SetFull();
 
 		// Generate Input Layout
 		HRESULT	HR = ERROR;
@@ -8538,16 +8613,16 @@ namespace FlexKit
 
 				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
 
-				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
-				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
-				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
-				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
-				DVB_Out.MD.IndexBuffer_Index					= itr;
-				DVB_Out.MD.InputElementCount					= Buffers[itr]->GetBufferSize();
+				DVB_Out.buffers[itr].apiResource		= NewBuffer;
+				DVB_Out.buffers[itr].bufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
+				DVB_Out.buffers[itr].bufferStride		= (uint32_t)Buffers[itr]->GetElementSize();
+				DVB_Out.buffers[itr].type				= Buffers[itr]->GetBufferType();
+				DVB_Out.MD.IndexBuffer_Index			= itr;
+				DVB_Out.MD.InputElementCount			= Buffers[itr]->GetBufferSize();
 			}
 			else if (Buffers[itr] && Buffers[itr]->GetBufferSize())
 			{
-				ID3D12Resource* NewBuffer = nullptr;
+				ID3D12Resource* apiResource = nullptr;
 				// Create the Vertex Buffer
 				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
 				Resource_DESC.Width	= Buffers[itr]->GetBufferSizeRaw();
@@ -8555,7 +8630,7 @@ namespace FlexKit
 				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, 
 									D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, 
 									D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON,
-									nullptr, IID_PPV_ARGS(&NewBuffer));
+									nullptr, IID_PPV_ARGS(&apiResource));
 
 				if (FAILED(HR))
 				{// TODO!
@@ -8565,38 +8640,38 @@ namespace FlexKit
 				switch (Buffers[itr]->GetBufferType())
 				{
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
-					{SETDEBUGNAME(NewBuffer, "VERTEXBUFFER");break;}
+					{SETDEBUGNAME(apiResource, "VERTEXBUFFER");				break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
-					{SETDEBUGNAME(NewBuffer, "NORMAL BUFFER"); break;}
+					{SETDEBUGNAME(apiResource, "NORMAL BUFFER");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-					{SETDEBUGNAME(NewBuffer, "TANGET BUFFER"); break;}
+					{SETDEBUGNAME(apiResource, "TANGET BUFFER");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_COLOR:
-					{SETDEBUGNAME(NewBuffer, "COLOUR BUFFER"); break;}
+					{SETDEBUGNAME(apiResource, "COLOUR BUFFER");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
-					{SETDEBUGNAME(NewBuffer, "TEXCOORD BUFFER"); break;}
+					{SETDEBUGNAME(apiResource, "TEXCOORD BUFFER");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
-					{SETDEBUGNAME(NewBuffer, "AnimationWeights"); break;}
+					{SETDEBUGNAME(apiResource, "AnimationWeights");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
-					{SETDEBUGNAME(NewBuffer, "AnimationIndices"); break;}
+					{SETDEBUGNAME(apiResource, "AnimationIndices");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKED:
-					{SETDEBUGNAME(NewBuffer, "PACKED_BUFFER");break;}
+					{SETDEBUGNAME(apiResource, "PACKED_BUFFER");			break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR:
 				default:
-					{SETDEBUGNAME(NewBuffer, "VERTEXBUFFER_TYPE_ERROR"); break; }
+					{SETDEBUGNAME(apiResource, "VERTEXBUFFER_TYPE_ERROR");	break; }
 					break;
 				}
 
 				RS->UpdateResourceByUploadQueue(
-					NewBuffer,
+					apiResource,
 					handle,
 					Buffers[itr]->GetBuffer(),
 					Buffers[itr]->GetBufferSizeRaw(), 1, 
 					DASCommon);
 
-				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
-				DVB_Out.VertexBuffers[itr].BufferStride			= (uint32_t)Buffers[itr]->GetElementSize();
-				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
-				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
+				DVB_Out.buffers[itr].apiResource		= apiResource;
+				DVB_Out.buffers[itr].bufferStride		= (uint32_t)Buffers[itr]->GetElementSize();
+				DVB_Out.buffers[itr].bufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
+				DVB_Out.buffers[itr].type				= Buffers[itr]->GetBufferType();
 			}
 		}
 	}
@@ -8620,7 +8695,7 @@ namespace FlexKit
 			BufferSize,
 			0, 
 			GPUResident ? nullptr : _Map(Buffer[0]),
-			Buffers[Buffer[0]].Resource,
+			Buffers[Buffer[0]].resource,
 			false,
 			handle});
 
@@ -8705,7 +8780,7 @@ namespace FlexKit
 		{	// UnMap Current Buffer
 			auto  ResourceIdx = UserBuffer.GetCurrentBuffer();
 			D3D12_RANGE Range = { 0, UserBuffer.Offset };
-			Buffers[ResourceIdx].Resource->Unmap(0, &Range);
+			Buffers[ResourceIdx].resource->Unmap(0, &Range);
 		}
 		
 		UserBuffer.WrittenTo = false;
@@ -8716,11 +8791,11 @@ namespace FlexKit
 			void*	MappedPtr		= nullptr;
 
 			D3D12_RANGE Range{ 0, 0 };
-			Buffers[ResourceIdx].Resource->Map(0, &Range, &MappedPtr);
+			Buffers[ResourceIdx].resource->Map(0, &Range, &MappedPtr);
 
 			UserBuffer.Offset		= 0;
 			UserBuffer.MappedPtr	= (char*)MappedPtr;
-			UserBuffer.Resource		= Buffers[ResourceIdx].Resource;
+			UserBuffer.Resource		= Buffers[ResourceIdx].resource;
 		}
 	}
 
@@ -8730,7 +8805,7 @@ namespace FlexKit
 
 	ID3D12Resource* VertexBufferStateTable::GetAsset(VertexBufferHandle Handle)
 	{
-		return Buffers[UserBuffers[Handles[Handle]].GetCurrentBuffer()].Resource;
+		return Buffers[UserBuffers[Handles[Handle]].GetCurrentBuffer()].resource;
 	}
 
 
@@ -8797,7 +8872,7 @@ namespace FlexKit
 	char* VertexBufferStateTable::_Map(VBufferHandle handle)
 	{
 		void* ptr;
-		Buffers[handle].Resource->Map(0, nullptr, &ptr);
+		Buffers[handle].resource->Map(0, nullptr, &ptr);
 
 		return (char*)ptr;
 	}
@@ -8809,7 +8884,7 @@ namespace FlexKit
 		writtenRange.Begin  = 0;
 		writtenRange.End    = range;
 
-		Buffers[handle].Resource->Unmap(0, &writtenRange);
+		Buffers[handle].resource->Unmap(0, &writtenRange);
 	}
 
 
@@ -8819,9 +8894,9 @@ namespace FlexKit
 	void VertexBufferStateTable::Release()
 	{
 		for (auto& B : Buffers) {
-			if(B.Resource)
-				B.Resource->Release();
-			B.Resource = nullptr;
+			if(B.resource)
+				B.resource->Release();
+			B.resource = nullptr;
 		}
 
 
@@ -8870,7 +8945,7 @@ namespace FlexKit
 		for (auto freeBuffer : FreeBuffers)
 		{
 			if (Buffers[freeBuffer.BufferIdx].lockCounter <= current)
-				Buffers[freeBuffer.BufferIdx].Resource->Release();
+				Buffers[freeBuffer.BufferIdx].resource->Release();
 		}
 
 		std::sort(FreeBuffers.begin(), FreeBuffers.end());
@@ -10792,7 +10867,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UploadReservation RenderSystem::_ReserveDirectUploadSpace(size_t size, size_t alignment)
+	UploadReservation RenderSystem::ReserveDirectUploadSpace(size_t size, size_t alignment) noexcept
 	{
 		std::scoped_lock lock{ directUploadBufferMutex };
 		auto res = directUploadBuffer.Reserve(size, alignment);
@@ -10814,6 +10889,31 @@ namespace FlexKit
 		}
 
 		return UploadReservation{};
+	}
+
+
+	/************************************************************************************************/
+
+
+	const IRootSignature* RenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
+	{
+		switch (ID)
+		{
+		case ROOTLIBRARYSIG::RS2UAVs4SRVs4CBs:
+			return rootLibrary.RS2UAVs4SRVs4CBs;
+		case ROOTLIBRARYSIG::RS6CBVs4SRVs:
+			return rootLibrary.RS6CBVs4SRVs;
+		case ROOTLIBRARYSIG::RS4CBVs_SO:
+			return rootLibrary.RS4CBVs_SO;
+		case ROOTLIBRARYSIG::ShadingRTSig:
+			return rootLibrary.ShadingRTSig;
+		case ROOTLIBRARYSIG::RSDefault:
+			return rootLibrary.RSDefault;
+		case ROOTLIBRARYSIG::ComputeSignature:
+			return rootLibrary.ComputeSignature;
+		case ROOTLIBRARYSIG::ClearBuffer:
+			return rootLibrary.ClearBuffer;
+		}
 	}
 
 
@@ -11041,7 +11141,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Context& RenderSystem::GetCommandList(std::optional<SyncPoint> ticket)
+	IDirectContext& RenderSystem::GetDirectCommandList(std::optional<SyncPoint> ticket)
 	{
 		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++directSubmissionCounter;
 
@@ -11272,7 +11372,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	bool CreateInputLayout(RenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBuffer* DVB_Out)
+	bool CreateInputLayout(RenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBufferSet* DVB_Out)
 	{
 		InputDescription Input_Desc;
 
@@ -11537,27 +11637,29 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Release(VertexBuffer* VertexBuffer)
+	void Release(VertexBufferSet* vertexBufferSet)
 	{	
-		for (auto Buffer : VertexBuffer->VertexBuffers) {
-			if (Buffer.Buffer)
-				Buffer.Buffer->Release();
+		for (auto buffer : vertexBufferSet->buffers) {
+			if (buffer.apiResource)
+				buffer.apiResource->Release();
 
-			Buffer.Buffer = nullptr;
-			Buffer.BufferSizeInBytes = 0;
+			buffer.apiResource			= nullptr;
+			buffer.bufferSizeInBytes	= 0;
 		}
 	}
 	
 
-	void DelayedRelease(RenderSystem* RS, VertexBuffer* VertexBuffer)
+	void DelayedRelease(RenderSystem* RS, VertexBufferSet* vertexBufferSet)
 	{
-		for (auto& Buffer : VertexBuffer->VertexBuffers) {
-			if (Buffer.Buffer)
-				Push_DelayedRelease(RS, Buffer.Buffer);
-			Buffer.Buffer				= nullptr;
-			Buffer.BufferSizeInBytes	= 0;
+		for (auto& buffer : vertexBufferSet->buffers) {
+			if (buffer.apiResource)
+				Push_DelayedRelease(RS, buffer.apiResource);
+
+			buffer.apiResource			= nullptr;
+			buffer.bufferSizeInBytes	= 0;
 		}
 	}
+
 
 	/************************************************************************************************/
 	
@@ -12203,14 +12305,14 @@ namespace FlexKit
 	{
 		if(T->allocator){
 			for (auto& details : T->lods) {
-				Release(&details.vertexBuffer);
+				Release(&details.bufferSet);
 
-				for (auto& buffer : details.buffers)
+				for (auto& view : details.views)
 				{
-					if (buffer)
-						T->allocator->free(buffer);
+					if (view)
+						T->allocator->free(view);
 
-					buffer = nullptr;
+					view = nullptr;
 				}
 			}
 			T->allocator->free((void*)T->ID);
@@ -12225,9 +12327,9 @@ namespace FlexKit
 	{
 		for (auto& detailLevel : T->lods)
 		{
-			DelayedRelease(RS, &detailLevel.vertexBuffer);
+			DelayedRelease(RS, &detailLevel.bufferSet);
 
-			for (auto& B : detailLevel.buffers)
+			for (auto& B : detailLevel.views)
 			{
 				if (B)
 					T->allocator->free(B);
@@ -12235,7 +12337,7 @@ namespace FlexKit
 				B = nullptr;
 			}
 
-			detailLevel.vertexBuffer.clear();
+			detailLevel.bufferSet.Clear();
 		}
 
 		T->allocator->free((void*)T->ID);

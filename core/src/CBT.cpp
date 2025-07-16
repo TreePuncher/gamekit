@@ -399,7 +399,7 @@ namespace FlexKit
 			{
 				args.buffer = builder.UnorderedAccess(buffer);
 			},
-			[this](InitializeCBTree& args, ResourceHandler& handler, Context& ctx, iAllocator& allocator)
+			[this](InitializeCBTree& args, ResourceHandler& handler, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("CBTBuffer::SumReduction");
 
@@ -461,7 +461,7 @@ namespace FlexKit
 			{
 				args.buffer = builder.CopyDest(buffer);
 			},
-			[this](InitializeCBTree& args, ResourceHandler& handler, Context& ctx, iAllocator& allocator)
+			[this](InitializeCBTree& args, ResourceHandler& handler, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto upload = ctx.ReserveDirectUploadSpace(bufferSize);
 				memcpy(upload.buffer, bitField.data(), bitField.ByteSize());
@@ -487,7 +487,7 @@ namespace FlexKit
 			{
 				args.buffer = builder.UnorderedAccess(buffer);
 			},
-			[](InitializeCBTree& args, ResourceHandler& handler, Context& ctx, iAllocator& allocator)
+			[](InitializeCBTree& args, ResourceHandler& handler, IDirectContext& ctx, iAllocator& allocator)
 			{
 				uint32_t bufferSize = 32;
 

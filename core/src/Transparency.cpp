@@ -79,7 +79,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature			= RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -122,7 +122,7 @@ namespace FlexKit
 		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -150,7 +150,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable					= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *static_cast<RenderSystem&>(RS).Library.RSDefault;
+			PSO_Desc.pRootSignature			= static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -181,7 +181,7 @@ namespace FlexKit
 		auto HR = static_cast<RenderSystem&>(RS).pDevice14->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, static_cast<RenderSystem&>(RS).Library.RSDefault };
+		return { PSO, static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -209,7 +209,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask				= D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *static_cast<RenderSystem&>(RS).Library.RSDefault;
+			PSO_Desc.pRootSignature			= static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(VShader);
 			PSO_Desc.PS						= Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -252,7 +252,7 @@ namespace FlexKit
 		auto HR = static_cast<RenderSystem&>(RS).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, static_cast<RenderSystem&>(RS).Library.RSDefault };
+		return { PSO, static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -307,11 +307,11 @@ namespace FlexKit
 				builder.SetDebugName(data.accumalatorObject,	"Accumalator");
 				builder.SetDebugName(data.counterObject,		"counterObject");
 			},
-			[=](OITPass& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+			[=](OITPass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
 				ProfileFunction();
 
-				const RootSignature*	rootSig		= resources.renderSystem().Library.RSDefault;
+				const IRootSignature*	rootSig		= resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 				auto&					materials	= MaterialComponent::GetComponent();
 
 
@@ -456,7 +456,7 @@ namespace FlexKit
 				data.accumalatorObject	= builder.ReadTransition(OITPass.accumalatorObject, DASPixelShaderResource);
 				data.counterObject		= builder.ReadTransition(OITPass.counterObject, DASPixelShaderResource);
 			},
-			[=](OITBlend& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+			[=](OITBlend& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
 				ProfileFunction();
 
@@ -465,7 +465,7 @@ namespace FlexKit
 				ctx.SetPipelineState(resources.GetPipelineState(OITBLEND, tempAllocator));
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
-				const RootSignature* rootSig = resources.renderSystem().Library.RSDefault;
+				const IRootSignature* rootSig = resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 				auto& descHeapLayout = rootSig->GetDescHeap(0);
 				DescriptorHeap descHeap;
 
@@ -494,7 +494,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2016-2023 Robert May
+Copyright (c) 2016-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

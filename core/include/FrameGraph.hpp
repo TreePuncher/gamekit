@@ -311,7 +311,7 @@ namespace FlexKit
 
 		std::mutex		m;
 
-		RenderSystem&	renderSystem;
+		IRenderSystem&	renderSystem;
 		iAllocator*		allocator;
 
 		uint32_t		virtualResourceCount = 0;
@@ -508,12 +508,16 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		ID3D12PipelineState* GetPipelineState(PSOHandle state, iAllocator& temp)	const
+		const IPipelineState* GetPipelineState(PSOHandle stateID, iAllocator& temp)	const
 		{
-			return renderSystem.GetPSO(state, temp);
+			if (auto state = renderSystem.GetPSO(stateID, temp); state != nullptr)
+				return state;
+			else
+				return nullptr;
+
 		}
 
-		const RootSignature* GetPipelineStateRootSig(PSOHandle state) const
+		const IRootSignature* GetPipelineStateRootSig(PSOHandle state) const
 		{
 			return renderSystem.GetPSORootSignature(state);
 		}
@@ -522,18 +526,18 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		size_t GetVertexBufferOffset(VertexBufferHandle Handle, size_t VertexSize)
+		size_t GetVertexBufferOffset(VertexBufferHandle handle, size_t elementSize)
 		{
-			return renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
+			return renderSystem.GetVertexBufferOffset(handle) / elementSize;
 		}
 
 
 		/************************************************************************************************/
 
 
-		size_t GetVertexBufferOffset(VertexBufferHandle Handle)
+		size_t GetVertexBufferByteOffset(VertexBufferHandle handle)
 		{
-			return renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Handle);
+			return renderSystem.GetVertexBufferOffset(handle);
 		}
 
 
@@ -685,9 +689,9 @@ namespace FlexKit
 		}
 
 
-		operator RenderSystem& ()
+		operator IRenderSystem& ()
 		{
-			return *renderSystem;
+			return renderSystem;
 		}
 
 
@@ -772,10 +776,10 @@ namespace FlexKit
 		}
 
 
-		DevicePipelineState_ptr	GetPipelineState(PSOHandle state, iAllocator& temp) const			{ return globalResources.GetPipelineState(state, temp); }
+		const IPipelineState*	GetPipelineState(PSOHandle state, iAllocator& temp) const			{ return globalResources.GetPipelineState(state, temp); }
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle handle, size_t vertexSize)	{ return globalResources.GetVertexBufferOffset(handle, vertexSize); }
-		size_t					GetVertexBufferOffset(VertexBufferHandle handle)					{ return globalResources.GetVertexBufferOffset(handle); }
+		size_t					GetVertexBufferOffset(VertexBufferHandle handle)					{ return globalResources.GetVertexBufferByteOffset(handle); }
 
 		ResourceHandle			GetResource(FrameResourceHandle handle) const	{ return globalResources.GetResource(handle); }
 		DeviceLayout			GetResourceLayout(FrameResourceHandle handle)	{ return globalResources.GetResourceLayout(handle); }
@@ -828,7 +832,7 @@ namespace FlexKit
 
 
 #if USING(ENABLEDX12)
-		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context& ctx, size_t vertexSize) const
+		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, IDirectContext& ctx, size_t vertexSize) const
 		{
 			auto& res			= _FindSubNodeResource(handle);
 			auto SOHandle		= globalResources.objects[res.resource].SOBuffer;
@@ -850,7 +854,7 @@ namespace FlexKit
 		}
 #endif
 
-		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			auto& currentObject	= _FindSubNodeResource(resource);
 			auto currentLayout	= currentObject.layout;
@@ -885,72 +889,72 @@ namespace FlexKit
 			return resourceHandle;
 		}
 
-		ResourceHandle CopyDest(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle CopyDest(FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx, before, after);
 		}
 
-		ResourceHandle CopySrc(FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle CopySrc(FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx, before, after);
 		}
 
-		ResourceHandle UAV(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle UAV(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_UnorderedAccess, ctx, before, after);
 		}
 
-		ResourceHandle AccelerationStructure(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle AccelerationStructure(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASACCELERATIONSTRUCTURE_READ, DeviceLayout::DeviceLayout_Common, ctx, before, after);
 		}
 
-		ResourceHandle RenderTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle RenderTarget(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx, before, after);
 		}
 
-		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx, before, after);
 		}
 
-		ResourceHandle DepthTarget(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle DepthTarget(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASDEPTHBUFFERWRITE, DeviceLayout::DeviceLayout_DepthStencilWrite, ctx, before, after);
 		}
 
-		ResourceHandle DepthRead(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle DepthRead(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASDEPTHBUFFERREAD, DeviceLayout::DeviceLayout_DepthStencilRead, ctx, before, after);
 		}
 
-		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx, before, after);
 		}
 
-		ResourceHandle IndirectArgs(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle IndirectArgs(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
 		}
 
-		ResourceHandle VertexBuffer(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle VertexBuffer(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
 		}
 
-		ResourceHandle ResolveDst(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle ResolveDst(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
 		}
 
-		ResourceHandle ResolveSrc(const FrameResourceHandle resource, Context& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
+		ResourceHandle ResolveSrc(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
 			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveSrc, ctx, before, after);
 		}
 
-		ID3D12Resource* ResolveDst(const ReadBackResourceHandle resource, Context& ctx) const
+		ID3D12Resource* ResolveDst(const ReadBackResourceHandle resource, IDirectContext& ctx) const
 		{
 			return renderSystem().GetDeviceResource(resource);
 			//return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
@@ -1017,12 +1021,12 @@ namespace FlexKit
 		}
 #endif
 
-		RenderSystem& renderSystem() const { return *globalResources.renderSystem; }
+		IRenderSystem& renderSystem() const { return globalResources.renderSystem; }
 
 
-		operator RenderSystem& ()
+		operator IRenderSystem& ()
 		{
-			return *globalResources.renderSystem;
+			return globalResources.renderSystem;
 		}
 
 
@@ -1155,14 +1159,14 @@ namespace FlexKit
 
 	struct FrameGraphNodeWorkItem
 	{
-		using FN_NodeAction = TypeErasedCallable<void (FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator), 64>;
+		using FN_NodeAction = TypeErasedCallable<void (FrameGraphNode& node, FrameResources& Resources, IDirectContext& ctx, iAllocator& tempAllocator), 64>;
 
 		size_t			workWeight		= 0;
 		size_t			submissionID	= -1;
 		FN_NodeAction	action;
 		FrameGraphNode* node;
 
-		void operator () (Context& ctx, FrameResources& resources, iAllocator& allocator)
+		void operator () (IDirectContext& ctx, FrameResources& resources, iAllocator& allocator)
 		{
 			action(*node, resources, ctx, allocator);
 		}
@@ -1181,12 +1185,12 @@ namespace FlexKit
 
 		~FrameGraphNode() = default;
 
-		void HandleBarriers	(FrameResources& Resouces, Context& Ctx);
+		void HandleBarriers	(FrameResources& Resouces, IDirectContext& Ctx);
 		void AddBarrier		(const Barrier& Dep);
 
-		void RestoreResourceStates	(Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects);
-		void AcquireResources		(FrameResources& resources, Context& ctx);
-		void ReleaseResources		(FrameResources& resources, Context& ctx);
+		void RestoreResourceStates	(IDirectContext& ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects);
+		void AcquireResources		(FrameResources& resources, IDirectContext& ctx);
+		void ReleaseResources		(FrameResources& resources, IDirectContext& ctx);
 
 		ResusableResourceQuery			FindReuseableResource(PoolAllocatorInterface& allocator, size_t allocationSize, uint32_t flags, FrameResources& handler, std::span<FrameGraphNode> nodes);
 		std::optional<InputObject>		GetInputObject(FrameResourceHandle);
@@ -1487,11 +1491,11 @@ namespace FlexKit
 
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
-		RenderSystem&	GetRenderSystem();
+		IRenderSystem&	GetRenderSystem();
 		FrameResources& GetResources() { return *resources; }
 
 		operator FrameResources&	() const;
-		operator RenderSystem&		();
+		operator IRenderSystem&		();
 
 		void Requires(PSOHandle handle);
 
@@ -1761,7 +1765,7 @@ namespace FlexKit
 					newWorkItem.action	=
 						[](	FrameGraphNode&	node,
 							FrameResources&	resources,
-							Context&		ctx,
+							IDirectContext&	ctx,
 							iAllocator&		tempAllocator)
 						{
 							ProfileFunction();
@@ -1776,7 +1780,7 @@ namespace FlexKit
 							ResourceHandler handler{ resources, localTracking };
 							data.draw(data.fields, handler, ctx, tempAllocator);
 
-							node.RestoreResourceStates(&ctx, resources, localTracking);
+							node.RestoreResourceStates(ctx, resources, localTracking);
 
 							{
 								ProfileFunctionLabeled(Destruction);
@@ -2267,7 +2271,7 @@ namespace FlexKit
 
 				void BuildBLAS(FrameResourceHandle resource, TriMesh::LOD_Runtime& src_lod)
 				{
-					const auto prebuildInfo	= frameResources.renderSystem.GetBLASPreBuildInfo(src_lod.vertexBuffer);
+					const auto prebuildInfo	= frameResources.renderSystem.GetBLASPreBuildInfo(src_lod.bufferSet);
 					const auto desc			= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
 
 					auto [handle, _] = AllocateResource(resource, desc);
@@ -2344,7 +2348,7 @@ namespace FlexKit
 								}
 							}
 
-							auto uploadReservation = resources.renderSystem._ReserveDirectUploadSpace(nodeData->uploadSize, 256);
+							auto uploadReservation = resources.renderSystem.ReserveDirectUploadSpace(nodeData->uploadSize, 256);
 							size_t offset = 0;
 
 							// Copy Data into resources, insert barrier/transition
@@ -2401,7 +2405,7 @@ namespace FlexKit
 
 								for (auto&& [resource, lod] : nodeData->BVHBuilds)
 								{
-									ctx.BuildBLAS(lod->vertexBuffer, resource, scratchPad);
+									ctx.BuildBLAS(lod->bufferSet, resource, scratchPad);
 									ctx.AddUAVBarrier(scratchPad);
 									ctx.AddBufferBarrier(resource, DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, Sync_BuildRaytracingAccellerationStructure, Sync_All_Shading);
 								}
@@ -2457,7 +2461,7 @@ namespace FlexKit
 		void SyncDirectTo(uint32_t);
 
 		UpdateTask&		Finish(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator);
-		RenderSystem&	GetRenderSystem() noexcept { return resources.renderSystem; }
+		IRenderSystem&	GetRenderSystem() noexcept { return resources.renderSystem; }
 
 		FrameResources				resources;
 		Vector<ResourceHandle>		acquiredResources;
@@ -2506,7 +2510,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.renderSystem.VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
+		bool res = Resources.renderSystem.VertexBufferPush(Buffer, (void*)&Vertex, sizeof(TY_V));
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -2518,7 +2522,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources, size_t PushSize)
 	{
-		bool res = Resources.renderSystem.VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
+		bool res = Resources.renderSystem.VertexBufferPush(Buffer, (void*)&Vertex, PushSize);
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -2554,13 +2558,13 @@ namespace FlexKit
 	template<typename TY_V>
 	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		return Resources.renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
+		return Resources.renderSystem.GetVertexBufferOffset(Buffer) / sizeof(TY_V);
 	}
 
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
-		return Resources.renderSystem.ConstantBuffers.AlignNext(CB);
+		return Resources.renderSystem.ConstantBufferAlign(CB);
 	}
 
 	/************************************************************************************************/
@@ -2598,13 +2602,13 @@ namespace FlexKit
 		{
 			FrameResourceHandle BackBuffer;
 		};
-		auto& Pass = frameGraph.AddNode<PassData>(
+		auto& pass = frameGraph.AddNode<PassData>(
 			PassData{},
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.Present(backBuffer);
 			},
-			[](const PassData& Data, const ResourceHandler& Resources, Context& ctx, iAllocator&)
+			[](const PassData& Data, const ResourceHandler& Resources, IDirectContext& ctx, iAllocator&)
 			{
 			});
 	}
@@ -3450,16 +3454,16 @@ namespace FlexKit
 				Data.vertexCount = (uint32_t)rects.size() * 8;
 				*/
 			},
-			[](auto& Data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				DescriptorHeap descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
 					&allocator);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 				ctx.SetPipelineState(resources.GetPipelineState(Data.PSO, allocator));
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
@@ -3599,16 +3603,16 @@ namespace FlexKit
 				Data.vertexBuffer   = vertices;
 				Data.VertexCount    = Lines.size() * 2;
 			},
-			[](auto& Data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				DescriptorHeap descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
 					&allocator);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO, allocator));
 
 				ctx.SetScissorAndViewports({ resources.GetResource(Data.RenderTarget) });
@@ -3651,7 +3655,7 @@ namespace FlexKit
 			{
 				data.feedbackTarget = builder.RenderTarget(target);
 			},
-			[](const _Clear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
+			[](const _Clear& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator&)
 			{
 				/*
 				struct _Constants
