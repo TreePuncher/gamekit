@@ -55,6 +55,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	class DXPipelineState : public IPipelineState
+	{
+	public:
+		ID3D12PipelineState* state = nullptr;
+
+		virtual DevicePipelineState_ptr GetDevicePipeState() const final
+		{
+			return state;
+		}
+	};
+
 	class PipelineStateObject
 	{
 	public:
@@ -75,7 +86,7 @@ namespace FlexKit
 
 		void WaitForLoad(iAllocator& temp);
 
-		ID3D12PipelineState*				PSO				= nullptr;
+		DXPipelineState						PSO;
 		PSOHandle							id				= InvalidHandle;
 		bool								stale			= false;
 		std::atomic<PSO_States>				state			= PSO_States::Unloaded;
@@ -117,7 +128,7 @@ namespace FlexKit
 		void							RegisterPSOLoader	(PSOHandle, LOADSTATE_FN);
 		bool							QueuePSOLoad		(PSOHandle, iAllocator*);
 
-		ID3D12PipelineState*			GetPSO			(PSOHandle, iAllocator& temp);
+		DXPipelineState*				GetPSO			(PSOHandle, iAllocator& temp);
 		RootSignature const * const 	GetPSORootSig	(PSOHandle) const;
 		PipelineStateObject*			GetPSOObject	(PSOHandle) const;
 

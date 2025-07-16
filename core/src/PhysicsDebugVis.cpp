@@ -31,7 +31,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -53,7 +53,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepthWireFrameDebug");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 	
@@ -81,7 +81,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable		= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature			= RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState		= Rast_Desc;
@@ -103,7 +103,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawLinearDepth");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 	static const PSOHandle Wireframe	= PSOHandle(GetTypeGUID(CreateWireframeDebugVis));
@@ -164,7 +164,7 @@ namespace FlexKit
 
 					const auto rt	= resources.GetResource(pass.renderTarget);
 					static auto PSO = resources.GetPipelineState(Wireframe, allocator);
-					ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+					ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 					ctx.SetScissorAndViewports({ rt });
 					ctx.SetRenderTargets({ rt }, true, resources.GetResource(pass.depthTarget));
 					ctx.SetVertexBuffers({ vertices });

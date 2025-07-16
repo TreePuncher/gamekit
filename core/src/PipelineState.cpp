@@ -54,10 +54,10 @@ namespace FlexKit
 
 	void PipelineStateObject::Release(iAllocator* allocator)
 	{
-		if(PSO)
-			PSO->Release();
+		if(PSO.state)
+			PSO.state->Release();
 
-		PSO = nullptr;
+		PSO.state = nullptr;
 
 		if (auto _ptr = next; _ptr)
 			_ptr->Release(allocator);
@@ -123,7 +123,7 @@ namespace FlexKit
 				FK_LOG_2("Finished PSO Load");
 
 				state			= PipelineStateObject::PSO_States::Loaded;
-				PSO				= res.pipelineState;
+				PSO.state		= res.pipelineState;
 				rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 				CV.notify_all();
 				return;
@@ -191,7 +191,7 @@ namespace FlexKit
 			{
 				auto prevPSO								= PSO->PSO;
 				PipelineStateObject::PSO_States newState	= 
-					(prevPSO == nullptr) ?
+					(prevPSO.state == nullptr) ?
 						PipelineStateObject::PSO_States::LoadQueued : 
 						PipelineStateObject::PSO_States::ReLoadQueued;
 
@@ -223,7 +223,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	ID3D12PipelineState*	PipelineStateTable::GetPSO(PSOHandle handle, iAllocator& temp)
+	DXPipelineState*	PipelineStateTable::GetPSO(PSOHandle handle, iAllocator& temp)
 	{
 		while (true)
 		{
@@ -248,7 +248,7 @@ namespace FlexKit
 			case PipelineStateObject::PSO_States::ReLoadQueued:
 			case PipelineStateObject::PSO_States::Loaded:
 			{
-				return PSO->PSO;
+				return &PSO->PSO;
 			}	break;
 			case PipelineStateObject::PSO_States::Failed:
 			{
@@ -281,11 +281,11 @@ namespace FlexKit
 					FK_LOG_2("Finished PSO Load");
 
 					PSO->state			= PipelineStateObject::PSO_States::Loaded;
-					PSO->PSO			= res.pipelineState;
+					PSO->PSO.state		= res.pipelineState;
 					PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 					PSO->CV.notify_all();
 
-					return res.pipelineState;
+					return &PSO->PSO;
 				}
 			}
 
@@ -510,7 +510,7 @@ namespace FlexKit
 				return;
 			}
 
-			PSO->PSO			= res.pipelineState;
+			PSO->PSO.state		= res.pipelineState;
 			PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
 
 			if (PSO->stale && loader != PSO->loader)
@@ -520,9 +520,11 @@ namespace FlexKit
 			PSO->CV.notify_all();
 
 			// TODO: FIX THIS LEAK!
-			if (previousPSO)
+			if (previousPSO.state)
+			{
 				int x = 0;
-			//	previousPSO->Release();
+				//	previousPSO->Release();
+			}
 
 			break;
 		}

@@ -14,13 +14,13 @@ namespace FlexKit
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
 		PSO_desc.CS				= Shader2ByteCode(lightPassShader);
-		PSO_desc.pRootSignature = *RS.Library.ComputeSignature;
+		PSO_desc.pRootSignature = RS.Library(ROOTLIBRARYSIG::ComputeSignature)->GetAPIObject();
 
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS.pDevice->CreateComputePipelineState(&PSO_desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS.Library.ComputeSignature };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
 	}
 
 
@@ -61,7 +61,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -93,7 +93,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "ForwardDraw");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 
@@ -131,7 +131,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -152,7 +152,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DepthPrePass");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 
@@ -176,7 +176,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	                = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -199,7 +199,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "HorizontalBlur");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -223,7 +223,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	                = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -245,7 +245,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "VerticalBlur");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -270,7 +270,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -301,7 +301,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "EnvironmentalLightingPass");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -347,7 +347,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -373,7 +373,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "DrawFlatWhite");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 
@@ -387,7 +387,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -396,7 +396,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -410,7 +410,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("GenerateZLevel", "cs_6_0", R"(assets\shaders\HZB.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -419,7 +419,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -460,7 +460,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -480,7 +480,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "OcclusionCulling");
 
-		return { PSO, RS.Library.RS6CBVs4SRVs };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 	}
 
 
@@ -507,7 +507,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.GS                    = Shader2ByteCode(GShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
@@ -529,7 +529,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapIrradiance");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -556,7 +556,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.GS                    = Shader2ByteCode(GShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
@@ -578,7 +578,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "Texture2CubeMapGGX");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -1124,18 +1124,18 @@ namespace FlexKit
 
 				builder.AddDataDependency(passes);
 			},
-			[=](DepthPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[=](DepthPass& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
 				DescriptorHeap heap{
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
 					&allocator };
 
 				heap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS, allocator));
 
 				ctx.SetScissorAndViewports({ data.depthPassTarget });
@@ -1211,10 +1211,10 @@ namespace FlexKit
 				data.passVertices					= builder.ReserveVB(sizeof(float4) * 6);
 				//data.diffuseMap                     = hdrMap;
 			},
-			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& tempAllocator)
+			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 20, &tempAllocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, &tempAllocator);
 				//descHeap.SetSRV(ctx, 6, data.diffuseMap);
 				descHeap.NullFill(ctx, 20);
 
@@ -1244,7 +1244,7 @@ namespace FlexKit
 						(float)WH[0],
 						(float)WH[1]) };
 
-				ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
+				ctx.SetRootSignature(frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, tempAllocator));
 				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
@@ -1293,7 +1293,7 @@ namespace FlexKit
 				data.passConstants				= builder.ReserveCB(6 * KILOBYTE);
 				data.passVertices				= builder.ReserveVB(sizeof(float4) * 6);
 			},
-			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
+			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto& renderSystem			= frameResources.renderSystem();
 				const float2 WH				= renderSystem.GetTextureWH(renderTarget);
@@ -1321,7 +1321,7 @@ namespace FlexKit
 				}passConstants = { float2(WH[0], WH[1]), t };
 
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 20, &allocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, &allocator);
 
 				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
@@ -1329,7 +1329,7 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 4, frameResources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 20);
 
-				ctx.SetRootSignature(renderSystem.Library.RSDefault);
+				ctx.SetRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, allocator));
 				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
@@ -1374,7 +1374,7 @@ namespace FlexKit
 				data.NormalSource       = builder.PixelShaderResource(gbuffer.normal);
 				data.Source             = builder.PixelShaderResource(source);
 			},
-			[=](BilateralBlurPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[=](BilateralBlurPass& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto& renderSystem	= resources.renderSystem();
 				const float2 WH		= resources.renderSystem().GetTextureWH(destination);
@@ -1403,14 +1403,14 @@ namespace FlexKit
 				}passConstants = { float2(WH[0], WH[1]) };
 
 				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 5, &allocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, &allocator);
 
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.Source));
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
 				descHeap.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 3);
 
-				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator));
 				ctx.SetGraphicsDescriptorTable(5, descHeap);
 
@@ -1422,7 +1422,7 @@ namespace FlexKit
 				ctx.Draw(6);
 
 				DescriptorHeap descHeap2;
-				descHeap2.Init2(ctx, renderSystem.Library.RSDefault->GetDescHeap(0), 5, &allocator);
+				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, &allocator);
 
 				descHeap2.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
 				descHeap2.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
@@ -1539,7 +1539,7 @@ namespace FlexKit
 				data.temp2Buffer    = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_FLOAT), DASUAV);
 			},
 			[&]
-			(ToneMap& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			(ToneMap& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -1567,7 +1567,7 @@ namespace FlexKit
 				ctx.AddUAVBarrier(resources.GetResource(data.temp1Buffer));
 #endif
 
-				ID3D12PipelineState* toneMap = resources.GetPipelineState(TONEMAP, allocator);
+				const IPipelineState* toneMap = resources.GetPipelineState(TONEMAP, allocator);
 
 				ctx.SetRootSignature(rootSignatureToneMapping);
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);

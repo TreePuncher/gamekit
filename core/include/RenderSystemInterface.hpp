@@ -11,6 +11,7 @@ struct ID3D12Resource;
 struct ID3D12Fence;
 struct ID3D12Heap;
 struct ID3D12PipelineState;
+struct ID3D12RootSignature;
 #endif
 
 
@@ -18,13 +19,14 @@ namespace FlexKit
 {
 	struct iAllocator;
 	struct IRootSignature;
-
+	struct TriMesh;
 
 #if USING(ENABLEDX12)
 	using DeviceResource_ptr		= ID3D12Resource*;
 	using DeviceFence_ptr			= ID3D12Fence*;
 	using DeviceHeap_ptr			= ID3D12Heap*;
 	using DevicePipelineState_ptr	= ID3D12PipelineState*;
+	using DeviceRootSignature_ptr	= ID3D12RootSignature*;
 #endif
 
 
@@ -568,6 +570,68 @@ namespace FlexKit
 		InUse,
 		Null,
 		Updated
+	};
+
+
+	enum class VERTEXBUFFER_FORMAT
+	{
+		VERTEXBUFFER_FORMAT_UNKNOWN			= -1,
+		VERTEXBUFFER_FORMAT_R8				= 1,
+		VERTEXBUFFER_FORMAT_R8G8B8			= 3,
+		VERTEXBUFFER_FORMAT_R8G8B8A8		= 8,
+		VERTEXBUFFER_FORMAT_R16				= 2,
+		VERTEXBUFFER_FORMAT_R16G16			= 4,
+		VERTEXBUFFER_FORMAT_R16G16B16		= 6,
+		VERTEXBUFFER_FORMAT_R16G16B16A16	= 8,
+		VERTEXBUFFER_FORMAT_R32				= 4,
+		VERTEXBUFFER_FORMAT_R32G32			= 8,
+		VERTEXBUFFER_FORMAT_R32G32B32		= 12,
+		VERTEXBUFFER_FORMAT_R32G32B32A32	= 16,
+		VERTEXBUFFER_FORMAT_MATRIX			= 64,
+		VERTEXBUFFER_FORMAT_COMBINED		= 32
+	};
+
+
+	/************************************************************************************************/
+
+
+	enum class VERTEXBUFFER_TYPE
+	{
+		VERTEXBUFFER_TYPE_COLOR,
+		VERTEXBUFFER_TYPE_NORMAL,
+		VERTEXBUFFER_TYPE_TANGENT,
+		VERTEXBUFFER_TYPE_UV,
+		VERTEXBUFFER_TYPE_POSITION,
+		VERTEXBUFFER_TYPE_USERTYPE,
+		VERTEXBUFFER_TYPE_USERTYPE2,
+		VERTEXBUFFER_TYPE_USERTYPE3,
+		VERTEXBUFFER_TYPE_USERTYPE4,
+		VERTEXBUFFER_TYPE_COMBINED,
+		VERTEXBUFFER_TYPE_PACKED,
+		VERTEXBUFFER_TYPE_PACKEDANIMATION,
+		VERTEXBUFFER_TYPE_INDEX,
+		VERTEXBUFFER_TYPE_ANIMATION1,
+		VERTEXBUFFER_TYPE_ANIMATION2,
+		VERTEXBUFFER_TYPE_ANIMATION3,
+		VERTEXBUFFER_TYPE_ANIMATION4,
+		VERTEXBUFFER_TYPE_MORPHTARGETPOS,
+		VERTEXBUFFER_TYPE_MORPHTARGETNORMAL,
+		VERTEXBUFFER_TYPE_MORPHTARGETTANGENT,
+
+		VERTEXBUFFER_TYPE_ERROR
+	};
+
+
+	enum class ROOTLIBRARYSIG : uint32_t
+	{
+		RS2UAVs4SRVs4CBs,
+		RS6CBVs4SRVs,
+		RS4CBVs_SO,
+		ShadingRTSig,
+		RSDefault,
+		ComputeSignature,
+		ClearBuffer,
+		COUNT
 	};
 
 
@@ -1511,260 +1575,7 @@ namespace FlexKit
 		operator bool() const noexcept { return fence != nullptr; }
 	};
 
-
-	/************************************************************************************************/
-
-
-	struct IRenderWindow
-	{
-		virtual ~IRenderWindow() {};
-
-		virtual ResourceHandle      GetBackBuffer() const = 0;
-		virtual uint2               GetWH() const = 0;
-
-		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) = 0;
-		virtual void                Resize(const uint2 WH) = 0;
-
-		//virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
-
-		operator ResourceHandle () { return GetBackBuffer(); }
-
-		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
-		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
-	};
-
-
-	struct IIndirectLayout
-	{
-	};
-
-
-	struct IPipelineBuilder
-	{
-	};
-
-
-	struct IDirectContext
-	{
-	};
-
-
-	struct ICopyContext
-	{
-	};
-
-	struct IRootSignature
-	{
-	};
-
-	struct IDescriptorHeap
-	{
-	};
-
-	struct IRenderSystem
-	{
-		//ID3D12PipelineState*									GetPSO					(PSOHandle StateID, iAllocator& temp);
-		//const RootSignature* const								GetPSORootSignature		(PSOHandle StateID) const;
-		//std::tuple<ID3D12PipelineState*, const RootSignature*>	GetPSOAndRootSignature	(PSOHandle StateID, iAllocator& temp) const;
-
-		virtual void BuildLibrary		(PSOHandle State, const PipelineStateLibraryDesc) = 0;
-		virtual void RegisterPSOLoader	(PSOHandle State, LOADSTATE_FN FN) = 0;
-		virtual void QueuePSOLoad		(PSOHandle State) = 0;
-
-		// Sync functions
-		virtual size_t		GetCurrentCounter()			= 0;
-		virtual void		SyncUploadTo(SyncPoint)		= 0;
-		virtual SyncPoint	SyncUploadPoint()			= 0;
-		virtual SyncPoint	SyncUploadTicket()			= 0;
-
-
-		virtual void		SyncDirectTo(SyncPoint)		= 0;
-		virtual SyncPoint	SyncDirectPoint()			= 0;
-		virtual SyncPoint	SyncSubmittedDirectPoint()	= 0;
-		virtual SyncPoint	SyncDirectTicket()			= 0;
-
-		virtual void		SignalDirect(uint64_t)		= 0;
-
-		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)										= 0;
-		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
-		virtual void		EndFrame()																	= 0;
-		virtual void		Signal(SyncPoint)															= 0;
-
-		virtual void		WaitForGPU()				= 0;
-		virtual void		WaitFor(const uint64_t)	= 0;
-		virtual void		WaitFor(const SyncPoint&)	= 0;
-
-		virtual void		SetDebugName(ResourceHandle, const char*)		= 0;
-		virtual void		SetDebugName(DeviceHeapHandle, const char*)	= 0;
-
-		// Info queries
-		virtual	size_t				GetVertexBufferSize		(const VertexBufferHandle)		const noexcept = 0;
-		//virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const VertexBuffer&)			const noexcept;
-
-		virtual size_t				GetTextureFrameGraphIndex(ResourceHandle)			noexcept = 0;
-		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
-
-		virtual void				MarkTextureUsed			(ResourceHandle Handle) = 0;
-
-		virtual DeviceAddressRange	GetDeviceRange			(const ResourceHandle)			const noexcept = 0;
-		virtual DeviceAddressRange	GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
-
-		virtual size_t				GetResourceSize			(ConstantBufferHandle handle)	const noexcept = 0;
-		virtual size_t				GetResourceSize			(ResourceHandle desc)			const noexcept = 0;
-
-		virtual size_t				GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
-		virtual size_t				GetAllocationSize		(GPUResourceDesc desc) const noexcept = 0; // Includes padding and alignment
-
-		virtual size_t				GetTextureElementSize	(ResourceHandle   Handle) const = 0;
-		virtual uint2				GetTextureWH			(ResourceHandle   Handle) const = 0;
-
-		virtual DeviceFormat		GetTextureFormat		(ResourceHandle Handle) const = 0;
-		virtual uint8_t				GetTextureMipCount		(ResourceHandle Handle) const = 0;
-		virtual uint2				GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
-		virtual uint2				GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
-
-		virtual TextureDimension	GetTextureDimension		(ResourceHandle handle) const = 0;
-		virtual	size_t				GetTextureArraySize		(ResourceHandle handle) const = 0;
-
-		// Resource upload
-		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) = 0; // Uses Upload Queue
-		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount) = 0; // Uses Upload Queue
-		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) = 0;
-
-
-		virtual void				SubmitTileMappings			(std::span<ResourceHandle> resources, iAllocator* allocator) = 0;
-		virtual void				UpdateTextureTileMappings	(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp) = 0;
-		virtual const TileMapList&	GetTileMappings				(const ResourceHandle Handle) = 0;
-
-		virtual SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept = 0;
-		virtual SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept = 0;
-
-		// Shader
-		virtual Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual Shader								LoadShaderLibrary(const char* file, const ShaderOptions& options = {}) = 0;
-		virtual std::expected<Shader, std::string>	LoadRootSignature(const char* file, const char* entry) = 0;
-
-		// Creation
-		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags) = 0;
-		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true) = 0;
-		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateDepthBuffer(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateDepthBufferArray(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateGPUResource(const GPUResourceDesc& desc) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateGPUResourceHandle() = 0;
-		[[nodiscard]] virtual QueryHandle				CreateOcclusionBuffer(size_t Size) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
-		[[nodiscard]] virtual ResourceHandle			CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false) = 0;
-		[[nodiscard]] virtual SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
-		[[nodiscard]] virtual QueryHandle				CreateSOQuery(size_t SOIndex, size_t count) = 0;
-		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count) = 0;
-		//[[nodiscard]] virtual IIndirectLayout*			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
-		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize) = 0;
-	};
-
-
-	/************************************************************************************************/
-
-
-	const static size_t MaxBufferedSize = 3;
-
-	template<typename TY_>
-	struct FrameBufferedObject
-	{
-		FrameBufferedObject() { BufferCount = MaxBufferedSize; Idx = 0; for (auto& r : Resources) r = nullptr; }
-
-
-		FrameBufferedObject(const std::initializer_list<TY_*>& IL) : FrameBufferedObject() {
-			auto IL_I = IL.begin();
-			for (size_t I = 0; I < MaxBufferedSize && IL_I != IL.end(); ++I, IL_I++)
-				Resources[I] = *IL_I;
-		}
-
-		size_t Idx;
-		size_t BufferCount;
-		TY_*   Resources[MaxBufferedSize];
-		size_t _Pad;
-
-		size_t	operator ++() { IncrementCounter(); return (Idx); }			// Post Increment
-		size_t	operator ++(int) { size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
-
-		TY_*& operator [] (size_t Index) { return Resources[Index]; }
-
-		//operator ID3D12Resource*()				{ return Get(); }
-		TY_* operator -> ()				{ return Get(); }
-		const TY_* operator -> () const	{ return Get(); }
-
-		operator bool()				{ return (Resources[0] != nullptr); }
-		size_t		size()			{ return BufferCount; }
-
-		TY_*		Get()			{ return Resources[Idx]; }
-		TY_*		Get() const		{ return Resources[Idx]; }
-
-		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
-		void Release()
-		{
-			for (auto& r : Resources)
-			{
-				if (r)
-					r->Release();
-				r = nullptr;
-			};
-		}
-
-		void Release_Delayed(IRenderSystem* RS)
-		{
-			for (auto& r : Resources)
-				if (r) Push_DelayedRelease(RS, r);
-		}
-
-
-		void _SetDebugName(const char* _str) {
-			size_t Str_len = strnlen_s(_str, 64);
-			for (auto& r : Resources) {
-				SetDebugName(r, _str, Str_len);
-			}
-		}
-	};
-
 	
-	/************************************************************************************************/
-
-
-	template<typename TY_Signature>
-	class RunOnceQueue
-	{
-	public:
-		using Callable_TY = FlexKit::TypeErasedCallable<TY_Signature>;
-
-		RunOnceQueue(iAllocator& allocator) : events{ &allocator } {}
-		~RunOnceQueue() = default;
-
-		RunOnceQueue(const RunOnceQueue&)   = delete;
-		RunOnceQueue(RunOnceQueue&&)        = default;
-
-		RunOnceQueue& operator = (const RunOnceQueue&)  = delete;
-		RunOnceQueue& operator = (RunOnceQueue&&)       = default;
-
-
-		void push_back(Callable_TY&& runOnce)
-		{
-			events.push_back(std::move(runOnce));
-		}
-
-
-		template<typename ... TY_Args>
-		void Process(TY_Args&& ... args) requires std::is_invocable_v<Callable_TY, TY_Args...>
-		{
-			for (auto& evt : events)
-				evt(std::forward<TY_Args>(args)...);
-
-			events.clear();
-		}
-	private:
-		Vector<Callable_TY> events;
-	};
-
-
 	/************************************************************************************************/
 
 
@@ -1887,6 +1698,494 @@ namespace FlexKit
 
 
 		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct IRenderWindow
+	{
+		virtual ~IRenderWindow() {};
+
+		virtual ResourceHandle      GetBackBuffer() const = 0;
+		virtual uint2               GetWH() const = 0;
+
+		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) = 0;
+		virtual void                Resize(const uint2 WH) = 0;
+
+		//virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
+
+		operator ResourceHandle () { return GetBackBuffer(); }
+
+		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
+		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
+	};
+
+
+	struct IIndirectLayout
+	{
+	};
+
+
+	struct IPipelineBuilder
+	{
+	};
+
+
+	struct IContext
+	{
+	};
+
+
+	struct IDirectContext : public IContext
+	{
+		virtual void SetDebugName(const char* debugStr) noexcept = 0;
+		virtual void FlushBarriers() noexcept = 0;
+
+		virtual void CreateAS(const AccelerationStructureDesc&, const TriMesh&) {};
+		virtual void BuildBLAS(struct IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace) {};
+
+		virtual void DiscardResource(ResourceHandle resource) {};
+
+		virtual void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) {};
+		virtual void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) {};
+		virtual void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) {};
+		virtual void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) {};
+		virtual void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) {};
+
+		virtual void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter) {};
+		virtual void AddTextureBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceLayout, DeviceLayout, DeviceSyncPoint, DeviceSyncPoint, BarrierSubResourceRange range = {}) {};
+		virtual void AddBufferBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint) {};
+		virtual void AddBarriers				(std::span<const Barrier> barriers) {};
+
+		virtual void ClearDepthBuffer			(ResourceHandle Texture, float ClearDepth = 0.0f) {};
+		virtual void ClearRenderTarget			(ResourceHandle Texture, float4 ClearColor = float4(0.0f)) {};
+		virtual void ClearUAVTextureFloat		(ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0)) {};
+		virtual void ClearUAVTextureUint		(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) {};
+		virtual void ClearUAV					(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) {};
+		virtual void ClearUAVBuffer				(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) {};
+		virtual void ClearUAVBufferRange		(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 }) {};
+
+		virtual void SetRootSignature			(RootSigHandle) {};
+		virtual void SetRootSignature			(const IRootSignature*) {};
+		virtual void SetComputeRootSignature	(RootSigHandle) {};
+		virtual void SetComputeRootSignature	(const IRootSignature*) {};
+		virtual void SetPipelineState			(const struct IPipelineState* const PSO) {};
+		virtual void SetComputePipelineState	(const PSOHandle, iAllocator& temp) {};
+		virtual void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp) {};
+
+		virtual void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) {};
+		virtual void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) {};
+
+#if 0
+		virtual void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs) {};
+		virtual void SetViewports				(std::span<const D3D12_VIEWPORT>	VPs) {};
+		virtual void SetScissorRects			(static_vector<D3D12_RECT, 16>		Rects) {};
+		virtual void SetScissorRects			(std::span<const D3D12_RECT>		Rects) {};
+#endif
+
+		virtual void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets) {};
+		virtual void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0) {};
+
+		virtual void QueueReadBack				(ReadBackResourceHandle readBack) {};
+		virtual void QueueReadBack				(ReadBackResourceHandle readBack, ReadBackEventHandler callback) {};
+
+		virtual void SetDepthStencil			(ResourceHandle DS) {};
+		virtual void SetInputPrimitive			(EInputPrimitive primitive) {};
+
+		virtual void SetGraphicsConstantValue	(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+
+		virtual void NullGraphicsConstantBufferView	(size_t idx) {};
+		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) {};
+		virtual void SetGraphicsConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) {};
+		virtual void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) {};
+		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct IDescriptorHeap& DH) {};
+		virtual void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) {};
+		virtual void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) {};
+		virtual void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) {};
+
+
+		virtual void SetComputeDescriptorTable		(size_t idx) {};
+		virtual void SetComputeDescriptorTable		(size_t idx, const struct IDescriptorHeap& DH) {};
+		virtual void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) {};
+
+		virtual void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) {};
+		virtual void SetComputeConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) {};
+		virtual void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256) {};
+		virtual void SetComputeConstantBufferView	(size_t idx, DevicePointer) {};
+
+		virtual void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) {};
+		virtual void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0) {};
+		virtual void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) {};
+
+
+		virtual void BeginQuery	(QueryHandle query, size_t idx) {};
+		virtual void EndQuery	(QueryHandle query, size_t idx) {};
+
+		virtual void TimeStamp(QueryHandle query, size_t idx) {};
+
+		virtual void SetMarker_DEBUG(const char* str) {};
+
+		virtual void BeginEvent_DEBUG(const char* str) {};
+		virtual void EndEvent_DEBUG() {};
+
+		virtual void CopyResource(ResourceHandle dest, ResourceHandle src) {};
+
+		virtual void CopyBufferRegion(
+			ResourceHandle	destination,
+			ResourceHandle	source,
+			size_t			size,
+			size_t			destinationOffset = 0,
+			size_t			sourceOffset = 0) {};
+
+		virtual void CopyTextureRegion(
+			ResourceHandle		dest,
+			size_t				subResourceIdx,
+			uint3				XYZ,
+			UploadReservation	source) {};
+
+		virtual void CopyTile(
+			ResourceHandle			dest,
+			const uint3				destTile,
+			const size_t			tileOffset,
+			const UploadReservation src) {};
+
+		virtual void ImmediateWrite(
+			static_vector<ResourceHandle>		handles,
+			static_vector<size_t>				value,
+			static_vector<DeviceAccessState>	currentStates,
+			static_vector<DeviceAccessState>	finalStates) {};
+
+		virtual void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0) {};
+		virtual void SetIndexBuffer			(VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT) {};
+		virtual void SetIndexBuffer			(ResourceHandle, DeviceFormat format = DeviceFormat::R32_UINT) {};
+
+		virtual void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers = nullptr) {};
+		virtual void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers = nullptr) {};
+		virtual void SetVertexBuffers		(const std::initializer_list<VertexBufferEntry>&	span) {};
+		virtual void SetVertexBuffers		(const std::span<const VertexBufferEntry>			span) {};
+
+		virtual void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span) {};
+		virtual void SetVertexBuffers		(const std::span<const VertexBufferResource>		span) {};
+
+		virtual void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0) {};
+		virtual void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0) {};
+		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0);
+		virtual void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0) {};
+		virtual void Clear					() {};
+
+		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) {};
+		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset) {};
+
+		virtual void ExecuteIndirect		(ResourceHandle args, const IIndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1) {};
+		virtual void Dispatch				(const uint3) {};
+		virtual void Dispatch				(const IPipelineState* const PSO, const uint3 xyz) {}
+		virtual void DispatchRays			(const uint3, const DispatchDesc desc) {};
+		virtual void DispatchMesh			(const uint3) {};
+
+		virtual void SetPredicate(bool Enable, ResourceHandle Handle = InvalidHandle, size_t = 0, PredicateOp op = PredicateOp::EqualZero) {};
+
+		virtual void CopyBuffer		(const UploadReservation src, const ResourceHandle destination, const size_t destOffset = 0) {};
+		virtual void CopyTexture2D	(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize) {};
+
+		virtual  void SetRTRead		(ResourceHandle Handle) {};
+		virtual  void SetRTWrite	(ResourceHandle Handle) {};
+		virtual  void SetRTFree		(ResourceHandle Handle) {};
+
+		virtual void Close() {}
+
+		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment = 256) { return {}; }
+	};
+
+
+	struct ICopyContext : public IContext
+	{
+	};
+
+
+	struct IRootSignature
+	{
+		virtual const DesciptorHeapLayout<16>&	GetDescHeap(uint32_t idx) const noexcept = 0;
+		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
+	};
+
+
+	struct IDescriptorHeap
+	{
+	};
+
+
+	struct IPipelineState
+	{
+		virtual DevicePipelineState_ptr GetDevicePipeState() const = 0;
+	};
+
+
+	struct VertexBuffer
+	{
+		uint32_t			byteSize;
+		uint32_t			byteStride;
+		DeviceResource_ptr	resource;
+		VERTEXBUFFER_TYPE	type;
+
+		size_t Size() const { return byteSize / byteStride; }
+	};
+
+
+	struct IVertexBufferSet
+	{
+		virtual void						Clear() = 0;
+		virtual std::optional<VertexBuffer> Find			(VERTEXBUFFER_TYPE) const = 0;
+		virtual const VertexBuffer&			operator []		(uint8_t idx) const = 0;
+		virtual uint8_t						GetIndexBufferIndex() const = 0;
+	};
+
+
+	struct IRenderSystem
+	{
+		virtual void											BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
+		virtual void											RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
+		virtual void											LoadPSOIfRequired		(PSOHandle State) = 0;
+		virtual void											QueuePSOLoad			(PSOHandle State) = 0;
+
+		virtual const IPipelineState*							GetPSO					(PSOHandle State, iAllocator& temp) = 0;
+		virtual const IRootSignature* const 					GetPSORootSignature		(PSOHandle state) const = 0;
+		std::tuple<IPipelineState*, const IRootSignature*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const;
+
+		// Sync functions
+		virtual size_t		GetCurrentCounter()			= 0;
+		virtual void		SyncUploadTo(SyncPoint)		= 0;
+		virtual SyncPoint	SyncUploadPoint()			= 0;
+		virtual SyncPoint	SyncUploadTicket()			= 0;
+
+
+		virtual void		SyncDirectTo(SyncPoint)		= 0;
+		virtual SyncPoint	SyncDirectPoint()			= 0;
+		virtual SyncPoint	SyncSubmittedDirectPoint()	= 0;
+		virtual SyncPoint	SyncDirectTicket()			= 0;
+
+		virtual void			SignalDirect(uint64_t)	= 0;
+		//virtual void			SignalCopy(uint64_t)	= 0;
+		//virtual void			SignalCompute(uint64_t)	= 0;
+
+		virtual IDirectContext&	GetDirectCommandList(std::optional<SyncPoint> ticket = {}) = 0;
+
+		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)										= 0;
+		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
+		virtual void		EndFrame()																	= 0;
+		virtual void		Signal(SyncPoint)															= 0;
+
+		virtual void		WaitForGPU()				= 0;
+		virtual void		WaitFor(const uint64_t)	= 0;
+		virtual void		WaitFor(const SyncPoint&)	= 0;
+
+		virtual void		SetDebugName(ResourceHandle, const char*)		= 0;
+		virtual void		SetDebugName(DeviceHeapHandle, const char*)	= 0;
+
+		virtual void		SetObjectLayout(SOResourceHandle	handle, DeviceLayout state) noexcept = 0;
+		virtual void		SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept = 0;
+
+		// Info queries
+		virtual	size_t				GetVertexBufferSize		(const VertexBufferHandle)	const noexcept = 0;
+		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const IVertexBufferSet&)	const noexcept;
+
+		virtual size_t				GetTextureFrameGraphIndex(ResourceHandle)			noexcept = 0;
+		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
+
+		virtual void				MarkTextureUsed			(ResourceHandle Handle) = 0;
+
+		virtual DeviceAddressRange	GetDeviceRange			(const ResourceHandle)			const noexcept = 0;
+		virtual DeviceAddressRange	GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
+
+		virtual DeviceLayout		GetObjectLayout			(const QueryHandle		handle) const noexcept = 0;
+		virtual DeviceLayout		GetObjectLayout			(const SOResourceHandle	handle) const noexcept = 0;
+		virtual DeviceLayout		GetObjectLayout			(const ResourceHandle	handle) const noexcept = 0;
+
+		virtual size_t				GetResourceSize			(ConstantBufferHandle handle)	const noexcept = 0;
+		virtual size_t				GetResourceSize			(ResourceHandle desc)			const noexcept = 0;
+
+		virtual size_t				GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
+		virtual size_t				GetAllocationSize		(GPUResourceDesc desc) const noexcept = 0; // Includes padding and alignment
+
+		virtual size_t				GetTextureElementSize	(ResourceHandle   Handle) const = 0;
+		virtual uint2				GetTextureWH			(ResourceHandle   Handle) const = 0;
+
+		virtual DeviceFormat		GetTextureFormat		(ResourceHandle Handle) const = 0;
+		virtual uint8_t				GetTextureMipCount		(ResourceHandle Handle) const = 0;
+		virtual uint2				GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
+		virtual uint2				GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
+
+		virtual TextureDimension	GetTextureDimension		(ResourceHandle handle) const = 0;
+		virtual	size_t				GetTextureArraySize		(ResourceHandle handle) const = 0;
+
+		virtual	DeviceHeap_ptr		GetDeviceResource(const DeviceHeapHandle        handle) const = 0;
+		virtual	DeviceResource_ptr	GetDeviceResource(const ReadBackResourceHandle	handle) const = 0;
+		virtual	DeviceResource_ptr	GetDeviceResource(const ConstantBufferHandle	handle) const = 0;
+		virtual	DeviceResource_ptr	GetDeviceResource(const ResourceHandle		    handle) const = 0;
+		virtual	DeviceResource_ptr	GetDeviceResource(const SOResourceHandle		handle) const = 0;
+
+		virtual	DeviceResource_ptr	GetSOCounterResource(const SOResourceHandle handle)		const = 0;
+		virtual	size_t				GetStreamOutBufferSize(const SOResourceHandle handle)	const = 0;
+		virtual size_t				GetVertexBufferOffset(const VertexBufferHandle Handle)	const = 0;
+
+		virtual bool				VertexBufferPush		(VertexBufferHandle, void* _ptr, size_t elementSize) = 0;
+		virtual size_t				ConstantBufferAlign		(ConstantBufferHandle) = 0;
+
+
+		// Resource upload
+		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) = 0; // Uses Upload Queue
+		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount) = 0; // Uses Upload Queue
+		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) = 0;
+
+
+		virtual void				SubmitTileMappings			(std::span<ResourceHandle> resources, iAllocator* allocator) = 0;
+		virtual void				UpdateTextureTileMappings	(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp) = 0;
+		virtual const TileMapList&	GetTileMappings				(const ResourceHandle Handle) = 0;
+
+		virtual SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept = 0;
+		virtual SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept = 0;
+		virtual UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment)					noexcept = 0;
+
+		// Shader
+		virtual Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual Shader								LoadShaderLibrary(const char* file, const ShaderOptions& options = {}) = 0;
+		virtual std::expected<Shader, std::string>	LoadRootSignature(const char* file, const char* entry) = 0;
+
+		// Creation
+		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags) = 0;
+		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true) = 0;
+		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateDepthBuffer(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateDepthBufferArray(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateGPUResource(const GPUResourceDesc& desc) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateGPUResourceHandle() = 0;
+		[[nodiscard]] virtual QueryHandle				CreateOcclusionBuffer(size_t Size) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
+		[[nodiscard]] virtual ResourceHandle			CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false) = 0;
+		[[nodiscard]] virtual SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
+		[[nodiscard]] virtual QueryHandle				CreateSOQuery(size_t SOIndex, size_t count) = 0;
+		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count) = 0;
+		//[[nodiscard]] virtual IIndirectLayout*			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
+		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize) = 0;
+
+
+		virtual const IRootSignature* Library(ROOTLIBRARYSIG ID) const noexcept = 0;
+		virtual ResourceHandle			DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
+		// Resetable resources
+		virtual void ResetConstantBuffer(ConstantBufferHandle constant) = 0;
+		virtual void ResetVertexBuffer(VertexBufferHandle constant) = 0;
+		virtual void ResetQuery(QueryHandle handle) = 0;
+
+		// Release
+		virtual void ReleaseCB(ConstantBufferHandle) = 0;
+		virtual void ReleaseVB(VertexBufferHandle) = 0;
+		virtual void ReleaseResource(ResourceHandle) = 0;
+		virtual void ReleaseReadBack(ReadBackResourceHandle) = 0;
+		virtual void ReleaseHeap(DeviceHeapHandle) = 0;
+		virtual void ReleaseQuery(QueryHandle) = 0;
+	};
+
+
+	/************************************************************************************************/
+
+
+	const static size_t MaxBufferedSize = 3;
+
+	template<typename TY_>
+	struct FrameBufferedObject
+	{
+		FrameBufferedObject() { BufferCount = MaxBufferedSize; Idx = 0; for (auto& r : Resources) r = nullptr; }
+
+
+		FrameBufferedObject(const std::initializer_list<TY_*>& IL) : FrameBufferedObject() {
+			auto IL_I = IL.begin();
+			for (size_t I = 0; I < MaxBufferedSize && IL_I != IL.end(); ++I, IL_I++)
+				Resources[I] = *IL_I;
+		}
+
+		size_t Idx;
+		size_t BufferCount;
+		TY_*   Resources[MaxBufferedSize];
+		size_t _Pad;
+
+		size_t	operator ++() { IncrementCounter(); return (Idx); }			// Post Increment
+		size_t	operator ++(int) { size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
+
+		TY_*& operator [] (size_t Index) { return Resources[Index]; }
+
+		//operator ID3D12Resource*()				{ return Get(); }
+		TY_* operator -> ()				{ return Get(); }
+		const TY_* operator -> () const	{ return Get(); }
+
+		operator bool()				{ return (Resources[0] != nullptr); }
+		size_t		size()			{ return BufferCount; }
+
+		TY_*		Get()			{ return Resources[Idx]; }
+		TY_*		Get() const		{ return Resources[Idx]; }
+
+		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
+		void Release()
+		{
+			for (auto& r : Resources)
+			{
+				if (r)
+					r->Release();
+				r = nullptr;
+			};
+		}
+
+		void Release_Delayed(IRenderSystem* RS)
+		{
+			for (auto& r : Resources)
+				if (r) Push_DelayedRelease(RS, r);
+		}
+
+
+		void _SetDebugName(const char* _str) {
+			size_t Str_len = strnlen_s(_str, 64);
+			for (auto& r : Resources) {
+				SetDebugName(r, _str, Str_len);
+			}
+		}
+	};
+
+	
+	/************************************************************************************************/
+
+
+	template<typename TY_Signature>
+	class RunOnceQueue
+	{
+	public:
+		using Callable_TY = FlexKit::TypeErasedCallable<TY_Signature>;
+
+		RunOnceQueue(iAllocator& allocator) : events{ &allocator } {}
+		~RunOnceQueue() = default;
+
+		RunOnceQueue(const RunOnceQueue&)   = delete;
+		RunOnceQueue(RunOnceQueue&&)        = default;
+
+		RunOnceQueue& operator = (const RunOnceQueue&)  = delete;
+		RunOnceQueue& operator = (RunOnceQueue&&)       = default;
+
+
+		void push_back(Callable_TY&& runOnce)
+		{
+			events.push_back(std::move(runOnce));
+		}
+
+
+		template<typename ... TY_Args>
+		void Process(TY_Args&& ... args) requires std::is_invocable_v<Callable_TY, TY_Args...>
+		{
+			for (auto& evt : events)
+				evt(std::forward<TY_Args>(args)...);
+
+			events.clear();
+		}
+	private:
+		Vector<Callable_TY> events;
 	};
 
 

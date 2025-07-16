@@ -271,7 +271,7 @@ namespace FlexKit
 			"CompressBlocks", "cs_6_7", file);
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			RS->Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader),
 		};
 
@@ -282,7 +282,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback compressor shader");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -296,7 +296,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackBlockPreFixSum.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			RS->Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader),
 		};
 
@@ -307,7 +307,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback prefix sum shader");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -320,7 +320,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			RS->Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader),
 		};
 
@@ -331,7 +331,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Merge Block shader");
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -345,7 +345,7 @@ namespace FlexKit
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS->Library.RSDefault,
+			RS->Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader),
 		};
 
@@ -356,7 +356,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, RS->Library.RSDefault };
+		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 	/************************************************************************************************/
@@ -600,7 +600,7 @@ namespace FlexKit
 		ReadBackResourceHandle          readbackBuffer;
 	};
 
-	size_t GetTextureBlockSize(ResourceHandle handle, RenderSystem& renderSystem)
+	size_t GetTextureBlockSize(ResourceHandle handle, IRenderSystem& renderSystem)
 	{
 		auto mip0TileCount	= renderSystem.GetTextureTilingWH(handle, 0);
 

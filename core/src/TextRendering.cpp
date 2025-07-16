@@ -91,7 +91,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
-			PSO_Desc.pRootSignature             = *RS->Library.RS6CBVs4SRVs;
+			PSO_Desc.pRootSignature             = RS->Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
 			PSO_Desc.VS                         = Shader2ByteCode(DrawTextVShader);
 			PSO_Desc.GS                         = Shader2ByteCode(DrawTextGShader);
 			PSO_Desc.PS                         = Shader2ByteCode(DrawTextPShader);
@@ -243,13 +243,13 @@ namespace FlexKit
 				DescriptorHeap descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
 					&allocator);
 
 				descHeap.SetSRV(ctx, 0, spriteSheet);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature				(resources.renderSystem().Library.RS6CBVs4SRVs);
+				ctx.SetRootSignature				(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO, allocator));
 
 				ctx.SetScissorAndViewports			({ resources.GetResource(data.renderTarget) });

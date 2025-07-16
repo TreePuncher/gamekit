@@ -800,20 +800,20 @@ namespace FlexKit
 				memcpy(view->GetBuffer(), vertexBuffer.Begin + buffer, vertexBuffer.size);
 
 				view->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
-				lod.buffers.push_back(view);
+				lod.views.push_back(view);
 			}
 		}
 
-		CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+		CreateVertexBuffer(renderSystem, copyCtx, lod.views, lod.views.size(), lod.bufferSet);
 
 		if (true) // Free memory
 		{
-			for (auto& buffer : lod.buffers)
+			for (auto& buffer : lod.views)
 			{
 				memory.free(buffer);
 			}
 
-			lod.buffers.clear();
+			lod.views.clear();
 		}
 
 
@@ -875,11 +875,11 @@ namespace FlexKit
 					float* temp = (float*)(buffer2 + vertexBuffer.Begin);
 					auto View   = new (memory._aligned_malloc(sizeof(VertexBufferView))) VertexBufferView(buffer2 + vertexBuffer.Begin, vertexBuffer.size);
 					View->SetTypeFormatSize((VERTEXBUFFER_TYPE)vertexBuffer.Type, (VERTEXBUFFER_FORMAT)vertexBuffer.Format, vertexBuffer.size / vertexBuffer.Format );
-					lod.buffers.push_back(View);
+					lod.views.push_back(View);
 				}
 			}
 
-			CreateVertexBuffer(renderSystem, copyCtx, lod.buffers, lod.buffers.size(), lod.vertexBuffer);
+			CreateVertexBuffer(renderSystem, copyCtx, lod.views, lod.views.size(), lod.bufferSet);
 
 			const size_t subMeshCount = lodHeader.descriptor.subMeshCount;
 			for (size_t I = 0; I < subMeshCount; I++)

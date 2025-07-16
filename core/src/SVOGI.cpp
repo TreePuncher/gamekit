@@ -98,7 +98,7 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Init Octree");
 
 				auto Init       = resources.GetPipelineState(VXGI_INITOCTREE, allocator);
-				auto& rootSig   = resources.renderSystem().Library.RSDefault;
+				auto rootSig	= resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 
 				struct alignas(64) OctTreeNode
 				{
@@ -244,7 +244,7 @@ namespace FlexKit
 		auto gatherSubDRequests     = resources.GetPipelineState(VXGI_GATHERSUBDIVISIONREQUESTS, allocator);
 		auto processSubDRequests    = resources.GetPipelineState(VXGI_PROCESSSUBDREQUESTS, allocator);
 
-		auto& rootSig = resources.renderSystem().Library.RSDefault;
+		auto rootSig = resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 		const auto WH = resources.GetTextureWH(data.depthTarget);
 
 		ctx.BeginEvent_DEBUG("SampleInjection");
@@ -397,8 +397,8 @@ namespace FlexKit
 			{
 				ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
 
-				auto debugVis               = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION, allocator);
-				auto& rootSig               = resources.renderSystem().Library.RSDefault;
+				auto debugVis   = resources.GetPipelineState(VXGI_DRAWVOLUMEVISUALIZATION, allocator);
+				auto rootSig	= resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
 
 				struct debugConstants
 				{
@@ -459,7 +459,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("MarkEraseNodes", "cs_6_5", R"(assets\shaders\VXGI_Erase.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -468,7 +468,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 	/************************************************************************************************/
@@ -489,7 +489,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -511,7 +511,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -524,7 +524,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("Injection", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -533,7 +533,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -612,7 +612,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("CreateDrawArgs", "cs_6_5", R"(assets\shaders\VXGI_DrawArgs.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -621,7 +621,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -635,7 +635,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("GatherSubdivionRequests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -644,7 +644,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -657,7 +657,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("ProcessSubdivionRquests", "cs_6_5", R"(assets\shaders\VXGI.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -666,7 +666,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };;
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -680,7 +680,7 @@ namespace FlexKit
 		Shader computeShader = RS.LoadShader("Init", "cs_6_5", R"(assets\shaders\VXGI_InitOctree.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			*RS.Library.RSDefault,
+			RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -689,7 +689,7 @@ namespace FlexKit
 
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 
@@ -721,7 +721,7 @@ namespace FlexKit
 		Depth_Desc.DepthWriteMask               = D3D12_DEPTH_WRITE_MASK_ZERO;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = *RS.Library.RSDefault;
+			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
 			PSO_Desc.VS                    = Shader2ByteCode(VShader);
 			PSO_Desc.PS                    = Shader2ByteCode(PShader);
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -743,7 +743,7 @@ namespace FlexKit
 
 		SETDEBUGNAME(PSO, "UpdateVolumeVisualization");
 
-		return { PSO, RS.Library.RSDefault };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 	}
 
 

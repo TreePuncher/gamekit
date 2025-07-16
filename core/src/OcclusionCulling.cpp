@@ -47,7 +47,7 @@ namespace FlexKit
 	}
 
 
-	PassHistory* PassHistoryTable::GetHistory(class RenderSystem& renderSystem, CameraHandle camera)
+	PassHistory* PassHistoryTable::GetHistory(class IRenderSystem& renderSystem, CameraHandle camera)
 	{
 		auto res = passState.find(camera);
 

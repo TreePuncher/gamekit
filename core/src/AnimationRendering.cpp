@@ -29,7 +29,7 @@ namespace FlexKit
 				allocator
 			},
 			[&](FrameGraphNodeBuilder& builder, AnimationPoseUpload& data){},
-			[&](AnimationPoseUpload& data, ResourceHandler& resources, Context& ctx, iAllocator& localAllocator)
+			[&](AnimationPoseUpload& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& localAllocator)
 			{
 				auto& pass  = passes.GetData().passes;
 				auto res    = FindPass(pass.begin(), pass.end(), GBufferAnimatedPassID);
@@ -196,7 +196,7 @@ namespace FlexKit
 				builder.AddNodeDependency(allocation.node);
 				builder.AddDataDependency(loadedMorphs);
 			},
-			[&](MorphTargets& data, ResourceHandler& resources, Context& ctx, iAllocator& localAllocator)
+			[&](MorphTargets& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& localAllocator)
 			{
 
 			});
