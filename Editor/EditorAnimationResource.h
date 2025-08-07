@@ -55,7 +55,7 @@ namespace FlexKit
 	{
 		SkeletonJoint           Joint;
 		SkeletonJointAnimation	Animation;
-		XMMATRIX		        Inverse;
+		float4x4				Inverse;
 	};
 
 

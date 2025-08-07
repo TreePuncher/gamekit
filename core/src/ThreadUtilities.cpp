@@ -131,36 +131,40 @@ namespace FlexKit
 
 		while (true)
 		{
+			size_t waitTime = 4000;
+
 			for(size_t I = 0; I < 10; I++)
 			{
 				EXITSCOPE({
 					Manager->DecrementActiveWorkerCount();
 					});
 
-					Manager->IncrementActiveWorkerCount();
+				Manager->IncrementActiveWorkerCount();
 
-					if (auto workItem = Manager->FindWork(!Quit); workItem)
+				if (auto workItem = Manager->FindWork(!Quit); workItem)
+				{
+					I = 0;
+					hasJob.store(true, std::memory_order_release);
+
+					RunTask(*workItem);
+
+					hasJob.store(false, std::memory_order_release);
+				}
+				else if(I > 1) // Reduce thread contention a little
+				{
+					const auto begin = __rdtsc();
+					while (true)
 					{
-						I = 0;
-						hasJob.store(true, std::memory_order_release);
+						const auto current	= __rdtsc();
+						const auto duration = current - begin;
 
-						RunTask(*workItem);
-
-						hasJob.store(false, std::memory_order_release);
-					}
-					else if(I > 1) // Reduce thread contention a little
-					{
-						const auto begin = __rdtsc();
-
-						while (true)
+						if (duration >= waitTime)
 						{
-							const auto current	= __rdtsc();
-							const auto duration = current - begin;
-
-							if (duration >= 4000)
-								break;
+							waitTime *= 2;
+							break;
 						}
 					}
+				}
 			}
 
 			Manager->WaitForWork();

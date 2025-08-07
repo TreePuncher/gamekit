@@ -55,7 +55,7 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 	FrameworkState		{ in_framework	},
 	shared				{ IN_shared		},
 	scene				{ IN_shared->blockAllocator },
-	renderWindow		{ FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), shared->targetWindow) },
+	renderWindow		{ FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), (uint64_t)shared->targetWindow) },
 	constantBuffer		{ in_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
 	vertexBuffer		{ in_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
 	textureStreaming	{ in_framework.GetRenderSystem(), in_framework.core.GetBlockMemory() },
@@ -69,7 +69,7 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 	sub.Notify	= &FlexKit::EventsWrapper;
 	sub._ptr	= &framework;
 
-	renderWindow->Handler.Subscribe(sub);
+	Subscribe(renderWindow, sub);
 
 	SetCameraNode(activeCamera, GetZeroedNode());
 

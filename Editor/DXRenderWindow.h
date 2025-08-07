@@ -33,9 +33,9 @@ public:
 	void SetOnDraw(FNRender_t draw);
 	void SetOnResize(FNResize_t resize);
 
-	FlexKit::uint2 WH() const noexcept;
-	void resizeEvent(QResizeEvent* evt);
-	void enterEvent(QMouseEvent* event);
+	FlexKit::uint2	WH() const noexcept;
+	void			resizeEvent(QResizeEvent* evt);
+	void			enterEvent(QMouseEvent* event);
 
 	void DEBUG_SetActiveWindow();
 
@@ -65,7 +65,7 @@ private:
 	FNRender_t                  onDraw;
 	FNResize_t                  onResize;
 
-	FlexKit::Win32RenderWindow* renderWindow;
+	FlexKit::IRenderWindow*		renderWindow;
 	FlexKit::CameraHandle       camera  = FlexKit::InvalidHandle;
 };
 

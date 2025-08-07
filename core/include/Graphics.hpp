@@ -873,7 +873,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept
+	inline DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept
 	{
 		return vb_ref.resource->GetGPUVirtualAddress();
 	}
@@ -940,7 +940,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		virtual const VertexBuffer& operator []	(uint8_t idx) const final
+		virtual const VertexBuffer operator []	(uint8_t idx) const final
 		{
 			auto& buffer = buffers[idx];
 			return {
@@ -1014,6 +1014,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void                    flushPendingBarriers();
 
+		virtual struct IRenderSystem& GetRenderSystem() noexcept final;
+
 		ID3D12GraphicsCommandList* GetAPIObject() { return commandList; }
 
 		ID3D12CommandAllocator*		commandAllocator    = nullptr;
@@ -1062,11 +1064,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class DescriptorHeap : IDescriptorHeap
+	class DescriptorHeap : public IDescriptorHeap
 	{
 	public:
 		DescriptorHeap() {}
-		DescriptorHeap(Context& RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap(IContext& RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
 		DescriptorHeap& operator = (const DescriptorHeap&);
 
@@ -1074,45 +1076,45 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		DescriptorHeap(DescriptorHeap&& rhs);
 		DescriptorHeap& operator = (DescriptorHeap&&);
 
-		DescriptorHeap& Init		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		DescriptorHeap& Init		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& Init2		(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
-		DescriptorHeap& NullFill	(Context& ctx, const size_t end = -1);
+		DescriptorHeap& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
+		DescriptorHeap& Init2		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
+		DescriptorHeap& NullFill	(IContext& ctx, const size_t end = -1);
 
-		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, const ConstantBufferDataSet& constants);
-		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
-		DescriptorHeap& SetCBV					(Context& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
+		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
+		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
+		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
-		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle);
-		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetSRV					(Context& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
-		DescriptorHeap& SetSRVArray				(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		DescriptorHeap& SetSRVArray				(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetSRV3D				(Context& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetSRV3D				(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle);
-		DescriptorHeap& SetSRVCubemap			(Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		DescriptorHeap& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle);
+		DescriptorHeap& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVBuffer			(Context& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+		DescriptorHeap& SetUAVBuffer			(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 
-		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle);
+		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetUAVTexture			(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVCubemap			(Context& ctx, size_t idx, ResourceHandle handle);
+		DescriptorHeap& SetUAVCubemap			(IContext& ctx, size_t idx, ResourceHandle handle);
 
-		DescriptorHeap& SetUAVTexture3D			(Context& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeap& SetUAVTexture3D			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
-		DescriptorHeap& SetUAVStructured		(Context& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+		DescriptorHeap& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		DescriptorHeap& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
-		DescriptorHeap& SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
+		DescriptorHeap& SetStructuredResource	(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
 
-		DescriptorHeap	GetHeapOffsetted(size_t offset, Context& ctx) const;
+		DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const;
 
 		void Mirror(const DescriptorHeap& rhs)
 		{
@@ -1292,7 +1294,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class IndirectLayout : IIndirectLayout
+	class IndirectLayout : public IIndirectLayout
 	{
 	public:
 		IndirectLayout() noexcept :
@@ -1670,7 +1672,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	inline D3D12_CLEAR_VALUE ClearValue2DXClearValue(const ClearValue& CV)
 	{
 		D3D12_CLEAR_VALUE out;
-		memcpy(&out, &CV, sizeof(out));
+		memcpy(&out.Color, &CV.color, sizeof(out.Color));
 		out.Format = TextureFormat2DXGIFormat(CV.format);
 
 		return out;
@@ -2454,13 +2456,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 
-		virtual size_t				GetVertexBufferSize(const VertexBufferHandle) const noexcept;
-		BLAS_PreBuildInfo			GetBLASPreBuildInfo(const IVertexBufferSet&);
+		virtual size_t				GetVertexBufferSize(const VertexBufferHandle) const noexcept final;
+		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo(const IVertexBufferSet&) const noexcept final;
 
-		virtual size_t			GetTextureFrameGraphIndex(ResourceHandle) noexcept;
-		virtual void			SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept;
+		virtual size_t			GetTextureFrameGraphIndex(ResourceHandle) noexcept final;
+		virtual void			SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept final;
 
-		virtual void			MarkTextureUsed(ResourceHandle Handle);
+		virtual void			MarkTextureUsed(ResourceHandle Handle) final;
 
 
 		virtual DeviceAddressRange	GetDeviceRange(const ResourceHandle) const noexcept final;
@@ -2523,7 +2525,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		virtual const IRootSignature* Library(ROOTLIBRARYSIG ID) const noexcept final;
 
-		void BackResource(ResourceHandle, const GPUResourceDesc& desc);
+		virtual void BackResource(ResourceHandle, const GPUResourceDesc& desc) noexcept final;
 
 		void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
 		std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
@@ -2829,10 +2831,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
 
+		/*
 		void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetViewports				(std::span<const D3D12_VIEWPORT>	VPs);
-		void SetScissorRects			(static_vector<D3D12_RECT, 16>		Rects);
-		void SetScissorRects			(std::span<const D3D12_RECT>		Rects);
+		void SetScissorRects			(static_vector<D3D12_RECT, 16>		rects);
+		void SetScissorRects			(std::span<const D3D12_RECT>		rects);
+		*/
+
+		void SetViewports				(std::span<const Viewport>	VPs)	final;
+		void SetScissorRects			(std::span<const Rect>		rects)	final;
 
 		void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets);
 		void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
@@ -2862,7 +2869,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetDepthStencil	(ResourceHandle DS);
 		void SetInputPrimitive	(EInputPrimitive primitive);
 
-		void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+		virtual void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
 
 		void NullGraphicsConstantBufferView	(size_t idx);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
@@ -2986,14 +2993,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span);
 		void SetVertexBuffers		(const std::span<const VertexBufferResource>		span);
 
-		void SetVertexBuffers2		(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>&	list);
-		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		list);
+		void SetVertexBuffers2		(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>&	views);
+		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		views);
+		void SetVertexBuffers2		(const std::span<const VBView>							views, uint32_t offset = 0);
 
 		void SetSOTargets			(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
 		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0);
 		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0);
-		void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0);
+		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0) final;
 		void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0);
 		void Clear					();
 
@@ -3045,6 +3053,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetUAVRead();
 		void SetUAVWrite();
 		void SetUAVFree();
+
+		IRenderSystem& GetRenderSystem() noexcept final;
 
 		void _QueueReadBacks();
 
@@ -3286,27 +3296,32 @@ private:
 
 
 	template<typename ... ARGS>
-	void SetScissorAndViewports(Context& ctx, std::tuple<ARGS...>	RenderTargets)
+	void SetScissorAndViewports(IDirectContext& ictx, std::tuple<ARGS...>	RenderTargets)
 	{
-		static_vector<D3D12_VIEWPORT, 16>	VPs;
-		static_vector<D3D12_RECT, 16>		Rects;
+		auto& ctx = static_cast<Context&>(ictx);
+
+		static_vector<Viewport, 16>	VPs;
+		static_vector<Rect, 16>		Rects;
 
 		Tuple_For(
 			RenderTargets,
 			[&](auto target)
 			{
 				const auto WH = ctx.renderSystem->GetTextureWH(target);
-				VPs.push_back({ 0,0, (FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
-				Rects.push_back({ 0,0, (LONG)WH[0], (LONG)WH[1] });
+				VPs.push_back({ 0.0f ,0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f });
+				Rects.push_back({ 0,0, WH[0], WH[1] });
 			});
 
 		ctx.SetViewports(VPs);
 		ctx.SetScissorRects(Rects);
 	}
 
+
 	template<typename TY_RES1, typename TY_RES2>
-	void CopyTexture2D(Context& ctx, TY_RES1 des, TY_RES2 src)
+	void CopyTexture2D(IDirectContext& ictx, TY_RES1 des, TY_RES2 src)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		ctx.FlushBarriers();
 
 		ctx.GetCommandList()->CopyResource(

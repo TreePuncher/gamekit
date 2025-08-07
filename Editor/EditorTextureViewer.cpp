@@ -1,6 +1,7 @@
 #include "PCH.h"
 #include "EditorTextureViewer.h"
 #include "EditorRenderer.h"
+#include <RenderSystemInterface.hpp>
 #include <QtWidgets/qboxlayout.h>
 #include <QtWidgets/qtextedit.h>
 #include <qevent.h>
@@ -53,7 +54,7 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 				{
 					data.renderTarget = Builder.RenderTarget(renderTarget);
 				},
-				[=](DrawTexture& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& context, FlexKit::iAllocator& allocator)
+				[=](DrawTexture& data, const FlexKit::ResourceHandler& frameResources, FlexKit::IDirectContext& context, FlexKit::iAllocator& allocator)
 				{
 					auto XY = frameResources.GetTextureWH(data.renderTarget);
 					float aspectRatio = (XY[0]) / float(XY[1]);
@@ -102,12 +103,12 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 						{ frameResources.GetResource(data.renderTarget) },
 						false);
 
-					context.SetRootSignature(frameResources.renderSystem().Library.RS6CBVs4SRVs);
+					context.SetRootSignature(frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs));
 					context.SetPipelineState(frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO, allocator));
 					context.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 					FlexKit::DescriptorHeap descHeap;
-					auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);
+					auto& desciptorTableLayout = frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0);
 
 					descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
 					descHeap.NullFill(context, 1);

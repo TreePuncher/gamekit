@@ -1513,9 +1513,10 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			data.renderTarget = builder.RenderTarget(desc.renderTarget);
 			builder.AddDataDependency(desc.lights);
 		},
-		[&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, auto& allocator)
+		[&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::IDirectContext& ctx, auto& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Editor HUD");
+			static auto rootSiag = resources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
 
 			struct Vertex
 			{
@@ -1532,11 +1533,11 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			FlexKit::DescriptorHeap descHeap;
 			descHeap.Init(
 				ctx,
-				resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+				rootSiag->GetDescHeap(0),
 				&allocator);
 			descHeap.NullFill(ctx);
 
-			ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+			ctx.SetRootSignature(rootSiag);
 			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
 
 			auto scaling	= renderWindow->GetDPIScaling();
@@ -1544,15 +1545,15 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			auto w			= size.width() * scaling;
 			auto h			= size.height() * scaling;
 
-			D3D12_VIEWPORT vp;
+			FlexKit::Viewport vp;
 			vp.Height	= h;
 			vp.Width	= w;
-			vp.MaxDepth = 1.0f;
-			vp.MinDepth = 0.0f;
-			vp.TopLeftX = 0;
-			vp.TopLeftY = 0;
+			vp.Max = 1.0f;
+			vp.Min = 0.0f;
+			vp.X = 0;
+			vp.Y = 0;
 
-			D3D12_RECT rect;
+			FlexKit::Rect rect;
 			rect.right	= w;
 			rect.bottom = h;
 			rect.left	= 0;

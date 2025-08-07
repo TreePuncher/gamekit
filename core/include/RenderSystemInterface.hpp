@@ -870,6 +870,7 @@ namespace FlexKit
 		uint32_t subResource = -1;
 	};
 
+
 	struct CopyBarrier
 	{
 		ResourceHandle			handle;
@@ -1011,6 +1012,7 @@ namespace FlexKit
 		DeviceAddressRange           rayGenerationRecord;
 	};
 
+
 	struct Graphics_Desc
 	{
 		iAllocator*		Memory;
@@ -1021,6 +1023,7 @@ namespace FlexKit
 		bool			DX_GPUvalidation				= false;
 		bool			DX_SynchronizedQueueValidation	= false;
 	};
+
 
 	struct ShaderDesc
 	{
@@ -1135,6 +1138,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct VBView
+	{
+		DevicePointer	buffer;
+		uint32_t		size;
+		uint32_t		stride;
+	};
+
+
 	struct VertexBufferEntry
 	{
 		VertexBufferHandle	VertexBuffer	= InvalidHandle;
@@ -1152,6 +1163,10 @@ namespace FlexKit
 		UINT				stride = 0;
 		UINT				offset = 0;
 	};
+
+
+	/************************************************************************************************/
+
 
 	class IndirectDrawDescription
 	{
@@ -1203,9 +1218,17 @@ namespace FlexKit
 	};
 
 
+	struct Rect
+	{
+		uint32_t left;
+		uint32_t top;
+		uint32_t right;
+		uint32_t bottom;
+	};
+
 	struct Viewport
 	{
-		size_t X, Y, Height, Width;
+		float  X, Y, Height, Width;
 		float  Min, Max;
 	};
 
@@ -1714,7 +1737,7 @@ namespace FlexKit
 		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) = 0;
 		virtual void                Resize(const uint2 WH) = 0;
 
-		//virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
+		virtual void				Release() = 0;
 
 		operator ResourceHandle () { return GetBackBuffer(); }
 
@@ -1735,6 +1758,7 @@ namespace FlexKit
 
 	struct IContext
 	{
+		virtual struct IRenderSystem& GetRenderSystem() noexcept = 0;
 	};
 
 
@@ -1794,7 +1818,7 @@ namespace FlexKit
 		virtual void SetDepthStencil			(ResourceHandle DS) {};
 		virtual void SetInputPrimitive			(EInputPrimitive primitive) {};
 
-		virtual void SetGraphicsConstantValue	(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+		virtual void SetGraphicsConstantValue	(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) = 0;
 
 		virtual void NullGraphicsConstantBufferView	(size_t idx) {};
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) {};
@@ -1832,12 +1856,34 @@ namespace FlexKit
 
 		virtual void CopyResource(ResourceHandle dest, ResourceHandle src) {};
 
+
 		virtual void CopyBufferRegion(
 			ResourceHandle	destination,
 			ResourceHandle	source,
 			size_t			size,
 			size_t			destinationOffset = 0,
 			size_t			sourceOffset = 0) {};
+
+		virtual void CopyBufferRegion(
+			ResourceHandle		destination,
+			DeviceResource_ptr	source,
+			size_t				size,
+			size_t				destinationOffset = 0,
+			size_t				sourceOffset = 0) {};
+
+		virtual void CopyBufferRegion(
+			DeviceResource_ptr	destination,
+			ResourceHandle		source,
+			size_t				size,
+			size_t				destinationOffset = 0,
+			size_t				sourceOffset = 0) {};
+
+		virtual void CopyBufferRegion(
+			DeviceResource_ptr	destination,
+			DeviceResource_ptr	source,
+			size_t				size,
+			size_t				destinationOffset = 0,
+			size_t				sourceOffset = 0) {};
 
 		virtual void CopyTextureRegion(
 			ResourceHandle		dest,
@@ -1869,9 +1915,11 @@ namespace FlexKit
 		virtual void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span) {};
 		virtual void SetVertexBuffers		(const std::span<const VertexBufferResource>		span) {};
 
+		virtual void SetVertexBuffers2		(const std::span<const VBView> views, uint32_t offset = 0) = 0;
+
 		virtual void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0) {};
 		virtual void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0) {};
-		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0);
+		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0) = 0;
 		virtual void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0) {};
 		virtual void Clear					() {};
 
@@ -1895,8 +1943,14 @@ namespace FlexKit
 
 		virtual void Close() {}
 
+		virtual void SetViewports				(std::span<const Viewport>	VPs)	= 0;
+		virtual void SetScissorRects			(std::span<const Rect>		rects)	= 0;
+
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment = 256) { return {}; }
 	};
+
+
+	/************************************************************************************************/
 
 
 	struct ICopyContext : public IContext
@@ -1937,9 +1991,12 @@ namespace FlexKit
 	{
 		virtual void						Clear() = 0;
 		virtual std::optional<VertexBuffer> Find			(VERTEXBUFFER_TYPE) const = 0;
-		virtual const VertexBuffer&			operator []		(uint8_t idx) const = 0;
+		virtual const VertexBuffer			operator []		(uint8_t idx) const = 0;
 		virtual uint8_t						GetIndexBufferIndex() const = 0;
 	};
+
+
+	/************************************************************************************************/
 
 
 	struct IRenderSystem
@@ -1971,7 +2028,7 @@ namespace FlexKit
 
 		virtual IDirectContext&	GetDirectCommandList(std::optional<SyncPoint> ticket = {}) = 0;
 
-		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)										= 0;
+		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)										= 0; 
 		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
 		virtual void		EndFrame()																	= 0;
 		virtual void		Signal(SyncPoint)															= 0;
@@ -1988,7 +2045,7 @@ namespace FlexKit
 
 		// Info queries
 		virtual	size_t				GetVertexBufferSize		(const VertexBufferHandle)	const noexcept = 0;
-		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const IVertexBufferSet&)	const noexcept;
+		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const IVertexBufferSet&)	const noexcept = 0;
 
 		virtual size_t				GetTextureFrameGraphIndex(ResourceHandle)			noexcept = 0;
 		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
@@ -2032,6 +2089,7 @@ namespace FlexKit
 		virtual bool				VertexBufferPush		(VertexBufferHandle, void* _ptr, size_t elementSize) = 0;
 		virtual size_t				ConstantBufferAlign		(ConstantBufferHandle) = 0;
 
+		virtual void				BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept = 0;
 
 		// Resource upload
 		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) = 0; // Uses Upload Queue
@@ -2070,7 +2128,7 @@ namespace FlexKit
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize) = 0;
 
 
-		virtual const IRootSignature* Library(ROOTLIBRARYSIG ID) const noexcept = 0;
+		virtual const IRootSignature*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
 		virtual ResourceHandle			DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
 		// Resetable resources
 		virtual void ResetConstantBuffer(ConstantBufferHandle constant) = 0;

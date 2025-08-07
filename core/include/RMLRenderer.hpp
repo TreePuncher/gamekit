@@ -5,6 +5,7 @@
 #include "ResourceHandles.hpp"
 #include <chrono>
 
+// Rml Forward declarations
 namespace Rml
 {
 	class Context;
@@ -12,16 +13,17 @@ namespace Rml
 
 namespace FlexKit
 {
-	constexpr FlexKit::PSOHandle RMLDrawPSO		= FlexKit::PSOHandle{ GetCRCGUID(RMLDrawPSO) };
-	constexpr FlexKit::PSOHandle RMLDraw2PSO	= FlexKit::PSOHandle{ GetCRCGUID(RMLDraw2PSO) };
+	constexpr PSOHandle RMLDrawPSO	= PSOHandle{ GetCRCGUID(RMLDrawPSO) };
+	constexpr PSOHandle RMLDraw2PSO	= PSOHandle{ GetCRCGUID(RMLDraw2PSO) };
 
 	class Context;
 	class Event;
 	class RenderSystem;
 
+
 	struct RmlPassData
 	{
-		FlexKit::ResourceHandle							renderTarget;
+		ResourceHandle	renderTarget;
 	};
 
 
@@ -30,8 +32,8 @@ namespace FlexKit
 		uint16_t point[2];
 		uint16_t UV[2];
 		uint8_t color[4];
-
 	};
+
 
 	class RmlIntegrator : NoCopy
 	{

@@ -137,7 +137,7 @@ namespace FlexKit
 				data.renderTarget	= builder.RenderTarget(renderTarget);
 				data.depthTarget	= builder.DepthTarget(depthTarget);
 			},
-			[layer, camera](PhysicsDebugOverlayPass& pass, const FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, [[maybe_unused]]auto& allocator)
+			[layer, camera](PhysicsDebugOverlayPass& pass, const ResourceHandler& resources, IDirectContext& ctx, [[maybe_unused]]auto& allocator)
 			{
 				auto& layer_ref	= FlexKit::PhysXComponent::GetComponent().GetLayer_ref(layer);
 				auto& geometry	= layer_ref.debugGeometry;

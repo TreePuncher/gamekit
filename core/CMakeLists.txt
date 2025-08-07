@@ -81,6 +81,7 @@ add_library(flex
     "src/Transforms.cpp"
     "src/Transparency.cpp"
     "src/TriggerComponent.cpp"
+    "src/Win32Graphics.cpp"
     "src/WorldRender.cpp"
  )
 

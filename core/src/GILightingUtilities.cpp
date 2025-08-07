@@ -535,7 +535,7 @@ namespace FlexKit
 					data.rayGenTable		= builder.CopyDest(rayGenTable);
 					data.missShaderTable	= builder.CopyDest(missShaderTable);
 				},
-				[&](Resources& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				[&](Resources& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 				{
 					ID3D12StateObjectProperties* stateObjectProperties;
 					if (FAILED(stateObject->QueryInterface(&stateObjectProperties)))
@@ -698,8 +698,10 @@ namespace FlexKit
 					
 					builder.AddNodeDependency(static_cast<TracableScene*>(bvh._ptr)->resourceAllocation->node);
 				},
-				[&, &scene = *static_cast<TracableScene*>(bvh._ptr)->scene](raytrace_data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+				[&, &scene = *static_cast<TracableScene*>(bvh._ptr)->scene](raytrace_data& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 				{
+					FK_ASSERT(false, "TODO: Add RT functions to context interface");
+
 					ctx.BeginEvent_DEBUG("RT Experiment");
 					ctx.BeginEvent_DEBUG("Update Top Level Accelleration Struction");
 
@@ -767,7 +769,7 @@ namespace FlexKit
 						};
 
 						ctx.FlushBarriers();
-						ctx.DeviceContext->BuildRaytracingAccelerationStructure(&buildAS, 0, nullptr);
+						//ctx.DeviceContext->BuildRaytracingAccelerationStructure(&buildAS, 0, nullptr);
 
 						ctx.AddBufferBarrier(resources.GetResource(data.tlAS), DASACCELERATIONSTRUCTURE_WRITE, DASACCELERATIONSTRUCTURE_READ, Sync_BuildRaytracingAccellerationStructure, Sync_Raytracing);
 						ctx.EndEvent_DEBUG();
@@ -856,7 +858,7 @@ namespace FlexKit
 					};
 
 
-					ctx.DeviceContext->SetPipelineState1(stateObject);
+					//ctx.DeviceContext->SetPipelineState1(stateObject); // TODO: Add to IDirectContext and IComputeContext
 					ctx.DispatchRays({ resources.GetTextureWH(data.depthBuffer), 1 }, desc);
 
 					ctx.EndEvent_DEBUG();

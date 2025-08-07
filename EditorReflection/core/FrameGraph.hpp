@@ -1,36 +1,10 @@
-/**********************************************************************
+#pragma once
 
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
-#ifndef RENDERGRAPH_H
-#define RENDERGRAPH_H
-
-#include "Graphics.hpp"
-#include "GraphicsComponents.hpp"
 #include "Containers.hpp"
 #include "Components.hpp"
 #include "DefaultPipelineStates.hpp"
+#include "GraphicsComponents.hpp"
+#include "RenderSystemInterface.hpp"
 #include <type_traits>
 
 
@@ -3379,7 +3353,7 @@ namespace FlexKit
 				Data.vertexCount = (uint32_t)rects.size() * 8;
 				*/
 			},
-			[](auto& Data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				DescriptorHeap descHeap;
 				descHeap.Init(
@@ -3528,7 +3502,7 @@ namespace FlexKit
 				Data.vertexBuffer   = vertices;
 				Data.VertexCount    = Lines.size() * 2;
 			},
-			[](auto& Data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[](auto& Data, const ResourceHandler& resources, IContext& ctx, iAllocator& allocator)
 			{
 				DescriptorHeap descHeap;
 				descHeap.Init(
@@ -3580,8 +3554,9 @@ namespace FlexKit
 			{
 				data.feedbackTarget = builder.RenderTarget(target);
 			},
-			[](const _Clear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
+			[](const _Clear& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator&)
 			{
+				FK_ASSERT(0, "UNFINISHED FUNCTION!");
 				/*
 				struct _Constants
 				{
@@ -3601,4 +3576,29 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
-#endif
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

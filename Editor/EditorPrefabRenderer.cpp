@@ -7,6 +7,7 @@
 #include "EditorRenderer.h"
 #include "EditorSelectedPrefabObject.h"
 #include "SharedEngineMemory.hpp"
+#include <RenderSystemInterface.hpp>
 
 #if 0
 #define BOOST_ASIO_NO_WIN32_LEAN_AND_MEAN
@@ -61,23 +62,26 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllo
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
 	Depth_Desc.DepthEnable	= true;
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
-		PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
-		PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
-		PSO_Desc.RasterizerState       = Rast_Desc;
-		PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-		PSO_Desc.SampleMask            = UINT_MAX;
-		PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-		PSO_Desc.NumRenderTargets      = 1;
-		PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Albedo
-		PSO_Desc.SampleDesc.Count      = 1;
-		PSO_Desc.SampleDesc.Quality    = 0;
-		PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-		PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-		PSO_Desc.DepthStencilState     = Depth_Desc;
-		PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-	}
+	static auto rootSig = RS.Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
+		.pRootSignature			= rootSig->GetAPIObject(),
+		.VS						= Shader2ByteCode(DrawRectVShader),
+		.PS						= Shader2ByteCode(DrawRectPShader),
+		.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT),
+		.SampleMask				= UINT_MAX,
+		.RasterizerState		= Rast_Desc,
+		.DepthStencilState		= Depth_Desc,
+		.InputLayout			= { InputElements, sizeof(InputElements)/sizeof(*InputElements) },
+		.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+		.NumRenderTargets		= 1,
+		.RTVFormats				= { DXGI_FORMAT_R16G16B16A16_FLOAT }, // Albedo
+		.DSVFormat				= DXGI_FORMAT_D32_FLOAT,
+		.SampleDesc				= { .Count = 1, .Quality = 0 },
+	};
+
+	PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+
 
 	ID3D12PipelineState* PSO = nullptr;
 	auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -85,7 +89,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllo
 
 	SETDEBUGNAME(PSO, "DrawGrayPrefab");
 
-	return { PSO, RS.Library.RS6CBVs4SRVs };
+	return { PSO, rootSig };
 }
 
 
@@ -127,8 +131,9 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 	Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
 	Depth_Desc.DepthEnable	= true;
 
+	auto rootSignature = RS.Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-		PSO_Desc.pRootSignature        = *RS.Library.RS6CBVs4SRVs;
+		PSO_Desc.pRootSignature        = rootSignature->GetAPIObject();
 		PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
 		PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
 		PSO_Desc.RasterizerState       = Rast_Desc;
@@ -151,7 +156,7 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 
 	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
-	return { PSO, RS.Library.RS6CBVs4SRVs };
+	return { PSO, rootSignature };
 }
 
 
@@ -517,7 +522,7 @@ void EditorPrefabPreview::RenderStatic(
 				singleStep = false;
 			}
 		},
-		[=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, FlexKit::iAllocator& allocator)
+		[=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::IDirectContext& ctx, FlexKit::iAllocator& allocator)
 		{
 			using namespace FlexKit;
 			auto brush = GetBrush(gameObject);
@@ -563,7 +568,7 @@ void EditorPrefabPreview::RenderStatic(
 			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer};
 			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ .LightCount = 1, .t = 1, .WH = WH }, passConstantBuffer };
 
-			auto& rootSignature = frameResources.renderSystem().Library.RS6CBVs4SRVs;
+			auto rootSignature = frameResources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs);
 			ctx.SetRootSignature(rootSignature);
 
 			DescriptorHeap emptyHeap(ctx, rootSignature->GetDescHeap(0), allocator);
@@ -1086,7 +1091,7 @@ void EditorPrefabPreview::mouseReleaseEvent(QMouseEvent* event)
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2023 Robert May
+Copyright (c) 2015 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -93,7 +93,7 @@ namespace FlexKit
 			{
 				data.octree = builder.UnorderedAccess(octreeBuffer);
 			},
-			[](InitOctree& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[](InitOctree& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("Init Octree");
 
@@ -125,7 +125,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GILightingEngine::_GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx, iAllocator& temp)
+	void GILightingEngine::_GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, IDirectContext& ctx, iAllocator& temp)
 	{
 		ctx.SetComputeRootSignature(gatherSignature);
 
@@ -141,7 +141,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GILightingEngine::CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+	void GILightingEngine::CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
 		/*
 		auto markNodes          = resources.GetPipelineState(VXGI_MARKERASE);
@@ -237,7 +237,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GILightingEngine::CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+	void GILightingEngine::CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
 		auto sampleInjection        = resources.GetPipelineState(VXGI_SAMPLEINJECTION, allocator);
 		auto gatherDispatchArgs     = resources.GetPipelineState(VXGI_GATHERDISPATCHARGS, allocator);
@@ -356,7 +356,7 @@ namespace FlexKit
 				builder.SetDebugName(data.indirectArgs, "IndirectArgs");
 				builder.SetDebugName(data.sampleBuffer, "SampleBuffer");
 			},
-			[this](UpdateVoxelVolume& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[this](UpdateVoxelVolume& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("VXGI");
 
@@ -393,7 +393,7 @@ namespace FlexKit
 				data.indirectArgs   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(512), DASUAV);
 				data.octree         = builder.NonPixelShaderResource(octreeBuffer);
 			},
-			[mipOffset](SVO_RayTrace& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[mipOffset](SVO_RayTrace& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("VXGI_DrawVolume");
 
@@ -945,7 +945,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticVoxelizer::GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator, const size_t offset)
+	void StaticVoxelizer::GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, IDirectContext& ctx, iAllocator& TL_allocator, const size_t offset)
 	{
 		static const auto gatherArgs = resources.GetPipelineState(SVO_GatherArguments, TL_allocator);
 		ctx.SetComputeRootSignature(markSignature);
@@ -980,7 +980,7 @@ namespace FlexKit
 				data.parentBuffer   = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(32 * MEGABYTE), DASUAV);
 				data.octree         = builder.UnorderedAccess(octreeBuffer);
 			},
-			[&scene, this](VoxelizePass& data, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator)
+			[&scene, this](VoxelizePass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& TL_allocator)
 			{
 				ctx.BeginEvent_DEBUG("Static Voxelizer");
 
@@ -1022,7 +1022,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticVoxelizer::GatherSamples(CommonResources& resources, Scene& scene, ResourceHandler& resourcesHandler, Context& ctx, iAllocator& TL_allocator)
+	void StaticVoxelizer::GatherSamples(CommonResources& resources, Scene& scene, ResourceHandler& resourcesHandler, IDirectContext& ctx, iAllocator& TL_allocator)
 	{
 		auto voxelize               = resourcesHandler.GetPipelineState(SVO_Voxelize, TL_allocator);
 		auto& visabilityComponent   = SceneVisibilityComponent::GetComponent();
@@ -1061,8 +1061,8 @@ namespace FlexKit
 			{ VoxelEdgeLength / -2, VoxelEdgeLength / -2, VoxelEdgeLength / -2, 0 },
 		};
 
-		ctx.SetViewports({ D3D12_VIEWPORT{ 0, 0, VoxelResolution, VoxelResolution, 0, 1.0f } });
-		ctx.SetScissorRects({ D3D12_RECT{ 0, 0, VoxelResolution, VoxelResolution} });
+		ctx.SetViewports(static_vector{ Viewport{ 0, 0, VoxelResolution, VoxelResolution, 0, 1.0f } });
+		ctx.SetScissorRects(static_vector{ Rect{ 0, 0, VoxelResolution, VoxelResolution} });
 		ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 		ctx.SetGraphicsConstantValue(0, 12, values);
 				
@@ -1114,7 +1114,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticVoxelizer::BuildTree(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
+	void StaticVoxelizer::BuildTree(CommonResources& resources, ResourceHandler& resourceHandler, IDirectContext& ctx, iAllocator& TL_allocator)
 	{
 		const auto gatherSubDRequests = resourceHandler.GetPipelineState(SVO_GATHERSUBDIVISIONREQUESTS, TL_allocator);
 		const auto expandNodes        = resourceHandler.GetPipelineState(SVO_EXPANDNODES, TL_allocator);
@@ -1197,7 +1197,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticVoxelizer::BuildMIPLevels(CommonResources& resources, ResourceHandler& resourceHandler, Context& ctx, iAllocator& TL_allocator)
+	void StaticVoxelizer::BuildMIPLevels(CommonResources& resources, ResourceHandler& resourceHandler, IDirectContext& ctx, iAllocator& TL_allocator)
 	{
 		const auto buildLevel = resourceHandler.GetPipelineState(SVO_BUILDMIPLEVEL, TL_allocator);
 
@@ -1243,3 +1243,28 @@ namespace FlexKit
 
 
 }   /************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2014-2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

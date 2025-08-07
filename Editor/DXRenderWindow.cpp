@@ -10,7 +10,7 @@
 
 DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent) :
 	QWidget         { parent },
-	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (HWND)winId()) }
+	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (uint64_t)winId()) }
 {
 	hide();
 
@@ -80,7 +80,7 @@ void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher
 		}
 		else
 		{
-			frameGraph.AddResource(renderWindow->backBuffer);
+			frameGraph.AddResource(renderWindow->GetBackBuffer());
 
 			FlexKit::ClearBackBuffer(frameGraph, renderWindow->GetBackBuffer(), FlexKit::float4{ 0.0f, 0.0f, 0.0f, 1 });
 			FlexKit::PresentBackBuffer(frameGraph, renderWindow->GetBackBuffer());
@@ -189,7 +189,7 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 		resizeTask = FlexKit::CreateWorkItem(
 			[this](auto&& _)
 			{
-				while (renderWindow->WH != newWidthHeight.load())
+				while (renderWindow->GetWH() != newWidthHeight.load())
 					renderWindow->Resize(newWidthHeight);
 
 				resizeFinished		= true;
@@ -206,7 +206,7 @@ void DXRenderWindow::resizeEvent(QResizeEvent* evt)
 
 void DXRenderWindow::enterEvent(QMouseEvent* event)
 {
-	renderWindow->PIX_SetActiveWindow();
+	PIX_INTERNAL_SetActiveWindow(renderWindow);
 }
 
 
@@ -215,7 +215,7 @@ void DXRenderWindow::enterEvent(QMouseEvent* event)
 
 void DXRenderWindow::DEBUG_SetActiveWindow()
 {
-	renderWindow->PIX_SetActiveWindow();
+	PIX_INTERNAL_SetActiveWindow(renderWindow);
 }
 
 
@@ -233,7 +233,7 @@ FlexKit::ResourceHandle DXRenderWindow::GetBackBuffer() const
 
 float DXRenderWindow::GetDPIScaling() const noexcept
 {
-	return renderWindow->GetDPIScaling();
+	return FlexKit::GetDPIScaling(renderWindow);
 }
 
 

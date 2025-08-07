@@ -177,6 +177,12 @@ struct SceneResourceViewer : public IResourceViewer
 
 EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions& ops) :
 	qtApp				{ IN_qtApp },
+	fkApplication		{
+		FlexKit::CreateEngineMemory(),
+		{	.GPUdebugMode	= ops.enableAPIDebugging,
+			.GPUValidation	= ops.enableAPIDebugging,
+			.GPUSyncQueues	= ops.enableAPIDebugging } },
+
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
 	scripts				{ std::make_unique<EditorScriptEngine>()	},
@@ -193,17 +199,38 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 	QApplication::setApplicationName("Flex");
 	QApplication::setOrganizationName("MonotoneZombie");
 
+	project.onHeaderAdded.Connect(components.onHeaderAdded);
+
 	if (!ops.skipPrevious)
 	{
-		auto previousPath = settings.value("project_directory", QDir::currentPath()).toString().toStdString();
+		auto previousProj = settings.value("project_directory", QDir::currentPath()).toString().toStdString();
 
-		project.onHeaderAdded.Connect(components.onHeaderAdded);
+		if (std::filesystem::exists(previousProj)) //previousPath != std::filesystem::current_path()
+		{
+			currentProjectFile = previousProj;
+			project.LoadProject(previousProj);
+			currentProject = &project;
+		}
+	}
 
-		if (previousPath != std::filesystem::current_path())
-			project.LoadProject(previousPath);
+	// Handle default project location
+	if(currentProject == nullptr)
+	{
+		auto currentPath = std::filesystem::current_path().string();
 
-		currentProject		= &project;
-		currentProjectFile	= previousPath + "\\flex.proj";
+		if (auto defaultProject = currentPath + "/project/flex.proj";  std::filesystem::exists(defaultProject))
+		{
+			currentProjectFile = defaultProject;
+			project.LoadProject(defaultProject);
+		}
+		else 
+		{
+			currentProjectFile = currentPath + "/project/flex.proj";// Create a new project directory
+			project.CreateProjectFileStructure(currentPath + "/project");
+		}
+
+		settings.setValue("project_directory", QVariant{ QString::fromStdString(currentProjectFile) });
+		currentProject = &project;
 	}
 
 	SceneBrushEditorComponent::Register(project, mainWindow.Get3DView());
