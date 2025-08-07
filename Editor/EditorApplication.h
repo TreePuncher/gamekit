@@ -43,6 +43,14 @@ using GameResExporter_ptr	= std::unique_ptr<GameResExporter>;
 struct EditorOptions
 {
 	bool skipPrevious = false;
+	bool enableAPIDebugging = [] () -> bool
+		{
+#if _DEBUG
+			return true;
+#else
+			return false;
+#endif
+		}();
 };
 
 
@@ -55,11 +63,7 @@ public:
 	QApplication&					qtApp;
 	QSettings						settings;
 
-#if DEBUG
-	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory(), { .threadCount = 6, .GPUdebugMode = true } };
-#else
-	FlexKit::FKApplication			fkApplication{ FlexKit::CreateEngineMemory() };
-#endif
+	FlexKit::FKApplication			fkApplication;
 
 	EditorProjectScriptConnector_ptr	projectConnector;
 	EditorScriptEngine_ptr				scripts;

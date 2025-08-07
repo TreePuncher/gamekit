@@ -411,20 +411,21 @@ std::string ProjectGetObjectDirectory()
 
 void EditorProject::CreateProjectFileStructure(const std::string& projectDir)
 {
-	projectDirectory = projectDir; 
-	create_directory(projectDirectory.string() + R"(\generated_headers)");
-	create_directory(projectDirectory.string() + R"(\components)");
-	create_directory(projectDirectory.string() + R"(\assets)");
-	create_directory(projectDirectory.string() + R"(\assetPacks)");
-	create_directory(projectDirectory.string() + R"(\includes)");
-	create_directory(projectDirectory.string() + R"(\src)");
+	projectDirectory = projectDir;
+	create_directory(projectDirectory.string());
+	create_directory(projectDirectory.string() + R"(/generated_headers)");
+	create_directory(projectDirectory.string() + R"(/components)");
+	create_directory(projectDirectory.string() + R"(/assets)");
+	create_directory(projectDirectory.string() + R"(/assetPacks)");
+	create_directory(projectDirectory.string() + R"(/includes)");
+	create_directory(projectDirectory.string() + R"(/src)");
 
-	copy_file(R"(resources\vcpkg.json)",		projectDirectory.string() + R"(\vcpkg.json)");
-	copy_file(R"(resources\CMakePresets.json)", projectDirectory.string() + R"(\CMakePresets.json)");
-	copy_file(R"(resources\main.cpp)",			projectDirectory.string() + R"(\src\main.cpp)");
-	copy_file(R"(resources\.gitignore)",		projectDirectory.string() + R"(\.gitignore)");
+	copy_file(R"(resources/vcpkg.json)",		projectDirectory.string() + R"(/vcpkg.json)");
+	copy_file(R"(resources/CMakePresets.json)", projectDirectory.string() + R"(/CMakePresets.json)");
+	copy_file(R"(resources/main.cpp)",			projectDirectory.string() + R"(/src/main.cpp)");
+	copy_file(R"(resources/.gitignore)",		projectDirectory.string() + R"(/.gitignore)");
 
-	SaveProject(projectDirectory.string() + R"(\flex.proj)");
+	SaveProject(projectDirectory.string() + R"(/flex.proj)");
 }
 
 

@@ -844,7 +844,7 @@ namespace FlexKit
 				data.MRIA    = builder.RenderTarget(gbuffer.MRIA);
 				data.normal  = builder.RenderTarget(gbuffer.normal);
 			},
-			[&gbuffer](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
+			[&gbuffer](GBufferClear& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator&)
 			{
 				auto temp = resources.renderSystem().GetDeviceResource(gbuffer.albedo);
 
@@ -951,7 +951,7 @@ namespace FlexKit
 					{
 						data.clusterBuffer = builder.UnorderedAccess(resource);
 					},
-					[=](_CreateClusterBuffer_Desc& data, ResourceHandler& resources, Context& ctx, iAllocator& tempAllocator)
+					[=](_CreateClusterBuffer_Desc& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& tempAllocator)
 					{
 						ProfileFunction();
 
@@ -1039,11 +1039,11 @@ namespace FlexKit
 			};
 
 		auto draw	=
-			[](const auto begin, const auto end, std::span<const DrawEntry> drawList, MarkClustersPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+			[](const auto begin, const auto end, std::span<const DrawEntry> drawList, MarkClustersPass& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				//auto markClusters1 = resources.GetPipelineState(0); // Static meshes
 				//auto rootSignature = resources.GetPipelineStateRootSig(0);
-
+				
 				ctx.SetRenderTargets({}, false);
 
 				auto& brushConstantBuffer	= data.entityConstants.GetConstantBuffer();
@@ -1199,7 +1199,7 @@ namespace FlexKit
 				builder.Requires(RESOLUTIONMATCHSHADOWMAPS);
 				builder.Requires(CLEARSHADOWRESOLUTIONBUFFER);
 			},
-			[this, XY = WH / 32](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[this, XY = WH / 32](LightBufferUpdate& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -1552,7 +1552,7 @@ namespace FlexKit
 				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
-			[&entityConstants, &animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[&entityConstants, &animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -1876,7 +1876,7 @@ namespace FlexKit
 			};
 
 		auto draw =
-			[](const auto begin, const auto end, std::span<const DrawEntry> pvs, Shared& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+			[](const auto begin, const auto end, std::span<const DrawEntry> pvs, Shared& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 			};
 
@@ -1927,7 +1927,7 @@ namespace FlexKit
 			};
 
 		auto drawFN =
-			[camera](const auto begin, const auto end, std::span<const DrawEntry> pvs, OcclusionCullingResults& data, [[maybe_unused]] const FrameResources& resources, Context& ctx, iAllocator& threadLocalAllocator)
+			[camera](const auto begin, const auto end, std::span<const DrawEntry> pvs, OcclusionCullingResults& data, [[maybe_unused]] const FrameResources& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				ProfileFunctionStrName("OCCLUSIONCULLING");
 
@@ -2040,7 +2040,7 @@ namespace FlexKit
 				builder.SetDebugName(data.renderTargetObject, "renderTargetObject");
 			}, 
 			[camera = gbufferPass.camera, renderTarget, t, &rootSignature = this->rootSignature, &shadowMaps = lightShadowMaps.acquireMaps, &gbuffer = gbufferPass.gbuffer]
-			(ClusteredDeferredShading& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			(ClusteredDeferredShading& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -2211,7 +2211,7 @@ namespace FlexKit
 				builder.ReleaseVirtualResource(lightBufferUpdate.lightCounterObject);
 				builder.ReleaseVirtualResource(lightBufferUpdate.argumentBufferObject);
 			},
-			[&, mode = mode](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[&, mode = mode](DEBUGVIS_DrawBVH& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
@@ -2351,7 +2351,7 @@ namespace FlexKit
 			{
 				desc.renderTargetObject = builder.RenderTarget(renderTarget);
 			},
-			[=, &bvh = bvh](DebugVisDesc& desc, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[=, &bvh = bvh](DebugVisDesc& desc, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto drawElementsState  = resources.GetPipelineState(DEBUG_DrawBVH, allocator);
 
@@ -2421,7 +2421,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2023 Robert May
+Copyright (c) 2014-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -114,11 +114,11 @@ namespace FlexKit
 		};
 
 
-		void GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator, const size_t offset = 0);
+		void GatherArgs(FrameResourceHandle argBuffer, FrameResourceHandle sampleBuffer, ResourceHandler& resources, IDirectContext& ctx, iAllocator& TL_allocator, const size_t offset = 0);
 
-		void GatherSamples  (CommonResources&, Scene&, ResourceHandler&, Context&, iAllocator& TL_allocator);
-		void BuildTree      (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
-		void BuildMIPLevels (CommonResources&, ResourceHandler& resources, Context& ctx, iAllocator& TL_allocator);
+		void GatherSamples  (CommonResources&, Scene&, ResourceHandler&, IDirectContext&, iAllocator& TL_allocator);
+		void BuildTree      (CommonResources&, ResourceHandler& resources, IDirectContext& ctx, iAllocator& TL_allocator);
+		void BuildMIPLevels (CommonResources&, ResourceHandler& resources, IDirectContext& ctx, iAllocator& TL_allocator);
 
 
 		LoadPipelineStateRes CreateVoxelizerPSO         (IRenderSystem& RS, iAllocator& temp);
@@ -191,10 +191,10 @@ namespace FlexKit
 		};
 
 
-		void CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
-		void CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, Context&, iAllocator& temp);
+		void CleanUpPhase(UpdateVoxelVolume& data, ResourceHandler& resources, IDirectContext&, iAllocator& temp);
+		void CreateNodePhase(UpdateVoxelVolume& data, ResourceHandler& resources, IDirectContext&, iAllocator& temp);
 
-		void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, Context& ctx, iAllocator& temp);
+		void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, IDirectContext& ctx, iAllocator& temp);
 
 		RenderSystem& renderSystem;
 

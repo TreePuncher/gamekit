@@ -3,6 +3,7 @@
 #include "ViewportScene.h"
 #include "EditorInspectorView.h"
 #include "EditorViewport.h"
+#include <RenderSystemInterface.hpp>
 
 
 /************************************************************************************************/
@@ -1219,21 +1220,22 @@ public:
 					data.renderTarget   = builder.RenderTarget(renderTarget);
 					data.depthBuffer    = builder.DepthTarget(depthBuffer);
 				},
-				[&](DrawHUD& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, auto& allocator)
+				[&](DrawHUD& data, FlexKit::ResourceHandler& resources, FlexKit::IDirectContext& ctx, auto& allocator)
 				{
 					ctx.BeginEvent_DEBUG("Draw CSG HUD");
 
 					const auto& brushes = selection.GetData().brushes;
+					static auto rootSig = resources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
 
 					// Setup state
 					FlexKit::DescriptorHeap descHeap;
 					descHeap.Init(
 						ctx,
-						resources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0),
+						rootSig->GetDescHeap(0),
 						&allocator);
 					descHeap.NullFill(ctx);
 
-					ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
+					ctx.SetRootSignature(rootSig);
 					ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO, allocator));
 
 					ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });

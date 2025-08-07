@@ -61,7 +61,7 @@ namespace FlexKit
 		if (!pauseBackgroundLogic)
 			res = topState.Update(core, dispatcher, dT);
 		else
-			UpdateInput();
+			Win32UpdateInput();
 
 		if (framework.ImGuiAvailable())
 		{

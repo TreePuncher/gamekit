@@ -1,4 +1,3 @@
-
 #include "DebugUI.hpp"
 #include "Win32Graphics.hpp"
 #include <imgui.h>
@@ -163,10 +162,8 @@ namespace FlexKit
 
 	void ImGUIIntegrator::Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{
-		auto& win32Window = static_cast<Win32RenderWindow&>(window);
-
 		const auto WH   = window.GetWH();
-		auto hwnd       = win32Window.hWindow;
+		HWND hwnd       = (HWND)INTERNAL_WindowHandle(&window);
 
 		ImGuiIO& io     = ImGui::GetIO();
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
@@ -205,7 +202,7 @@ namespace FlexKit
 		if (io.WantSetMousePos)
 		{
 			POINT pos = { (int)io.MousePos.x, (int)io.MousePos.y };
-			::ClientToScreen(win32Window.hWindow, &pos);
+			::ClientToScreen(hwnd, &pos);
 			::SetCursorPos(pos.x, pos.y);
 		}
 
@@ -290,7 +287,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ImGUIIntegrator::DrawImGui(const double dT, FlexKit::UpdateDispatcher&, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget)
+	void ImGUIIntegrator::DrawImGui(const double dT, UpdateDispatcher&, FrameGraph& frameGraph, ResourceHandle renderTarget)
 	{
 		ImGuiIO& io         = ImGui::GetIO();
 		auto*   drawData    = ImGui::GetDrawData();
@@ -312,7 +309,7 @@ namespace FlexKit
 			{
 				builder.RenderTarget(renderTarget);
 			},
-			[drawData, renderTarget](DrawImGui_data& pass, FlexKit::ResourceHandler& frameResources, FlexKit::Context& ctx, auto& allocator)
+			[drawData, renderTarget](DrawImGui_data& pass, ResourceHandler& frameResources, IDirectContext& ctx, auto& allocator)
 			{
 				if (!drawData)
 				{
@@ -375,11 +372,11 @@ namespace FlexKit
 								cmd.UserCallback(cmdList, &cmd);
 						}
 
-						const D3D12_RECT r = {
-							(LONG)(cmd.ClipRect.x - clip_off.x),
-							(LONG)(cmd.ClipRect.y - clip_off.y),
-							(LONG)(cmd.ClipRect.z - clip_off.x),
-							(LONG)(cmd.ClipRect.w - clip_off.y) };
+						const Rect r = {
+							(uint32_t)(cmd.ClipRect.x - clip_off.x),
+							(uint32_t)(cmd.ClipRect.y - clip_off.y),
+							(uint32_t)(cmd.ClipRect.z - clip_off.x),
+							(uint32_t)(cmd.ClipRect.w - clip_off.y) };
 
 						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
 
@@ -388,7 +385,7 @@ namespace FlexKit
 						heap.SetSRV(ctx, 0, texture);
 
 						ctx.SetGraphicsDescriptorTable(4, heap);
-						ctx.SetScissorRects({ r });
+						ctx.SetScissorRects(std::span{ &r, 1});
 						ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 					}
 				}
@@ -399,3 +396,28 @@ namespace FlexKit
 
 
 }   /************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

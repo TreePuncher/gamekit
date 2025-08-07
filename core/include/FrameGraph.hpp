@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2025 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #ifndef RENDERGRAPH_H
 #define RENDERGRAPH_H
 
@@ -290,7 +265,7 @@ namespace FlexKit
 	class FrameResources
 	{
 	public:
-		FrameResources(RenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
+		FrameResources(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
 			allocator				{ IN_allocator },
 			memoryPools				{ IN_allocator },
 			outputObjects			{ IN_allocator },
@@ -1231,7 +1206,7 @@ namespace FlexKit
 	class FrameGraphResourceContext
 	{
 	public:
-		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, RenderSystem& IN_renderSystem, iAllocator& Temp) :
+		FrameGraphResourceContext(FrameResources& IN_resources, ThreadManager& IN_threads, IRenderSystem& IN_renderSystem, iAllocator& Temp) :
 			frameResources	{ IN_resources		},
 			writables		{ Temp				},
 			readables		{ Temp				},
@@ -1400,7 +1375,7 @@ namespace FlexKit
 		ThreadManager&			threads;
 		WorkBarrier				pendingTasks;
 		FrameResources&			frameResources;
-		RenderSystem&			renderSystem;
+		IRenderSystem&			renderSystem;
 	};
 
 
@@ -1716,7 +1691,7 @@ namespace FlexKit
 	class FrameGraph
 	{
 	public:
-		FrameGraph(RenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
+		FrameGraph(IRenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
 			resources			{ RS, Temp },
 			threads				{ IN_threads },
 			globalDependencies	{ Temp },
@@ -1756,7 +1731,7 @@ namespace FlexKit
 
 			auto idx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
 					newWorkItem.node			= &node;
@@ -1849,6 +1824,7 @@ namespace FlexKit
 			return data.userData;
 		}
 
+
 		template<typename TY_Shared, typename TY, typename TY_Setup, typename TY_Draw>
 		decltype(auto) AddPass(PassDescription<TY_Shared, TY>& IN_shared, TY_Setup setupLinkage, TY_Draw draw)
 		{
@@ -1867,7 +1843,7 @@ namespace FlexKit
 
 			auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					PassData* passData = reinterpret_cast<PassData*>(node.nodeData);
 
@@ -1895,7 +1871,7 @@ namespace FlexKit
 								[i, blockCount, blockSize, passPVS](
 									FrameGraphNode&	node,
 									FrameResources&	resources,
-									Context&		ctx,
+									IDirectContext&	ctx,
 									iAllocator&		localAllocator)
 								{
 									ProfileFunction();
@@ -1915,7 +1891,7 @@ namespace FlexKit
 									data.draw(begin, end, passPVS, data.shared, resources, ctx, localAllocator);
 
 									if(i == blockCount - 1)
-										node.RestoreResourceStates(&ctx, resources, localTracking);
+										node.RestoreResourceStates(ctx, resources, localTracking);
 
 									auto refCount = data.refCount--;
 
@@ -1939,7 +1915,7 @@ namespace FlexKit
 									[](
 										FrameGraphNode& node,
 										FrameResources& resources,
-										Context&		ctx,
+										IDirectContext&	ctx,
 										iAllocator&		localAllocator)
 									{
 										ProfileFunction();
@@ -1955,7 +1931,7 @@ namespace FlexKit
 										ResourceHandler handler{ resources, localTracking };
 										data.draw(pvs.begin(), pvs.end(), pvs, data.shared, resources, ctx, localAllocator);
 
-										node.RestoreResourceStates(&ctx, resources, localTracking);
+										node.RestoreResourceStates(ctx, resources, localTracking);
 
 										ProfileFunctionLabeled(Destruction);
 										data.~PassData();
@@ -1999,7 +1975,7 @@ namespace FlexKit
 
 			const auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					PassData* passData	= reinterpret_cast<PassData*>(node.nodeData);
 					passData->passes	= passData->getPasses(tempAllocator);
@@ -2028,7 +2004,7 @@ namespace FlexKit
 								[i, blockCount, blockSize, passPVS, &pass](
 									FrameGraphNode&	node,
 									FrameResources&	resources,
-									Context&		ctx,
+									IDirectContext&	ctx,
 									iAllocator&		localAllocator)
 								{
 									ProfileFunction();
@@ -2051,7 +2027,7 @@ namespace FlexKit
 
 									if (i == blockCount - 1)
 									{
-										node.RestoreResourceStates(&ctx, resources, localTracking);
+										node.RestoreResourceStates(ctx, resources, localTracking);
 										ctx.EndEvent_DEBUG();
 									}
 
@@ -2372,7 +2348,7 @@ namespace FlexKit
 						[nodeData](
 							FrameGraphNode& node,
 							FrameResources& resources,
-							Context&		ctx,
+							IDirectContext&	ctx,
 							iAllocator&		localAllocator)
 						{
 							ctx.BeginEvent_DEBUG("Initiate Resources");
@@ -2596,6 +2572,7 @@ namespace FlexKit
 	void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
 	void PresentBackBuffer	(FrameGraph& Graph, IRenderWindow& Window);
 
+
 	inline void PresentBackBuffer(FrameGraph& frameGraph, ResourceHandle backBuffer)
 	{
 		struct PassData
@@ -2731,61 +2708,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class Range
-	{
-	public:
-		Range begin() const 
-		{
-			return { 0, end_, step_ };
-		}
-
-
-		Range end() const
-		{
-			return { end_, end_, step_ };
-		}
-
-
-		size_t operator * ()
-		{
-			return itr * step_;
-		}
-
-
-		bool operator == (const Range& rhs) const 
-		{
-			return  (rhs.itr == itr) && (rhs.end_ == end_) && (rhs.step_ == step_);
-		}
-
-		bool operator != (const Range& rhs) const
-		{
-			return  !(*this == rhs);
-		}
-
-
-		Range operator ++ ()
-		{
-			itr++;
-			return *this;
-		}
-
-		size_t front() const
-		{
-			return 0;
-		}
-
-		size_t       itr;
-		const size_t end_;
-		const size_t step_;
-	};
-
-
-	inline auto MakeRange(size_t begin, size_t end, size_t step = 1)
-	{
-		return Range{ begin, end, step };
-	}
-
-
 	class CircleShape final : public ShapeProtoType
 	{
 	public:
@@ -2802,39 +2724,8 @@ namespace FlexKit
 				AspectRatio { IN_AspectRatio	}{}
 
 		void AddShapeDraw(
-			ShapeList&						shapeList, 
-			FrameResources&					resources) override
-		{
-			VBPushBuffer VBBuffer   = resources.ReserveVB(sizeof(ShapeVert) * 3 * Divisions);
-
-			const float Step = 2.0f * (float)pi / Divisions;
-			const auto range = MakeRange(0, Divisions);
-
-			VertexBufferDataSet vertices{
-				SET_TRANSFORM_OP,
-				range,
-				[&](size_t I, auto& pushBuffer) -> int
-				{
-					const float2 V1 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1))) };
-					const float2 V2 = { POS.x + R * cos(Step * I),			POS.y - AspectRatio * (R * sin(Step * I)) };
-
-					pushBuffer.Push(ShapeVert{ Position2SS(POS),	float2{ 0.0f, 1.0f }, Color });
-					pushBuffer.Push(ShapeVert{ Position2SS(V1),		float2{ 0.0f, 1.0f }, Color });
-					pushBuffer.Push(ShapeVert{ Position2SS(V2),		float2{ 1.0f, 0.0f }, Color });
-				},
-				VBBuffer };
-
-			Constants CB_Data = {
-				Color,
-				Color,
-				float4x4::Identity()
-			};
-
-			auto constantBuffer = resources.ReserveCB(256);
-			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
-
-			shapeList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, Divisions * 3});
-		}
+			ShapeList&		shapeList, 
+			FrameResources&	resources) override;
 
 		float2	POS;
 		float4	Color;
@@ -2854,41 +2745,8 @@ namespace FlexKit
 			Lines	{ lines } {}
 
 		void AddShapeDraw(
-			ShapeList&				        shapeList,
-			FrameResources&			        resources) override
-		{
-			auto VBBuffer	= resources.ReserveVB(sizeof(ShapeVert) * 2 * Lines.size());
-			auto range		= MakeRange(0, Lines.size());
-
-			VertexBufferDataSet vertices{
-				SET_TRANSFORM_OP,
-				range,
-				[&](size_t I, auto& pushBuffer) -> ShapeVert
-				{
-					auto positionA = Lines[I].A;
-					auto positionB = Lines[I].B;
-
-					auto pointA = ShapeVert{ positionA, float2{ 0.0f, 1.0f }, float4(Lines[I].AColour, 0) };
-					auto pointB = ShapeVert{ positionB, float2{ 0.0f, 1.0f }, float4(Lines[I].BColour, 0) };
-
-					pushBuffer.Push(pointA);
-					pushBuffer.Push(pointB);
-
-					return {};
-				},
-				VBBuffer };
-
-			const Constants CB_Data = {
-				{ 1, 1, 1, 1 },
-				{ 1, 1, 1, 1 },
-				float4x4::Identity()
-			};
-
-			auto constantBuffer = resources.ReserveCB(AlignedSize<Constants>());
-			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
-			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
-		}
-
+			ShapeList&		shapeList,
+			FrameResources&	resources) override;
 
 	private:
 		LineSegments& Lines;
@@ -2906,40 +2764,8 @@ namespace FlexKit
 
 
 		void AddShapeDraw(
-			ShapeList&						shapeList,
-			FrameResources&					resources) override
-		{
-			auto VBBuffer   = resources.ReserveVB(sizeof(ShapeVert) * 2 * Lines.size());
-			auto range      = MakeRange(0, Lines.size());
-
-			VertexBufferDataSet vertices{
-				SET_TRANSFORM_OP,
-				range,
-				[&](size_t I, auto& pushBuffer) -> ShapeVert
-				{
-					auto positionA = Position2SS(Lines[I].A);
-					auto positionB = Position2SS(Lines[I].B);
-
-					auto pointA = ShapeVert{ positionA, float2{ 0.0f, 1.0f }, Lines[I].AColour };
-					auto pointB = ShapeVert{ positionB, float2{ 0.0f, 1.0f }, Lines[I].BColour };
-
-					pushBuffer.Push(pointA);
-					pushBuffer.Push(pointB);
-
-					return {};
-				},
-				VBBuffer };
-
-			Constants CB_Data = {
-				{ 1, 1, 1, 1 },
-				{ 1, 1, 1, 1 },
-				float4x4::Identity()
-			};
-
-			auto constantBuffer = resources.ReserveCB(256);
-			ConstantBufferDataSet constants{ CB_Data, constantBuffer };
-			shapeList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
-		}
+			ShapeList&		shapeList,
+			FrameResources&	resources) override;
 
 
 	private:
@@ -2957,38 +2783,8 @@ namespace FlexKit
 
 
 		void AddShapeDraw(
-			ShapeList&				        shapeList, 
-			FrameResources&			        resources) override
-		{
-			float2 RectUpperLeft	= POS;
-			float2 RectBottomRight	= POS + WH;
-			float2 RectUpperRight	= { RectBottomRight.x,	RectUpperLeft.y };
-			float2 RectBottomLeft	= { RectUpperLeft.x,	RectBottomRight.y };
-
-			const ShapeVert verticeData[] = {
-				ShapeVert{ Position2SS(RectUpperLeft),	 { 0.0f, 1.0f }, Color },
-				ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color },
-				ShapeVert{ Position2SS(RectBottomLeft),	 { 0.0f, 1.0f }, Color },
-
-				ShapeVert{ Position2SS(RectUpperLeft),	 { 0.0f, 1.0f }, Color },
-				ShapeVert{ Position2SS(RectUpperRight),	 { 1.0f, 1.0f }, Color },
-				ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color } };
-
-			const Constants constantData = {
-				Color,
-				Color,
-				float4x4::Identity()
-			};
-
-			auto constantBuffer     = resources.ReserveCB(sizeof(Constants));
-			auto vertexBuffer       = resources.ReserveVB(sizeof(ShapeVert) * 6);
-
-			shapeList.emplace_back(
-					ShapeDraw::RenderMode::Triangle,
-					ConstantBufferDataSet{ constantData, constantBuffer },
-					VertexBufferDataSet{ verticeData, 6, vertexBuffer },
-					6u);
-		}
+			ShapeList&		shapeList, 
+			FrameResources&	resources) override;
 
 		float2 POS;
 		float2 WH;
@@ -3010,41 +2806,9 @@ namespace FlexKit
 
 		void AddShapeDraw(
 			ShapeList&				        shapeList, 
-			FrameResources&			        resources) override
-		{
-			Constants CB_Data = {
-			float4(1, 1, 1, 1),
-			float4(1, 1, 1, 1),
-			float4x4::Identity() };
+			FrameResources&			        resources) override;
 
-			auto constantBuffer = resources.ReserveCB(sizeof(CB_Data));
-			auto constants      = ConstantBufferDataSet{CB_Data, constantBuffer };
-			auto vertexBuffer   = resources.ReserveVB(sizeof(CB_Data) * 6 * rects.size());
-
-			auto vertices = VertexBufferDataSet(
-				SET_TRANSFORM_OP, rects,
-				[](auto& rect, auto& buffer)
-				{
-					float2 rectUpperLeft	= rect.Position;
-					float2 rectBottomRight	= rect.Position + rect.WH;
-					float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
-					float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
-
-					buffer.Push(ShapeVert{ Position2SS(rectUpperLeft),	    { 0.0f, 1.0f }, rect.Color });
-					buffer.Push(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color });
-					buffer.Push(ShapeVert{ Position2SS(rectBottomLeft),	    { 0.0f, 1.0f }, rect.Color });
-
-					buffer.Push(ShapeVert{ Position2SS(rectUpperLeft),	    { 0.0f, 1.0f }, rect.Color });
-					buffer.Push(ShapeVert{ Position2SS(rectUpperRight),	    { 1.0f, 1.0f }, rect.Color });
-					buffer.Push(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color });
-
-					return ShapeVert{};
-				}, vertexBuffer);
-
-			shapeList.push_back({ ShapeDraw::RenderMode::Triangle, constants, vertices, 6 * rects.size() });
-		}
-
-		Vector<FlexKit::Rectangle> rects;
+		Vector<Rectangle> rects;
 	};
 
 
@@ -3147,7 +2911,7 @@ namespace FlexKit
 
 				(args.AddShapeDraw(data.draws, frameGraph.resources), ...);
 			},
-			[=](const ShapeParams& data, const ResourceHandler& frameResources, Context& context, iAllocator& allocator)
+			[=](const ShapeParams& data, const ResourceHandler& frameResources, IDirectContext& context, iAllocator& allocator)
 			{	// Multi-threadable Section
 				auto WH = frameResources.GetTextureWH(data.renderTarget);
 
@@ -3156,7 +2920,8 @@ namespace FlexKit
 					{ frameResources.GetResource(data.renderTarget) },
 					false);
 
-				context.SetRootSignature	(frameResources.renderSystem().Library.RS6CBVs4SRVs);
+				static auto rootSig = frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
+				context.SetRootSignature	(rootSig);
 				context.SetPipelineState	(frameResources.GetPipelineState(data.state, allocator));
 				context.SetInputPrimitive	(INPUTPRIMITIVETRIANGLELIST);
 
@@ -3179,7 +2944,7 @@ namespace FlexKit
 							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 							DescriptorHeap descHeap;
-							auto& desciptorTableLayout = frameResources.renderSystem().Library.RS6CBVs4SRVs->GetDescHeap(0);
+							auto& desciptorTableLayout = rootSig->GetDescHeap(0);
 
 							descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
 							descHeap.NullFill(context, 1);
@@ -3356,138 +3121,17 @@ namespace FlexKit
 	};
 
 
-	inline void WireframeRectangleList(
+	void WireframeRectangleList(
 		FrameGraph&						frameGraph,
 		DrawWireframeRectangle_Desc&	desc,
 		Vector<Rectangle>&				rects,
-		iAllocator*						TempMem
-	)
-	{
-		struct DrawWireframes
-		{
-			FrameResourceHandle		RenderTarget;
-
-			ConstantBufferHandle	CB;
-			VertexBufferHandle		VB;
-
-			ConstantBufferDataSet   cameraConstants;
-			ConstantBufferDataSet   constants;
-
-			VertexBufferDataSet     vertexBuffer;
-			uint32_t                vertexCount;
-
-			PSOHandle PSO;	
-		};
-	
-
-		struct Vertex
-		{
-			float4 POS;
-			float4 Color;
-			float2 UV;
-		};
-
-		frameGraph.AddNode<DrawWireframes>(
-			DrawWireframes{},
-			[&](FrameGraphNodeBuilder& Builder, DrawWireframes& Data)
-			{
-				Data.RenderTarget	= Builder.RenderTarget(desc.RenderTarget);
-
-				Data.CB		= desc.constantBuffer;
-				Data.VB		= desc.VertexBuffer;
-				Data.PSO	= desc.PSO;
-
-				struct LocalConstants// Register b1
-				{
-					float4	 Color; // + roughness
-					float4	 Padding;
-					float4x4 WT;
-				}locals{
-					{1, 1, 1, 1},
-					{1, 1, 1, 1},
-					float4x4::Identity()
-				};
-
-				CBPushBuffer constantBuffer{ desc.constantBuffer, 1000, frameGraph.GetRenderSystem() };
-				VBPushBuffer vertexBuffer{ desc.VertexBuffer, sizeof(Vertex) * 8 * rects.size(), frameGraph.GetRenderSystem() };
-
-				auto cameraBuffer	= GetCameraConstants(desc.camera);
-				auto pushBuffer		= desc.VertexBuffer;
-
-				Data.constants          = ConstantBufferDataSet(locals, constantBuffer);
-				Data.cameraConstants    = ConstantBufferDataSet(cameraBuffer, constantBuffer);
-
-
-				FK_ASSERT(0, "ERROR");
-
-				/*
-				VertexBufferDataSet vertices{
-					SET_TRANSFORM_OP,
-					MakeRange(0, rects.size()),
-					[&](size_t I, auto& pushBuffer) -> ShapeVert
-					{
-						const auto rect             = rects[I];
-						const float4 upperLeft	    = { rect.Position.x, 0, rect.Position.y,		1};
-						const float4 bottomRight	=   upperLeft + float4{rect.WH.x, 0, rect.WH.y, 0};
-						const float4 upperRight	    = { bottomRight.x,	0, upperLeft.z,				1};
-						const float4 bottomLeft	    = { upperLeft.x,	0, bottomRight.z,			1};
-
-						pushBuffer.Push(Vertex{ upperLeft, rect.Color, { 0.0f, 1.0f } });
-						pushBuffer.Push(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } });
-
-						// Right
-						pushBuffer.Push(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } });
-						pushBuffer.Push(Vertex{ bottomRight, rect.Color, { 1.0f, 0.0f } });
-
-						// Bottom
-						pushBuffer.Push(Vertex{ bottomRight, rect.Color, { 0.0f, 0.0f } });
-						pushBuffer.Push(Vertex{ bottomLeft,	rect.Color, { 1.0f, 0.0f } });
-
-						// Left
-						pushBuffer.Push(Vertex{ bottomLeft,	rect.Color, { 0.0f, 0.0f } });
-						pushBuffer.Push(Vertex{ upperLeft,  rect.Color, { 0.0f, 1.0f } });
-
-						return {};
-					},
-					vertexBuffer };
-
-				Data.vertexCount = (uint32_t)rects.size() * 8;
-				*/
-			},
-			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
-			{
-				DescriptorHeap descHeap;
-				descHeap.Init(
-					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
-					&allocator);
-				descHeap.NullFill(ctx);
-
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
-				ctx.SetPipelineState(resources.GetPipelineState(Data.PSO, allocator));
-				ctx.SetVertexBuffers({ Data.vertexBuffer });
-
-				ctx.SetRenderTargets(
-					{ resources.GetResource(Data.RenderTarget) }, false);
-
-				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
-				ctx.SetGraphicsDescriptorTable		(0, descHeap);
-				ctx.SetGraphicsConstantBufferView	(1, Data.cameraConstants);
-				ctx.SetGraphicsConstantBufferView	(2, Data.constants);
-
-				ctx.NullGraphicsConstantBufferView	(4);
-				ctx.NullGraphicsConstantBufferView	(5);
-				ctx.NullGraphicsConstantBufferView	(6);
-
-				ctx.Draw(Data.vertexCount, 0);
-			});
-	}
+		iAllocator*						TempMem);
 
 
 	/************************************************************************************************/
 
 	// Requires a registered DRAW_LINE3D_PSO pipeline state!
-	inline void Draw3DGrid(
+	void Draw3DGrid(
 		FrameGraph&				frameGraph,
 		const size_t			ColumnCount,
 		const size_t			RowCount,
@@ -3498,182 +3142,50 @@ namespace FlexKit
 		VertexBufferHandle		vertexBuffer,
 		ConstantBufferHandle	constants,
 		CameraHandle			Camera,
-		iAllocator*				TempMem)
+		iAllocator*				TempMem);
+
+
+	/************************************************************************************************/
+
+
+	struct ClearIntegerRenderTarget_RG32_Clear
 	{
-		LineSegments Lines(TempMem);
-		Lines.reserve(ColumnCount + RowCount);
+		ReserveConstantBufferFunction   ReserveCB;
+		FrameResourceHandle             feedbackTarget;
+	};
 
-		const auto RStep = 1.0f / RowCount;
-
-		//  Vertical Lines on ground
-		for (size_t I = 1; I < RowCount; ++I)
-			Lines.emplace_back(
-				float3{ RStep  * I * GridWH.x, 0, 0 },
-				GridColor.xyz(),
-				float3{ RStep  * I * GridWH.x, 0, GridWH.y },
-				GridColor.xyz());
-
-
-		// Horizontal lines on ground
-		const auto CStep = 1.0f / ColumnCount;
-		for (size_t I = 1; I < ColumnCount; ++I)
-			Lines.emplace_back(
-				float3{ 0,			0, CStep  * I * GridWH.y },
-				GridColor.xyz(),
-				float3{ GridWH.x,   0, CStep  * I * GridWH.y },
-				GridColor.xyz());
-
-
-		struct DrawGrid
-		{
-			FrameResourceHandle		RenderTarget;
-			FrameResourceHandle		DepthBuffer;
-
-			size_t					VertexBufferOffset;
-			size_t					VertexCount;
-
-			VertexBufferDataSet		vertexBuffer;
-			ConstantBufferHandle	CB;
-
-			ConstantBufferDataSet   cameraConstants;
-			ConstantBufferDataSet   passConstants;
-		};
-
-
-		struct VertexLayout
-		{
-			float4 POS;
-			float4 Color;
-			float2 UV;
-		};
-
-		frameGraph.AddNode<DrawGrid>(
-			DrawGrid{},
-			[&](FrameGraphNodeBuilder& builder, auto& Data)
-			{
-
-				Data.RenderTarget	        = builder.RenderTarget(RenderTarget);
-				Data.DepthBuffer	        = builder.DepthTarget(DepthBuffer);
-				Data.CB				        = constants;
-
-
-				Brush::VConstantsLayout brushConstants{	
-					.Transform  = float4x4::Identity(),
-					.MP         = Brush::MaterialProperties{},
-				};
-
-				CBPushBuffer cbPushBuffer(
-					constants,
-					AlignedSize<Brush::VConstantsLayout>() + AlignedSize<Camera::ConstantBuffer>(),
-					frameGraph.GetRenderSystem());
-
-				Data.passConstants      = ConstantBufferDataSet(constants, cbPushBuffer);
-				Data.cameraConstants    = ConstantBufferDataSet(GetCameraConstants(Camera), cbPushBuffer);
-
-				VBPushBuffer vbPushBuffer(
-					vertexBuffer,
-					sizeof(VertexLayout) * Lines.size() * 2,
-					frameGraph.GetRenderSystem());
-
-				auto range = MakeRange(0, Lines.size());
-				VertexBufferDataSet vertices{
-					SET_TRANSFORM_OP,
-					range,
-					[&](size_t I, auto& pushBuffer) -> VertexLayout
-					{
-						const LineSegment& lineSegment = Lines[I];
-
-						VertexLayout Vertex;
-						Vertex.POS		= float4(lineSegment.A, 1);
-						Vertex.Color	= float4(lineSegment.AColour, 1) * float4 { 1.0f, 0.0f, 0.0f, 1.0f };
-						Vertex.UV		= { 0.0f, 0.0f };
-
-						pushBuffer.Push(Vertex);
-
-						Vertex.POS		= float4(lineSegment.B, 1);
-						Vertex.Color	= float4(lineSegment.BColour, 1) * float4 { 0.0f, 1.0f, 0.0f, 1.0f };
-						Vertex.UV		= { 1.0f, 1.0f };
-
-						pushBuffer.Push(Vertex);
-
-						return {};
-					},
-					vbPushBuffer };
-
-				Data.vertexBuffer   = vertices;
-				Data.VertexCount    = Lines.size() * 2;
-			},
-			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
-			{
-				DescriptorHeap descHeap;
-				descHeap.Init(
-					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
-					&allocator);
-				descHeap.NullFill(ctx);
-
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
-				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO, allocator));
-
-				ctx.SetScissorAndViewports({ resources.GetResource(Data.RenderTarget) });
-				ctx.SetRenderTargets(
-					{	resources.GetResource(Data.RenderTarget) }, false,
-						resources.GetResource(Data.DepthBuffer));
-
-				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
-				ctx.SetVertexBuffers({ Data.vertexBuffer });
-
-				ctx.SetGraphicsDescriptorTable(0, descHeap);
-				ctx.SetGraphicsConstantBufferView(1, Data.cameraConstants);
-				ctx.SetGraphicsConstantBufferView(2, Data.passConstants);
-
-				ctx.NullGraphicsConstantBufferView(3);
-				ctx.NullGraphicsConstantBufferView(4);
-				ctx.NullGraphicsConstantBufferView(5);
-				ctx.NullGraphicsConstantBufferView(6);
-
-				ctx.Draw(Data.VertexCount, 0);
-			});
-	}
-
-
-	inline auto& ClearIntegerRenderTarget_RG32(
-		FrameGraph&                     frameGraph,
+	ClearIntegerRenderTarget_RG32_Clear& ClearIntegerRenderTarget_RG32(
+		FrameGraph& frameGraph,
 		ResourceHandle                  target,
-		ReserveConstantBufferFunction&  reserveCB,
-		uint2                           value = { 0, 0 })
-	{
-		struct _Clear
-		{
-			ReserveConstantBufferFunction   ReserveCB;
-			FrameResourceHandle             feedbackTarget;
-		};
-
-		return frameGraph.AddNode<_Clear>(
-			_Clear{ reserveCB },
-			[&](FrameGraphNodeBuilder& builder, _Clear& data)
-			{
-				data.feedbackTarget = builder.RenderTarget(target);
-			},
-			[](const _Clear& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator&)
-			{
-				/*
-				struct _Constants
-				{
-					uint4 constants = {};
-				}constants{ { value[0], value[1], value[0], value[1] } };
-
-				ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
-				ctx.SetPipelineState(resources.GetPipelineState(CLEARRENDERTARGET_RG32));
-
-				ctx.SetScissorRects();
-				ctx.SetRenderTargets();
-				*/
-				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-				ctx.Draw(6);
-			});
-	}
+		ReserveConstantBufferFunction&	reserveCB,
+		uint2                           value = { 0u, 0u });
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
 #endif

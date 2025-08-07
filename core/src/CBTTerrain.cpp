@@ -207,7 +207,7 @@ namespace FlexKit
 				args.indirectArgumentsBuffer	= builder.AcquireVirtualResource(FlexKit::GPUResourceDesc::UAVResource(1024), FlexKit::DeviceAccessState::DASUAV);
 				args.cbtBuffer					= builder.UnorderedAccess(cbt.GetBuffer());
 			},
-			[&, camera, dT](CBT_UpdateAdaptiveTerrain& args, ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+			[&, camera, dT](CBT_UpdateAdaptiveTerrain& args, ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				ctx.BeginEvent_DEBUG("Update CBT Adaptive Terrain");
 				const uint32_t maxDepth = cbt.GetMaxDepth();
@@ -287,7 +287,7 @@ namespace FlexKit
 				debugVis.cbtBuffer					= builder.NonPixelShaderResource(cbt.GetBuffer());
 				debugVis.indirectArgumentsBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(1024), DeviceAccessState::DASUAV);
 			},
-			[&, camera, dT](CBTDebugVis& debugVis, ResourceHandler& resources, Context& ctx, iAllocator& threadLocalAllocator)
+			[&, camera, dT](CBTDebugVis& debugVis, ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				ctx.BeginEvent_DEBUG("DebugVisCBTTree");
 

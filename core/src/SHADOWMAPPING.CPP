@@ -449,7 +449,7 @@ namespace FlexKit
 			builder.AddNodeDependency(acquireMaps);
 		};
 
-		auto passDrawFN = [&, this](auto begin, auto end, std::span<VisibilityHandle> pvs, PassData& pass, Common_Data& common, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto passDrawFN = [&, this](auto begin, auto end, std::span<VisibilityHandle> pvs, PassData& pass, Common_Data& common, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 		{
 			ProfileFunction();
 			ctx.BeginEvent_DEBUG("DepthPass");
@@ -471,7 +471,7 @@ namespace FlexKit
 				resources.renderSystem.SetDebugName(passTarget, "passTarget");
 				resources.renderSystem.SetDebugName(depthBuffer, "depthBuffer");
 
-				const auto initialLayout = ctx.renderSystem->GetObjectLayout(passTarget);
+				const auto initialLayout = ctx.GetRenderSystem().GetObjectLayout(passTarget);
 
 				constexpr float f_max = std::numeric_limits<float>::max();
 
@@ -554,7 +554,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
 		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedDrawList{ allocator };
@@ -793,7 +793,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
 		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
@@ -975,7 +975,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ShadowMapper::BuildSummedAreaTable(ResourceHandle target, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void ShadowMapper::BuildSummedAreaTable(ResourceHandle target, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
 #if 0 
 		auto rowPSO		= resources.GetPipelineState(BUILDROWSUMS);

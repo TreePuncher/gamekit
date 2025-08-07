@@ -689,7 +689,7 @@ namespace FlexKit
 				data.feedbackBuffer	= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(4 * MEGABYTE), DASUAV, VirtualResourceScope::Frame);
 				data.feedbackDepth	= builder.AcquireVirtualResource(depthBufferDesc, DASDEPTHBUFFERWRITE, VirtualResourceScope::Frame);
 			},
-			[=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[=](TextureFeedbackPass_Data& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.ClearDepthBuffer(resources.GetResource(data.feedbackDepth), 1.0f);
 				ctx.ClearUAVBufferRange(resources.UAV(data.feedbackBuffer, ctx), 0, 4 * MEGABYTE);
@@ -732,7 +732,7 @@ namespace FlexKit
 		auto& feedbackPassRootSignature = this->feedbackPassRootSignature;
 		auto& feedbackTable				= pendingResults;
 
-		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> drawList, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> drawList, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -889,7 +889,7 @@ namespace FlexKit
 			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 
-		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -1046,7 +1046,7 @@ namespace FlexKit
 				data.feedbackBuffer	= builder.WriteTransition(initiateFeedbackPass.feedbackBuffer,	DASCopySrc);
 				data.readbackBuffer	= feedbackReturnBuffer;
 			},
-			[=, &feedbackTable](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			[=, &feedbackTable](TextureFeedbackPass_Data& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ctx.BeginEvent_DEBUG("Copy Out Results");
 

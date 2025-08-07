@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "EditorTaskList.h"
-#include <qheaderview.h>
 #include "EditorTaskManager.h"
+#include <ThreadUtilities.hpp>
+#include <qheaderview.h>
 
 std::mutex	m;
 std::vector<EditorTask_ptr> tasks;
@@ -18,7 +19,7 @@ void PostTask(FlexKit::iWork& work, EditorTask_ptr task)
 			task->state = TaskState::Completed;
 		});
 
-	PushToLocalQueue(work);
+	FlexKit::PushToLocalQueue(work);
 
 	std::scoped_lock sl{ m };
 	tasks.push_back(task);

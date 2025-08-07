@@ -32,7 +32,7 @@ CSGRender::CSGRenderData& CSGRender::Render(
             builder.AddDataDependency(updateGeometryTask);
             builder.WriteTransition(renderTarget, FlexKit::DASRenderTarget);
         },
-        [&](CSGRenderData& data, FlexKit::ResourceHandler& resources, FlexKit::Context& ctx, FlexKit::iAllocator& threadLocal)
+        [&](CSGRenderData& data, FlexKit::ResourceHandler& resources, FlexKit::IDirectContext& ctx, FlexKit::iAllocator& threadLocal)
         {
             return;
             using FlexKit::float3;

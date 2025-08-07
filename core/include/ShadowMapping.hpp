@@ -14,7 +14,7 @@ namespace FlexKit
 			ResourceHandle					renderTarget,
 			LightType						type,
 			FrameResources&					resources,
-			Context&						ctx,
+			IDirectContext&					ctx,
 			iAllocator&						allocator), 64>;
 
 	struct ShadowMapPassData
@@ -45,6 +45,7 @@ namespace FlexKit
 		float4x4_GPU ViewI[6];
 		float4x4_GPU PV[6];
 	};
+
 
 	struct ShadowMapMatrices
 	{
@@ -121,9 +122,9 @@ namespace FlexKit
 
 		using Iterator_TY = std::span<VisibilityHandle>::iterator;
 
-		void RenderPointLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, Context& ctx, iAllocator& allocator);
-		void RenderSpotLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, Context& ctx, iAllocator& allocator);
-		void BuildSummedAreaTable		(ResourceHandle target, FrameResources& resources, Context& ctx, iAllocator& allocator);
+		void RenderPointLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator);
+		void RenderSpotLightShadowMap	(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle renderTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator);
+		void BuildSummedAreaTable		(ResourceHandle target, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator);
 
 
 		Vector<ResourceEntry>  resourcePool;

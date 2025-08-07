@@ -604,9 +604,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
+	DescriptorHeap::DescriptorHeap(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
 		FillState(TempMemory)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
@@ -651,8 +653,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
@@ -670,8 +674,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
@@ -689,8 +695,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init2(Context& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init2(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory, reserveCount);
 
@@ -708,8 +716,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::NullFill(Context& ctx, const size_t end)
+	DescriptorHeap& DescriptorHeap::NullFill(IContext& ictx, const size_t end)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		auto& Entries = Layout->Entries;
 		for (size_t I = 0, Idx = 0; I < Entries.size(); I++)
 		{
@@ -780,8 +790,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle)
+	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -808,8 +820,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
+	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -836,8 +850,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -865,8 +881,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -895,8 +913,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -926,8 +946,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVArray(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -956,8 +978,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV3D(Context& ctx, size_t idx, ResourceHandle handle)
+	DescriptorHeap& DescriptorHeap::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -991,8 +1015,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, const ConstantBufferDataSet& constants)
+	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 		{
@@ -1022,8 +1048,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
+	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1052,8 +1080,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(Context& ctx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
+	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1082,8 +1112,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVBuffer(Context& ctx, size_t idx, ResourceHandle handle, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
 
@@ -1115,8 +1147,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1147,8 +1181,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1179,8 +1215,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(Context& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
 
@@ -1215,8 +1253,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVCubemap(Context& ctx, size_t idx, ResourceHandle	handle)
+	DescriptorHeap& DescriptorHeap::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1243,8 +1283,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture3D(Context& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeap& DescriptorHeap::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
+		Context& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1276,8 +1318,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVStructured(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
@@ -1307,13 +1351,15 @@ namespace FlexKit
 
 
 	DescriptorHeap& DescriptorHeap::SetUAVStructured(
-		Context&		ctx,
+		IContext&		ictx,
 		size_t			idx,
 		ResourceHandle	resource,
 		ResourceHandle	counter,
 		size_t			stride,
 		size_t			counterOffset)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
 		FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
@@ -1348,8 +1394,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
@@ -1394,8 +1442,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, Context& ctx) const
+	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, IContext& ictx) const
 	{
+		auto& ctx = static_cast<Context&>(ictx);
+
 		DescriptorHeap subHeap = Clone();
 		subHeap.descriptorHeap = IncrementHeapPOS(
 										descriptorHeap,
@@ -3112,14 +3162,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	/*
 	void Context::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
 	{
 		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.begin());
 	}
-
-
-	/************************************************************************************************/
 
 
 	void Context::SetViewports(std::span<const D3D12_VIEWPORT>	VPs)
@@ -3127,22 +3174,34 @@ namespace FlexKit
 		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.data());
 	}
 
-
-	/************************************************************************************************/
-
-
 	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>	Rects)
 	{
 		DeviceContext->RSSetScissorRects((UINT)Rects.size(), Rects.begin());
 	}
 
 
-	/************************************************************************************************/
-
-
 	void Context::SetScissorRects(std::span<const D3D12_RECT> rects)
 	{
 		DeviceContext->RSSetScissorRects((UINT)rects.size(), rects.data());
+	}
+
+	*/
+
+	/************************************************************************************************/
+
+
+	void Context::SetViewports(std::span<const Viewport> rects)
+	{
+		DeviceContext->RSSetViewports((UINT)rects.size(), (const D3D12_VIEWPORT*)rects.data());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetScissorRects(std::span<const Rect>	rects)
+	{
+		DeviceContext->RSSetScissorRects((UINT)rects.size(), (const D3D12_RECT*)rects.data());
 	}
 
 
@@ -3151,14 +3210,14 @@ namespace FlexKit
 	// Assumes setting each to fullscreen
 	void Context::SetScissorAndViewports(static_vector<ResourceHandle, 16>	RenderTargets)
 	{
-		static_vector<D3D12_VIEWPORT, 16>	VPs;
-		static_vector<D3D12_RECT, 16>		Rects;
+		static_vector<Viewport, 16>	VPs;
+		static_vector<Rect, 16>		Rects;
 
 		for (auto RT : RenderTargets)
 		{
 			auto WH = renderSystem->GetTextureWH(RT);
 			VPs.emplace_back	(0.0f, 0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f);
-			Rects.emplace_back	(LONG(0), LONG(0), LONG(WH[0]), LONG(WH[1]));
+			Rects.emplace_back	(0u, 0u, WH[0], WH[1]);
 		}
 
 		SetViewports(VPs);
@@ -3170,14 +3229,14 @@ namespace FlexKit
 
 	void Context::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
 	{
-		static_vector<D3D12_VIEWPORT, 16>	VPs;
-		static_vector<D3D12_RECT, 16>		Rects;
+		static_vector<Viewport, 16>	VPs;
+		static_vector<Rect, 16>		Rects;
 
 		for (auto RT : RenderTargets)
 		{
 			auto WH = float2{ renderSystem->GetTextureWH(RT) } / std::pow(2.0f, (float)MIPMapOffset);
-			VPs.emplace_back	(0.0f, 0.0f,	(FLOAT)WH[0], (FLOAT)WH[1], 0.0f, 1.0f);
-			Rects.emplace_back	(LONG(0),LONG(0),	LONG(WH[0]), LONG(WH[1]));
+			VPs.emplace_back	(0.0f, 0.0f,	WH[0], WH[1], 0.0f, 1.0f);
+			Rects.emplace_back	(0u, 0u, (uint32_t)WH[0], (uint32_t)WH[1]);
 		}
 
 		SetViewports(VPs);
@@ -4174,6 +4233,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetVertexBuffers2(const std::span<const VBView>	views, uint32_t offset)
+	{
+		D3D12_VERTEX_BUFFER_VIEW apiViews[16];
+		for (auto&& [idx, view] : enumerate(views))
+		{
+			apiViews[idx] = D3D12_VERTEX_BUFFER_VIEW{
+				.BufferLocation	= view.buffer,
+				.SizeInBytes	= view.size,
+				.StrideInBytes	= view.stride,
+			};
+		}
+
+		DeviceContext->IASetVertexBuffers(0, (UINT)views.size(), apiViews);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetSOTargets(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews)
 	{
 		DeviceContext->SOSetTargets(0, (UINT)SOViews.size(), SOViews.begin());
@@ -4725,6 +4803,15 @@ namespace FlexKit
 	void Context::SetUAVFree() 
 	{
 		FK_ASSERT(0);
+	}
+
+
+	/************************************************************************************************/
+
+
+	IRenderSystem& Context::GetRenderSystem() noexcept
+	{
+		return RenderSystem::_GetInstance();
 	}
 
 
@@ -5331,6 +5418,16 @@ namespace FlexKit
 		commandList->ResourceBarrier((UINT)pendingBarriers.size(), pendingBarriers.data());
 		pendingBarriers.clear();
 	}
+
+
+	/************************************************************************************************/
+
+
+	IRenderSystem& CopyContext::GetRenderSystem() noexcept
+	{
+		return RenderSystem::_GetInstance();
+	}
+
 
 
 	/************************************************************************************************/
@@ -6834,7 +6931,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet& vertexBufferSet)
+	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet& vertexBufferSet) const noexcept
 	{
 		uint8_t	indexBufferIdx	= vertexBufferSet.GetIndexBufferIndex();
 		auto indexBuffer		= vertexBufferSet[indexBufferIdx];
@@ -7085,7 +7182,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc)
+	void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept
 	{
 		ProfileFunction();
 
@@ -10913,7 +11010,11 @@ namespace FlexKit
 			return rootLibrary.ComputeSignature;
 		case ROOTLIBRARYSIG::ClearBuffer:
 			return rootLibrary.ClearBuffer;
+		default:
+			FK_ASSERT(0, "Invalid ROOTLIBRARYSIG ID passed to RenderSystem::Library(ROOTLIBRARYSIG)");
 		}
+
+		std::unreachable();
 	}
 
 

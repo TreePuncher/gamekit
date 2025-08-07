@@ -44,7 +44,7 @@ namespace FlexKit
 		~RmlRenderer() override {}
 
 
-		void Begin(FlexKit::Context& IN_ctx, BeginResources& resources, FlexKit::iAllocator& IN_allocator);
+		void Begin(IDirectContext& IN_ctx, BeginResources& resources, FlexKit::iAllocator& IN_allocator);
 
 		void End();
 
@@ -63,13 +63,13 @@ namespace FlexKit
 		void				ReleaseTexture	(Rml::TextureHandle texture) override;
 
 		BeginResources*		pass			= nullptr;
-		Context*			ctx				= nullptr;
+		IDirectContext*		ctx				= nullptr;
 		iAllocator*			allocator		= nullptr;
-		ResourceHandle		renderTarget	= FlexKit::InvalidHandle;
+		ResourceHandle		renderTarget	= InvalidHandle;
 		RenderSystem&		renderSystem;
 		uint64_t			randState		= 1234;
 
-		CopyContextHandle copyHandle	= FlexKit::InvalidHandle;
+		CopyContextHandle copyHandle	= InvalidHandle;
 
 		struct TextureHandle
 		{
@@ -218,7 +218,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RmlRenderer::Begin(Context& IN_ctx, BeginResources& resources, iAllocator& IN_allocator)
+	void RmlRenderer::Begin(IDirectContext& IN_ctx, BeginResources& resources, iAllocator& IN_allocator)
 	{
 		ctx = &IN_ctx;
 		ctx->SetRenderTargets({ resources.renderTarget }, false);
@@ -342,10 +342,11 @@ namespace FlexKit
 		ctx->SetRenderTargets({ pass->renderTarget }, false);
 		ctx->SetScissorAndViewports({ pass->renderTarget });
 
-		D3D12_VERTEX_BUFFER_VIEW vbView;
-		vbView.BufferLocation	= ctx->renderSystem->GetDeviceResource(geometryEntry->vertexBuffer)->GetGPUVirtualAddress();
-		vbView.SizeInBytes		= geometryEntry->vertexCount * sizeof(RMLVertex);
-		vbView.StrideInBytes	= sizeof(RMLVertex);
+		VBView vbView{
+			vbView.buffer	= ctx->GetRenderSystem().GetDeviceRange(geometryEntry->vertexBuffer).address,
+			vbView.size		= geometryEntry->vertexCount * sizeof(RMLVertex),
+			vbView.stride	= sizeof(RMLVertex),
+		};
 
 		ctx->SetInputPrimitive(EInputPrimitive::INPUTPRIMITIVETRIANGLELIST);
 		ctx->SetVertexBuffers2({ &vbView, 1 });
@@ -374,12 +375,12 @@ namespace FlexKit
 		{
 			auto WH = renderSystem.GetTextureWH(renderTarget);
 			ctx->SetScissorRects(
-				{
-					D3D12_RECT{
+				static_vector{
+					Rect{
 						.left	= 0,
 						.top	= 0,
-						.right	= (LONG)WH[0],
-						.bottom	= (LONG)WH[1]
+						.right	= (uint32_t)WH[0],
+						.bottom	= (uint32_t)WH[1]
 					}
 				});
 		}
@@ -395,12 +396,12 @@ namespace FlexKit
 			return;
 
 		ctx->SetScissorRects(
-			{
-				D3D12_RECT{
-					.left	= region.Left(),
-					.top	= region.Top(),
-					.right	= region.Right(),
-					.bottom = region.Bottom()
+			static_vector{
+				Rect{
+					.left	= (uint32_t)region.Left(),
+					.top	= (uint32_t)region.Top(),
+					.right	= (uint32_t)region.Right(),
+					.bottom = (uint32_t)region.Bottom()
 				}
 			});
 	}
@@ -691,7 +692,7 @@ namespace FlexKit
 			{
 				builder.RenderTarget(passData.renderTarget);
 			},
-			[this, uiCtx](auto&& data,  auto& resources, FlexKit::Context& ctx, auto& allocator)
+			[this, uiCtx](auto&& data,  auto& resources, IDirectContext& ctx, auto& allocator)
 			{
 				ctx.BeginEvent_DEBUG("RML");
 				renderer.Begin(ctx, data, allocator);

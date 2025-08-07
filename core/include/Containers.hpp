@@ -31,9 +31,67 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
+	class Range
+	{
+	public:
+		Range begin() const 
+		{
+			return { 0, end_, step_ };
+		}
+
+
+		Range end() const
+		{
+			return { end_, end_, step_ };
+		}
+
+
+		size_t operator * ()
+		{
+			return itr * step_;
+		}
+
+
+		bool operator == (const Range& rhs) const 
+		{
+			return  (rhs.itr == itr) && (rhs.end_ == end_) && (rhs.step_ == step_);
+		}
+
+
+		bool operator != (const Range& rhs) const
+		{
+			return  !(*this == rhs);
+		}
+
+
+		Range operator ++ ()
+		{
+			itr++;
+			return *this;
+		}
+
+		size_t front() const
+		{
+			return 0;
+		}
+
+		size_t       itr;
+		const size_t end_;
+		const size_t step_;
+	};
+
+
+	inline auto MakeRange(size_t begin, size_t end, size_t step = 1)
+	{
+		return Range{ begin, end, step };
+	}
+
+	/************************************************************************************************/
+
+
 	// Thank you cppReference.com
-	FLEXKITAPI template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-	FLEXKITAPI template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
+	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
 
 
 	/************************************************************************************************/

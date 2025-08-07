@@ -98,7 +98,7 @@ namespace FlexKit
 					data.normal			= builder.RenderTarget(inputs.gbuffer.normal);
 					data.depthTarget	= builder.DepthTarget(inputs.depthTarget);
 				},
-				[=](PlanetPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
+				[=](PlanetPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& allocator)
 				{
 					ctx.BeginEvent_DEBUG("Planet Rendering Pass");
 					ctx.EndEvent_DEBUG();
@@ -134,7 +134,7 @@ namespace FlexKit
 					builder.Requires(PlanetTestPSO);
 					builder.Requires(SumReductionCBTPSO);
 				},
-				[=](TestPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
+				[=](TestPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& allocator)
 				{
 					constexpr auto t = 2 << (4 - 1);
 
