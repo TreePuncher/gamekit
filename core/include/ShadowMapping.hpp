@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "FrameGraph.hpp"
 #include "Scene.hpp"
 
@@ -92,7 +92,7 @@ namespace FlexKit
 								GatherPassesTask&						passes,
 								std::span<AdditionalShadowMapPass>		additional,
 								const double							t,
-								MemoryPoolAllocator&					shadowMapPool,
+			                    PoolAllocatorInterface&					shadowMapPool,
 								iAllocator&								tempAllocator,
 								AnimationPoseUpload*					poses = nullptr);
 
@@ -135,7 +135,7 @@ namespace FlexKit
 		LoadPipelineStateRes CreateRowSums					(IRenderSystem& RS, iAllocator&);
 		LoadPipelineStateRes CreateColumnSums				(IRenderSystem& RS, iAllocator&);
 
-		const FlexKit::RootSignature* rootSignature;
+		const IRootSignature* rootSignature;
 	};
 
 

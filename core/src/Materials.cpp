@@ -175,7 +175,7 @@ namespace FlexKit
 			const auto idx = handles[material];
 
 			if (material_ref.textureDescriptors.size)
-				renderSystem._ReleaseDescriptorRange(material_ref.textureDescriptors, material_ref.lastUsed);
+				renderSystem.ReleaseDescriptorRange(material_ref.textureDescriptors, material_ref.lastUsed);
 
 			if (materials.size() > 1 && idx != materials.size() - 1)
 			{
@@ -780,7 +780,7 @@ namespace FlexKit
 		if (materialData.textureDescriptors.size == 0)
 			UpdateTextureDescriptors(material);
 
-		const uint64_t current = renderSystem.directSubmissionCounter;
+		const uint64_t current = renderSystem.GetCurrentCounter();
 
 		if(materialData.lastUsed < current)
 			materialData.lastUsed = current;
@@ -800,14 +800,14 @@ namespace FlexKit
 		auto& materialData = materials[handles[material]];
 
 		if (materialData.textureDescriptors.size)
-			renderSystem._ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.directSubmissionCounter);
+			renderSystem.ReleaseDescriptorRange(materialData.textureDescriptors, renderSystem.GetCurrentCounter());
 
 		auto textureCount		= materialData.textures.size();
 
 		if (textureCount == 0)
 			return;
 
-		auto res				= renderSystem._AllocateDescriptorRange(textureCount);
+		auto res				= renderSystem.CreateDescriptorRange(textureCount);
 		if (!res.has_value())
 			DebugBreak();
 
@@ -818,9 +818,11 @@ namespace FlexKit
 		for (size_t I = 0; I < textureCount; I++)
 		{
 			auto resource	= materialData.textures[I];
-			auto format		= renderSystem.GetTextureFormat(resource);
-			auto dxFormat	= FlexKit::TextureFormat2DXGIFormat(format);
-			PushTextureToDescHeap(renderSystem, dxFormat, resource, descriptorRange[I]);
+			renderSystem.CreateTextureView(resource, descriptorRange[I]);
+
+			//auto format		= renderSystem.GetTextureFormat(resource);
+			//auto dxFormat	= TextureFormat2DXGIFormat(format);
+			//PushTextureToDescHeap(renderSystem, dxFormat, resource, descriptorRange[I]);
 		}
 
 		materialData.textureDescriptors = descriptorRange;

@@ -91,7 +91,7 @@ namespace FlexKit
 		bool								stale			= false;
 		std::atomic<PSO_States>				state			= PSO_States::Unloaded;
 		PipelineStateObject*				next			= nullptr;
-		const RootSignature*				rootSignature	= nullptr;
+		const IRootSignature*				rootSignature	= nullptr;
 		LOADSTATE_FN						loader;
 		std::condition_variable				CV;
 	};
@@ -109,7 +109,7 @@ namespace FlexKit
 		void Release()	override;
 
 
-		RenderSystem*			RS;
+		IRenderSystem*			RS;
 		PipelineStateObject*	PSO;
 		iAllocator*				allocator;
 	};
@@ -121,7 +121,7 @@ namespace FlexKit
 	class FLEXKITAPI PipelineStateTable
 	{
 	public:
-		PipelineStateTable(iAllocator* allocator, RenderSystem* RS, ThreadManager* Threads);
+		PipelineStateTable(iAllocator* allocator, IRenderSystem* RS, ThreadManager* Threads);
 		
 		void ReleasePSOs();
 
@@ -129,24 +129,23 @@ namespace FlexKit
 		bool							QueuePSOLoad		(PSOHandle, iAllocator*);
 
 		DXPipelineState*				GetPSO			(PSOHandle, iAllocator& temp);
-		RootSignature const * const 	GetPSORootSig	(PSOHandle) const;
+		IRootSignature const * const 	GetPSORootSig	(PSOHandle) const;
 		PipelineStateObject*			GetPSOObject	(PSOHandle) const;
 
 
 	private:
-		PipelineStateObject*	_GetStateObject			(PSOHandle);
-		PipelineStateObject*	_GetNearestStateObject	(PSOHandle);
+		PipelineStateObject*		_GetStateObject			(PSOHandle);
+		PipelineStateObject*		_GetNearestStateObject	(PSOHandle);
 
 		PipelineStateObject*		_GetStateObject			(PSOHandle) const;
 		PipelineStateObject const*	_GetNearestStateObject	(PSOHandle) const;
 
-		bool					_AddStateObject			(PipelineStateObject*	PSO);
+		bool						_AddStateObject			(PipelineStateObject*	PSO);
 
 		static_vector<PipelineStateObject*,	128>			States;
 
 		ThreadManager*										WorkQueue;
-		ID3D12Device*										Device;
-		RenderSystem*										RS;
+		IRenderSystem*										RS;
 		iAllocator*											allocator;
 
 		friend LoadTask;

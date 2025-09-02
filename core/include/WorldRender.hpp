@@ -10,8 +10,8 @@
 #include "DepthBuffer.hpp"
 #include "FrameGraph.hpp"
 #include "GILightingUtilities.hpp"
-#include "Graphics.hpp"
 #include "OcclusionCulling.hpp"
+#include "RenderSystemInterface.hpp"
 #include "Scene.hpp"
 #include "ShadowMapping.hpp"
 #include "SVOGI.hpp"
@@ -328,7 +328,7 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(RenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const WorldRenderOptions& options = {}, const PoolSizes& poolSizes = PoolSizes{});
+		WorldRender(IRenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const WorldRenderOptions& options = {}, const PoolSizes& poolSizes = PoolSizes{});
 		~WorldRender();
 
 		void HandleTextures();
@@ -410,9 +410,9 @@ namespace FlexKit
 
 		void AddMemoryPools(FrameGraph& frameGraph)
 		{
-			frameGraph.AddMemoryPool(&UAVPool);
-			frameGraph.AddMemoryPool(&RTPool);
-			frameGraph.AddMemoryPool(&UAVTexturePool);
+			frameGraph.AddMemoryPool(UAVPool);
+			frameGraph.AddMemoryPool(RTPool);
+			frameGraph.AddMemoryPool(UAVTexturePool);
 		}
 
 
@@ -439,11 +439,10 @@ namespace FlexKit
 
 		RenderSystem&			renderSystem;
 
-		MemoryPoolAllocator		UAVPool;
-		MemoryPoolAllocator		RTPool;
-		MemoryPoolAllocator		UAVTexturePool;
-
-		MemoryPoolAllocator*	activePools[3] = { nullptr, nullptr, nullptr };
+		PoolAllocatorInterface*	UAVPool			= nullptr;
+		PoolAllocatorInterface*	RTPool			= nullptr;
+		PoolAllocatorInterface*	UAVTexturePool	= nullptr;
+		PoolAllocatorInterface*	activePools[3]	= { nullptr, nullptr, nullptr };
 
 		QueryHandle				timeStats;
 		ReadBackResourceHandle	timingReadBack;
@@ -463,7 +462,7 @@ namespace FlexKit
 
 		TextureStreamingEngine&		streamingEngine;
 
-		const FlexKit::RootSignature*	rootSignatureToneMapping;
+		const IRootSignature*		rootSignatureToneMapping;
 
 		DEBUG_WorldRenderTimingValues timingValues;
 	};

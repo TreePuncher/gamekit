@@ -1,6 +1,5 @@
 #pragma once
 #include <RenderSystemInterface.hpp>
-#include <Graphics.hpp>
 
 
 namespace FlexKit
@@ -392,9 +391,9 @@ namespace FlexKit
 	}
 
 
-	inline VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, Context& ctx)
+	inline VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, IDirectContext& ctx)
 	{
-		auto buffer = ctx.renderSystem->VertexBuffers.Reserve(VB, reserveSize);
+		auto buffer = ctx.GetRenderSystem().ReserveVertexBuffer(VB, reserveSize);
 		return { VB, buffer.data, buffer.offsetBegin, reserveSize };
 	}
 

@@ -621,10 +621,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	WorldRender::WorldRender(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
+	WorldRender::WorldRender(IRenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
 			renderSystem				{ IN_renderSystem },
 
-			UAVPool						{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
+			UAVPool						 { renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
 			RTPool						{ renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
 											renderSystem.features.resourceHeapTier == ResourceHeapTier::HeapTier2 ?
 												DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },

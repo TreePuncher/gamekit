@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "PipelineState.hpp"
 
 
@@ -105,7 +105,7 @@ namespace FlexKit
 			while (true)
 			{
 				state		= PipelineStateObject::PSO_States::LoadInProgress;
-				auto res	= loader(RenderSystem::_GetInstance(), temp);
+				auto res	= loader(IRenderSystem::GetInstance(), temp);
 				stale		= false;
 
 				if (!res.pipelineState) {
@@ -124,7 +124,7 @@ namespace FlexKit
 
 				state			= PipelineStateObject::PSO_States::Loaded;
 				PSO.state		= res.pipelineState;
-				rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
+				rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 				CV.notify_all();
 				return;
 			}
@@ -139,8 +139,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, RenderSystem* IN_RS, ThreadManager* IN_Threads) :
-		Device		{ IN_RS->pDevice },
+	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, IRenderSystem* IN_RS, ThreadManager* IN_Threads) :
 		allocator	{ IN_allocator	 },
 		RS			{ IN_RS			 },
 		WorkQueue	{ IN_Threads	 }
@@ -282,7 +281,7 @@ namespace FlexKit
 
 					PSO->state			= PipelineStateObject::PSO_States::Loaded;
 					PSO->PSO.state		= res.pipelineState;
-					PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
+					PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 					PSO->CV.notify_all();
 
 					return &PSO->PSO;
@@ -301,7 +300,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RootSignature const * const PipelineStateTable::GetPSORootSig(PSOHandle handle) const
+	IRootSignature const * const PipelineStateTable::GetPSORootSig(PSOHandle handle) const
 	{
 		auto PSO = _GetStateObject(handle);
 		return PSO->rootSignature;
@@ -320,7 +319,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool GetPSOReadyState( RenderSystem* RS, PipelineStateTable* States, PSOHandle State )
+	bool GetPSOReadyState(IRenderSystem* RS, PipelineStateTable* States, PSOHandle State )
 	{
 		FK_ASSERT(false, "GETPSOREADYSTATE");
 
@@ -511,7 +510,7 @@ namespace FlexKit
 			}
 
 			PSO->PSO.state		= res.pipelineState;
-			PSO->rootSignature	= static_cast<const RootSignature*>(res.rootSignature);
+			PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 
 			if (PSO->stale && loader != PSO->loader)
 				continue;

@@ -8,13 +8,17 @@
 #include <ranges>
 #include <bit>
 
+#include "../include/RenderSystemInterface.hpp"
+
 namespace FlexKit
 {   /************************************************************************************************/
 	using namespace std::views;
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+		// WIP: TODO REMOVE THIS
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto DrawRectVShader = RS.LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -75,14 +79,46 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "GBufferPassPSO");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)).
+	            AddVertexShader("Forward_VS", "assets\\shaders\\forwardRender.hlsl").
+	            AddPixelShader("GBufferFill_PS", "assets\\shaders\\forwardRender.hlsl").
+			    AddInputTopology(ETopology::EIT_TRIANGLE).
+                AddInputLayout({ .inputs =
+					{	{ "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 },
+                        { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT, 1, 0,	EInputClassification::PerVertex, 0 },
+			            { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT, 2, 0,	EInputClassification::PerVertex, 0 },
+			            { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 3, 0,	EInputClassification::PerVertex, 0 } },
+                    .count = 4 }).
+                AddDepthStencilState({
+                    .depthEnable = true,
+					.depthFunc = EComparison::LESS
+                }).
+	            AddRenderTargetState({
+			        .targetCount = 3,
+				    .targetFormats = {
+				    DeviceFormat::R8G8B8A8_UNORM,
+				    DeviceFormat::R8G8B8A8_UNORM,
+				    DeviceFormat::R16G16_FLOAT,
+			    }}).
+	            AddBlendState({
+						.renderTarget = {
+						    {.blendEnable = false }
+						}
+					}).
+			    SetDebugName("GBufferPassPSO").
+	            Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateGBufferSkinnedPassPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto DrawRectVShader = RS.LoadShader("ForwardSkinned_VS",    "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
@@ -150,14 +186,55 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "GBufferSkinnedPassPSO");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+
+		return PipelineBuilder{ renderSystem, allocator }.
+                AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)).
+	            AddVertexShader("ForwardSkinned_VS", "assets\\shaders\\forwardRender.hlsl").
+	            AddPixelShader("GBufferFill_PS", "assets\\shaders\\forwardRender.hlsl").
+			    AddInputTopology(ETopology::EIT_TRIANGLE).
+                AddInputLayout({ .inputs =
+					{	{ "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 },
+                        { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT, 1, 0,	EInputClassification::PerVertex, 0 },
+			            { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT, 2, 0,	EInputClassification::PerVertex, 0 },
+			            { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 3, 0,	EInputClassification::PerVertex, 0 },
+
+                        { "BLENDWEIGHT",	0, DeviceFormat::R32G32B32_FLOAT,	4, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDINDICES",	0, DeviceFormat::R16G16B16A16_UINT,	5, 0, EInputClassification::PerVertex, 0 },
+
+			            { "BLENDPOS",	0, DeviceFormat::R32G32B32_FLOAT,	6, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDNORM",	0, DeviceFormat::R32G32B32_FLOAT,	7, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDTAN",	0, DeviceFormat::R32G32B32_FLOAT,	8, 0, EInputClassification::PerVertex, 0 },
+					},
+                    .count = 9 }).
+                AddDepthStencilState({
+                    .depthEnable = true,
+					.depthFunc = EComparison::LESS
+                }).
+	            AddRenderTargetState({
+			        .targetCount = 3,
+				    .targetFormats = {
+				    DeviceFormat::R8G8B8A8_UNORM,
+				    DeviceFormat::R8G8B8A8_UNORM,
+				    DeviceFormat::R16G16_FLOAT }}).
+	            AddBlendState({
+						.renderTarget = {
+						    {
+						        .blendEnable = false
+						    }
+						}
+			    }).
+			    SetDebugName("GBufferSkinnedPassPSO").
+	            Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto VShader = RS.LoadShader("ShadingPass_VS",     "vs_6_0",	"assets\\shaders\\ClusteredShading\\deferredRender.hlsl");
@@ -205,14 +282,47 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DeferredShadingPSO");
 
 		return { PSO, rootSignature };
+#endif
+	    return PipelineBuilder{ renderSystem, allocator }.
+                AddRootSignature(rootSignature).
+	            AddVertexShader("ShadingPass_VS", "assets\\shaders\\ClusteredShading\\deferredRender.hlsl").
+	            AddPixelShader("DeferredShade_PS", "assets\\shaders\\ClusteredShading\\deferredRender.hlsl").
+                AddInputTopology(ETopology::EIT_TRIANGLE).
+                AddInputLayout({ .inputs =
+					{	{ "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 },
+					},
+                    .count = 1 }).
+                AddDepthStencilState({
+                    .depthEnable = false,
+                }).
+	            AddRenderTargetState({
+			        .targetCount = 1,
+				    .targetFormats = {
+				    DeviceFormat::R16G16B16A16_FLOAT}}).
+	            AddBlendState({
+						.renderTarget = {
+						    {
+						        .blendEnable = true,
+								.srcBlend = EBlend::ONE,
+								.dstBlend = EBlend::ONE,
+								.blendOp = EBlendOP::ADD,
+
+								.srcBlendAlpha = EBlend::ONE,
+								.dstBlendAlpha = EBlend::ONE
+						    }
+						}
+			    }).
+			    SetDebugName("DeferredShadingPSO").
+	            Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDeferredShadingPassComputePSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto CShader = RS.LoadShader("ClusteredShading", "cs_6_6", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl");
@@ -228,14 +338,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DeferredShadingComputePSO");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+			    AddComputeShader("ClusteredShading", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl").
+		        SetDebugName("DeferredShadingComputePSO").
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClearClusterCountersPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("ClearCounters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
@@ -253,14 +370,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ClearClusteredCounters");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+			    AddComputeShader("ClearCounters", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl").
+		        SetDebugName("ClearClusteredCounters").
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLight_DEBUGARGSVIS_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -298,14 +422,30 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightBuffers_DEBUGVIS");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+			    AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddGeometryShader("GMain3", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+                AddInputTopology(ETopology::EIT_POINT).
+			    AddDepthStencilState({
+				    .depthEnable = false }).
+			    AddRenderTargetState({
+			    	.targetCount = 1,
+					.targetFormats = {
+					DeviceFormat::R16G16B16A16_FLOAT} }).
+			    SetDebugName("CreateLightBuffers_DEBUGVIS").
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE1_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateLightBVH_PHASE1", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
@@ -323,13 +463,20 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE1");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateLightBVH_PHASE1", "assets\\shaders\\ClusteredShading\\LightBVH.hlsl").
+				SetDebugName("CreateLightBVH_PHASE1").
+				Build(renderSystem);
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_PHASE2_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateLightBVH_PHASE2", "cs_6_0", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)");
@@ -347,14 +494,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightBVH_PHASE2");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+			    AddComputeShader("CreateLightBVH_PHASE1", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)").
+			    SetDebugName("CreateLightBVH_PHASE2").
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightBVH_DEBUGVIS_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -392,14 +546,32 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightBVH_DEBUGVIS");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+			AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddGeometryShader("GMain3", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddInputTopology(ETopology::EIT_POINT).
+			AddDepthStencilState({
+				    .depthEnable = false,
+				}).
+	        AddRenderTargetState({
+					.targetCount = 1,
+					.targetFormats = {
+					DeviceFormat::R16G16B16A16_FLOAT} }).
+					SetDebugName("CreateLightBVH_DEBUGVIS").
+            AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+			Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGARGSVIS_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateArguments", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)");
@@ -417,14 +589,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateClusterArguments");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+				AddComputeShader("CreateArguments", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)").
+				SetDebugName("CreateClusterArguments").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateLightListArgs_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateLightListArguents", "cs_6_0", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)");
@@ -442,14 +621,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightListArgs");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateLightListArguents", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)").
+				SetDebugName("CreateLightListArgs").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClusterLightListsPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateClustersLightLists", "cs_6_0", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)");
@@ -467,14 +653,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateLightLists");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateClustersLightLists", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)").
+				SetDebugName("CreateLightLists").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateResolutionMatch_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("ResolutionMatch", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
@@ -492,13 +685,20 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ResolutionMatch_UNUSED");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateClustersLightLists", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)").
+				SetDebugName("CreateLightLists").
+				Build(renderSystem);
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClearResolutionMatch_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ResolutionMatch.hlsl)");
@@ -516,14 +716,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ResolutionMatchClear_UNUSED");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("Clear", R"(assets\shaders\ResolutionMatch.hlsl)").
+				SetDebugName("ResolutionMatchClear_UNUSED").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClustersPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateClusters", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)");
@@ -541,13 +748,20 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateClusters");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateClusters", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)").
+				SetDebugName("CreateClusters").
+				Build(renderSystem);
 	}
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateCluster_DEBUGVIS_PSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl");
@@ -585,14 +799,32 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateClusters");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+			    AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddGeometryShader("GMain2", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddInputTopology(ETopology::EIT_POINT).
+			    AddDepthStencilState({
+					    .depthEnable = false,
+				    }).
+				    AddRenderTargetState({
+					    .targetCount = 1,
+					    .targetFormats = {
+					        DeviceFormat::R16G16B16A16_FLOAT} }).
+	            SetDebugName("CreateClusters").
+			    AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		auto VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\ClusteredShading\\DebugVISBVH.hlsl");
@@ -635,14 +867,32 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateBVH_DEBUGVIS");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
+			    AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddGeometryShader("GMain2", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			    AddInputTopology(ETopology::EIT_POINT).
+			    AddDepthStencilState({
+					    .depthEnable = false,
+				    }).
+			    AddRenderTargetState({
+					    .targetCount = 1,
+					    .targetFormats = {
+						    DeviceFormat::R16G16B16A16_FLOAT} }).
+	            SetDebugName("CreateClusters").
+			    AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+			    Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateClusterBufferPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("CreateClusterBuffer", "cs_6_0", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)");
@@ -660,14 +910,21 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateClusterBuffer");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::ComputeSignature) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("CreateClusterBuffer", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)").
+				SetDebugName("CreateClusterBuffer").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes ClusteredRender::CreateComputeTiledDeferredPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 
 		Shader computeShader = RS.LoadShader("csmain", "cs_6_0", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)");
@@ -685,37 +942,42 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "CreateComputeTiledDeferred");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return PipelineBuilder{ renderSystem, allocator }.
+				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
+				AddComputeShader("csmain", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)").
+				SetDebugName("CreateComputeTiledDeferred").
+				Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(IRenderSystem& irs, iAllocator& allocator)
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 		auto& RS = static_cast<RenderSystem&>(irs);
 
-		PipelineBuilder builder{ allocator };
-		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
-		builder.AddVertexShader("VMain", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
-		builder.AddRasterizerState({
-				.CullMode = ECullMode::NONE
-			});
-		builder.AddDepthStencilState({
-				.depthEnable	= true,
-				.depthWriteMask = EDepthWriteMask::Zero,
-				.stencilEnable	= false
-			});
-		builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
-
-		return builder.Build(*RS);
+		return PipelineBuilder{ renderSystem, allocator }.
+		        AddInputTopology(ETopology::EIT_TRIANGLE).
+		        AddVertexShader("VMain", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)").
+		        AddRasterizerState({
+				    .CullMode = ECullMode::NONE
+			    }).
+		        AddDepthStencilState({
+				    .depthEnable	= true,
+				    .depthWriteMask = EDepthWriteMask::Zero,
+				    .stencilEnable	= false
+			    }).
+		        AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+	            Build(*RS);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(IRenderSystem& irs, iAllocator& allocator)
+	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 		auto& RS = static_cast<RenderSystem&>(irs);
 
@@ -753,7 +1015,7 @@ namespace FlexKit
 				.stencilEnable	= false
 			});
 
-		builder.AddPixelShader("PMain",				R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
+		builder.AddPixelShader("PMain",			R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
 
 		return builder.Build(*RS);
 	}
@@ -768,20 +1030,6 @@ namespace FlexKit
 		MRIA			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
 		normal			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT)) }
 	{
-
-		/*
-		auto albedoDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM);
-		auto mriaDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM);
-		auto normalDesc = GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT);
-
-		albedoDesc.bufferCount = 1;
-		mriaDesc.bufferCount = 1;
-		normalDesc.bufferCount = 1;
-
-		albedo = RS.CreateGPUResource(albedoDesc);
-		MRIA = RS.CreateGPUResource(mriaDesc);
-		normal = RS.CreateGPUResource(normalDesc);
-		*/
 		RS.SetDebugName(albedo,		"Albedo");
 		RS.SetDebugName(MRIA,		"MRIA");
 		RS.SetDebugName(normal,		"Normal");
@@ -920,7 +1168,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, MemoryPoolAllocator& UAVPool)
+	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, PoolAllocatorInterface& UAVPool)
 	{
 		return
 			[&, camera = camera, WH = WH](FrameGraph& frameGraph)

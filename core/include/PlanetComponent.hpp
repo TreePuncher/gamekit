@@ -32,7 +32,7 @@ namespace FlexKit
 	constexpr PSOHandle SumReductionCBTPSO	= PSOHandle(GetTypeGUID(SUMREDUCTIONCBT));
 
 
-	void RegisterPlanetRenderingPipelineStates(RenderSystem&);
+	void RegisterPlanetRenderingPipelineStates(IRenderSystem&);
 	void PlanetGBufferPass(ExtraGBufferPassInputs& inputs);
 	void PlanetTestPass(ExtraForwardPassInputs& inputs);
 }

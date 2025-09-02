@@ -1,5 +1,5 @@
 #include "AnimationRendering.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include <fmt/format.h>
 #include <ranges>
 

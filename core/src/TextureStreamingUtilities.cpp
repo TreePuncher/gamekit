@@ -1,6 +1,6 @@
 #include "ClusteredRendering.hpp"
 #include "CoreSceneObjects.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "ProfilingUtilities.hpp"
 #include "TextureStreamingUtilities.hpp"
 #include "WorldRender.hpp"
@@ -160,7 +160,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackPassPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
+#if 0
 		auto VShader = RS.LoadShader("Forward_VS",				"vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS.LoadShader("TextureFeedback_PS",		"ps_6_5", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
 
@@ -200,6 +200,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback PS");
 
 		return { PSO, feedbackPassRootSignature };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 
@@ -208,6 +212,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto VShader = RS.LoadShader("ForwardSkinned_VS", "vs_6_0", R"(assets\shaders\TextureFeedback\TextureFeedback_VS.hlsl)");
 		auto PShader = RS.LoadShader("TextureFeedback_PS", "ps_6_2", R"(assets\shaders\TextureFeedback\TextureFeedback.hlsl)");
@@ -255,6 +260,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, feedbackPassRootSignature };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 
@@ -263,6 +272,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
 	{
+#if 0
 		const char* file = RS->vendorID == DeviceVendor::AMD ?
 				"assets\\shaders\\TextureFeedback\\TextureFeedbackCompressor_AMD.hlsl" :
 				"assets\\shaders\\TextureFeedback\\TextureFeedbackCompressor.hlsl";
@@ -283,6 +293,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback compressor shader");
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 
@@ -291,6 +305,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS)
 	{
+#if 0
 		auto computeShader = RS->LoadShader(
 			"PreFixSumBlockSizes", "cs_6_5",
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackBlockPreFixSum.hlsl");
@@ -308,6 +323,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Texture feedback prefix sum shader");
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 
@@ -315,6 +334,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTextureFeedbackMergeBlocks(RenderSystem* RS)
 	{
+#if 0
 		auto computeShader = RS->LoadShader(
 			"MergeBlocks", "cs_6_5",
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
@@ -332,6 +352,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR), "Failed to create Merge Block shader");
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 
@@ -340,6 +364,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTextureFeedbackSetBlockSizes(RenderSystem* RS)
 	{
+#if 0
 		auto computeShader = RS->LoadShader(
 			"SetBlockCounters", "cs_6_5",
 			"assets\\shaders\\TextureFeedback\\TextureFeedbackMergeBlocks.hlsl");
@@ -357,6 +382,10 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+
+		static_assert(false);
+		return {};
 	}
 
 	/************************************************************************************************/
@@ -494,7 +523,7 @@ namespace FlexKit
 
 
 	TextureStreamingEngine::TextureStreamingEngine(
-				RenderSystem&	IN_renderSystem,
+				IRenderSystem&	IN_renderSystem,
 				iAllocator*		IN_allocator,
 				const TextureCacheDesc& desc) : 
 			allocator					{ IN_allocator		},
@@ -1481,7 +1510,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStreamingEngine::PostUpdatedTilesDirect(const BlockAllocation& blockChanges, Context& ctx, iAllocator& threadLocalAllocator)
+	void TextureStreamingEngine::PostUpdatedTilesDirect(const BlockAllocation& blockChanges, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 	{
 		if (blockChanges.allocations.size() == 0 &&
 			blockChanges.packedAllocations.size() &&
@@ -1565,7 +1594,7 @@ namespace FlexKit
 			if (!asset) // Skipped unmapped blocks
 				continue;
 
-			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
+			const auto deviceResource = renderSystem.GetDeviceResource(block.resource);
 
 			const auto blocks = [&]
 			{

@@ -1,4 +1,4 @@
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "OcclusionCulling.hpp"
 
 namespace FlexKit
@@ -7,8 +7,8 @@ namespace FlexKit
 	{
 		if (occlusionQueries != InvalidHandle)
 		{
-			RenderSystem::_GetInstance().ReleaseQuery(occlusionQueries);
-			RenderSystem::_GetInstance().ReleaseResource(occlusionResults);
+			IRenderSystem::GetInstance().ReleaseQuery(occlusionQueries);
+			IRenderSystem::GetInstance().ReleaseResource(occlusionResults);
 		}
 		occlusionQueries = InvalidHandle;
 	}

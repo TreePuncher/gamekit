@@ -71,7 +71,7 @@ namespace FlexKit
 
 	struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
 	{
-		MaterialComponent(RenderSystem& IN_renderSystem, TextureStreamingEngine& IN_TSE, iAllocator* IN_allocator) :
+		MaterialComponent(IRenderSystem& IN_renderSystem, TextureStreamingEngine& IN_TSE, iAllocator* IN_allocator) :
 			streamEngine	{ IN_TSE },
 			renderSystem	{ IN_renderSystem },
 			materials		{ IN_allocator },
@@ -242,7 +242,7 @@ namespace FlexKit
 		}
 
 
-		RenderSystem&					renderSystem;
+		IRenderSystem&					renderSystem;
 		TextureStreamingEngine&			streamEngine;
 
 		Vector<MaterialComponentData>					materials;

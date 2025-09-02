@@ -1,11 +1,11 @@
 #pragma once
 
 #include "BuildSettings.hpp"
+#include "ClusteredRendering.hpp"
 #include "Components.hpp"
 #include "FrameGraph.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "Transparency.hpp"
-#include "ClusteredRendering.hpp"
 
 
 namespace FlexKit
@@ -129,8 +129,8 @@ namespace FlexKit
 		LoadPipelineStateRes CreateBuildMIPLevelPSO     (IRenderSystem& RS, iAllocator& temp);
 
 
-		const RootSignature* voxelizeSignature;
-		const RootSignature* markSignature;
+		const IRootSignature* voxelizeSignature;
+		const IRootSignature* markSignature;
 
 		IndirectLayout dispatch;
 	};
@@ -205,9 +205,9 @@ namespace FlexKit
 
 		IndirectLayout remove;
 
-		const RootSignature* gatherSignature;
-		const RootSignature* dispatchSignature;
-		const RootSignature* removeSignature;
+		const IRootSignature* gatherSignature;
+		const IRootSignature* dispatchSignature;
+		const IRootSignature* removeSignature;
 
 		StaticVoxelizer staticVoxelizer;
 

@@ -1,12 +1,14 @@
 #include "ClusteredRendering.hpp"
 #include "FrameGraph.hpp"
 #include "Particles.hpp"
+#include "RenderSystemInterface.hpp"
 
 
 namespace FlexKit
 {
-	LoadPipelineStateRes CreateParticleMeshInstancedPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateParticleMeshInstancedPSO(IRenderSystem* RS)
 	{
+#if 0
 		auto VShader = RS->LoadShader("ParticleMeshInstanceVS", "vs_6_0", "assets\\shaders\\ParticleRendering.hlsl");
 		auto PShader = RS->LoadShader("ParticleMeshInstancePS", "ps_6_0", "assets\\shaders\\ParticleRendering.hlsl");
 
@@ -52,6 +54,9 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawParticleMeshInstances");
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		FK_ASSERT(0);
+		return {};
 	}
 
 
@@ -60,6 +65,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateParticleMeshInstancedDepthPSO(RenderSystem* RS)
 	{
+#if 0
 		auto VShader = RS->LoadShader("ParticleMeshInstanceDepthVS", "vs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
 		auto GShader = RS->LoadShader("ParticleMeshInstanceDepthGS", "gs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");
 
@@ -99,6 +105,9 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawParticleMeshInstancesDepth");
 
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		FK_ASSERT(0);
+		return {};
 	}
 
 

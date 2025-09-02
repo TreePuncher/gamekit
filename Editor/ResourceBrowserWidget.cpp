@@ -1,22 +1,16 @@
 #include "PCH.h"
 
 #include <scn/scan.h>
-#include <QtWidgets/QTableWidget>
-#include <QtWidgets/qdockwidget>
 #include <QtWidgets/qmenubar.h>
 #include <qshortcut>
 #include <memory>
 
-#include "EditorTextureViewer.h"
-#include "EditorRenderer.h"
 #include "EditorProject.h"
+#include "EditorRenderer.h"
+#include "EditorTextureResources.h"
+#include "EditorTextureViewer.h"
 #include "ResourceBrowserWidget.h"
 
-#include <Assets.hpp>
-#include <Graphics.hpp>
-#include <MemoryUtilities.hpp>
-
-#include "EditorTextureResources.h"
 
 
 /************************************************************************************************/

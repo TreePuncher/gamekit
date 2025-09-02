@@ -1,12 +1,14 @@
 #pragma once
 #include <atomic>
 #include <ResourceHandles.hpp>
+
+#include "Containers.hpp"
 #include "DoOnce.hpp"
 
 
 namespace FlexKit
 {
-	class RenderSystem;
+	class IRenderSystem;
 
 	uint64_t FindMSB(uint64_t) noexcept;
 	uint64_t FindLSB(uint64_t) noexcept;
@@ -37,7 +39,7 @@ namespace FlexKit
 
 	struct CBTBuffer
 	{
-		CBTBuffer(RenderSystem& IN_renderSystem, iAllocator& persistent);
+		CBTBuffer(IRenderSystem& IN_renderSystem, iAllocator& persistent);
 		~CBTBuffer();
 
 		void Initialize(const CBTBufferDescription & = {});
@@ -52,10 +54,10 @@ namespace FlexKit
 
 		struct PipelineStates
 		{
-			void Initialize(RenderSystem& renderSystem);
-			void QueueReload(RenderSystem& renderSystem);
+			void Initialize(IRenderSystem& renderSystem);
+			void QueueReload(IRenderSystem& renderSystem);
 
-			static void _InitializeStates(PipelineStates& states, RenderSystem& renderSystem);
+			static void _InitializeStates(PipelineStates& states, IRenderSystem& renderSystem);
 
 			using TY_helper = decltype(FlexKit::MakeDoOnce(&_InitializeStates));
 
@@ -93,7 +95,7 @@ namespace FlexKit
 		uint32_t			maxDepth	= 0;
 		uint32_t			bufferSize	= 0;
 		ResourceHandle		buffer		= InvalidHandle;
-		RenderSystem&		renderSystem;
+		IRenderSystem&		renderSystem;
 		Vector<uint64_t>	bitField;
 	};
 
@@ -101,7 +103,7 @@ namespace FlexKit
 	struct CBTMemoryManager
 	{
 	public:
-		CBTMemoryManager(RenderSystem& IN_renderSystem, iAllocator& IN_persistent) :
+		CBTMemoryManager(IRenderSystem& IN_renderSystem, iAllocator& IN_persistent) :
 			cbt{ IN_renderSystem, IN_persistent } {}
 
 

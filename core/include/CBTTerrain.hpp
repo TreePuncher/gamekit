@@ -8,7 +8,7 @@ namespace FlexKit
 {
 	struct CBTTerain
 	{
-		CBTTerain(iAllocator& persistent, RenderSystem& renderSystem);
+		CBTTerain(iAllocator& persistent, IRenderSystem& renderSystem);
 
 		static constexpr PSOHandle AdaptiveTerrainUpdateArgs	= PSOHandle(GetTypeGUID(AdaptiveTerrainUpdateArgs));
 		static constexpr PSOHandle AdaptiveTerrainUpdate		= PSOHandle(GetTypeGUID(AdaptiveTerrainUpdate));
@@ -16,9 +16,9 @@ namespace FlexKit
 		static constexpr PSOHandle RenderTerrain				= PSOHandle(GetTypeGUID(DrawCBTTree));
 		static constexpr PSOHandle RenderTerrainWireframe		= PSOHandle(GetTypeGUID(DrawCBTTreeWireframe));
 
-		static void RegisterAdaptiveUpdateCBT(RenderSystem& renderSystem);
+		static void RegisterAdaptiveUpdateCBT(IRenderSystem& renderSystem);
 
-		void LoadHeightMapFromPath(std::filesystem::path heightMapPath);
+		void LoadHeightMapFromPath(IRenderSystem& renderSystem, std::filesystem::path heightMapPath, iAllocator& allocator);
 		void SetHeightMap(ResourceHandle handle);
 
 		void AdaptiveLODUpdate(CameraHandle camera, ReserveConstantBufferFunction& cbAllocator, FrameGraph& frameGraph, double dT);

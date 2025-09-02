@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.hpp"
 #include "AnimationUtilities.hpp"
 #include "CoreSceneObjects.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 

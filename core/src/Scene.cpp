@@ -10,6 +10,7 @@
 #include "KeyValueIDs.hpp"
 #include "TriggerComponent.hpp"
 #include "TriggerSlotIDs.hpp"
+#include "TriMeshResource.hpp"
 
 #include <any>
 #include <cmath>

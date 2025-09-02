@@ -1,8 +1,8 @@
 #include "Containers.hpp"
 #include "Events.hpp"
-#include "Graphics.hpp"
 #include "FrameGraph.hpp"
 #include "MathUtilities.hpp"
+#include "RenderSystemInterface.hpp"
 #include "RMLRenderer.hpp"
 
 #include <filesystem>
@@ -39,7 +39,7 @@ namespace FlexKit
 	class RmlRenderer : public Rml::RenderInterface
 	{
 	public:
-		explicit RmlRenderer(RenderSystem& IN_renderSystem);
+		explicit RmlRenderer(IRenderSystem& IN_renderSystem);
 
 		~RmlRenderer() override {}
 
@@ -112,7 +112,7 @@ namespace FlexKit
 	class RmlUI
 	{
 	public:
-		explicit RmlUI(FlexKit::RenderSystem& IN_renderSystem);
+		explicit RmlUI(IRenderSystem& IN_renderSystem);
 
 		~RmlUI();
 		FlexKit::UpdateTask* Update(Rml::Context* ctx, struct EngineCore&, UpdateDispatcher&, double dT);
@@ -122,7 +122,7 @@ namespace FlexKit
 		void HandleEvent(Rml::Context* ctx, const FlexKit::Event& evt);
 
 		Rml::Context*		context;  // Main context
-		RenderSystem&		renderSystem;
+		IRenderSystem&		renderSystem;
 		RmlRenderer			renderer;
 		RmlSystemInterface	systemInterface;
 	};
@@ -131,7 +131,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlRenderer::RmlRenderer(RenderSystem& IN_renderSystem) :
+	RmlRenderer::RmlRenderer(IRenderSystem& IN_renderSystem) :
 		renderSystem	{ IN_renderSystem			},
 		textures		{ IN_renderSystem.Memory	},
 		geometry		{ IN_renderSystem.Memory	}
@@ -637,7 +637,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlUI::RmlUI(FlexKit::RenderSystem& IN_renderSystem) :
+	RmlUI::RmlUI(IRenderSystem& IN_renderSystem) :
 		renderSystem	{ IN_renderSystem },
 		renderer		{ IN_renderSystem }
 	{
@@ -744,7 +744,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlIntegrator::RmlIntegrator(RenderSystem& renderSystem, iAllocator& IN_allocator)
+	RmlIntegrator::RmlIntegrator(IRenderSystem& renderSystem, iAllocator& IN_allocator)
 	{
 		impl = &IN_allocator.allocate<RmlUI>(renderSystem);
 

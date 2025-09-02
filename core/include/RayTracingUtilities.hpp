@@ -1,7 +1,7 @@
 #pragma once
 
 #include "MemoryUtilities.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "Scene.hpp"
 #include "WorldRender.hpp"
 
