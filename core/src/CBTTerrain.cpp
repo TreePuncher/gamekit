@@ -7,7 +7,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	CBTTerain::CBTTerain(iAllocator& persistent, RenderSystem& renderSystem) :
+	CBTTerain::CBTTerain(iAllocator& persistent, IRenderSystem& renderSystem) :
 		cbt{ renderSystem, persistent }
 	{
 		static bool registerStates = [&]
@@ -42,52 +42,48 @@ namespace FlexKit
 		cbt.SetBit(0 * (1 << (depth - 1)), true); // 2
 		cbt.SetBit(1 * (1 << (depth - 1)), true); // 3
 
-		auto descAllocation = renderSystem._AllocateDescriptorRange(1);
-		textureDesc			= descAllocation.value();
-		PushTextureToDescHeap(renderSystem, DXGI_FORMAT_R8G8B8A8_UNORM, (uint32_t)0u, renderSystem.DefaultTexture, textureDesc);
+		auto descAllocation = renderSystem.CreateDescriptorRange(1);
+		textureDesc	= descAllocation.value();
+		renderSystem.CreateTextureView(renderSystem.DefaultTexture(), textureDesc);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void CBTTerain::RegisterAdaptiveUpdateCBT(RenderSystem& renderSystem)
+	void CBTTerain::RegisterAdaptiveUpdateCBT(IRenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainUpdateArgs,
 			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
-				auto& renderSystem= static_cast<RenderSystem&>(irs);
-				return FlexKit::PipelineBuilder{ tempAllocator }.
+				return PipelineBuilder{ irs, tempAllocator }.
 					AddComputeShader("AdaptiveUpdateGetArgs", R"(assets\shaders\CBT\CBT_GetArguments.hlsl)", { .hlsl2021 = true }).
-					Build(*renderSystem);
+					Build(irs);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainUpdate,
 			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return FlexKit::PipelineBuilder{ tempAllocator }.
+				return PipelineBuilder{ irs, tempAllocator }.
 					AddComputeShader("UpdateAdaptiveTerrain", R"(assets\shaders\CBT\CBT_TerrainAdapt.hlsl)", { .hlsl2021 = true }).
-					Build(*renderSystem);
+					Build(irs);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			AdaptiveTerrainDrawArgs,
 			[](IRenderSystem& irs, iAllocator& tempAllocator)
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return FlexKit::PipelineBuilder{ tempAllocator }.
+				return PipelineBuilder{ irs, tempAllocator }.
 					AddComputeShader("AdaptiveDrawGetArgs", R"(assets\shaders\CBT\CBT_GetArguments.hlsl)", { .hlsl2021 = true }).
-					Build(*renderSystem);
+					Build(irs);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			RenderTerrain, [](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return PipelineBuilder{ allocator }.
+				return PipelineBuilder{ irs, allocator }.
 						AddInputTopology(ETopology::EIT_TRIANGLE).
 						AddVertexShader("DrawCBTTerrain_VS", "assets\\shaders\\cbt\\CBT_DebugVis.hlsl", { .hlsl2021 = true }).
 						AddPixelShader("DrawCBTTerrain_PS1", "assets\\shaders\\cbt\\CBT_DebugVis.hlsl", { .hlsl2021 = true }).
@@ -102,14 +98,13 @@ namespace FlexKit
 								.stencilEnable	= false
 							}).
 						AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-						Build(*renderSystem);
+						Build(irs);
 			});
 
 		renderSystem.RegisterPSOLoader(
 			RenderTerrainWireframe, [](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return PipelineBuilder{ allocator }.
+				return PipelineBuilder{ irs, allocator }.
 						AddInputTopology(ETopology::EIT_TRIANGLE).
 						AddVertexShader("DrawCBTTerrain_VS", "assets\\shaders\\cbt\\CBT_TerrainForward.hlsl", { .hlsl2021 = true }).
 						AddPixelShader("DrawCBTTerrain_PS2", "assets\\shaders\\cbt\\CBT_TerrainForward.hlsl", { .hlsl2021 = true }).
@@ -125,7 +120,7 @@ namespace FlexKit
 								.stencilEnable	= false,
 							}).
 						AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-						Build(*renderSystem);
+						Build(irs);
 			});
 
 		renderSystem.QueuePSOLoad(AdaptiveTerrainUpdateArgs);
@@ -137,7 +132,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CBTTerain::LoadHeightMapFromPath(std::filesystem::path heightMapPath)
+	void CBTTerain::LoadHeightMapFromPath(IRenderSystem& renderSystem, std::filesystem::path heightMapPath, iAllocator& allocator)
 	{
 		int width, height, channels;
 		auto heightValues = stbi_loadf(heightMapPath.string().c_str(), &width, &height, &channels, 1);
@@ -165,12 +160,13 @@ namespace FlexKit
 
 		free(heightValues);
 
-		auto& renderSystem = RenderSystem::_GetInstance();
-		heightMap = LoadTexture(&converted, renderSystem.GetImmediateCopyQueue(), renderSystem, renderSystem.Memory, DeviceFormat::R32_FLOAT);
+		heightMap = renderSystem.LoadTexture(&converted, renderSystem.GetImmediateCopyQueue(), DeviceFormat::R32_FLOAT, allocator);
+		//heightMap = LoadTexture(&converted, renderSystem.GetImmediateCopyQueue(), renderSystem, allocator, DeviceFormat::R32_FLOAT); // WIP: FOR LATER REMOVAL
 
-		auto descAllocation = renderSystem._AllocateDescriptorRange(1);
+		auto descAllocation = renderSystem.CreateDescriptorRange(1);
 		textureDesc = descAllocation.value();
-		PushTextureToDescHeap(renderSystem, DXGI_FORMAT_R32_FLOAT, (uint32_t)0u, heightMap, textureDesc);
+		renderSystem.CreateTextureView(heightMap, textureDesc);
+		//PushTextureToDescHeap(renderSystem, DXGI_FORMAT_R32_FLOAT, (uint32_t)0u, heightMap, textureDesc); // WIP: FOR LATER REMOVAL
 	}
 
 

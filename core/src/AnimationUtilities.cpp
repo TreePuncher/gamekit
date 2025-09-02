@@ -1,5 +1,5 @@
 #include "AnimationUtilities.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "XMMathConversion.hpp"
 
 namespace FlexKit
@@ -187,7 +187,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem& renderSystem, CopyContextHandle handle, iAllocator& allocator)
+	ResourceHandle LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, IRenderSystem& renderSystem, CopyContextHandle handle, iAllocator& allocator)
 	{
 		auto readCtx = OpenReadContext(triMesh->assetHandle);
 

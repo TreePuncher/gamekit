@@ -2,7 +2,7 @@
 
 #include "ClusteredRendering.hpp"
 #include "FrameGraph.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -56,7 +56,7 @@ namespace FlexKit
 	class GlobalIlluminationEngine
 	{
 	public:
-		GlobalIlluminationEngine(RenderSystem& renderSystem, iAllocator& allocator, EGITECHNIQUE technique = EGITECHNIQUE::AUTOMATIC);
+		GlobalIlluminationEngine(IRenderSystem& renderSystem, iAllocator& allocator, EGITECHNIQUE technique = EGITECHNIQUE::AUTOMATIC);
 		~GlobalIlluminationEngine();
 
 

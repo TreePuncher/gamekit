@@ -1,8 +1,8 @@
+#include <bit>
 #include <CBT.hpp>
 #include <FrameGraph.hpp>
-#include <graphics.hpp>
+#include <RenderSystemInterface.hpp>
 #include <Type.hpp>
-#include <bit>
 
 
 namespace FlexKit
@@ -71,7 +71,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CBTBuffer::CBTBuffer(RenderSystem& IN_renderSystem, iAllocator& IN_persistent) :
+	CBTBuffer::CBTBuffer(IRenderSystem& IN_renderSystem, iAllocator& IN_persistent) :
 		renderSystem	{ IN_renderSystem	},
 		bitField		{ IN_persistent		}
 	{
@@ -318,7 +318,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CBTBuffer::PipelineStates::_InitializeStates(PipelineStates& states, RenderSystem& renderSystem)
+	void CBTBuffer::PipelineStates::_InitializeStates(PipelineStates& states, IRenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(
 			SumReductionCBT, [](IRenderSystem& renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
@@ -336,7 +336,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CBTBuffer::PipelineStates::QueueReload(RenderSystem& renderSystem)
+	void CBTBuffer::PipelineStates::QueueReload(IRenderSystem& renderSystem)
 	{
 		renderSystem.QueuePSOLoad(SumReductionCBT);
 	}
@@ -345,7 +345,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CBTBuffer::PipelineStates::Initialize(RenderSystem& renderSystem)
+	void CBTBuffer::PipelineStates::Initialize(IRenderSystem& renderSystem)
 	{
 		init(*this, renderSystem);
 	}

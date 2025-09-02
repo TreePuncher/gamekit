@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BuildSettings.hpp"
 #include "Containers.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "MemoryUtilities.hpp"
 
 #include <DirectXTK12/DDSTextureLoader.h>
@@ -115,11 +115,12 @@ namespace FlexKit
 	typedef FlexKit::Pair<DDSTexture3D*, bool>	DDSTexture3DLoad_RES; // Not-Implemented
 	typedef FlexKit::Pair<ResourceHandle, bool>	LoadDDSTexture2DFromFile_RES;
 
-	FLEXKITAPI DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, CopyContextHandle);
-	FLEXKITAPI DDSTexture3DLoad_RES			LoadDDSTexture3DFromFile();
-	FLEXKITAPI LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, CopyContextHandle);
+	DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, CopyContextHandle);
+	DDSTexture3DLoad_RES			LoadDDSTexture3DFromFile();
+	LoadDDSTexture2DFromFile_RES	LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, CopyContextHandle);
 
-	FLEXKITAPI bool	CreateDDSTextureFromFile12(
+	/*
+	bool CreateDDSTextureFromFile12(
 		RenderSystem*		RS,
 		CopyContextHandle	handle,
 		const wchar_t*		szFileName,
@@ -129,8 +130,7 @@ namespace FlexKit
 		uint2*				WH,
 		uint32_t*			MIPLevels,
 		DXGI_FORMAT*		FormatOut);
-
-	FLEXKITAPI Texture2D LoadDDSIntoResource();
+    */
 }
 
 #endif

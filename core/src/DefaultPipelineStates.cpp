@@ -1,54 +1,44 @@
 #include "CoreSceneObjects.hpp"
 #include "DefaultPipelineStates.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
+#include "../include/DX12Graphics.hpp"
 
 
 namespace FlexKit
 {	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateDrawTriStatePSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes CreateDrawTriStatePSO(IRenderSystem& irs, iAllocator& allocator)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
-		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",	"vs_6_0", "assets\\shaders\\vshader.hlsl");
-		auto DrawRectPShader = RS.LoadShader("DrawRect",		"ps_6_0", "assets\\shaders\\pshader.hlsl");
+		PipelineBuilder builder{ irs, allocator };
+		builder.AddVertexShader("DrawRect_VS", "assets\\shaders\\vshader.hlsl");
+		builder.AddPixelShader( "DrawRect", "assets\\shaders\\pshader.hlsl");
 
-		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
+		builder.AddRootSignature(irs.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
+		builder.AddInputLayout({
+			.inputs = {
+			    { "POSITION",	0, DeviceFormat::R32G32_FLOAT,	 0, 0,	EInputClassification::PerVertex, 0 },
+				{ "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 0, 8,  EInputClassification::PerVertex, 0 },
+				{ "COLOR",		0, DeviceFormat::R32G32B32_FLOAT, 0, 16, EInputClassification::PerVertex, 0 },
+			},
+			.count = 3
+		});
 
+		builder.AddRasterizerState({});
+		builder.AddDepthStencilState({
+			.depthEnable	= false,
+			.depthFunc		= EComparison::GREATER_EQUAL,
+		});
 
-		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-		Depth_Desc.DepthEnable = false;
+		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
+		builder.AddRenderTargetState({
+			.targetCount = 1,
+			.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT }
+		});
+		builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
+		builder.SetDebugName("DrawRect");
 
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
-			PSO_Desc.VS                    = Shader2ByteCode(DrawRectVShader);
-			PSO_Desc.PS                    = Shader2ByteCode(DrawRectPShader);
-			PSO_Desc.RasterizerState       = Rast_Desc;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
-		}
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		FK_ASSERT(SUCCEEDED(HR));
-
-		SETDEBUGNAME(PSO, "DrawRect");
-
-		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+		return builder.Build(irs);
 	}
 
 

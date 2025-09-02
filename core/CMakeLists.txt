@@ -42,7 +42,7 @@ add_library(flex
     "src/Geometry.cpp"
     "src/GILightingUtilities.cpp"
     "src/GPUAllocators.cpp"
-    "src/Graphics.cpp"
+    "src/DX12Graphics.cpp"
     "src/GraphicsComponents.cpp"
     "src/GUIInputState.cpp"
     "src/GuiUtilities.cpp"
@@ -64,6 +64,7 @@ add_library(flex
     "src/PlanetComponent.cpp"
     "src/ProfilingUtilities.cpp"
     "src/RayTracingUtilities.cpp"
+    "src/RenderSystemInterface.cpp"
     "src/RMLRenderer.cpp"
     "src/Scene.cpp"
     "src/ScriptingRuntime.cpp"
@@ -81,9 +82,9 @@ add_library(flex
     "src/Transforms.cpp"
     "src/Transparency.cpp"
     "src/TriggerComponent.cpp"
+    "src/TriMeshResource.cpp"
     "src/Win32Graphics.cpp"
-    "src/WorldRender.cpp"
- )
+    "src/WorldRender.cpp")
 
 target_sources(
     flex PUBLIC
@@ -122,7 +123,7 @@ target_sources(
     "include/GPUAllocators.hpp"
     "include/Geometry.hpp"
     "include/GILightingUtilities.hpp"
-    "include/Graphics.hpp"
+    "include/DX12Graphics.hpp"
     "include/GraphicsComponents.hpp"
     "include/GUIInputState.hpp"
     "include/GUIUtilities.hpp"
@@ -167,6 +168,7 @@ target_sources(
     "include/ThreadUtilities.hpp"
     "include/TimeUtilities.hpp"
     "include/Transforms.hpp"
+    "include/TriMeshResource.hpp"
     "include/Transparency.hpp"
     "include/TriggerComponent.hpp"
     "include/TriggerSlotIDs.hpp"

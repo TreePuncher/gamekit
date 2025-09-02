@@ -24,7 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "EngineCore.hpp"
 #include "Transforms.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
+#include "DX12Graphics.hpp"
+#include "TrimeshResource.hpp"
+
 
 namespace FlexKit
 {   /************************************************************************************************/

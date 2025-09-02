@@ -22,10 +22,9 @@ namespace FlexKit
 
 
 
-	LoadPipelineStateRes CreateTestStatePSO(IRenderSystem& irs, iAllocator& tempAllocator)
+	LoadPipelineStateRes CreateTestStatePSO(IRenderSystem& renderSystem, iAllocator& tempAllocator)
 	{
-		auto& renderSystem = static_cast<RenderSystem&>(irs);
-		PipelineBuilder builder{ tempAllocator };
+		PipelineBuilder builder{ renderSystem, tempAllocator };
 		builder.AddVertexShader	("VTestMain", R"(assets\shaders\CBT\ConcurrentBinaryTree.hlsl)");
 
 		builder.AddRasterizerState({
@@ -43,27 +42,26 @@ namespace FlexKit
 			});
 
 
-		return builder.Build(*renderSystem);
+		return builder.Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateSumReductionCBTPSO(IRenderSystem& irs, iAllocator& tempAllocator)
+	LoadPipelineStateRes CreateSumReductionCBTPSO(IRenderSystem& renderSystem, iAllocator& tempAllocator)
 	{
-		auto& renderSystem = static_cast<RenderSystem&>(irs);
-		PipelineBuilder builder{ tempAllocator };
+		PipelineBuilder builder{ renderSystem, tempAllocator };
 		builder.AddComputeShader("ComputeSumReductionCBT", R"(assets\shaders\CBT\ConcurrentBinaryTree.hlsl)");
 
-		return builder.Build(*renderSystem);
+		return builder.Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void RegisterPlanetRenderingPipelineStates(RenderSystem& renderSystem)
+	void RegisterPlanetRenderingPipelineStates(IRenderSystem& renderSystem)
 	{
 		renderSystem.RegisterPSOLoader(PlanetTestPSO,		{ CreateTestStatePSO });
 		renderSystem.RegisterPSOLoader(SumReductionCBTPSO,	{ CreateSumReductionCBTPSO });

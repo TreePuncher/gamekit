@@ -2,6 +2,8 @@
 #include "ShadowMapping.hpp"
 #include "AnimationComponents.hpp"
 #include "AnimationRendering.hpp"
+#include "TriMeshResource.hpp"
+
 #include <fmt/format.h>
 #include <limits>
 #include <ranges>
@@ -330,7 +332,7 @@ namespace FlexKit
 								GatherPassesTask&						passes,
 								std::span<AdditionalShadowMapPass>		additional,
 								const double							t,
-								MemoryPoolAllocator&					shadowMapPool,
+		                        PoolAllocatorInterface&					shadowMapPool,
 								iAllocator&								tempAllocator,
 								AnimationPoseUpload*					poses)
 	{

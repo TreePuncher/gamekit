@@ -1,11 +1,10 @@
-#ifndef TEXTURESTREAMINGUTILITIES_H
-#define TEXTURESTREAMINGUTILITIES_H
+#pragma once
 
 #include "MemoryUtilities.hpp"
 #include "TextureUtilities.hpp"
 #include "ThreadUtilities.hpp"
 #include "Scene.hpp"
-#include "AnimationComponents.hpp"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -182,7 +181,7 @@ namespace FlexKit
 		}
 
 
-		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx)
+		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, ICopyContext& ctx)
 		{
 			auto reservation = ctx.Reserve(64 * KILOBYTE);
 			decompressor->ReadTile(readContext, id, TileSize, reservation);
@@ -191,7 +190,7 @@ namespace FlexKit
 		}
 
 
-		UploadReservation Read(const uint2 WH, CopyContext& ctx)
+		UploadReservation Read(const uint2 WH, ICopyContext& ctx)
 		{
 			auto reservation = ctx.Reserve(64 * KILOBYTE);
 			decompressor->Read(readContext, WH, reservation);
@@ -200,7 +199,7 @@ namespace FlexKit
 		}
 
 
-		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, Context& ctx)
+		UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, IDirectContext& ctx)
 		{
 			auto reservation = ctx.ReserveDirectUploadSpace(64 * KILOBYTE);
 			decompressor->ReadTile(readContext, id, TileSize, reservation);
@@ -209,7 +208,7 @@ namespace FlexKit
 		}
 
 
-		UploadReservation Read(const uint2 WH, Context& ctx)
+		UploadReservation Read(const uint2 WH, IDirectContext& ctx)
 		{
 			auto reservation = ctx.ReserveDirectUploadSpace(64 * KILOBYTE);
 			decompressor->Read(readContext, WH, reservation);
@@ -402,7 +401,7 @@ namespace FlexKit
 	class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
-		TextureStreamingEngine(RenderSystem&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
+		TextureStreamingEngine(IRenderSystem&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
 		~TextureStreamingEngine();
 
 
@@ -462,7 +461,7 @@ namespace FlexKit
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;
 
 		void PostUpdatedTilesAsync	(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
-		void PostUpdatedTilesDirect	(const BlockAllocation& blocks, Context&, iAllocator& threadLocalAllocator);
+		void PostUpdatedTilesDirect	(const BlockAllocation& blocks, IDirectContext&, iAllocator& threadLocalAllocator);
 
 		void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
@@ -495,14 +494,14 @@ namespace FlexKit
 			}
 		};
 
-		RenderSystem&			renderSystem;
+		IRenderSystem&			renderSystem;
 
 		std::atomic_bool		updateInProgress	= false;
 		std::atomic_bool		taskInProgress		= false;
 		std::atomic_bool		taskStarted			= false;
 
-		const RootSignature*	feedbackPassRootSignature;
-		const RootSignature*	sortingRootSignature;
+		const IRootSignature*	feedbackPassRootSignature;
+		const IRootSignature*	sortingRootSignature;
 		ReadBackResourceHandle	feedbackReturnBuffer; // CPU + GPU
 
 		Vector<MappedAsset>		mappedAssets;
@@ -552,6 +551,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-
-#endif

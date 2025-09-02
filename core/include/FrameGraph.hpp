@@ -4,9 +4,10 @@
 #include "Containers.hpp"
 #include "Components.hpp"
 #include "DefaultPipelineStates.hpp"
-#include "Graphics.hpp"
 #include "GraphicsComponents.hpp"
 #include "PushBuffers.hpp"
+#include "RenderSystemInterface.hpp"
+#include "TriMeshResource.hpp"
 
 #include <type_traits>
 
@@ -720,24 +721,12 @@ namespace FlexKit
 
 		DeviceAddressRange		GetDevicePointerRange	(FrameResourceHandle handle) const
 		{
-				auto	device_ptr	= GetDeviceResource(handle);
-				size_t	size		= globalResources.renderSystem.GetResourceSize(GetResource(handle));
-
-				return DeviceAddressRange{
-					.address	= device_ptr->GetGPUVirtualAddress(),
-					.size		= size	};
+		    return globalResources.renderSystem.GetDeviceRange(GetResource(handle));
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(ResourceHandle handle) const
 		{
-			auto deviceResource = GetDeviceResource(handle);
-			auto size			= globalResources.renderSystem.GetResourceSize(handle);
-			auto devicePtr		= deviceResource->GetGPUVirtualAddress();
-
-			return {
-				.address	= devicePtr,
-				.size		= size
-			};
+			return globalResources.renderSystem.GetDeviceRange(handle);
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(const ConstantBufferDataSet& dataSet) const
@@ -807,6 +796,7 @@ namespace FlexKit
 
 
 #if USING(ENABLEDX12)
+		/*
 		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, IDirectContext& ctx, size_t vertexSize) const
 		{
 			auto& res			= _FindSubNodeResource(handle);
@@ -827,6 +817,7 @@ namespace FlexKit
 
 			return view;
 		}
+        */
 #endif
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
@@ -962,6 +953,7 @@ namespace FlexKit
 		}
 
 #if USING(ENABLEDX12)
+#if 0
 		D3D12_STREAM_OUTPUT_BUFFER_VIEW WriteStreamOut(FrameResourceHandle handle, Context* ctx, size_t inputStride) const
 		{
 			auto& localResourceObj  = _FindSubNodeResource(handle);
@@ -994,6 +986,7 @@ namespace FlexKit
 
 			return view;
 		}
+#endif
 #endif
 
 		IRenderSystem& renderSystem() const { return globalResources.renderSystem; }
@@ -2084,8 +2077,8 @@ namespace FlexKit
 
 				struct BLSABuild
 				{
-					ResourceHandle			resource;
-					TriMesh::LOD_Runtime*	source;
+					ResourceHandle					resource;
+					typename TriMesh::LOD_Runtime*	source;
 				};
 
 				size_t					scratchPadSize = 0;
@@ -2591,7 +2584,6 @@ namespace FlexKit
 	}
 
 
-	void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
 	void ClearVertexBuffer	(FrameGraph& FG, VertexBufferHandle PushBuffer);
 
 
@@ -3059,7 +3051,7 @@ namespace FlexKit
 				data.constants				= constantData;
 				data.constantBuffers		= constantBuffers;
 			},
-			[=, setup = std::move(setupPipeline)](_DrawCollection& data, const FrameResources& resources, Context* ctx)
+			[=, setup = std::move(setupPipeline)](_DrawCollection& data, const FrameResources& resources, IDirectContext& ctx)
 			{
 				data.fetchConstants(data);
 				auto entities = data.fetchInstances();
@@ -3073,8 +3065,8 @@ namespace FlexKit
 
 				setup(data, resources, ctx);
 
-				ctx->SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
-				ctx->SetRenderTargets(
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+				ctx.SetRenderTargets(
 					{	resources.GetResource(data.renderTarget) }, true,
 						resources.GetResource(data.depthBuffer));
 
@@ -3086,8 +3078,8 @@ namespace FlexKit
 					(UINT)data.instanceBuffer.begin() });
 
 
-				ctx->AddIndexBuffer(triMesh);
-				ctx->AddVertexBuffers(triMesh,
+				ctx.AddIndexBuffer(triMesh);
+				ctx.AddVertexBuffers(triMesh,
 					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,    },
@@ -3095,15 +3087,15 @@ namespace FlexKit
 
 
 				for (auto& CBEntry : data.constants) 
-					ctx->SetGraphicsConstantBufferView(
+					ctx.SetGraphicsConstantBufferView(
 						1u + CBEntry.idx, 
 						data.constantBuffer, 
 						data.constantBuffer.Push(CBEntry.buffer, CBEntry.bufferSize));
 
 				for (auto& constantBuffer : data.constantBuffers)
-					ctx->SetGraphicsConstantBufferView(1u + constantBuffer.idx, data.constantBuffer, constantBuffer.offset);
+					ctx.SetGraphicsConstantBufferView(1u + constantBuffer.idx, data.constantBuffer, constantBuffer.offset);
 
-				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, entities.size());
+				ctx.DrawIndexedInstanced(MeshVertexCount, 0, 0, entities.size());
 			});
 	}
 

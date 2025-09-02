@@ -1,6 +1,5 @@
 #pragma once
 
-#include "graphics.hpp"
 #include "FrameGraph.hpp"
 #include "OcclusionCulling.hpp"
 #include "Scene.hpp"
@@ -163,8 +162,8 @@ namespace FlexKit
 		const Vector<LightHandle>&	visableLights;
 		FrameResourceHandle			shadowMatrices;
 
-		CameraHandle					camera;
-		IndirectLayout&					indirectLayout;
+		CameraHandle				camera;
+		IndirectLayout&				indirectLayout;
 
 		const size_t counterOffset = 0;
 
@@ -331,7 +330,7 @@ namespace FlexKit
 								RenderSystem&					renderSystem,
 								uint2							WH,
 								CameraHandle					camera,
-								MemoryPoolAllocator&			UAVPool);
+				                PoolAllocatorInterface&			UAVPool);
 
 
 		GBufferPass& FillGBuffer1(
@@ -426,8 +425,8 @@ namespace FlexKit
 
 
 	private:
-		const RootSignature*	rootSignature;
-		const RootSignature* 	markClustersSignature;
+		const IRootSignature*	rootSignature;
+		const IRootSignature* 	markClustersSignature;
 
 
 		ResourceHandle	clusterBuffer = InvalidHandle;

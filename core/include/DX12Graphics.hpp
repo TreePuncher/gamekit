@@ -376,6 +376,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		return DeviceAccessState::DASERROR;
 	}
 
+
 	/************************************************************************************************/
 
 
@@ -383,135 +384,60 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		switch (syncPoint)
 		{
-			case Sync_None:
-				return D3D12_BARRIER_SYNC_NONE;
-			case Sync_All:
-				return D3D12_BARRIER_SYNC_ALL;
-			case Sync_Draw:
-				return D3D12_BARRIER_SYNC_DRAW;
-			case Sync_Compute:
-				return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
-			case Sync_VertexShader:
-				return D3D12_BARRIER_SYNC_VERTEX_SHADING;
-			case Sync_PixelShader:
-				return D3D12_BARRIER_SYNC_PIXEL_SHADING;
-			case Sync_DepthStencil:
-				return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
-			case Sync_RenderTarget:
-				return D3D12_BARRIER_SYNC_RENDER_TARGET;
-			case Sync_Raytracing:
-				return D3D12_BARRIER_SYNC_RAYTRACING;
-			case Sync_Copy:
-				return D3D12_BARRIER_SYNC_COPY;
-			case Sync_Resolve:
-				return D3D12_BARRIER_SYNC_RESOLVE;
-			case Sync_ExecuteIndirect:
-				return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
-			case Sync_Predication:
-				return D3D12_BARRIER_SYNC_PREDICATION;
-			case Sync_All_Shading:
-				return D3D12_BARRIER_SYNC_ALL_SHADING;
-			case Sync_NonPixelShading:
-				return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
-			case Sync_EmitRaytracingAccellerationStructurePostBuildInfo:
-				return D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
-			case Sync_VideoDecode:
-				return D3D12_BARRIER_SYNC_VIDEO_DECODE;
-			case Sync_VideoProcess:
-				return D3D12_BARRIER_SYNC_VIDEO_PROCESS;
-			case Sync_VideoEncode:
-				return D3D12_BARRIER_SYNC_VIDEO_ENCODE;
-			case Sync_BuildRaytracingAccellerationStructure:
-				return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-			case Sync_CopyRaytracingAccellerationStructure:
-				return D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
-			case Sync_Split:
-				return D3D12_BARRIER_SYNC_SPLIT;
-			case Sync_Unknown:
-				return D3D12_BARRIER_SYNC_NONE;
+		case Sync_None:
+			return D3D12_BARRIER_SYNC_NONE;
+		case Sync_All:
+			return D3D12_BARRIER_SYNC_ALL;
+		case Sync_Draw:
+			return D3D12_BARRIER_SYNC_DRAW;
+		case Sync_Compute:
+			return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+		case Sync_VertexShader:
+			return D3D12_BARRIER_SYNC_VERTEX_SHADING;
+		case Sync_PixelShader:
+			return D3D12_BARRIER_SYNC_PIXEL_SHADING;
+		case Sync_DepthStencil:
+			return D3D12_BARRIER_SYNC_DEPTH_STENCIL;
+		case Sync_RenderTarget:
+			return D3D12_BARRIER_SYNC_RENDER_TARGET;
+		case Sync_Raytracing:
+			return D3D12_BARRIER_SYNC_RAYTRACING;
+		case Sync_Copy:
+			return D3D12_BARRIER_SYNC_COPY;
+		case Sync_Resolve:
+			return D3D12_BARRIER_SYNC_RESOLVE;
+		case Sync_ExecuteIndirect:
+			return D3D12_BARRIER_SYNC_EXECUTE_INDIRECT;
+		case Sync_Predication:
+			return D3D12_BARRIER_SYNC_PREDICATION;
+		case Sync_All_Shading:
+			return D3D12_BARRIER_SYNC_ALL_SHADING;
+		case Sync_NonPixelShading:
+			return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
+		case Sync_EmitRaytracingAccellerationStructurePostBuildInfo:
+			return D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
+		case Sync_VideoDecode:
+			return D3D12_BARRIER_SYNC_VIDEO_DECODE;
+		case Sync_VideoProcess:
+			return D3D12_BARRIER_SYNC_VIDEO_PROCESS;
+		case Sync_VideoEncode:
+			return D3D12_BARRIER_SYNC_VIDEO_ENCODE;
+		case Sync_BuildRaytracingAccellerationStructure:
+			return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
+		case Sync_CopyRaytracingAccellerationStructure:
+			return D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
+		case Sync_Split:
+			return D3D12_BARRIER_SYNC_SPLIT;
+		case Sync_Unknown:
+			return D3D12_BARRIER_SYNC_NONE;
 		}
 
 		std::unreachable();
 	}
 
-
-	inline bool CheckCompatibleLayout(const DeviceLayout currentLayout, const DeviceLayout requestedLayout)
-	{
-		//switch (currentLayout)
-		//{
-		//default:
-			return currentLayout == requestedLayout;
-		//}
-	}
-
-
-	inline bool CheckCompatibleAccessState(const DeviceLayout layout, const DeviceAccessState access)
-	{
-		switch (layout)
-		{
-		case DeviceLayout_Common:
-			return (access & DASReadFlag);
-		case DeviceLayout_Present:
-			return (access & DASReadFlag);
-		case DeviceLayout_GenericRead:
-			return (access & DASReadFlag);
-		case DeviceLayout_RenderTarget:
-			return (access & DASRenderTarget);
-		case DeviceLayout_UnorderedAccess:
-			return (access & DASUAV);
-		case DeviceLayout_DepthStencilWrite:
-			return (access & DASDEPTHBUFFERWRITE);
-		case DeviceLayout_DepthStencilRead:
-			return (access & DASDEPTHBUFFERREAD);
-		case DeviceLayout_ShaderResource:
-			return (access & DASPixelShaderResource);
-		case DeviceLayout_CopySrc:
-			return (access & DASCopySrc);
-		case DeviceLayout_CopyDst:
-			return (access & DASCopyDest);
-		case DeviceLayout_ResolveSrc:
-		case DeviceLayout_ResolveDst:
-			return true;
-		case DeviceLayout_ShadingRateSrc:
-			return (access & DASShadingRateSrc);
-		case DeviceLayout_VideoDecodeRead:
-			return (access & DASShadingRateSrc);
-		case DeviceLayout_DecodeWrite:
-		case DeviceLayout_ProcessRead:
-		case DeviceLayout_ProcessWrite:
-		case DeviceLayout_EncodeRead:
-		case DeviceLayout_EncodeWrite:
-		case DeviceLayout_DirectQueueCommon:
-		case DeviceLayout_DirectQueueGenericRead:
-		case DeviceLayout_DirectQueueUnorderedAccess:
-		case DeviceLayout_DirectQueueShaderResource:
-		case DeviceLayout_DirectQueueCopySrc:
-		case DeviceLayout_DirectQueueCopyDst:
-		case DeviceLayout_ComputeQueueCommon:
-		case DeviceLayout_ComputeQueueGenericRead:
-		case DeviceLayout_ComputeQueueUnorderedAccess:
-		case DeviceLayout_ComputeQueueShaderResource:
-		case DeviceLayout_ComputeQueueCopySrc:
-		case DeviceLayout_ComputeQueueCopyDst:
-		case DeviceLayout_VideoQueueCommon:
-		default:
-			return false;
-		}
-
-		std::unreachable();
-	}
-
-	inline bool IsReadAccessState(const DeviceAccessState access)
-	{
-		return access & DASReadFlag;
-	}
-
-	inline bool IsWriteAccessState(const DeviceAccessState access)
-	{
-		return access & DASWriteFlag;
-	}
 
 	/************************************************************************************************/
+
 
 	constexpr size_t GetFormatElementSize(const DXGI_FORMAT format)
 	{
@@ -1064,73 +990,75 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class DescriptorHeap : public IDescriptorHeap
+	class DescriptorHeapImpl : public IDescriptorHeap
 	{
 	public:
-		DescriptorHeap() {}
-		DescriptorHeap(IContext& RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeapImpl() = default;
+		DescriptorHeapImpl(IContext& RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
-		DescriptorHeap& operator = (const DescriptorHeap&);
+		DescriptorHeapImpl& operator = (const DescriptorHeapImpl&);
 
 		// moveable
-		DescriptorHeap(DescriptorHeap&& rhs);
-		DescriptorHeap& operator = (DescriptorHeap&&);
+		DescriptorHeapImpl(DescriptorHeapImpl&& rhs);
+		DescriptorHeapImpl& operator = (DescriptorHeapImpl&&);
 
-		DescriptorHeap& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		DescriptorHeap& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& Init2		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
-		DescriptorHeap& NullFill	(IContext& ctx, const size_t end = -1);
+		DescriptorHeapImpl& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeapImpl& Init		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
+		DescriptorHeapImpl& Init2		(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
+		DescriptorHeapImpl& NullFill	(IContext& ctx, const size_t end = -1);
 
-		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
-		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
-		DescriptorHeap& SetCBV					(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
+		DescriptorHeapImpl& SetCBV					(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
+		DescriptorHeapImpl& SetCBV					(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
+		DescriptorHeapImpl& SetCBV					(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
-		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle);
-		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
-		DescriptorHeap& SetSRVArray				(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeapImpl& SetSRV					(IContext& ctx, size_t idx, ResourceHandle);
+		DescriptorHeapImpl& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeapImpl& SetSRV					(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		DescriptorHeapImpl& SetSRVArray				(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetSRV3D				(IContext& ctx, size_t idx, ResourceHandle);
+		DescriptorHeapImpl& SetSRV3D				(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle);
-		DescriptorHeap& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		DescriptorHeapImpl& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle);
+		DescriptorHeapImpl& SetSRVCubemap			(IContext& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVBuffer			(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+		DescriptorHeapImpl& SetUAVBuffer			(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 
-		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle);
+		DescriptorHeapImpl& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetUAVTexture			(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+		DescriptorHeapImpl& SetUAVTexture			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeapImpl& SetUAVTexture			(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVCubemap			(IContext& ctx, size_t idx, ResourceHandle handle);
+		DescriptorHeapImpl& SetUAVCubemap			(IContext& ctx, size_t idx, ResourceHandle handle);
 
-		DescriptorHeap& SetUAVTexture3D			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		DescriptorHeapImpl& SetUAVTexture3D			(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
-		DescriptorHeap& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+		DescriptorHeapImpl& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		DescriptorHeapImpl& SetUAVStructured		(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
-		DescriptorHeap& SetStructuredResource	(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
+		DescriptorHeapImpl& SetStructuredResource	(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
 
 		DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const;
 
-		void Mirror(const DescriptorHeap& rhs)
-		{
-			descriptorHeap = rhs.descriptorHeap;
-		}
+		void Mirror(const DescriptorHeap& rhs);
+		operator DescriptorRange() const noexcept;
 
 	private:
 
 		DescriptorHeap Clone() const
 		{
-			DescriptorHeap heap;
+			/*
+			DescriptorHeap heap{ Render, FillState.Allocator };
 			heap.descriptorHeap		= descriptorHeap;
 			heap.Layout				= Layout;
 			heap.FillState			= FillState;
 
 			return heap;
+            */
+
+			return {};
 		}
 
 
@@ -1294,26 +1222,26 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class IndirectLayout : public IIndirectLayout
+	class IndirectLayoutDX12 : public IIndirectLayoutIMPL
 	{
 	public:
-		IndirectLayout() noexcept :
+		IndirectLayoutDX12() noexcept :
 			entries		{ nullptr },
 			signature	{ nullptr }{}
 
-		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) noexcept :
+		IndirectLayoutDX12(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) noexcept :
 			signature	{ IN_signature },
 			stride		{ IN_stride },
 			entries		{ std::move(IN_Entries) } {}
 
-		~IndirectLayout() noexcept
+		~IndirectLayoutDX12() noexcept
 		{
 			if (signature)
 				signature->Release();
 		}
 
 
-		IndirectLayout(const IndirectLayout& rhs) noexcept :
+		IndirectLayoutDX12(const IndirectLayoutDX12& rhs) noexcept :
 			signature	{ rhs.signature },
 			entries		{ rhs.entries	},
 			stride		{ rhs.stride	}
@@ -1322,7 +1250,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				signature->AddRef();
 		}
 
-		IndirectLayout& operator =	(const IndirectLayout& rhs) noexcept
+
+		IndirectLayoutDX12& operator =	(const IndirectLayoutDX12& rhs) noexcept
 		{
 			if(rhs.signature)
 				rhs.signature->AddRef();
@@ -1641,8 +1570,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 	/************************************************************************************************/
-
-
 
 
 	inline D3D12_RTV_DIMENSION _Dimension2DeviceRTVDimension(TextureDimension dimension)
@@ -2375,19 +2302,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
-	/************************************************************************************************/
-
-
-	inline uint2 GetFormatTileSize(DeviceFormat format)
-	{
-		//switch (format)
-		//{
-		//default:
-		return { 256, 256 };
-		//}
-	}
-
-
 	constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
 
@@ -2796,40 +2710,40 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Release();
 
-		void CreateAS(const AccelerationStructureDesc&, const TriMesh& );
-		void BuildBLAS(IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace);
+		void CreateAS(const AccelerationStructureDesc&, const TriMesh&)  final;
+		void BuildBLAS(IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace) final;
 
-		void DiscardResource(ResourceHandle resource);
+		void DiscardResource(ResourceHandle resource) final;
 
-		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after);
-		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All);
-		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before);
-		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State);
-		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State);
+		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) final;
+		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) final;
+		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) final;
+		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) final;
+		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) final;
 
-		void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter);
-		void AddTextureBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceLayout, DeviceLayout, DeviceSyncPoint, DeviceSyncPoint, BarrierSubResourceRange range = {});
+		void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter) final;
+		void AddTextureBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceLayout, DeviceLayout, DeviceSyncPoint, DeviceSyncPoint, BarrierSubResourceRange range = {}) final;
 		void AddBufferBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint);
-		void AddBarriers				(std::span<const Barrier> barriers);
+		void AddBarriers				(std::span<const Barrier> barriers) final;
 
-		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
-		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
-		void ClearUAVTextureFloat	(ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
-		void ClearUAVTextureUint	(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-		void ClearUAV				(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-		void ClearUAVBuffer			(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
-		void ClearUAVBufferRange	(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f) final; // Assumes full-screen Clear
+		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)) final; // Assumes full-screen Clear
+		void ClearUAVTextureFloat	(ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0)) final;
+		void ClearUAVTextureUint	(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) final;
+		void ClearUAV				(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) final;
+		void ClearUAVBuffer			(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) final;
+		void ClearUAVBufferRange	(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 }) final;
 
-		void SetRootSignature			(RootSigHandle);
-		void SetRootSignature			(const IRootSignature*);
-		void SetComputeRootSignature	(RootSigHandle);
-		void SetComputeRootSignature	(const IRootSignature*);
-		void SetPipelineState			(const IPipelineState* const PSO);
-		void SetComputePipelineState	(const PSOHandle, iAllocator& temp);
-		void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp);
+		void SetRootSignature			(RootSigHandle) final;
+		void SetRootSignature			(const IRootSignature*) final;
+		void SetComputeRootSignature	(RootSigHandle) final;
+		void SetComputeRootSignature	(const IRootSignature*) final;
+		void SetPipelineState			(const IPipelineState* const PSO) final;
+		void SetComputePipelineState	(const PSOHandle, iAllocator& temp) final;
+		void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp) final;
 
-		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0);
-		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
+		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) final;
+		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) final;
 
 		/*
 		void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs);
@@ -2841,8 +2755,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void SetViewports				(std::span<const Viewport>	VPs)	final;
 		void SetScissorRects			(std::span<const Rect>		rects)	final;
 
-		void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets);
-		void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
+		void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets) final;
+		void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0) final;
 
 		template<typename ... ARGS>
 		void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
@@ -2863,81 +2777,81 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			SetScissorRects(Rects);
 		}
 
-		void QueueReadBack(ReadBackResourceHandle readBack);
-		void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback);
+		void QueueReadBack(ReadBackResourceHandle readBack) final;
+		void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback) final;
 
-		void SetDepthStencil	(ResourceHandle DS);
-		void SetInputPrimitive	(EInputPrimitive primitive);
+		void SetDepthStencil	(ResourceHandle DS) final;
+		void SetInputPrimitive	(EInputPrimitive primitive) final;
 
-		virtual void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
+		void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
 
-		void NullGraphicsConstantBufferView	(size_t idx);
-		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
-		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
+		void NullGraphicsConstantBufferView	(size_t idx) final;
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) final;
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB) final;
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
-		void SetGraphicsConstantBufferView	(size_t idx, DevicePointer);
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range);
+		void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) final;
+		void SetGraphicsDescriptorTable		(size_t idx, const IDescriptorHeap& DH) final;
+		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) final;
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
-		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-		void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0);
+		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
+		void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) final;
 
 
-		void SetComputeDescriptorTable		(size_t idx);
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range);
+		void SetComputeDescriptorTable		(size_t idx) final;
+		void SetComputeDescriptorTable		(size_t idx, const IDescriptorHeap& DH) final;
+		void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) final;
 
-		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
-		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
-		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256);
-		void SetComputeConstantBufferView	(size_t idx, DevicePointer);
+		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) final;
+		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB) final;
+		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256) final;
+		void SetComputeConstantBufferView	(size_t idx, DevicePointer) final;
 
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
-		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0);
-		void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0);
+		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
+		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
+		void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
 
 
-		void BeginQuery	(QueryHandle query, size_t idx);
-		void EndQuery	(QueryHandle query, size_t idx);
+		void BeginQuery	(QueryHandle query, size_t idx) final;
+		void EndQuery	(QueryHandle query, size_t idx) final;
 
-		void TimeStamp(QueryHandle query, size_t idx);
+		void TimeStamp	(QueryHandle query, size_t idx) final;
 
-		void SetMarker_DEBUG(const char* str);
+		void SetMarker_DEBUG(const char* str) final;
 
-		void BeginEvent_DEBUG(const char* str);
-		void EndEvent_DEBUG();
+		void BeginEvent_DEBUG(const char* str) final;
+		void EndEvent_DEBUG() final;
 
-		void CopyResource(ResourceHandle dest, ResourceHandle src);
+		void CopyResource(ResourceHandle dest, ResourceHandle src) final;
 
 		void CopyBufferRegion(
 			ResourceHandle	destination,
 			ResourceHandle	source,
 			size_t			size,
 			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0);
+			size_t			sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
 			ResourceHandle	destination,
 			ID3D12Resource*	source,
 			size_t			size,
 			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0);
+			size_t			sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
 			ID3D12Resource*	destination,
 			ResourceHandle	source,
 			size_t			size,
 			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0);
+			size_t			sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
 			ID3D12Resource*	destination,
 			ID3D12Resource* source,
 			size_t			size,
 			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0);
+			size_t			sourceOffset		= 0) final;
 
 		void CopyTextureRegion(
 			ID3D12Resource*		destination,
@@ -2951,7 +2865,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			ResourceHandle		dest,
 			size_t				subResourceIdx,
 			uint3				XYZ,
-			UploadReservation	source);
+			UploadReservation	source) final;
 
 		void CopyTile(
 			ID3D12Resource*			dest,
@@ -2963,13 +2877,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			ResourceHandle			dest,
 			const uint3				destTile,
 			const size_t			tileOffset,
-			const UploadReservation src);
+			const UploadReservation src) final;
 
 		void ImmediateWrite(
 			static_vector<ResourceHandle>		handles,
 			static_vector<size_t>				value,
 			static_vector<DeviceAccessState>	currentStates,
-			static_vector<DeviceAccessState>	finalStates);
+			static_vector<DeviceAccessState>	finalStates) final;
 
 		//void ClearSOCounters(static_vector<SOResourceHandle> handles);
 
@@ -2981,46 +2895,46 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			static_vector<DeviceAccessState>		destinationState,
 			static_vector<size_t>					destinationoffset);
 
-		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0);
-		void SetIndexBuffer			(VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT);
-		void SetIndexBuffer			(ResourceHandle, DeviceFormat format = DeviceFormat::R32_UINT);
+		void AddIndexBuffer			(TriMesh* Mesh, uint32_t lod = 0) final;
+		void SetIndexBuffer			(VertexBufferEntry buffer, DeviceFormat format = DeviceFormat::R32_UINT) final;
+		void SetIndexBuffer			(ResourceHandle, DeviceFormat format = DeviceFormat::R32_UINT) final;
 
-		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers = nullptr);
-		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers = nullptr);
-		void SetVertexBuffers		(const std::initializer_list<VertexBufferEntry>&	span);
-		void SetVertexBuffers		(const std::span<const VertexBufferEntry>			span);
+		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers = nullptr) final;
+		void AddVertexBuffers		(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers = nullptr) final;
+		void SetVertexBuffers		(const std::initializer_list<VertexBufferEntry>&	span) final;
+		void SetVertexBuffers		(const std::span<const VertexBufferEntry>			span) final;
 
-		void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span);
-		void SetVertexBuffers		(const std::span<const VertexBufferResource>		span);
+		void SetVertexBuffers		(const std::initializer_list<VertexBufferResource>&	span) final;
+		void SetVertexBuffers		(const std::span<const VertexBufferResource>		span) final;
 
 		void SetVertexBuffers2		(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>&	views);
 		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		views);
-		void SetVertexBuffers2		(const std::span<const VBView>							views, uint32_t offset = 0);
+		void SetVertexBuffers2		(const std::span<const VBView>							views, uint32_t offset = 0) final;
 
 		void SetSOTargets			(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
-		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0);
-		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0);
+		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0) final;
+		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0) final;
 		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0) final;
-		void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0);
-		void Clear					();
+		void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0) final;
+		void Clear					() final;
 
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset);
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset);
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) final;
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset) final;
 
 		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
-		void Dispatch				(const uint3);
-		void Dispatch				(const IPipelineState* const PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
+		void Dispatch				(const uint3) final;
+		void Dispatch				(const IPipelineState* const PSO, const uint3 xyz)  final { SetPipelineState(PSO); Dispatch(xyz); }
 		//void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
-		void DispatchRays			(const uint3, const DispatchDesc desc);
-		void DispatchMesh			(const uint3);
+		void DispatchRays			(const uint3, const DispatchDesc desc) final;
+		void DispatchMesh			(const uint3) final;
 
 		virtual void FlushBarriers() noexcept final;
 
-		void SetPredicate(bool Enable, ResourceHandle Handle = InvalidHandle, size_t = 0, PredicateOp op = PredicateOp::EqualZero);
+		void SetPredicate(bool Enable, ResourceHandle Handle = InvalidHandle, size_t = 0, PredicateOp op = PredicateOp::EqualZero) final;
 
-		void CopyBuffer		(const UploadReservation src, const ResourceHandle destination, const size_t destOffset = 0);
-		void CopyTexture2D	(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize);
+		void CopyBuffer		(const UploadReservation src, const ResourceHandle destination, const size_t destOffset = 0) final;
+		void CopyTexture2D	(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize) final;
 
 		void CopyTexture2D(auto des, auto src)
 		{
@@ -3031,11 +2945,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				renderSystem->GetDeviceResource(src));
 		}
 
-		void SetRTRead	(ResourceHandle Handle);
-		void SetRTWrite	(ResourceHandle Handle);
-		void SetRTFree	(ResourceHandle Handle);
+		void SetRTRead	(ResourceHandle Handle) final;
+		void SetRTWrite	(ResourceHandle Handle) final;
+		void SetRTFree	(ResourceHandle Handle) final;
 
-		void		Close();
+		void		Close() final;
 		Context&	Reset(DescriptorRange range, const size_t newDispatchIdx, ID3D12DescriptorHeap* heap);
 
 		virtual void SetDebugName(const char* ID) noexcept final
@@ -3161,36 +3075,40 @@ private:
 		std::unreachable();
 	}
 
-	struct PipelineBuilder : IPipelineBuilder
+
+	/************************************************************************************************/
+
+
+	struct PipelineBuilderImpl : IPipelineBuilderImpl
 	{
-		PipelineBuilder(iAllocator& allocator);
-		~PipelineBuilder();
+		PipelineBuilderImpl(iAllocator& allocator);
+		~PipelineBuilderImpl();
 
-		PipelineBuilder& AddRootSignature	(const RootSignature* rootSig);
+		PipelineBuilderImpl& AddRootSignature	(const RootSignature* rootSig);
 
-		PipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {});
+		PipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {});
 
-		PipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
-		PipelineBuilder& AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilder& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
-		PipelineBuilder& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		PipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
-		PipelineBuilder& SetDebugName			(const char* name) { debugName = name; return *this; }
+		PipelineBuilderImpl& SetDebugName			(const char* name) { debugName = name; return *this; }
 
-		PipelineBuilder& AddInputLayout			(const InputLayoutState&	state = {});
-		PipelineBuilder& AddInputTopology		(const ETopology			topology);
-		PipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {});
-		PipelineBuilder& AddRasterizerState		(const RasterizerState&		state = {});
-		PipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {});
-		PipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		PipelineBuilder& AddBlendState			(const BlendState&			state = {});
+		PipelineBuilderImpl& AddInputLayout			(const InputLayoutState&	state = {});
+		PipelineBuilderImpl& AddInputTopology		(const ETopology			topology);
+		PipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {});
+		PipelineBuilderImpl& AddRasterizerState		(const RasterizerState&		state = {});
+		PipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {});
+		PipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		PipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
 
 		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
 		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
@@ -3333,48 +3251,6 @@ private:
 	/************************************************************************************************/
 
 
-	struct GPUHeapAllocation
-	{
-		size_t offset   = 0;
-		size_t size     = 0;
-
-		ResourceHandle overlap = InvalidHandle;
-
-		operator bool() { return size > 0; }
-	};
-
-	struct AcquireResult
-	{
-		ResourceHandle resource;
-		ResourceHandle overlap;
-	};
-
-	struct AcquireDeferredRes
-	{
-		ResourceHandle      resource    = InvalidHandle;
-		ResourceHandle      overlap     = InvalidHandle;
-
-		size_t              offset      = 0;
-		DeviceHeapHandle    heap        = InvalidHandle;
-	};
-
-	struct PoolAllocatorInterface
-	{
-		virtual ~PoolAllocatorInterface() {};
-
-		virtual AcquireResult		Acquire			(GPUResourceDesc desc, bool temporary = false) = 0;
-		virtual AcquireDeferredRes	AcquireDeferred	(GPUResourceDesc desc, bool temporary = false) = 0;
-
-		virtual AcquireResult		Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
-		virtual void				Release(ResourceHandle handle, uint64_t submissionID,  const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
-
-		virtual void				LockRange(uint64_t begin, uint64_t end) = 0;
-
-		virtual uint32_t Flags() const = 0;
-	};
-
-	constexpr size_t DefaultBlockSize = 64 * KILOBYTE;
-
 	class MemoryPoolAllocator : public PoolAllocatorInterface
 	{
 	public:
@@ -3500,216 +3376,6 @@ private:
 	/************************************************************************************************/
 
 
-	struct TriMesh
-	{
-		TriMesh() = default;
-		TriMesh(const TriMesh& rhs) = default;
-
-		struct LOD_Runtime
-		{
-			LOD_Runtime() = default;
-
-			LOD_Runtime(const LOD_Runtime& rhs) :
-				views			{ rhs.views			},
-				lodFileOffset   { rhs.lodFileOffset },
-				lodSize         { rhs.lodSize       },
-				state           { rhs.state.load()  },
-				subMeshes       { rhs.subMeshes     },
-				bufferSet		{ rhs.bufferSet		} {}
-
-			LOD_Runtime& operator =(const LOD_Runtime& rhs)
-			{
-				views			= rhs.views;
-
-				lodFileOffset   = rhs.lodFileOffset;
-				lodSize         = rhs.lodSize;
-
-				state           = rhs.state.load();
-				subMeshes       = rhs.subMeshes;
-
-				bufferSet		= rhs.bufferSet;
-
-				return *this;
-			}
-
-			bool HasTangents() const
-			{
-				for (auto view : views)
-				{
-					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
-						return true;
-				}
-
-				return false;
-			}
-
-			bool HasNormals() const
-			{
-				for (auto view : views)
-				{
-					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
-						return true;
-				}
-
-				return false;
-			}
-
-			VertexBufferView* GetNormals()
-			{
-				for (auto view : views)
-				{
-					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
-						return view;
-				}
-
-				return nullptr;
-			}
-
-
-			VertexBufferView* GetIndices()
-			{
-				for (auto view : views)
-				{
-					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
-						return view;
-				}
-
-				return nullptr;
-			}
-
-			VertexBufferView* GetPoints()
-			{
-				for (auto view : views)
-				{
-					if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
-						return view;
-				}
-
-				return nullptr;
-			}
-
-			size_t GetIndexBufferIndex() const
-			{
-				return bufferSet.MD.IndexBuffer_Index;
-			}
-
-			size_t GetIndexCount() const
-			{
-				return bufferSet.MD.InputElementCount;
-			}
-
-			size_t lodFileOffset;
-			size_t lodSize;
-
-			enum class LOD_State
-			{
-				Unloaded,
-				Loaded,
-				Loading,
-				GPUResourceEvicted
-			};
-
-			static_vector<VertexBufferView*>	views;
-			VertexBufferSet						bufferSet;
-			ResourceHandle						blAS = InvalidHandle; // TODO(Wrap this type)
-
-			std::atomic<LOD_State>		state   = LOD_State::Unloaded;
-			static_vector<SubMesh, 32>	subMeshes;
-		};
-
-
-		struct MorphTarget
-		{
-			ResourceHandle gpuResource;
-		};
-
-
-		struct MorphTargetAsset
-		{
-			char name[32];
-			size_t offset;
-			size_t size;
-		};
-
-
-		const uint32_t GetHighestLoadedLodIdx() const
-		{
-			for (uint32_t I = 0; I < lods.size(); I++)
-			{
-				if (lods[I].state == LOD_Runtime::LOD_State::Loaded)
-					return I;
-			}
-
-			return -1;
-		}
-
-		const LOD_Runtime&  GetHighestLoadedLod() const
-		{
-			for (auto& lod : lods)
-			{
-				if (lod.state == LOD_Runtime::LOD_State::Loaded)
-					return lod;
-			}
-
-			return lods.back();
-		}
-
-		LOD_Runtime& GetHighestLoadedLod()
-		{
-			for (auto& lod : lods)
-			{
-				if (lod.state == LOD_Runtime::LOD_State::Loaded)
-					return lod;
-			}
-
-			return lods.back();
-		}
-
-		const	uint32_t		GetLowestLodIdx()		const	noexcept { return uint32_t(lods.size() - 1); }
-		const	LOD_Runtime&	GetLowestLoadedLod()	const	noexcept { return lods.back(); }
-				LOD_Runtime&	GetLowestLoadedLod()			noexcept { return lods.back(); }
-
-
-		size_t animationData	 = EAD_None;
-		size_t triMeshID		= INVALIDHANDLE;
-
-		struct SubDivInfo
-		{
-			size_t  numVertices;
-			size_t  numFaces;
-			int* numVertsPerFace;
-			int* IndicesPerFace;
-		}*subDiv = nullptr;
-
-		const char*		ID			= nullptr;
-		SkinDeformer*	skinTable	= nullptr;
-
-		GUID_t							assetHandle = INVALIDHANDLE;
-		static_vector<LOD_Runtime>		lods;
-
-
-		struct RInfo
-		{
-			float3 Offset;
-			float3 Min, Max;
-			float  r;
-		}info;
-
-		// Visibility Information
-		AABB			AABB;
-		BoundingSphere	BS;
-
-		size_t			skeletonGUID	= INVALIDHANDLE;
-		iAllocator*		allocator		= nullptr;
-
-		static_vector<MorphTarget>		morphTargets;
-		static_vector<MorphTargetAsset>	morphTargetAssets;
-	};
-
-
-	/************************************************************************************************/
-
-
 	inline D3D12_SHADER_BYTECODE Shader2ByteCode(const Shader& shader)
 	{
 		return{ (BYTE*)shader.buffer, shader.bufferSize };
@@ -3748,102 +3414,6 @@ private:
 	/************************************************************************************************/
 
 
-	struct ShadowMapPass
-	{
-		ID3D12PipelineState* PSO_Animated;
-		ID3D12PipelineState* PSO_Static;
-	};
-
-
-	/************************************************************************************************/
-
-
-/*
-	struct PointLightEntry
-	{
-		float4 POS;// + R 
-		float4 Color; // Plus Intensity
-	};
-
-	struct SpotLight
-	{
-		float3 K;
-		float3 Direction;
-		float I, R;
-		float t;
-		NodeHandle Position;
-	};
-
-	struct SpotLightEntry
-	{
-		float4 POS;			// + R 
-		float4 Color;		// Plus Intensity
-		float3 Direction;
-	};
-
-	struct Skeleton;
-
-	const size_t PLB_Stride  = sizeof(float[8]);
-	const size_t SPLB_Stride = sizeof(float[12]);
-*/
-
-	/************************************************************************************************/
-
-
-	inline struct _GeometryTable
-	{
-		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
-		Vector<TriMesh>									Geometry;
-		Vector<size_t>									ReferenceCounts;
-		Vector<GUID_t>									Guids;
-		Vector<const char*>								GeometryIDs;
-		Vector<TriMeshHandle>							Handle;
-		Vector<size_t>									FreeList;
-		iAllocator*										allocator;
-		RenderSystem*									renderSystem	= nullptr;
-	}GeometryTable;
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void							InitiateGeometryTable	(RenderSystem* renderSystem, iAllocator* memory = nullptr);
-	FLEXKITAPI void							ReleaseGeometryTable	();
-
-	FLEXKITAPI void							AddRef					( TriMeshHandle  TMHandle );
-	FLEXKITAPI void							ReleaseMesh				( TriMeshHandle  TMHandle );
-
-	FLEXKITAPI TriMeshHandle				CreateMesh				( GUID_t ID );
-	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
-
-	FLEXKITAPI TriMeshHandle				GetMesh					( GUID_t, CopyContextHandle copyCtx = InvalidHandle);
-	FLEXKITAPI TriMeshHandle				GetMesh					( const char* meshID, CopyContextHandle = InvalidHandle);
-
-
-	FLEXKITAPI TriMesh*						GetMeshResource			( TriMeshHandle  TMHandle );
-	FLEXKITAPI BoundingSphere				GetMeshBoundingSphere	( TriMeshHandle  TMHandle );
-
-	FLEXKITAPI Skeleton*					GetSkeleton				( TriMeshHandle  TMHandle );
-	FLEXKITAPI size_t						GetSkeletonGUID			( TriMeshHandle  TMHandle );
-	FLEXKITAPI void							SetSkeleton				( TriMeshHandle  TMHandle, Skeleton* S );
-
-	enum class FINDMESH_RES
-	{
-		NotFound,
-		FailedToCreate
-	};
-
-	FLEXKITAPI std::expected<TriMeshHandle, FINDMESH_RES>	FindMesh(GUID_t			guid);
-	FLEXKITAPI std::expected<TriMeshHandle, FINDMESH_RES >	FindMesh(const char*	ID);
-
-	FLEXKITAPI bool							IsMeshLoaded			( GUID_t			guid );
-	FLEXKITAPI bool							IsSkeletonLoaded		( TriMeshHandle	guid );
-	FLEXKITAPI bool							HasAnimationData		( TriMeshHandle	guid );
-
-
-	/************************************************************************************************/
-
-
 	struct Mesh_Description
 	{
 		size_t				IndexBuffer;
@@ -3852,80 +3422,6 @@ private:
 		VertexBufferView**	Buffers;
 		iAllocator*			memory;
 	};
-
-
-	/************************************************************************************************/
-
-
-	inline DeviceResource_ptr GetBuffer(TriMesh* Mesh, size_t lod, size_t Buffer)
-	{
-		return Mesh->lods[lod].bufferSet[Buffer].resource;
-	}
-
-
-	inline DeviceResource_ptr FindBuffer(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE type)
-	{
-		auto& buffers = Mesh->lods[lod].bufferSet.buffers;
-		auto res = find(buffers, [type](auto& V) -> bool {return V.type == type;});
-
-		if (res != buffers.end())
-			return res->apiResource;
-		else
-			return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline VertexBufferSet::BuffEntry* FindBufferEntry(TriMesh* mesh, size_t lod, VERTEXBUFFER_TYPE type)
-	{
-		ID3D12Resource* buffer = nullptr;
-		auto& VertexBuffers = mesh->lods[lod].bufferSet.buffers;
-		auto res = find(VertexBuffers, [type](auto& V) -> bool {return V.type == type;});
-
-		if (res != VertexBuffers.end())
-			return (VertexBufferSet::BuffEntry*)res; // Remove Const of result
-		else
-			return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
-	{
-		auto* VB = FindBufferEntry(Mesh, lod, type);
-
-		if (VB == Mesh->lods[lod].bufferSet.buffers.end() || VB->apiResource == nullptr) {
-#ifdef _DBUG
-			return false;
-#else 
-
-			D3D12_VERTEX_BUFFER_VIEW VBView;
-
-			VBView.BufferLocation	= 0;
-			VBView.SizeInBytes		= 0;
-			VBView.StrideInBytes	= 0;
-			out.push_back(VBView);
-
-			return true;
-#endif
-		}
-
-		D3D12_VERTEX_BUFFER_VIEW VBView;
-
-		VBView.BufferLocation	= VB->apiResource->GetGPUVirtualAddress();
-		VBView.SizeInBytes		= VB->bufferSizeInBytes;
-		VBView.StrideInBytes	= VB->bufferStride;
-		out.push_back(VBView);
-
-		return true;
-	}
-
-
-	TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
 
 
 	/************************************************************************************************/
@@ -3955,8 +3451,6 @@ private:
 		DXGI_FORMAT			Format;
 	};
 
-
-	//FrameBufferedRenderTarget CreateFrameBufferedRenderTarget(RenderSystem* RS, GPUResourceDesc* Desc);
 
 	struct TextureVTable
 	{
@@ -4009,112 +3503,17 @@ private:
 
 
 	/************************************************************************************************/
-	
-	const size_t MAXINSTANCES = 1024 * 1;
-	const size_t MAXTRIMESHES = 16;
-
-	typedef FlexKit::Handle_t<16> StaticObjectHandle;
-
-
-	struct FLEXKITAPI StaticScene
-	{
-		StaticScene() : ObjectTable(nullptr, GetTypeGUID(StaticScene)) {}
-		Vector<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
-		char							GeometryIndex	[MAXINSTANCES];
-		NodeHandle						NodeHandles		[MAXINSTANCES];
-
-		HandleUtilities::HandleTable<StaticObjectHandle>	ObjectTable;
-	};
-	
-
-	StaticObjectHandle CreateBrush(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
-
-	// TODO: re-implement StaticMeshBatcher
-	struct FLEXKITAPI StaticMeshBatcher
-	{
-		typedef char DirtyFlag;
-
-		void Initiate(FlexKit::RenderSystem* RS, iAllocator* Memory);
-
-		inline size_t AddTriMesh(FlexKit::TriMesh* NewMesh){
-			size_t itr = 0;
-			for (auto& G : Geometry)
-			{	
-				if (!G){
-					G = NewMesh;
-					TriMeshCount++;
-					break;
-				}
-				itr++;
-			}
-			return itr;
-		}
-
-		struct
-		{
-			uint32_t VertexCount;
-			uint32_t VertexOffset;
-			uint32_t IndexOffset;
-			uint32_t Padding;
-		}GeometryTable[MAXTRIMESHES];
-
-		TriMesh* Geometry[MAXTRIMESHES];
-
-		struct InstanceIOLayout
-		{
-			uint32_t IndexCountPerInstance;
-			uint32_t InstanceCount;
-			uint32_t StartIndexLocation;
-			int32_t	 BaseVertexLocation;
-			uint32_t StartInstanceLocation;
-		}InstanceInformation[MAXINSTANCES];
-
-		size_t TriMeshCount;
-		size_t MaxVertexPerInstance;
-		size_t InstanceCount[MAXTRIMESHES];
-		size_t TotalInstanceCount;
-
-		ID3D12Resource*			Instances;
-		ID3D12Resource*			TransformsBuffer;
-		FrameBufferedResource	RenderARGs;
-
-		ID3D12Resource* NormalBuffer;
-		ID3D12Resource* TangentBuffer;
-		ID3D12Resource* IndexBuffer;
-		ID3D12Resource* VertexBuffer;
-		ID3D12Resource* UVBuffer;
-		ID3D12Resource* GTBuffer;
-
-		ID3D12CommandSignature*	CommandSignature;
-		ID3D12DescriptorHeap*	SRVHeap;
-
-		Shader VShader;
-		Shader PShader;
-	};
-
-
-	/************************************************************************************************/
-
-
-	void BuildGeometryTable		(RenderSystem* RS, iAllocator* TempMemory, StaticMeshBatcher* Batcher);
-	void CleanUpStaticBatcher	(StaticMeshBatcher* Batcher);
 
 	
-	/************************************************************************************************/
 
-	
-	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + 2 * (float(X)	   / Dimensions[0]), 1.0f - 2 * (float(Y)	  / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
-	inline float2 PixelToSS(int2 XY, uint2 Dimensions)			  { return { -1.0f + 2 * (float(XY[0]) / Dimensions[0]), 1.0f - 2 * (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
-
-
-	FLEXKITAPI void	Release						(RenderSystem* System);
-	FLEXKITAPI void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
-	FLEXKITAPI void Push_DelayedReleaseCopy     (RenderSystem* RS, ID3D12Resource* Res);
-	FLEXKITAPI void Free_DelayedReleaseResources(RenderSystem* RS);
+	void Release						(RenderSystem* System);
+	void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
+	void Push_DelayedReleaseCopy		(RenderSystem* RS, ID3D12Resource* Res);
+	void Free_DelayedReleaseResources	(RenderSystem* RS);
 
 
-	FLEXKITAPI void AddTempBuffer	(ID3D12Resource* _ptr, RenderSystem* RS);
-	FLEXKITAPI void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS);
+	void AddTempBuffer	(ID3D12Resource* _ptr, RenderSystem* RS);
+	void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS);
 
 
 	inline DescHeapPOS IncrementHeapPOS(const DescHeapPOS POS, const size_t size, const size_t increment) {
@@ -4125,17 +3524,8 @@ private:
 	}
 
 
-	FLEXKITAPI void SetViewport	 ( ID3D12GraphicsCommandList* CL, Texture2D Targets, uint2 Offset = {0, 0} );
-	FLEXKITAPI void SetViewports ( ID3D12GraphicsCommandList* CL, Texture2D* Targets, uint2* Offsets, UINT Count = 1u );
-
-	FLEXKITAPI void SetScissors	( ID3D12GraphicsCommandList* CL, uint2* WH, uint2* Offsets, UINT Count );
-	FLEXKITAPI void SetScissor	( ID3D12GraphicsCommandList* CL, uint2  WH, uint2  Offset = {0, 0} );
-
-	FLEXKITAPI Texture2D					GetRenderTarget	( RenderWindow* RW );
-	FLEXKITAPI ID3D12GraphicsCommandList*	GetCommandList_1 ( RenderSystem* RS );
-
-	FLEXKITAPI void Close					( static_vector<ID3D12GraphicsCommandList*> CLs );
-	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor );
+	void Close					( static_vector<ID3D12GraphicsCommandList*> CLs );
+	void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor );
 
 
 	const float DefaultClearDepthValues_1[]	= { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, };
@@ -4146,7 +3536,7 @@ private:
 	/************************************************************************************************/
 	// Depreciated API
 
-	FLEXKITAPI void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
+	void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
 
 	struct SubResourceUpload_Desc
 	{
@@ -4158,16 +3548,16 @@ private:
 		DeviceFormat       format;
 	};
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc);
+	void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc);
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void	Release( ConstantBuffer&	);
-	FLEXKITAPI void	Release( Texture2D			);
-	FLEXKITAPI void	Release( RenderWindow*		);
-	FLEXKITAPI void	Release( VertexBuffer*		);
+	void	Release( ConstantBuffer&	);
+	void	Release( Texture2D			);
+	void	Release( RenderWindow*		);
+	void	Release( VertexBuffer*		);
 
 
 	/************************************************************************************************/
@@ -4183,72 +3573,8 @@ private:
 	/************************************************************************************************/
 
 
-	struct LineSegment
-	{
-		float3 A;
-		float3 AColour;
-		float3 B;
-		float3 BColour;
-	};
-
-	typedef Vector<LineSegment> LineSegments;
-
-
-	/************************************************************************************************/
-
-
 	FLEXKITAPI Texture2D		GetBackBufferTexture	( RenderWindow* Window );
 	FLEXKITAPI ID3D12Resource*	GetBackBufferResource	( RenderWindow* Window );
-
-
-	/************************************************************************************************/
-
-
-	inline float2 WStoSS		( const float2 XY )	{ return (XY * float2(2, 2)) + float2(-1, -1); }
-	inline float2 Position2SS	( const float2 in )	{ return{ in.x * 2 - 1, in.y * -2 + 1 }; }
-	inline float3 Grey			( const float P )	{ float V = Min(Max(0, P), 1); return float3(V, V, V); }
-
-
-	/************************************************************************************************/
-
-
-	struct Obj_Desc
-	{
-		Obj_Desc()
-		{
-			S = 1.0f;
-
-			LoadUVs = false;
-			GenerateTangents = false;
-		}
-
-		Obj_Desc(float scale, bool UV = false, bool T = false) : 
-			S{ scale },
-			LoadUVs{UV},
-			GenerateTangents{T}{}
-
-
-		float	S;
-
-		bool	LoadUVs;
-		bool	GenerateTangents;
-	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
-
-
-	FLEXKITAPI bool LoadObjMesh				( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void ReleaseTriMesh			( TriMesh*	p );
-	FLEXKITAPI void DelayedReleaseTriMesh	( RenderSystem* RS, TriMesh* T );
 
 
 }	/************************************************************************************************/

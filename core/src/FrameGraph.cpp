@@ -1,4 +1,4 @@
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include "FrameGraph.hpp"
 #include "Logging.hpp"
 #include <fmt/core.h>

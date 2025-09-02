@@ -11,7 +11,7 @@ namespace FlexKit
 
 	struct DepthBuffer
 	{
-		DepthBuffer(RenderSystem& IN_renderSystem, uint2 IN_WH, bool useFloatFormat = true) :
+		DepthBuffer(IRenderSystem& IN_renderSystem, uint2 IN_WH, bool useFloatFormat = true) :
 			floatingPoint   { useFloatFormat    },
 			renderSystem    { IN_renderSystem   },
 			WH              { IN_WH             }
@@ -73,7 +73,7 @@ namespace FlexKit
 			idx = (idx + 1) % 3;
 		}
 
-		RenderSystem&						renderSystem;
+		IRenderSystem&						renderSystem;
 		uint								idx = 0;
 		bool								floatingPoint;
 		uint2								WH;

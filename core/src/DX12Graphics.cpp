@@ -4,14 +4,14 @@
 #include "AnimationUtilities.hpp"
 #include "Containers.hpp"
 #include "DDSUtilities.hpp"
-#include "Graphics.hpp"
+#include "DX12Graphics.hpp"
 #include "Intersection.hpp"
 #include "Logging.hpp"
 #include "MemoryUtilities.hpp"
 #include "MeshUtilities.hpp"
 #include "PushBuffers.hpp"
 #include "ThreadUtilities.hpp"
-
+#include "TriMeshResource.hpp"
 
 #include <algorithm>
 #include <d3d12.h>
@@ -604,7 +604,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
+	DescriptorHeapImpl::DescriptorHeapImpl(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
 		FillState(TempMemory)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
@@ -623,7 +623,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(DescriptorHeap&& rhs)
+	DescriptorHeapImpl::DescriptorHeapImpl(DescriptorHeapImpl&& rhs)
 	{
 		descriptorHeap	= rhs.descriptorHeap;
 		FillState		= std::move(rhs.FillState);
@@ -637,7 +637,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::operator = (DescriptorHeap&& rhs)
+	DescriptorHeapImpl& DescriptorHeapImpl::operator = (DescriptorHeapImpl&& rhs)
 	{
 		descriptorHeap	= rhs.descriptorHeap;
 		FillState		= std::move(rhs.FillState);
@@ -653,7 +653,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeapImpl& DescriptorHeapImpl::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -674,7 +674,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeapImpl& DescriptorHeapImpl::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -695,7 +695,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::Init2(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeapImpl& DescriptorHeapImpl::Init2(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -716,7 +716,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::NullFill(IContext& ictx, const size_t end)
+	DescriptorHeapImpl& DescriptorHeapImpl::NullFill(IContext& ictx, const size_t end)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -790,14 +790,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -820,14 +820,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -850,14 +850,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -881,14 +881,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -913,14 +913,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -946,14 +946,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -978,14 +978,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1015,14 +1015,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
 			return *this;
 		}
 #endif
@@ -1048,14 +1048,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
+			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
 			return *this;
 		}
 #endif
@@ -1080,14 +1080,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
 			return *this;
 		}
 #endif
@@ -1112,7 +1112,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -1122,7 +1122,7 @@ namespace FlexKit
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
 			return *this;
 		}
 #endif
@@ -1147,14 +1147,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1181,14 +1181,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1215,7 +1215,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
@@ -1225,7 +1225,7 @@ namespace FlexKit
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1253,14 +1253,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1283,14 +1283,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		Context& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1318,14 +1318,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1350,7 +1350,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVStructured(
+	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVStructured(
 		IContext&		ictx,
 		size_t			idx,
 		ResourceHandle	resource,
@@ -1394,14 +1394,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	DescriptorHeapImpl& DescriptorHeapImpl::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("DescriptorHeapImpl::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return *this;
 		}
 #endif
@@ -1442,7 +1442,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, IContext& ictx) const
+	DescriptorHeapImpl DescriptorHeapImpl::GetHeapOffsetted(size_t offset, IContext& ictx) const
 	{
 		auto& ctx = static_cast<Context&>(ictx);
 
@@ -1455,8 +1455,23 @@ namespace FlexKit
 		return subHeap;
 	}
 
+	void DescriptorHeap::Mirror(const DescriptorHeap& rhs)
+	{
+		descriptorHeap = rhs.descriptorHeap;
+	}
 
-	bool DescriptorHeap::CheckType(const DesciptorHeapLayout<>& layout, DescHeapEntryType type, size_t idx)
+
+	DescriptorHeap::operator DescriptorRange() const noexcept
+	{
+		return {
+			.begin		= descriptorHeap,
+			.size		= static_cast<uint32_t>(FillState.size()),
+			.stride		= static_cast<uint32_t>(RenderSystem::_GetInstance().DescriptorCBVSRVUAVSize)
+		};
+	}
+
+
+	bool DescriptorHeapImpl::CheckType(const DesciptorHeapLayout<>& layout, DescHeapEntryType type, size_t idx)
 	{
 		size_t entryIdx = 0;
 		for (HeapDescriptor entry : layout.Entries)
@@ -1869,7 +1884,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder::PipelineBuilder(iAllocator& IN_allocator) :
+	PipelineBuilderImpl::PipelineBuilderImpl(iAllocator& IN_allocator) :
 		allocator	{ IN_allocator },
 		blob		{ IN_allocator },
 		shaders		{ IN_allocator }
@@ -1881,7 +1896,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder::~PipelineBuilder()
+	PipelineBuilderImpl::~PipelineBuilderImpl()
 	{
 		allocator->free(inputElements);
 	}
@@ -1890,7 +1905,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddRootSignature(const RootSignature* IN_rootSig)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddRootSignature(const RootSignature* IN_rootSig)
 	{
 		rootSig = IN_rootSig;
 
@@ -1903,7 +1918,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		/*
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
@@ -1926,7 +1941,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1941,7 +1956,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& work_desc)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddWorkGraph(const WorkGraph_Desc& work_desc)
 	{
 		struct {
 			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH;
@@ -1966,7 +1981,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1981,7 +1996,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1996,7 +2011,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -2011,7 +2026,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -2026,7 +2041,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -2041,7 +2056,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -2056,7 +2071,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -2071,7 +2086,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddInputLayout(const InputLayoutState& state)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddInputLayout(const InputLayoutState& state)
 	{
 		if (inputElements)
 			return *this;
@@ -2110,7 +2125,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddInputTopology(const ETopology topology)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddInputTopology(const ETopology topology)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY dxTopolgy{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
 		hash = FNVa62((const char*)&dxTopolgy, sizeof(dxTopolgy), hash);
@@ -2123,7 +2138,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddRasterizerState(const RasterizerState& state)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddRasterizerState(const RasterizerState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER2 rasterizerState;
 		memset(&rasterizerState, 0, sizeof(CD3DX12_RASTERIZER_DESC2));
@@ -2150,7 +2165,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddDepthStencilState(const DepthStencilState& inputState)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddDepthStencilState(const DepthStencilState& inputState)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL depthStencil{};
 		CD3DX12_DEPTH_STENCIL_DESC& state = depthStencil;
@@ -2182,7 +2197,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddBlendState(const BlendState& state)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddBlendState(const BlendState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
 		CD3DX12_BLEND_DESC& desc = blendState;
@@ -2200,7 +2215,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddRenderTargetState(const RenderTargetState& state)
 	{
 		CD3DX12_RT_FORMAT_ARRAY formats{};
 		memset(&formats, 0, sizeof(formats));
@@ -2220,7 +2235,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PipelineBuilder& PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
+	PipelineBuilderImpl& PipelineBuilderImpl::AddDepthStencilFormat(const DeviceFormat format)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT dxDepthFormat{ TextureFormat2DXGIFormat(format) };
 		hash = FNVa62((const char*)&dxDepthFormat, sizeof(dxDepthFormat), hash);
@@ -2233,7 +2248,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::LoadPipelineStateRes PipelineBuilder::Build(RenderSystem& renderSystem)
+	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::Build(RenderSystem& renderSystem)
 	{
 		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
 			.SizeInBytes					= blob.size(),
@@ -2293,7 +2308,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::LoadPipelineStateRes PipelineBuilder::BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size)
+	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size)
 	{
 		const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
 			.SizeInBytes					= size,
@@ -3337,8 +3352,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& DH)
+	void Context::SetGraphicsDescriptorTable(size_t idx, const IDescriptorHeap& IDH)
 	{
+		auto& DH = static_cast<const DescriptorHeap&>(IDH);
 		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, DH);
 	}
 
@@ -3432,8 +3448,9 @@ namespace FlexKit
 	}
 
 
-	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
+	void Context::SetComputeDescriptorTable(size_t idx, const IDescriptorHeap& IDH)
 	{
+		auto& DH = static_cast<const DescriptorHeap&>(IDH);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
 	}
 
@@ -8155,6 +8172,7 @@ namespace FlexKit
 
 	constexpr DXGI_FORMAT TextureFormat2DXGIFormat(DeviceFormat F) noexcept
 	{
+		;
 		switch (F)
 		{
 		case FlexKit::DeviceFormat::R16_FLOAT:
@@ -8163,6 +8181,8 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R16_UINT;
 		case FlexKit::DeviceFormat::R16G16_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
+		case DeviceFormat::R16G16B16A16_UINT:
+			return DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT;
 		case FlexKit::DeviceFormat::R32_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		case FlexKit::DeviceFormat::R32G32_UINT:
@@ -8241,6 +8261,8 @@ namespace FlexKit
 		{
 		case DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT:
 			return FlexKit::DeviceFormat::R16G16_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT:
+			return  DeviceFormat::R16G16B16A16_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT:
 			return FlexKit::DeviceFormat::R32G32_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
@@ -10021,262 +10043,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGeometryTable(RenderSystem* renderSystem, iAllocator* allocator)
-	{
-		GeometryTable.Handles.Initiate(allocator);
-		GeometryTable.Handle			= Vector<TriMeshHandle>(allocator);
-		GeometryTable.Geometry			= Vector<TriMesh>(allocator);
-		GeometryTable.ReferenceCounts	= Vector<size_t>(allocator);
-		GeometryTable.Guids				= Vector<GUID_t>(allocator);
-		GeometryTable.GeometryIDs		= Vector<const char*>(allocator);
-		GeometryTable.FreeList			= Vector<size_t>(allocator);
-		GeometryTable.allocator			= allocator;
-		GeometryTable.renderSystem		= renderSystem;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseGeometryTable()
-	{
-		for (auto G : GeometryTable.Geometry)
-			ReleaseTriMesh(&G);
-
-		GeometryTable.Geometry.Release();
-		GeometryTable.ReferenceCounts.Release();
-		GeometryTable.Guids.Release();
-		GeometryTable.GeometryIDs.Release();
-		GeometryTable.Handles.Release();
-		GeometryTable.FreeList.Release();
-		GeometryTable.Handle.Release();
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool IsMeshLoaded(GUID_t guid)
-	{
-		bool res = false;
-		for (auto Entry : GeometryTable.Guids)
-		{
-			if (Entry == guid){
-				res = true;
-				break;
-			}
-		}
-
-		return res;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddRef(TriMeshHandle TMHandle)
-	{
-		size_t Index = GeometryTable.Handles[TMHandle];
-
-#ifdef _DEBUG
-		if (Index != -1)
-			GeometryTable.ReferenceCounts[Index]++;
-#else
-		GeometryTable.ReferenceCounts[Index]++;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMeshHandle CreateMesh(GUID_t GUID)
-	{
-		auto Available = isAssetAvailable(GUID);
-		if (Available)
-			return InvalidHandle;
-
-		TriMeshHandle Handle;
-
-		if(!GeometryTable.FreeList.size())
-		{
-			auto Index	= GeometryTable.Geometry.size();
-			Handle		= GeometryTable.Handles.GetNewHandle();
-			GeometryTable.Handles[Handle] = (index_t)Index;
-
-			GeometryTable.Geometry.push_back(TriMesh());
-			GeometryTable.GeometryIDs.push_back(nullptr);
-			GeometryTable.Guids.push_back(GUID);
-			GeometryTable.ReferenceCounts.push_back(1);
-			GeometryTable.Handle.push_back(Handle);
-
-		}
-		else
-		{
-			auto Index	= GeometryTable.FreeList.back();
-			GeometryTable.FreeList.pop_back();
-
-			Handle = GeometryTable.Handles.GetNewHandle();
-
-			GeometryTable.Handles			[Handle]	= (FlexKit::index_t)Index;
-			GeometryTable.GeometryIDs		[Index]		= nullptr;
-			GeometryTable.Guids				[Index]		= GUID;
-			GeometryTable.ReferenceCounts	[Index]		= 1;
-			GeometryTable.Handle			[Index]		= Handle;
-		}
-
-		return Handle;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseMesh(TriMeshHandle TMHandle)
-	{
-		if (TMHandle == InvalidHandle)
-			return;
-		// TODO: MAKE ATOMIC
-		if (GeometryTable.Handles[TMHandle] == -1)
-			return;// Already Released
-
-		size_t Index	= GeometryTable.Handles[TMHandle];
-		auto Count		= --GeometryTable.ReferenceCounts[Index];
-
-		if (Count == 0) 
-		{
-			auto G = GetMeshResource(TMHandle);
-
-			DelayedReleaseTriMesh(GeometryTable.renderSystem, G);
-
-			GeometryTable.FreeList.push_back(Index);
-			GeometryTable.Geometry[Index]   = TriMesh();
-			GeometryTable.Handles[TMHandle] = -1;
-			GeometryTable.Handles.RemoveHandle(TMHandle);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMeshHandle GetMesh(GUID_t guid, CopyContextHandle copyCtx )
-	{
-		if (IsMeshLoaded(guid))
-		{
-			auto mesh = FindMesh(guid);
-
-			if(mesh)
-				return mesh.value();
-		}
-
-		TriMeshHandle triMesh = LoadTriMeshIntoTable(
-			copyCtx == InvalidHandle ? GeometryTable.renderSystem->GetImmediateCopyQueue() : copyCtx, guid);
-
-		return triMesh;
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMeshHandle GetMesh(const char* meshID, CopyContextHandle copyCtx )
-	{
-		auto mesh = FindMesh(meshID);
-
-		if(mesh)
-			return mesh.value();
-
-		return LoadTriMeshIntoTable(copyCtx == InvalidHandle ? GeometryTable.renderSystem->GetImmediateCopyQueue() : copyCtx, meshID);
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMesh* GetMeshResource(TriMeshHandle TMHandle)
-	{
-		FK_ASSERT(TMHandle != InvalidHandle);
-
-#if USING(DEBUGGRAPHICS)
-		if (GeometryTable.Handles[TMHandle] == -1)
-		{
-			DebugBreak();
-			return nullptr;
-
-		}
-#endif
-		return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
-	}
-	
-
-	/************************************************************************************************/
-
-
-	BoundingSphere GetMeshBoundingSphere(TriMeshHandle TMHandle)
-	{
-		auto Mesh = &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
-		return float4{ float3{0}, Mesh->info.r };
-	}
-
-
-	/************************************************************************************************/
-
-
-	std::expected<TriMeshHandle, FINDMESH_RES> FindMesh(GUID_t guid)
-	{
-		size_t location		= 0;
-		size_t HandleIndex	= 0;
-		for (auto Entry : GeometryTable.Guids)
-		{
-			if (Entry == guid) {
-				for ( auto index : GeometryTable.Handles.Indexes)
-				{
-					if (index == location)
-						return TriMeshHandle{ HandleIndex };
-
-					++HandleIndex;
-				}
-				break;
-			}
-			++location;
-		}
-
-		return std::unexpected{ FINDMESH_RES::NotFound };
-	}
-	
-
-	/************************************************************************************************/
-
-
-	std::expected<TriMeshHandle, FINDMESH_RES>	FindMesh(const char* ID)
-	{
-		TriMeshHandle HandleOut = InvalidHandle;
-		size_t location			= 0;
-		size_t HandleIndex		= 0;
-
-		for (auto Entry : GeometryTable.GeometryIDs)
-		{
-			if (!strncmp(Entry, ID, 64)) {
-				for (auto index : GeometryTable.Handles.Indexes)
-				{
-					if (index == location)
-						return TriMeshHandle{ HandleIndex };
-
-					++HandleIndex;
-				}
-				break;
-			}
-			++location;
-		}
-
-		return std::unexpected{ FINDMESH_RES::NotFound };
-	}
-
-
-	/************************************************************************************************/
-
-
 	VertexResourceBuffer RenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
@@ -11735,32 +11501,6 @@ namespace FlexKit
 	}
 	
 
-	/************************************************************************************************/
-	
-
-	void Release(VertexBufferSet* vertexBufferSet)
-	{	
-		for (auto buffer : vertexBufferSet->buffers) {
-			if (buffer.apiResource)
-				buffer.apiResource->Release();
-
-			buffer.apiResource			= nullptr;
-			buffer.bufferSizeInBytes	= 0;
-		}
-	}
-	
-
-	void DelayedRelease(RenderSystem* RS, VertexBufferSet* vertexBufferSet)
-	{
-		for (auto& buffer : vertexBufferSet->buffers) {
-			if (buffer.apiResource)
-				Push_DelayedRelease(RS, buffer.apiResource);
-
-			buffer.apiResource			= nullptr;
-			buffer.bufferSizeInBytes	= 0;
-		}
-	}
-
 
 	/************************************************************************************************/
 	
@@ -12180,279 +11920,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadObjMesh(RenderSystem* RS, char* File_Loc, Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers)
-	{
-		using MeshUtilityFunctions::TokenList;
-		using MeshUtilityFunctions::CombinedVertexBuffer;
-		using MeshUtilityFunctions::IndexList;
-		using namespace FlexKit::MeshUtilityFunctions;
-		using namespace FlexKit::MeshUtilityFunctions::OBJ_Tools;
-
-		// TODO: Handle Multi Threading Cases
-		size_t pos = 0;
-		size_t buffersize = 1024*1024*16;
-		size_t size = buffersize;
-		size_t line_pos = 0;
-
-		char*	strBuffer = (char*)TempSpace.malloc(buffersize);
-		char	current_line[512];
-
-		memset(strBuffer, 0, buffersize);
-		bool Loaded = FlexKit::LoadFileIntoBuffer(File_Loc, (std::byte*)strBuffer, size);// TODO: Make Thread Safe
-		if (!Loaded)
-		{
-			TempSpace.clear();
-			printf("Failed To Load Obj\n");
-			return false;
-		}
-		
-		TokenList				TL			{ TempSpace, 64000 };
-		CombinedVertexBuffer	out_buffer	{ TempSpace, 16000 };
-		IndexList				out_indexes	{ TempSpace, 64000 };
-
-		//TL.push_back(s_TokenValue::Empty());
-		LoaderState S;
-
-		size = strlen(strBuffer);
-		while( pos < size)
-		{
-			if( strBuffer[pos] != '\n' )
-			{
-				current_line[line_pos++] = strBuffer[pos];
-			}
-			else
-			{
-				size_t LineLength = line_pos;
-				current_line[LineLength] = '\0';
-				CStrToToken( ScrubLine( current_line, LineLength ), LineLength, TL, S );
-				line_pos = 0;
-			}
-			pos++;
-		}
-
-		//if (!FlexKit::MeshUtilityFunctions::BuildVertexBuffer(TL, out_buffer, out_indexes, LevelSpace, TempSpace))
-			return false;
-
-		size_t VertexBufferSize = out_buffer.size()		* sizeof(float3)	+ sizeof(VertexBufferView);// pos
-		size_t IndexBufferSize  = out_indexes.size()	* sizeof(uint32_t)	+ sizeof(VertexBufferView);// index
-		size_t NormalBufferSize = out_buffer.size()		* sizeof(float3)	+ sizeof(VertexBufferView);// Normal
-
-		// Optional Buffers
-		size_t TexcordBufferSize	= out_buffer.size()	* sizeof(float2)	+ sizeof(VertexBufferView);// Texcoord
-		size_t TangentBufferSize	= out_buffer.size()	* sizeof(float3)	+ sizeof(VertexBufferView);// Tangent
-		size_t extraBufferSize		= out_buffer.size()	* sizeof(float3)	+ sizeof(VertexBufferView);// ?
-
-		byte* VertexBuffer	= (byte*)(DiscardBuffers ? TempSpace._aligned_malloc(VertexBufferSize, 16)	: LevelSpace._aligned_malloc(VertexBufferSize, 16));// Position
-		byte* IndexBuffer	= (byte*)(DiscardBuffers ? TempSpace._aligned_malloc(IndexBufferSize, 16)	: LevelSpace._aligned_malloc(IndexBufferSize, 16)); // Index
-		byte* NormalBuffer	= (byte*)(DiscardBuffers ? TempSpace._aligned_malloc(NormalBufferSize, 16)	: LevelSpace._aligned_malloc(NormalBufferSize, 16));// Normal
-
-		byte* TexcordBuffer  = (byte*)(desc.LoadUVs				? (DiscardBuffers ? TempSpace._aligned_malloc(TexcordBufferSize, 16) : LevelSpace._aligned_malloc(TexcordBufferSize, 16)) : nullptr); // UV's
-		byte* TangentBuffer	 = (byte*)(desc.GenerateTangents	? (DiscardBuffers ? TempSpace._aligned_malloc(TangentBufferSize, 16) : LevelSpace._aligned_malloc(TangentBufferSize, 16)) : nullptr); // Tangents
-
-		FK_ASSERT(false);
-
-		//out.Buffers[00] = FlexKit::CreateVertexBufferView(VertexBuffer, VertexBufferSize);
-		//out.Buffers[01] = FlexKit::CreateVertexBufferView(NormalBuffer, NormalBufferSize);
-		//out.Buffers[15] = FlexKit::CreateVertexBufferView(IndexBuffer,  IndexBufferSize);
-
-		/*
-		out.Buffers[0]->Begin
-			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION
-			, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
-		
-
-		float3 Vmn = float3(0);
-		float3 Vmx = float3(0);
-		float BoundingShere = 0;
-
-		for (auto V : out_buffer)
-		{
-			for (auto itr = 0; itr < 3; ++itr)
-			{	// find Max
-				if (V.POS[itr] > Vmx[itr]) 
-					Vmx[itr] = V.POS[itr];
-
-				// find Min
-				if (V.POS[itr] < Vmn[itr]) 
-					Vmn[itr] = V.POS[itr];
-
-				if (V.POS.magnitude() > BoundingShere)
-					BoundingShere = V.POS.magnitude();
-
-			}
-			out.Buffers[0]->Push(V.POS * desc.S);
-		}
-
-		out.Buffers[0]->End();
-
-		out.Buffers[15]->Begin
-			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX
-			, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32 );
-
-		for (auto itr = out_indexes.begin(); itr != out_indexes.end(); )
-		{
-			auto I1 = *itr++;
-			auto I2 = *itr++;
-			auto I3 = *itr++;
-
-			out.Buffers[15]->Push(uint32_t(I2));
-			out.Buffers[15]->Push(uint32_t(I1));
-			out.Buffers[15]->Push(uint32_t(I3));
-		}
-
-		out.Buffers[1]->End();
-
-		if (S.Normals)
-		{
-			out.Buffers[1]->Begin
-				( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL
-				, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
-
-			for (auto V : out_buffer)
-				out.Buffers[1]->Push( V.NORMAL );
-
-			out.Buffers[1]->End();
-		}
-		out.IndexCount = out_indexes.size();
-
-		if (S.UV_1 && desc.LoadUVs)
-		{
-			//out.Buffers[2] = FlexKit::CreateVertexBufferView(TexcordBuffer, TexcordBufferSize);
-			out.Buffers[2]->Begin
-				( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV
-				, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32 );
-
-			for (auto V : out_buffer)
-				out.Buffers[2]->Push(V.TEXCOORD);
-
-			out.Buffers[2]->End();
-		}
-
-		if (desc.LoadUVs && desc.GenerateTangents)
-		{
-			// TODO(RM): Lift out into Mesh Utilities 
-			FK_ASSERT(TangentBuffer); // Check that output is not Null
-		
-			//out.Buffers[3] = FlexKit::CreateVertexBufferView(TangentBuffer, TangentBufferSize);
-			out.Buffers[3]->Begin
-				( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT
-				, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
-
-			// Set Clear Tangents
-			for (auto V : out_buffer)
-				out.Buffers[3]->Push(float3{0.0f, 0.0f, 0.0f});
-
-			auto IndexBuffer	= reinterpret_cast<uint32_t*>(out.Buffers[15]->GetBuffer()); 
-			auto VBuffer		= reinterpret_cast<float3*>	 (out.Buffers[0]->GetBuffer());
-			auto NBuffer		= reinterpret_cast<float3*>	 (out.Buffers[1]->GetBuffer()); 
-			auto TexCoords		= reinterpret_cast<float2*>	 (out.Buffers[2]->GetBuffer()); 
-			auto Tangents		= reinterpret_cast<float3*>	 (out.Buffers[3]->GetBuffer()); 
-
-			for (auto itr = 0; itr < out.Buffers[0]->GetBufferSizeUsed(); itr+= 3)
-			{
-				float3 V0 = VBuffer[IndexBuffer[itr + 0]];
-				float3 V1 = VBuffer[IndexBuffer[itr + 1]];
-				float3 V2 = VBuffer[IndexBuffer[itr + 2]];
-
-				float2 UV1 = TexCoords[IndexBuffer[itr + 0]];
-				float2 UV2 = TexCoords[IndexBuffer[itr + 1]];
-				float2 UV3 = TexCoords[IndexBuffer[itr + 2]];
-
-				float3 Q1 = V1 - V0;
-				float3 Q2 = V2 - V0;
-
-				float2 ST1 = UV2 - UV1;
-				float2 ST2 = UV3 - UV1;
-
-				float r = 1.0f / ((ST1.x*ST2.y) - (ST2.x * ST1.y));
-
-				float3 S = r * float3((ST2.y * Q1[0]) - (ST1.y * Q2[0]), (ST2.y * Q1[1]) - (ST1.y * Q2[1]), (ST2.y * Q1[2]) - (ST1.y * Q2[2]));
-				float3 T = r * float3((ST1.x * Q1[0]) - (ST2.x * Q2[0]), (ST1.x * Q1[1]) - (ST2.x * Q2[1]), (ST1.x * Q1[2]) - (ST2.x * Q2[2]));
-
-				Tangents[IndexBuffer[itr + 0]] += S;
-				Tangents[IndexBuffer[itr + 1]] += S;
-				Tangents[IndexBuffer[itr + 2]] += S;
-			}
-
-			// Normalise Averaged Tangents
-			float3* Normals = (float3*)out.Buffers[3]->GetBuffer();
-			float3* end = (float3*)(out.Buffers[3]->GetBuffer() + out.Buffers[3]->GetBufferSizeRaw());
-
-			while (Normals < end)
-			{
-				(*Normals) = Normals->normal();
-				Normals++;
-			}
-		}
-
-		FlexKit::CreateVertexBuffer		(RS, RS->GetImmediateCopyQueue(), out.Buffers, 2 + desc.LoadUVs + desc.GenerateTangents,           out.VertexBuffer);
-
-		out.Info.Max = Vmx;
-		out.Info.Min = Vmn;
-
-		if (DiscardBuffers) {
-			//ClearTriMeshVBVs(&out);
-			TempSpace.clear();
-		}
-		*/
-		return false;
-	}
-
-	
-	/************************************************************************************************/
-
-
-	void ReleaseTriMesh(TriMesh* T)
-	{
-		if(T->allocator){
-			for (auto& details : T->lods) {
-				Release(&details.bufferSet);
-
-				for (auto& view : details.views)
-				{
-					if (view)
-						T->allocator->free(view);
-
-					view = nullptr;
-				}
-			}
-			T->allocator->free((void*)T->ID);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
-	{
-		for (auto& detailLevel : T->lods)
-		{
-			DelayedRelease(RS, &detailLevel.bufferSet);
-
-			for (auto& B : detailLevel.views)
-			{
-				if (B)
-					T->allocator->free(B);
-
-				B = nullptr;
-			}
-
-			detailLevel.bufferSet.Clear();
-		}
-
-		T->allocator->free((void*)T->ID);
-	}
-
-
-	/************************************************************************************************/
-
-
 	float2 GetPixelSize(IRenderWindow& Window)
 	{
 		return float2{ 1.0f, 1.0f } / Window.GetWH();
 	}
-
 
 
 	/************************************************************************************************/
@@ -12985,7 +12456,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2014-2023 Robert May
+Copyright (c) 2014-2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

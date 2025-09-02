@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ResourceHandles.hpp"
-#include "FrameGraph.hpp"
 
 
 namespace FlexKit
@@ -12,10 +11,10 @@ namespace FlexKit
 		FrameResourceHandle				depthTarget;
 	};
 
-	void RegisterPhysicsDebugVis(RenderSystem&);
+	void RegisterPhysicsDebugVis(struct IRenderSystem&);
 
 	PhysicsDebugOverlayPass& RenderPhysicsOverlay(
-		FrameGraph&							frameGraph,
+		class FrameGraph&					frameGraph,
 		ResourceHandle						renderTarget,
 		ResourceHandle						depthTarget,
 		LayerHandle							layer,
