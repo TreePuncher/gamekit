@@ -57,9 +57,61 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateOITDrawPSO(IRenderSystem& irs, iAllocator& allocator)
+	LoadPipelineStateRes CreateOITDrawPSO(IRenderSystem& rs, iAllocator& allocator)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
+	    PipelineBuilder{ rs, allocator }
+		    .AddInputTopology(ETopology::EIT_TRIANGLE)
+		    .AddInputLayout({
+		        .inputs = {
+		            { "POSITION",	0, DeviceFormat::R32G32B32_FLOAT,	0, 0,	EInputClassification::PerVertex, 0 },
+			        { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT,	1, 0,	EInputClassification::PerVertex, 0 },
+			        { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT,	2, 0,	EInputClassification::PerVertex, 0 },
+			        { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	3, 0,	EInputClassification::PerVertex, 0 },
+				},
+		        .count	= 4 }
+			)
+			.AddVertexShader("VMain", "assets\\shaders\\OITPass.hlsl")
+			.AddPixelShader("PassMain", "assets\\shaders\\OITPass.hlsl")
+            .AddRasterizerState({})
+            .AddDepthStencilState({
+				    .depthEnable	= true,
+                    .depthWriteMask = EDepthWriteMask::Zero,
+                    .depthFunc		= EComparison::LESS,
+                })
+	        .AddRootSignature(rs.Library(ROOTLIBRARYSIG::RSDefault))
+			.AddInputTopology(ETopology::EIT_TRIANGLE)
+            .AddRenderTargetState({.targetCount =  1, .targetFormats = { DeviceFormat::R16G16B16A16_FLOAT, DeviceFormat::R16G16B16A16_FLOAT }})
+            .AddDepthStencilFormat(DeviceFormat::D32_FLOAT)
+            .AddBlendState(
+				BlendState{
+					.renderTarget = {
+						RenderTargetStateDesc{
+						    .blendEnable	= true,
+							.srcBlend		= EBlend::INV_SRC_ALPHA,
+							.blendOp		= EBlendOP::ADD,
+							.blendOpAlpha	= EBlendOP::ADD,
+
+							.srcBlendAlpha	= EBlend::ONE,
+
+							.dstBlend		= EBlend::SRC_ALPHA,
+							.dstBlendAlpha	= EBlend::ONE,
+						},
+						RenderTargetStateDesc{
+						    .blendEnable	= true,
+							.srcBlend		= EBlend::ZERO,
+							.blendOp		= EBlendOP::ADD,
+							.blendOpAlpha	= EBlendOP::ADD,
+
+							.srcBlendAlpha	= EBlend::ZERO,
+
+							.dstBlend		= EBlend::INV_SRC_ALPHA,
+							.dstBlendAlpha	= EBlend::INV_SRC_ALPHA,
+						},
+					},
+					.independentBlendEnable = true,
+				})
+	        .Build(rs);
+		/*
 		auto VShader = RS.LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
 		auto PShader = RS.LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
@@ -123,6 +175,7 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+        */
 	}
 
 
@@ -140,6 +193,37 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateOITBlendPSO(IRenderSystem& RS, iAllocator& allocator)
 	{
+		PipelineBuilder{ RS, allocator }
+			.AddVertexShader("VMain", "assets\\shaders\\OITBlend.hlsl")
+			.AddPixelShader("BlendMain", "assets\\shaders\\OITBlend.hlsl")
+            .AddRasterizerState({})
+            .AddDepthStencilState({
+				    .depthEnable	= true,
+                    .depthFunc		=  FlexKit::EComparison::LESS,
+                })
+	        .AddRootSignature(RS.Library(ROOTLIBRARYSIG::RSDefault))
+			.AddInputTopology(ETopology::EIT_TRIANGLE)
+            .AddRenderTargetState({.targetCount =  1, .targetFormats = {DeviceFormat::R16G16B16A16_FLOAT}})
+            .AddDepthStencilFormat(DeviceFormat::D32_FLOAT)
+            .AddBlendState(
+				BlendState{
+					.renderTarget = {
+						RenderTargetStateDesc{
+						    .blendEnable	= true,
+							.srcBlend		= EBlend::INV_SRC_ALPHA,
+							.blendOp		= EBlendOP::ADD,
+							.blendOpAlpha	= EBlendOP::ADD,
+
+							.srcBlendAlpha	= EBlend::ONE,
+
+							.dstBlend		= EBlend::SRC_ALPHA,
+							.dstBlendAlpha	= EBlend::ONE,
+						},
+					},
+					.independentBlendEnable = true,
+				})
+	        .Build(RS);
+	    /*
 		auto VShader = RS.LoadShader("VMain", "vs_6_0",		"assets\\shaders\\OITBlend.hlsl");
 		auto PShader = RS.LoadShader("BlendMain", "ps_6_0",	"assets\\shaders\\OITBlend.hlsl");
 
@@ -182,6 +266,7 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault) };
+        */
 	}
 
 
@@ -190,6 +275,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateMLABDrawPSO(IRenderSystem& RS, iAllocator& allocator)
 	{
+#if 0
 		auto VShader = RS.LoadShader("VMain",		"vs_6_0", "assets\\shaders\\OITPass.hlsl");
 		auto PShader = RS.LoadShader("PassMain",	"ps_6_0", "assets\\shaders\\OITPass.hlsl");
 
@@ -252,14 +338,16 @@ namespace FlexKit
 		auto HR = static_cast<RenderSystem&>(RS).pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 		FK_ASSERT(SUCCEEDED(HR));
 
-		return { PSO, static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault) };
+		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return {};
 	}
 
 
 	/************************************************************************************************/
 
 
-	Transparency::Transparency(RenderSystem& renderSystem, iAllocator& allocator) 
+	Transparency::Transparency(IRenderSystem& renderSystem, iAllocator& allocator) 
 		//MLABDrawSignature{ allocator }
 	{
 		renderSystem.RegisterPSOLoader(OITBLEND,		CreateOITBlendPSO);

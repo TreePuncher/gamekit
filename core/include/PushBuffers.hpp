@@ -300,7 +300,7 @@ namespace FlexKit
 
 		operator VertexBufferEntry () const
 		{
-			return { vertexBuffer, (UINT)vertexStride, (UINT)offsetBegin };
+			return { vertexBuffer, (uint32_t)vertexStride, (uint32_t)offsetBegin };
 		}
 
 

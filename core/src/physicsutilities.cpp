@@ -1697,7 +1697,7 @@ namespace FlexKit
 		physx::PxFilterObjectAttributes	attributes1,
 		physx::PxFilterData				filterData1,
 		physx::PxPairFlags&				pairFlags,
-		const byte*						constantBlock,
+		const std::byte*				constantBlock,
 		physx::PxU32					constantBlockSize)
 	{
 		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;

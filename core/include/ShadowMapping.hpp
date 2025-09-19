@@ -82,7 +82,7 @@ namespace FlexKit
 	class ShadowMapper
 	{
 		public:
-		ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator);
+		ShadowMapper(IRenderSystem& renderSystem, iAllocator& allocator);
 
 		ShadowMapPassData&  ShadowMapPass(
 								FrameGraph&								frameGraph,

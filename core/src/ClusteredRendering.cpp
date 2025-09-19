@@ -956,8 +956,6 @@ namespace FlexKit
 
 	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
-
 		return PipelineBuilder{ renderSystem, allocator }.
 		        AddInputTopology(ETopology::EIT_TRIANGLE).
 		        AddVertexShader("VMain", R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)").
@@ -970,7 +968,7 @@ namespace FlexKit
 				    .stencilEnable	= false
 			    }).
 		        AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-	            Build(*RS);
+	            Build(renderSystem);
 	}
 
 
@@ -979,9 +977,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes ClusteredRender::CreateOcclusionQueryInstancedPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
-
-		PipelineBuilder builder{ allocator };
+		PipelineBuilder builder{ renderSystem, allocator };
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
 		builder.AddInputLayout({
 			.inputs = {
@@ -1017,22 +1013,21 @@ namespace FlexKit
 
 		builder.AddPixelShader("PMain",			R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
 
-		return builder.Build(*RS);
+		return builder.Build(renderSystem);
 	}
 
 
 	/************************************************************************************************/
 
 
-	GBuffer::GBuffer(const uint2 WH, RenderSystem& RS_IN) :
-		RS				{ RS_IN },
+	GBuffer::GBuffer(const uint2 WH, IRenderSystem& RS_IN) :
 		albedo			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
 		MRIA			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
 		normal			{ RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT)) }
 	{
-		RS.SetDebugName(albedo,		"Albedo");
-		RS.SetDebugName(MRIA,		"MRIA");
-		RS.SetDebugName(normal,		"Normal");
+		RS_IN.SetDebugName(albedo,		"Albedo");
+		RS_IN.SetDebugName(MRIA,		"MRIA");
+		RS_IN.SetDebugName(normal,		"Normal");
 	}
 
 
@@ -1041,6 +1036,7 @@ namespace FlexKit
 
 	GBuffer::~GBuffer()
 	{
+		auto& RS = IRenderSystem::GetInstance();
 		RS.ReleaseResource(albedo);
 		RS.ReleaseResource(MRIA);
 		RS.ReleaseResource(normal);
@@ -1052,6 +1048,8 @@ namespace FlexKit
 
 	void GBuffer::Resize(const uint2 WH)
 	{
+		auto& RS = IRenderSystem::GetInstance();
+
 		auto previousWH = RS.GetTextureWH(albedo);
 		if (WH == previousWH)
 			return;
@@ -1110,7 +1108,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ClusteredRender::ClusteredRender(RenderSystem& renderSystem, iAllocator& persistent) :
+	ClusteredRender::ClusteredRender(IRenderSystem& renderSystem, iAllocator& persistent) :
 		dispatch				{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
 		draw					{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) }
 	{
@@ -1140,8 +1138,10 @@ namespace FlexKit
 
 		renderSystem.RegisterPSOLoader(OCCLUSIONQUERYPSO,			CreateOcclusionQueryPSO);
 		renderSystem.RegisterPSOLoader(OCCLUSIONINSTANCEDQUERYPSO,	CreateOcclusionQueryInstancedPSO);
-		
-		RootSignatureBuilder builder{ persistent };
+
+
+#if 0
+		RootSignatureBuilder builder{ renderSystem, persistent };
 
 		DesciptorHeapLayout<16> DescriptorHeapSRV1;
 		DescriptorHeapSRV1.SetParameterAsSRV(0, 0, -1, 0);
@@ -1157,18 +1157,19 @@ namespace FlexKit
 		builder.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
 		rootSignature = builder.Build(renderSystem, persistent);
 		FK_ASSERT(rootSignature != nullptr, "Failed to create feedbackPassRootSignature");
-		SETDEBUGNAME(*rootSignature, "ClusteredShading");
+		rootSignature->SetDebugName("ClusteredShading");
 
 		markClustersSignature = builder.LoadSignatureFromFile(R"(assets\shaders\MLAB\MLAB_MarkClusters.hlsl)", "rootSig", renderSystem, persistent);
 		FK_ASSERT(markClustersSignature != nullptr, "Failed to create feedbackPassRootSignature");
-		SETDEBUGNAME(*markClustersSignature, "markClustersSignature");
+		renderSystem.SetDebugName(*markClustersSignature, "markClustersSignature");
+#endif
 	}
 
 
 	/************************************************************************************************/
 
 
-	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(RenderSystem& renderSystem, uint2 WH, CameraHandle camera, PoolAllocatorInterface& UAVPool)
+	FlexKit::TypeErasedCallable<void (FrameGraph&), 64> ClusteredRender::CreateClusterBuffer(IRenderSystem& renderSystem, uint2 WH, CameraHandle camera, PoolAllocatorInterface& UAVPool)
 	{
 		return
 			[&, camera = camera, WH = WH](FrameGraph& frameGraph)
@@ -1287,7 +1288,7 @@ namespace FlexKit
 			};
 
 		auto draw	=
-			[](const auto begin, const auto end, std::span<const DrawEntry> drawList, MarkClustersPass& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
+			[](const auto begin, const auto end, std::span<const BrushEntry> drawList, MarkClustersPass& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				//auto markClusters1 = resources.GetPipelineState(0); // Static meshes
 				//auto rootSignature = resources.GetPipelineStateRootSig(0);
@@ -1297,7 +1298,7 @@ namespace FlexKit
 				auto& brushConstantBuffer	= data.entityConstants.GetConstantBuffer();
 				auto brushConstants			= CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
 
-				for(const auto& draw : std::span<const DrawEntry>{ begin, end })
+				for(const auto& draw : std::span<const BrushEntry>{ begin, end })
 				{
 					for(auto&& [idx, mesh] : enumerate(draw.brush->meshes))
 					{
@@ -1836,9 +1837,8 @@ namespace FlexKit
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				// Setup pipeline resources
-				SetScissorAndViewports(
-					ctx,
-					std::tuple{
+				ctx.SetScissorAndViewports(
+					{
 						data.gbuffer.albedo,
 						data.gbuffer.MRIA,
 						data.gbuffer.normal,
@@ -2115,7 +2115,7 @@ namespace FlexKit
 
 		PassDescription<Shared> pass{
 			.sharedData = shared,
-			.getPVS		= []() -> std::span<const DrawEntry> { return {}; }
+			.getPVS		= []() -> std::span<const BrushEntry> { return {}; }
 		};
 
 		auto setup =
@@ -2124,7 +2124,7 @@ namespace FlexKit
 			};
 
 		auto draw =
-			[](const auto begin, const auto end, std::span<const DrawEntry> pvs, Shared& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
+			[](const auto begin, const auto end, std::span<const BrushEntry> pvs, Shared& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 			};
 
@@ -2175,7 +2175,7 @@ namespace FlexKit
 			};
 
 		auto drawFN =
-			[camera](const auto begin, const auto end, std::span<const DrawEntry> pvs, OcclusionCullingResults& data, [[maybe_unused]] const FrameResources& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
+			[camera](const auto begin, const auto end, std::span<const BrushEntry> pvs, OcclusionCullingResults& data, [[maybe_unused]] const FrameResources& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				ProfileFunctionStrName("OCCLUSIONCULLING");
 

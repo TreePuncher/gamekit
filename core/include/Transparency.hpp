@@ -23,13 +23,12 @@ namespace FlexKit
 	struct OITBlend;
 	struct OIT_MLAB;
 
-	class RenderSystem;
 	class FrameGraph;
 
 	class Transparency
 	{
 	public:
-		Transparency(RenderSystem&, iAllocator& allocator);
+		Transparency(IRenderSystem&, iAllocator& allocator);
 
 		OITPass& OIT_WB_Pass(
 				UpdateDispatcher&				dispatcher,

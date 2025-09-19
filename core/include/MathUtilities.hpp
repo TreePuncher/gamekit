@@ -1964,6 +1964,11 @@ namespace FlexKit
 			return { x, y, z };
 		}
 
+		static float4 Zero() noexcept
+		{
+			return simde_mm_set1_ps(0);
+		}
+
 		operator Vect4 ()		noexcept { return { x, y, z, w }; };
 		operator Vect4 () const	noexcept { return { x, y, z, w }; };
 		operator float3() const	noexcept { return float3{ pFloats }; };
@@ -2918,6 +2923,12 @@ namespace FlexKit
 		inverseRotation         = inverseRotation.Transpose();
 
 		return inverseRotation;
+	}
+
+
+	inline float4x4 Inverse(const float4x4& m)
+	{
+		return {};
 	}
 
 

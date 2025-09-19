@@ -309,7 +309,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	/*
 	bool AddVertexBuffer(VERTEXBUFFER_TYPE type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out)
 	{
 		auto res = FindBufferEntry(Mesh, lod, type);
@@ -341,7 +341,7 @@ namespace FlexKit
 
 		return true;
 	}
-
+    */
 
 	/************************************************************************************************/
 
@@ -606,6 +606,208 @@ namespace FlexKit
 	const	uint32_t				TriMesh::GetLowestLodIdx()		const	noexcept { return uint32_t(lods.size() - 1); }
 	const	TriMesh::LOD_Runtime&	TriMesh::GetLowestLoadedLod()	const	noexcept { return lods.back(); }
 	TriMesh::LOD_Runtime&			TriMesh::GetLowestLoadedLod()			noexcept { return lods.back(); }
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, size_t GUID)
+	{	// Make this atomic
+		auto Available = isAssetAvailable(GUID);
+		if (!Available)
+			return InvalidHandle;
+
+		TriMeshHandle Handle;
+
+		for (size_t idx = 0;
+			 idx < GeometryTable.Geometry.size();
+			 ++idx)
+		{
+			if (GeometryTable.Guids[idx] == GUID)
+				return GeometryTable.Handle[idx];
+		}
+
+		if(!GeometryTable.FreeList.size())
+		{
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			GeometryTable.Geometry.push_back(TriMesh());
+			GeometryTable.GeometryIDs.push_back(nullptr);
+			GeometryTable.Guids.push_back(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
+			GeometryTable.Handle.push_back(Handle);
+
+			auto RHandle = LoadGameAsset(GUID);
+			auto GameRes = GetAsset(RHandle);
+			if( Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				FreeAsset(RHandle);
+
+				GeometryTable.Handles[Handle]			= (index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
+				GeometryTable.Guids[Index]				= GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+			{
+				Handle = InvalidHandle;
+			}
+		}
+		else
+		{
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
+
+			Handle = GeometryTable.Handles.GetNewHandle();
+
+			auto Available = isAssetAvailable(GUID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameAsset(GUID);
+			auto GameRes = GetAsset(RHandle);
+			
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				FreeAsset(RHandle);
+
+				GeometryTable.Handles			[Handle]	= (FlexKit::index_t)Index;
+				GeometryTable.GeometryIDs		[Index]		= GameRes->ID;
+				GeometryTable.Guids				[Index]		= GUID;
+				GeometryTable.ReferenceCounts	[Index]		= 1;
+				GeometryTable.Handle			[Index]		= Handle;
+			}
+			else
+			{
+				Handle = InvalidHandle;
+			}
+		}
+
+		return Handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* ID)
+	{	// Make this atomic
+		TriMeshHandle Handle;
+
+		if(!GeometryTable.FreeList.size())
+		{
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
+			
+			GeometryTable.Geometry.push_back		(TriMesh());
+			GeometryTable.GeometryIDs.push_back		(nullptr);
+			GeometryTable.Guids.push_back			(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
+			GeometryTable.Handle.push_back			(Handle);
+
+			auto Available = isAssetAvailable(ID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameAsset(ID);
+			auto GameRes = GetAsset(RHandle);
+			
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				FreeAsset(RHandle);
+
+				GeometryTable.Handles[Handle]			= (index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= ID;
+				GeometryTable.Guids[Index]				= GameRes->GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+			{
+				Handle = InvalidHandle;
+			}
+		}
+		else
+		{
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
+
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			auto Available = isAssetAvailable(ID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameAsset(ID);
+			auto GameRes = GetAsset(RHandle);
+
+			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				FreeAsset(RHandle);
+
+				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
+				GeometryTable.Guids[Index]				= GameRes->GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+			{
+				Handle = InvalidHandle;
+			}
+		}
+
+		return Handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize)
+	{
+		TriMeshHandle Handle;
+		TriMeshAssetBlob* Blob = (TriMeshAssetBlob*)buffer;
+
+		if(!GeometryTable.FreeList.size())
+		{
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			GeometryTable.Geometry.push_back		(TriMesh());
+			GeometryTable.GeometryIDs.push_back		(nullptr);
+			GeometryTable.Guids.push_back			(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
+			GeometryTable.Handle.push_back			(Handle);
+
+
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				GeometryTable.Handles[Handle]			= (index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
+				GeometryTable.Guids[Index]				= Blob->header.GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+				Handle = InvalidHandle;
+		}
+		else
+		{
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
+
+			Handle		= GeometryTable.Handles.GetNewHandle();
+
+			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			{
+				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
+				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
+				GeometryTable.Guids[Index]				= Blob->header.GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
+			}
+			else
+				Handle = InvalidHandle;
+		}
+
+		return Handle;
+	}
+
 
 
 }	/************************************************************************************************/

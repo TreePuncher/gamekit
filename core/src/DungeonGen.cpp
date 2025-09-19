@@ -727,7 +727,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void DungeonGenerator::BlockScanCallBack(ScanCallBack out, byte* _ptr, uint2 XY, uint2 HW)
+	void DungeonGenerator::BlockScanCallBack(ScanCallBack out, std::byte* _ptr, uint2 XY, uint2 HW)
 	{
 		size_t HOffset = HW[1] / 2;
 		size_t WOffset = HW[0] / 2;
@@ -756,7 +756,7 @@ namespace FlexKit
 			}
 	}
 
-	void DungeonGenerator::DungeonScanCallBack(ScanCallBack out, byte* _ptr)
+	void DungeonGenerator::DungeonScanCallBack(ScanCallBack out, std::byte* _ptr)
 	{
 		size_t XStart = 1;
 		size_t YStart = 1;

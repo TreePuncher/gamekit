@@ -31,8 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RuntimeComponentIDs.hpp"
 #include "ResourceHandles.hpp"
 #include "TriggerComponent.hpp"
-#include "XMMathConversion.hpp"
-#include <DirectXMath.h>
 
 namespace FlexKit
 {
@@ -49,31 +47,31 @@ namespace FlexKit
 	
 	__declspec(align(16))  struct LT_Entry
 	{
-		DirectX::XMVECTOR T;
-		DirectX::XMVECTOR R;
-		DirectX::XMVECTOR S;
-		DirectX::XMVECTOR Padding;
+		float4		T;
+		Quaternion	R;
+		float4		S;
+		float4		Padding;
 
 		static LT_Entry Zero()
 		{
 			LT_Entry zero;
-			zero.T = DirectX::XMVectorZero();
-			zero.R = DirectX::XMQuaternionIdentity();
-			zero.S = DirectX::XMVectorSet(1, 1, 1, 0);
+			zero.T = float4::Zero();
+		    zero.R = Quaternion::Identity();
+			zero.S = float3{ 1, 1, 1 };
 
 			return zero;
 		}
 	};
 
 
-	__declspec(align(16))  struct WT_Entry
+	struct WT_Entry
 	{
 		//LT_Entry			World;
-		DirectX::XMMATRIX	m4x4;// Cached
+		float4x4	m4x4;// Cached
 
 		void SetToIdentity()	
 		{	
-			m4x4  = DirectX::XMMatrixIdentity(); 
+			m4x4  = float4x4::Identity(); 
 			//World = LT_Entry::Zero();
 		}
 	};
@@ -120,7 +118,7 @@ namespace FlexKit
 		{
 			const auto idx0 = Nodes.emplace_back();
 			const auto idx1 = LT.emplace_back();
-			const auto idx2 = WT.emplace_back(WT_Entry{DirectX::XMMatrixIdentity()});
+			const auto idx2 = WT.emplace_back(WT_Entry{ float4x4::Identity() });
 			const auto idx3 = Flags.emplace_back();
 			const auto idx4 = Children.emplace_back();
 
@@ -147,7 +145,6 @@ namespace FlexKit
 
 	FLEXKITAPI LT_Entry		GetLocal					( NodeHandle Node );
 	FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
-	FLEXKITAPI void			GetTransform				( NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
 	FLEXKITAPI float4x4		GetWT						( NodeHandle Node );
 	FLEXKITAPI float4x4		GetLT						( NodeHandle Node );
 	FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
@@ -168,7 +165,6 @@ namespace FlexKit
 	FLEXKITAPI void			SetParentNode				( NodeHandle Parent, NodeHandle Node );
 	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetWT						( NodeHandle Node,	DirectX::XMMATRIX* __restrict in  ); // Set World Transform
 	FLEXKITAPI void			SetWT						( NodeHandle Node,	const float4x4  in); // Set World Transform
 	FLEXKITAPI void			SetScale					( NodeHandle Node,	float3 In );
 

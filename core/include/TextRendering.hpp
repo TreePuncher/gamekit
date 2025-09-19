@@ -31,11 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-    class RenderSystem;
     class FrameGraph;
-
-
-	ID3D12PipelineState* LoadSpriteTextPSO(RenderSystem* RS);
 
 
 	void DrawSprite_Text(

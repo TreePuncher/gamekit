@@ -869,7 +869,7 @@ namespace FlexKit
 
 
 	static HRESULT CreateD3DResources12(
-		RenderSystem*           RS,
+		IRenderSystem*          RS,
 		CopyContextHandle       handle,
 		uint32_t                resDim,
 		size_t                  width,

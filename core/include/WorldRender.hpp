@@ -5,7 +5,6 @@
 
 #include "AnimationComponents.hpp"
 #include "Components.hpp"
-#include "CoreSceneObjects.hpp"
 #include "ClusteredRendering.hpp"
 #include "DepthBuffer.hpp"
 #include "FrameGraph.hpp"
@@ -16,7 +15,6 @@
 #include "ShadowMapping.hpp"
 #include "SVOGI.hpp"
 
-#include <DXProgrammableCapture.h>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -166,10 +164,10 @@ namespace FlexKit
 
 	struct DepthPass
 	{
-		DepthPass(const DrawList& IN_draws) :
+		DepthPass(const BrushDrawList& IN_draws) :
 			draws{ IN_draws } {}
 
-		const DrawList&     draws;
+		const BrushDrawList&     draws;
 		ResourceHandle      depthPassTarget;
 		FrameResourceHandle depthBufferObject;
 
@@ -191,7 +189,7 @@ namespace FlexKit
 	{
 		ForwardPlusPass(
 			const PointLightHandleList& IN_lights,
-			const DrawList&             IN_PVS,
+			const BrushDrawList&             IN_PVS,
 			const CBPushBuffer&         IN_entityConstants) :
 				pointLights     { IN_lights },
 				brushes         { IN_PVS    },
@@ -212,7 +210,7 @@ namespace FlexKit
 		const CBPushBuffer&         entityConstants;
 
 		const PointLightHandleList& pointLights;
-		const DrawList&				brushes;
+		const BrushDrawList&				brushes;
 	};
 
 
@@ -437,7 +435,7 @@ namespace FlexKit
 
 		bool occlusionCulling = false;
 
-		RenderSystem&			renderSystem;
+		IRenderSystem&			renderSystem;
 
 		PoolAllocatorInterface*	UAVPool			= nullptr;
 		PoolAllocatorInterface*	RTPool			= nullptr;

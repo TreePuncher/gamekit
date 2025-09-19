@@ -1,21 +1,11 @@
 #pragma once
 
-#ifdef COMPILE_GAMESTATE
-#define GAMESTATEAPI __declspec(dllexport)
-#else
-#define GAMESTATEAPI __declspec(dllimport)
-#endif
-
 #include "Assets.hpp"
 #include "Components.hpp"
 #include "Console.hpp"
 #include "EngineCore.hpp"
 #include "Events.hpp"
-#include "Scene.hpp"
-#include "GraphicsComponents.hpp"
 #include "Logging.hpp"
-#include "TerrainRendering.hpp"
-#include <iostream>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -23,7 +13,7 @@ namespace FlexKit
 
 	class FrameworkState;
 	class FrameGraph;
-	class RenderSystem;
+	class IRenderSystem;
 
 
 	/************************************************************************************************/
@@ -110,7 +100,7 @@ namespace FlexKit
 		void PushState(FrameworkState& state);
 		void PopState();
 
-		RenderSystem&	GetRenderSystem()	{ return core.RenderSystem; }
+		IRenderSystem&	GetRenderSystem()	{ return *core.RenderSystem; }
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... args)
@@ -188,20 +178,7 @@ namespace FlexKit
 
 		FrameworkOptions options;
 
-		struct {
-			SpriteFontAsset*	Font;
-			Texture2D			Terrain;
-		}DefaultAssets =
-		{
-			LoadFontAsset(
-				"assets\\fonts\\",
-				"fontTest.fnt",
-				core.RenderSystem,
-				core.GetTempMemory(),
-				core.GetBlockMemory())
-		};
-
-		Console					console;
+		Console	console;
 	};
 
 
@@ -230,7 +207,7 @@ namespace FlexKit
 
 		FrameworkState(GameFramework& in_framework) : framework(in_framework) {}
 
-		RenderSystem*	GetRenderSystem() { return framework.GetRenderSystem(); }
+		IRenderSystem*	GetRenderSystem() { return &framework.GetRenderSystem(); }
 	};
 
 

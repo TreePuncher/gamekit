@@ -22,9 +22,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
+#if 0
 #include "DebugPanel.hpp"
 #include "DebugUI.hpp"
-#include "Win32Graphics.hpp"
+//#include "Win32Graphics.hpp"
 #include <imgui.h>
 
 
@@ -180,3 +182,5 @@ namespace FlexKit
 	/************************************************************************************************/
 
 } // namespace FlexKit;
+
+#endif

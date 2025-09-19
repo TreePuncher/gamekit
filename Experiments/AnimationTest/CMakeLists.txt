@@ -13,12 +13,6 @@ add_executable(
     Player.cpp
 )
 
-target_include_directories(
-    AnimationTest
-    PUBLIC
-    flex_optional
-    ${PROJECT_SOURCE_DIR})
-
 set_property(TARGET AnimationTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 target_link_libraries(AnimationTest PRIVATE flex flex_optional)
 add_dependencies(AnimationTest ASSETS)

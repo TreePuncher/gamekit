@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "EngineCore.hpp"
 #include "Transforms.hpp"
 #include "RenderSystemInterface.hpp"
-#include "DX12Graphics.hpp"
 #include "TrimeshResource.hpp"
 
 
@@ -44,7 +43,8 @@ namespace FlexKit
 		CmdArguments	{ memory->BlockAllocator						},
 		Time			{ memory->BlockAllocator						},
 		Threads			{ options.threadCount, memory->BlockAllocator	},
-		RenderSystem	{ *(new FlexKit::RenderSystem{ memory->BlockAllocator, &Threads }) }
+		//RenderSystem	{ *(new FlexKit::RenderSystem{ memory->BlockAllocator, &Threads }) }
+		RenderSystem	{ nullptr }
 	{
 		profiler.GetThreadProfiler();
 		InitiateSceneNodeBuffer(memory->BlockAllocator);
@@ -72,7 +72,7 @@ namespace FlexKit
 
 		ReleaseGeometryTable();
 		SceneNodeTable.Release();
-		RenderSystem.Release();
+		RenderSystem->Release();
 		profiler.Release();
 
 		Memory = nullptr;
@@ -128,11 +128,11 @@ namespace FlexKit
 		desc.DX_GPUvalidation				= debugMode & gpuValidation;
 		desc.DX_SynchronizedQueueValidation = debugMode & syncQueues;
 
-		if (!RenderSystem.Initiate(&desc)) {
-			FK_LOG_ERROR("Failed to initiate renderSystem");
+		//if (!RenderSystem.Initiate(&desc)) {
+		//	FK_LOG_ERROR("Failed to initiate renderSystem");
 
-			return false;
-		}
+		//	return false;
+		//}
 
 		InitiateAssetTable(GetBlockMemory());
 
@@ -149,7 +149,7 @@ namespace FlexKit
 			GetBlockMemory().free((void*)Arg);
 
 		CmdArguments.Release();
-		RenderSystem.Release();
+		RenderSystem->Release();
 		SceneNodeTable.Release();
 		ReleaseGeometryTable();
 

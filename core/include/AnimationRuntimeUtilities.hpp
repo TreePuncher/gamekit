@@ -1,41 +1,10 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2022 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
-#ifndef ANIMATION_UTILITIES_H
-#define ANIMATION_UTILITIES_H
-
+#pragma once
 #include "..\PCH.h"
 #include "Assets.hpp"
 #include "AnimationUtilities.hpp"
-#include "CoreSceneObjects.hpp"
 #include "RenderSystemInterface.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
-
-#include <DirectXMath.h>
-#include <functional>
 
 // TODOs:
 //	Additive Animation
@@ -44,20 +13,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	using DirectX::XMMATRIX;
-
-
 	class Scene;
 
 
-	FLEXKITAPI void Skeleton_PushAnimation	( Skeleton* S, iAllocator* Allocator, AnimationClip AC );
-	FLEXKITAPI void CleanUpSkeleton			( Skeleton* S );
+	void Skeleton_PushAnimation	( Skeleton* S, iAllocator* Allocator, AnimationClip AC );
+	void CleanUpSkeleton		( Skeleton* S );
 
 
 	/************************************************************************************************/
 
 
-	struct FLEXKITAPI SkeletonPose
+	struct SkeletonPose
 	{
 		Skeleton*	S			= nullptr;
 		JointPose*	JointPoses	= nullptr;
@@ -176,11 +142,11 @@ namespace FlexKit
 
 	typedef float(*EASE_FN)(float Weight);
 
-	FLEXKITAPI float EaseOut_RAMP	(float Weight);
-	FLEXKITAPI float EaseOut_Squared(float Weight);
+	float EaseOut_RAMP	(float Weight);
+	float EaseOut_Squared(float Weight);
 
-	FLEXKITAPI float EaseIn_RAMP	(float Weight);
-	FLEXKITAPI float EaseIn_Squared	(float Weight);
+	float EaseIn_RAMP	(float Weight);
+	float EaseIn_Squared	(float Weight);
 
 	typedef uint16_t DAStateHandle;
 	typedef uint16_t DAConditionHandle;
@@ -268,14 +234,14 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI DAStateHandle		DASAddState		( AnimationStateEntry_Desc&, AnimationStateMachine* Out );
-	FLEXKITAPI DAConditionHandle	DASAddCondition	( AnimationCondition_Desc&,  AnimationStateMachine* Out );
+	DAStateHandle		DASAddState		( AnimationStateEntry_Desc&, AnimationStateMachine* Out );
+	DAConditionHandle	DASAddCondition	( AnimationCondition_Desc&,  AnimationStateMachine* Out );
 
-	FLEXKITAPI void	ASSetBool	( DAConditionHandle, bool	B, AnimationStateMachine* ASM, size_t index = 0 );
-	FLEXKITAPI void	ASSetFloat	( DAConditionHandle, float	F, AnimationStateMachine* ASM, size_t index = 0 );
+	void ASSetBool	( DAConditionHandle, bool	B, AnimationStateMachine* ASM, size_t index = 0 );
+	void ASSetFloat	( DAConditionHandle, float	F, AnimationStateMachine* ASM, size_t index = 0 );
 
-	FLEXKITAPI void ASEnableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
-	FLEXKITAPI void ASDisableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
+	void ASEnableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
+	void ASDisableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
 
 
 	/************************************************************************************************/
@@ -331,8 +297,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI PoseState	CreatePoseState		( Skeleton&, iAllocator*);
-	FLEXKITAPI void			InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
+	PoseState	CreatePoseState		( Skeleton&, iAllocator*);
+	void		InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
 
 
 	/************************************************************************************************/
@@ -349,19 +315,44 @@ namespace FlexKit
 
 
 	//	Call After Updating PoseState
-	FLEXKITAPI float4x4     GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
-	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S, NodeHandle Node, iAllocator* TEMP);
+	float4x4     GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
+	LineSegments BuildSkeletonLineSet            ( Skeleton* S, NodeHandle Node, iAllocator* TEMP);
 
-	FLEXKITAPI LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);
-	FLEXKITAPI void         DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
+	LineSegments DEBUG_DrawPoseState             ( PoseState&, NodeHandle, iAllocator*);
+	void         DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI Skeleton*        Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory);
+	Skeleton*        Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory);
 
 
 	/************************************************************************************************/
 }
-#endif
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

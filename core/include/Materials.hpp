@@ -13,7 +13,7 @@ namespace FlexKit
 
 
 	class TextureStreamingEngine;
-	class RenderSystem;
+
 
 	/************************************************************************************************/
 

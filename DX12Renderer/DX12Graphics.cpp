@@ -5,7 +5,6 @@
 #include "Containers.hpp"
 #include "DDSUtilities.hpp"
 #include "DX12Graphics.hpp"
-#include "Intersection.hpp"
 #include "Logging.hpp"
 #include "MemoryUtilities.hpp"
 #include "MeshUtilities.hpp"
@@ -1455,11 +1454,9 @@ namespace FlexKit
 		return subHeap;
 	}
 
-	void DescriptorHeap::Mirror(const DescriptorHeap& rhs)
-	{
-		descriptorHeap = rhs.descriptorHeap;
-	}
 
+	//void DescriptorHeap::Mirror(const DescriptorHeap& rhs);
+	//DescriptorHeap DescriptorHeap::Clone() const;
 
 	DescriptorHeap::operator DescriptorRange() const noexcept
 	{
@@ -6726,6 +6723,12 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	DevicePointer RenderSystem::GetDevicePointer(const ResourceHandle resourceHandle) const noexcept
+	{
+		auto deviceResource = GetDeviceResource(resourceHandle);
+		return deviceResource->GetGPUVirtualAddress();
+	}
+
 
 	DeviceAddressRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const noexcept
 	{
@@ -8640,28 +8643,6 @@ namespace FlexKit
 		}
 
 		return std::unexpected{ std::string{ "Unexpected error!" } };
-	}
-
-
-	/************************************************************************************************/
-
-
-	// If uploadQueue is InvalidHandle, pushes temporaries to a different free list
-	UploadReservation ReserveUploadBuffer(
-		RenderSystem&		renderSystem,
-		const size_t		uploadSize,
-		CopyContextHandle	uploadQueue)
-	{
-		return renderSystem._GetCopyContext(uploadQueue).Reserve(uploadSize, 512);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize)
-	{
-		memcpy(data.buffer, source, data.size > uploadSize ? uploadSize : data.size);
 	}
 
 
@@ -11990,57 +11971,6 @@ namespace FlexKit
 		RS->SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
 
 		return textureHandle;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ResourceHandle MoveBufferToDevice(RenderSystem* RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
-	{
-		FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
-
-		auto bufferResource = RS->CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
-		UploadReservation upload = ReserveUploadBuffer(*RS, byteSize);
-		MoveBuffer2UploadBuffer(upload, (const std::byte*)buffer, byteSize);
-
-		auto	deviceResource	= RS->GetDeviceResource(bufferResource);
-		auto&	ctx				= RS->_GetCopyContext(copyCtx);
-
-		ctx.CopyBuffer(deviceResource, 0, upload.resource, upload.offset, upload.size);
-
-		return bufferResource;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ResourceHandle LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, RenderSystem* RS, iAllocator* Memout, DeviceFormat format)
-	{
-		GPUResourceDesc GPUResourceDesc	= GPUResourceDesc::ShaderResource(Buffer->WH, format);
-		GPUResourceDesc.initial			= Buffer->Buffer;
-		GPUResourceDesc.initialLayout	= DeviceLayout_Common;
-
-		size_t elementSize			= GetFormatElementSize(TextureFormat2DXGIFormat(format));
-		size_t ResourceSizes[]		= { Buffer->Size };
-
-		auto texture = RS->CreateGPUResource(GPUResourceDesc);
-		SubResourceUpload_Desc desc = {};
-		desc.buffers						= Buffer;
-		desc.subResourceCount				= 1;
-		desc.subResourceStart				= 0;
-		desc.format							= format;
-
-		_UpdateSubResourceByUploadQueue(
-			RS,
-			handle,
-			RS->GetDeviceResource(texture),
-			&desc);
-
-		RS->SetDebugName(texture, "LOADTEXTURE");
-
-		return texture;
 	}
 
 

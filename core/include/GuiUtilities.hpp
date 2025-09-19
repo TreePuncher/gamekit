@@ -24,10 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "BuildSettings.hpp"
-#include "Graphics.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
-
+#include "RenderSystemInterface.hpp"
 #include <functional>
 
 #ifndef GUIUTILITIES_H

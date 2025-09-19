@@ -28,15 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Assets.hpp"
 #include "Containers.hpp"
-#include "GraphicsComponents.hpp"
 #include "MemoryUtilities.hpp"
-#include "ProfilingUtilities.hpp"
 #include "ThreadUtilities.hpp"
 #include "TimeUtilities.hpp"
 #include "Input.hpp"
-
-#include "MeshUtilities.hpp"
-#include "PhysicsUtilities.hpp"
 
 
 /************************************************************************************************/
@@ -78,7 +73,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	class RenderSystem;
 	struct EngineMemory;
 
 	static const size_t MAX_CLIENTS = 10;
@@ -143,7 +137,7 @@ namespace FlexKit
 		bool					End			= false;
 		ThreadManager			Threads;
 
-		RenderSystem&			RenderSystem;
+		IRenderSystem*			RenderSystem;
 
 		Time					Time;
 

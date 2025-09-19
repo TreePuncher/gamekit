@@ -8,12 +8,13 @@
 #include <TriggerSlotIDs.hpp>
 #include <ScriptingRuntime.hpp>
 #include <fmt/format.h>
+#include <RenderSystemInterface.hpp>
+
 
 using namespace FlexKit;
 
 
 /************************************************************************************************/
-
 
 class PlayerAnimationController : public FlexKit::IAnimatorController
 {
@@ -104,17 +105,18 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
 	RegisterRuntimeAPI(GetScriptEngine());
 
+	/*
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = res;
 	else
 		throw std::runtime_error{ "Failed to create render window" };
-
+        */
 	EventNotifier<>::Subscriber sub;
 	sub.Notify		= &FlexKit::EventsWrapper;
 	sub._ptr		= &framework;
 
-	renderWindow->Handler.Subscribe(sub);
-	renderWindow->SetWindowTitle("Physics Test");
+	//Subscribe(renderWindow, sub);
+	//SetWindowTitle("Physics Test", renderWindow);
 
 	if (!LoadLevel(21654, framework.core))
 		throw std::runtime_error("Failed to load Level!");
@@ -205,11 +207,11 @@ AnimationTest::~AnimationTest()
 
 FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-	UpdateInput();
-	renderWindow->UpdateCapturedMouseInput(dT);
+	//Win32UpdateInput();
+	//auto mouseState = UpdateCapturedMouseInput(dT, renderWindow);
 	
 	auto& playerUpdate				= QueuePlayerUpdate(playerObject, dispatcher, dT);
-	auto& thirdPersonCameraUpdate	= QueueThirdPersonCameraControllers(dispatcher, renderWindow->mouseState.Normalized_dPos, dT);
+	auto& thirdPersonCameraUpdate = QueueThirdPersonCameraControllers(dispatcher, {} /* mouseState.Normalized_dPos */, dT);
 
 	thirdPersonCameraUpdate.AddInput(playerUpdate);
 
@@ -335,7 +337,7 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 		core.GetTempMemoryMT()
 	);
 
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem->GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera);
 
 	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
@@ -394,7 +396,7 @@ void AnimationTest::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 {
 	renderWindow->Present(1, 0);
 
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+	core.RenderSystem->ResetConstantBuffer(constantBuffer);
 }
 
 
@@ -423,9 +425,9 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 					Trigger(playerObject, OnCrouchTriggerID);
 					return true;
 				case KC_T:
-					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-					framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPPASS);
-					framework.core.RenderSystem.QueuePSOLoad(SHADOWMAPANIMATEDPASS);
+					framework.core.RenderSystem->QueuePSOLoad(SHADINGPASS);
+					framework.core.RenderSystem->QueuePSOLoad(SHADOWMAPPASS);
+					framework.core.RenderSystem->QueuePSOLoad(SHADOWMAPANIMATEDPASS);
 					return true;
 				}
 			}	break;
@@ -434,7 +436,8 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 				switch (evt.mData1.mKC[0])
 				{
 				case KC_M:
-					renderWindow->ToggleMouseCapture();
+					FK_ASSERT(0);
+					//ToggleMouseCapture(renderWindow);
 					return true;
 				case KC_E:
 					Trigger(playerObject, ActivateTrigger);
@@ -467,12 +470,13 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 		}
 	}
 
-	if(!renderWindow->mouseCapture)
-		return framework.HandleDebugInput(evt);
-	else
+	FK_ASSERT(0);
+
+    //if(!IsMouseCaptured(renderWindow))
+	//	return framework.HandleDebugInput(evt);
+	//else
 		return false;
 }
-
 
 /**********************************************************************
 

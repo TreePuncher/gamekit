@@ -78,10 +78,10 @@ namespace FlexKit
 			Debug         = 'D'
 		};
 
-		typedef void(*ScanCallBack)(byte* _ptr, Tile in[3][3], uint2 POS, uint2 BPOS, DungeonGenerator* D);
+		typedef void(*ScanCallBack)(std::byte* _ptr, Tile in[3][3], uint2 POS, uint2 BPOS, DungeonGenerator* D);
 
-		void BlockScanCallBack	(ScanCallBack out, byte* _ptr, uint2 XY, uint2 HW);
-		void DungeonScanCallBack(ScanCallBack out, byte* _ptr);
+		void BlockScanCallBack	(ScanCallBack out, std::byte* _ptr, uint2 XY, uint2 HW);
+		void DungeonScanCallBack(ScanCallBack out, std::byte* _ptr);
 
 		MapTileID TileStack[DUNGEONGRIDHEIGHT * DUNGEONGRIDWIDTH];
 		size_t TileStackSize;

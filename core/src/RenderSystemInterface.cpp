@@ -4,9 +4,9 @@
 
 namespace FlexKit
 {
-    class DescriptorHeapImpl;
+	class DescriptorHeapImpl;
 
-    PipelineBuilder::PipelineBuilder(IRenderSystem& renderSystem, iAllocator& allocator)
+	PipelineBuilder::PipelineBuilder(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 		FK_ASSERT(renderSystem.CreatePipelineBuilder(implSpace, 128) == true, "Failed to create implementation of PipelineBuilder!");
 	}
@@ -336,7 +336,124 @@ namespace FlexKit
 
 	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset)
 	{
-	    return *this;
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize)
+	{
+		memcpy(data.buffer, source, data.size > uploadSize ? uploadSize : data.size);
+	}
+
+
+	ResourceHandle MoveTextureBufferToVRAM(IRenderSystem& RS, CopyContextHandle copyHandle, TextureBuffer* buffer, DeviceFormat format)
+	{
+		auto textureHandle = RS.CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
+		RS.UploadTexture(textureHandle, copyHandle, buffer->Buffer, buffer->Size);
+		RS.SetDebugName(textureHandle, "MoveTextureBufferToVRAM");
+
+		return textureHandle;
+	}
+
+
+	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle copyHandle, TextureBuffer* buffer, size_t MIPCount, size_t resourceCount, DeviceFormat format)
+	{
+		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
+
+		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
+		texture_desc.initialLayout = DeviceLayout_Common;
+
+		auto textureHandle = RS.CreateGPUResource(texture_desc);
+		RS.UploadTexture(textureHandle, copyHandle, buffer, resourceCount);
+		RS.SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
+
+		return textureHandle;
+	}
+
+
+	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle copyHandle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
+	{
+		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
+
+		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
+		texture_desc.initialLayout = DeviceLayout_Common;
+
+		auto textureHandle = RS.CreateGPUResource(texture_desc);
+		RS.UploadTexture(textureHandle, copyHandle, buffer, resourceCount);
+		RS.SetDebugName(textureHandle, "MoveTextureBuffersToVRAM");
+
+		return textureHandle;
+	}
+
+	ResourceHandle MoveBufferToDevice(IRenderSystem& RS, const char* buffer, const size_t byteSize, CopyContextHandle copyCtx)
+	{
+		FK_ASSERT(byteSize < std::numeric_limits<uint32_t>::max());
+
+		auto bufferResource = RS.CreateGPUResource(GPUResourceDesc::StructuredResource((uint32_t)byteSize));
+		UploadReservation upload = RS.ReserveUploadBuffer(byteSize, copyCtx);
+		MoveBuffer2UploadBuffer(upload, (const std::byte*)buffer, byteSize);
+
+		auto deviceResource = RS.GetDeviceResource(bufferResource);
+		auto& ctx = RS.GetCopyContext(copyCtx);
+
+		ctx.CopyBuffer(bufferResource, 0, upload);
+
+		return bufferResource;
+	}
+
+
+	ResourceHandle LoadTexture(RenderSystem& RS, TextureBuffer* Buffer, CopyContextHandle handle, iAllocator* Memout, DeviceFormat format)
+	{
+		GPUResourceDesc GPUResourceDesc = GPUResourceDesc::ShaderResource(Buffer->WH, format);
+		GPUResourceDesc.initial = Buffer->Buffer;
+		GPUResourceDesc.initialLayout = DeviceLayout_Common;
+
+		size_t elementSize = GetFormatElementSize(TextureFormat2DXGIFormat(format));
+		size_t ResourceSizes[] = { Buffer->Size };
+
+		auto texture = RS.CreateGPUResource(GPUResourceDesc);
+		SubResourceUpload_Desc desc = {};
+		desc.buffers = Buffer;
+		desc.subResourceCount = 1;
+		desc.subResourceStart = 0;
+		desc.format = format;
+
+		UpdateSubResourceByUploadQueue(
+			RS,
+			handle,
+			texture,
+			&desc);
+
+		RS.SetDebugName(texture, "LOADTEXTURE");
+
+		return texture;
+	}
+
+
+	void UpdateSubResourceByUploadQueue(RenderSystem& RS, CopyContextHandle uploadHandle, ResourceHandle destinationResource, SubResourceUpload_Desc* desc)
+	{
+		auto& copyCtx = RS.GetCopyContext(uploadHandle);
+
+		for (size_t I = 0; I < desc->subResourceCount; ++I)
+		{
+			const auto region = copyCtx.Reserve(desc->buffers[I].Size, 512);
+
+			memcpy(
+				(char*)region.buffer,
+				(char*)desc->buffers[I].Buffer,
+				desc->buffers[I].Size);
+
+			copyCtx.CopyTextureRegion(
+				destinationResource,
+				I,
+				{ 0, 0, 0 },
+				region,
+				desc->buffers[I].WH,
+				desc->format);
+		}
 	}
 
 
