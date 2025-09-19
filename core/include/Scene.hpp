@@ -1,13 +1,12 @@
 #pragma once
-
 #include "buildsettings.hpp"
-#include "GraphicsComponents.hpp"
-#include "Materials.hpp"
 
-#include "Handle.hpp"
+
 #include "AnimationUtilities.hpp" 
 #include "Brush.hpp"
 #include "DefaultPipelineStates.hpp"
+#include "Handle.hpp"
+#include "Materials.hpp"
 #include "RuntimeComponentIDs.hpp"
 
 namespace FlexKit

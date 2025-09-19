@@ -1,6 +1,8 @@
 #include "AnimationRendering.hpp"
+#include <CameraComponent.hpp>
 #include "TextureStreamingUtilities.hpp"
 #include "WorldRender.hpp"
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -1198,7 +1200,7 @@ namespace FlexKit
 							ctx.AddIndexBuffer(triMesh, lodIdx);
 							ctx.AddVertexBuffers(triMesh,
 								triMesh->GetHighestLoadedLodIdx(),
-								{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+								{ VERTEXBUFFER_TYPE::POSITION });
 						}
 
 						auto constants = ConstantBufferDataSet{ draw->GetConstants(), data.entityConstantsBuffer };

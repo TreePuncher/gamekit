@@ -31,6 +31,7 @@ namespace FlexKit
 
 		return { PSO, rootSignature };
 #endif
+		return {};
 	}
 
 
@@ -54,6 +55,7 @@ namespace FlexKit
 
 		return { PSO, rootSignature };
 #endif
+		return {};
 	}
 
 
@@ -119,6 +121,7 @@ namespace FlexKit
 
 		return { PSO, rootSignature };
 #endif
+		return {};
 	}
 
 
@@ -187,6 +190,7 @@ namespace FlexKit
 
 		return { PSO, rootSignature };
 #endif
+		return {};
 	}
 
 
@@ -303,7 +307,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	ShadowMapper::ShadowMapper(RenderSystem& renderSystem, iAllocator& allocator) :
+	ShadowMapper::ShadowMapper(IRenderSystem& renderSystem, iAllocator& allocator) :
 		resourcePool    { &allocator }
 	{
 		DesciptorHeapLayout heapLayout;
@@ -311,14 +315,13 @@ namespace FlexKit
 
 		RootSignatureBuilder builder{ allocator };
 		builder.AllowIA = true;
-		builder.AllowSO = false;
 		builder.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
 		builder.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
 		builder.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
 		builder.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
 		builder.SetParameterAsDescriptorTable(4, heapLayout);
 
-		rootSignature = builder.Build(renderSystem, allocator);
+		rootSignature = builder.Build(allocator);
 		FK_ASSERT(rootSignature != nullptr, "Failed to create Root Signature!");
 
 
@@ -392,7 +395,7 @@ namespace FlexKit
 						}
 					}
 				},
-			.layout		= DeviceLayout::DeviceLayout_DepthStencilWrite,
+			.layout		= DeviceLayout::DepthStencilWrite,
 			.access		= DeviceAccessState::DASDEPTHBUFFERWRITE,
 			.max		= Max((uint32_t)ShadowMapComponent::GetComponent().size(), 16),
 			.pool		= &shadowMapPool,
@@ -473,13 +476,12 @@ namespace FlexKit
 				light.type == LightType::SpotLightNoShadows)
 				return;
 
-			if (passTarget == InvalidHandle)
-				DebugBreak();
+			FK_ASSERT(passTarget == InvalidHandle);
 
 			if (begin == pvs.begin())
 			{
-				resources.renderSystem.SetDebugName(passTarget, "passTarget");
-				resources.renderSystem.SetDebugName(depthBuffer, "depthBuffer");
+				resources.renderSystem->SetDebugName(passTarget, "passTarget");
+				resources.renderSystem->SetDebugName(depthBuffer, "depthBuffer");
 
 				const auto initialLayout = ctx.GetRenderSystem().GetObjectLayout(passTarget);
 
@@ -487,7 +489,7 @@ namespace FlexKit
 
 				ctx.AddTextureBarrier(passTarget,
 					DASCommon,			DASRenderTarget,
-					initialLayout,		DeviceLayout_RenderTarget,
+					initialLayout,		DeviceLayout::RenderTarget,
 					Sync_PixelShader,	Sync_All);
 
 				ctx.ClearDepthBuffer(depthBuffer, 1.0f);
@@ -495,12 +497,12 @@ namespace FlexKit
 				
 				ctx.AddTextureBarrier(depthBuffer,
 					DASDEPTHBUFFERWRITE,			DASDEPTHBUFFERWRITE,
-					DeviceLayout_DepthStencilWrite, DeviceLayout_DepthStencilWrite,
+					DeviceLayout::DepthStencilWrite, DeviceLayout::DepthStencilWrite,
 					Sync_All,						Sync_DepthStencil);
 
 				ctx.AddTextureBarrier(passTarget,
 					DASRenderTarget,				DASRenderTarget,
-					DeviceLayout_RenderTarget,		DeviceLayout_RenderTarget,
+					DeviceLayout::RenderTarget,		DeviceLayout::RenderTarget,
 					Sync_All,						Sync_RenderTarget);
 			}
 
@@ -542,7 +544,7 @@ namespace FlexKit
 				case LightType::PointLight:
 					ctx.AddTextureBarrier(passTarget,
 						DASRenderTarget,			DASPixelShaderResource,
-						DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
+						DeviceLayout::RenderTarget,	DeviceLayout::ShaderResource,
 						Sync_RenderTarget,			Sync_PixelShader);
 					break;
 				case LightType::SpotLight:
@@ -551,7 +553,7 @@ namespace FlexKit
 					break;
 				}
 
-				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout_ShaderResource);
+				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout::ShaderResource);
 			}
 		};
 
@@ -566,7 +568,7 @@ namespace FlexKit
 
 	void ShadowMapper::RenderPointLightShadowMap(ShadowMapper::Iterator_TY begin, ShadowMapper::Iterator_TY end, ShadowMapper::PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
-		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
+		BrushDrawList			drawList		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedDrawList{ allocator };
 
 		auto&					lights				= LightComponent::GetComponent();
@@ -670,7 +672,7 @@ namespace FlexKit
 					ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
 					ctx.AddVertexBuffers(triMesh,
 						(uint32_t)currentLodIdx,
-						{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+						{ VERTEXBUFFER_TYPE::POSITION });
 
 					BS = triMesh->BS;
 				}
@@ -759,9 +761,9 @@ namespace FlexKit
 							ctx.AddIndexBuffer(triMesh, lodLevelIdx);
 							ctx.AddVertexBuffers(triMesh,
 								lodLevelIdx,
-								{   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+								{   VERTEXBUFFER_TYPE::POSITION,
+									VERTEXBUFFER_TYPE::ANIMATION1,
+									VERTEXBUFFER_TYPE::ANIMATION2,
 								});
 
 							const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
@@ -805,7 +807,7 @@ namespace FlexKit
 
 	void ShadowMapper::RenderSpotLightShadowMap(Iterator_TY begin, Iterator_TY end, PassData& pass, ShadowMapper::Common_Data& common, ResourceHandle passTarget, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 	{
-		DrawList				drawList		{ allocator, (size_t)std::distance(begin, end) };
+		BrushDrawList			drawList		{ allocator, (size_t)std::distance(begin, end) };
 		Vector<GameObject*>		animatedBrushes	{ allocator };
 
 		auto&					lights				= LightComponent::GetComponent();
@@ -902,7 +904,7 @@ namespace FlexKit
 					ctx.AddIndexBuffer(triMesh, (uint32_t)currentLodIdx);
 					ctx.AddVertexBuffers(triMesh,
 						(uint32_t)currentLodIdx,
-						{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION });
+						{ VERTEXBUFFER_TYPE::POSITION });
 				}
 
 				ctx.DrawIndexedInstanced(indexCount);
@@ -969,9 +971,9 @@ namespace FlexKit
 							ctx.AddIndexBuffer(triMesh, lodLevelIdx);
 							ctx.AddVertexBuffers(triMesh,
 								lodLevelIdx,
-								{   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+								{   VERTEXBUFFER_TYPE::POSITION,
+									VERTEXBUFFER_TYPE::ANIMATION1,
+									VERTEXBUFFER_TYPE::ANIMATION2,
 								});
 
 							ctx.DrawIndexedInstanced(indexCount);
@@ -996,7 +998,7 @@ namespace FlexKit
 
 		ctx.AddTextureBarrier(target,
 			DASRenderTarget,			DASUAV,
-			DeviceLayout_RenderTarget,	DeviceLayout_UnorderedAccess,
+			DeviceLayout::RenderTarget,	DeviceLayout::UnorderedAccess,
 			Sync_RenderTarget,			Sync_Compute);
 
 		DescriptorHeap heap{ ctx, rootSignature.GetDescHeap(0), allocator };
@@ -1005,18 +1007,18 @@ namespace FlexKit
 		ctx.SetComputeDescriptorTable(4, heap);
 		ctx.Dispatch(rowPSO, { 1, 1024, 1});
 
-		ctx.AddUAVBarrier(target, -1, DeviceLayout_UnorderedAccess);
+		ctx.AddUAVBarrier(target, -1, DeviceLayout::UnorderedAccess);
 
 		ctx.Dispatch(columnPSO, { 1024, 1, 1 });
 
 		ctx.AddTextureBarrier(target,
 			DASUAV,							DASPixelShaderResource,
-			DeviceLayout_UnorderedAccess,	DeviceLayout_ShaderResource,
+			DeviceLayout::UnorderedAccess,	DeviceLayout::ShaderResource,
 			Sync_Compute,					Sync_PixelShader);
 #else
 	ctx.AddTextureBarrier(target,
 		DASRenderTarget,			DASPixelShaderResource,
-		DeviceLayout_RenderTarget,	DeviceLayout_ShaderResource,
+		DeviceLayout::RenderTarget,	DeviceLayout::ShaderResource,
 		Sync_RenderTarget,			Sync_PixelShader);
 
 #endif

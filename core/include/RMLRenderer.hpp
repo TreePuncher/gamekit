@@ -38,7 +38,7 @@ namespace FlexKit
 	class RmlIntegrator : NoCopy
 	{
 	public:
-		RmlIntegrator(RenderSystem& renderSystem, iAllocator& allocator);
+		RmlIntegrator(IRenderSystem& renderSystem, iAllocator& allocator);
 		~RmlIntegrator();
 
 		class UpdateTask*	Update	(class EngineCore&, class UpdateDispatcher&, double dT);

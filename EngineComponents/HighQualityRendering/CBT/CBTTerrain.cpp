@@ -21,14 +21,14 @@ namespace FlexKit
 					{
 						IndirectDrawDescription{
 							IndirectDrawDescription::Constant{.rootParameterIdx = 3, .destinationOffset = 0, .numValues = 1 } },
-						IndirectDrawDescription{ IndirectLayoutEntryType::ILE_DispatchCall },
+						IndirectDrawDescription{ IndirectLayoutEntryType::DispatchCall },
 					},
 					persistent, temp);
 
 
 				indirectDrawLayout = renderSystem.CreateIndirectLayout(
 					{
-						IndirectDrawDescription{ IndirectLayoutEntryType::ILE_DrawCall },
+						IndirectDrawDescription{ IndirectLayoutEntryType::DrawCall },
 					},
 					persistent);
 

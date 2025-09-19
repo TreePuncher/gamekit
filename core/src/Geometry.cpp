@@ -35,8 +35,8 @@ namespace FlexKit
 	{
 
 		mBufferinError     = true;
-		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
-		mBufferType        = VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR;
+		mBufferFormat      = VERTEXBUFFER_FORMAT::UNKNOWN;
+		mBufferType        = VERTEXBUFFER_TYPE::UNKNOWN;
 		mBufferElementSize = 0;
 		mBuffer			   = nullptr;
 		mBufferUsed		   = 0;
@@ -50,8 +50,8 @@ namespace FlexKit
 	VertexBufferView::VertexBufferView(std::byte* _ptr, size_t size )
 	{
 		mBufferinError     = true;
-		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
-		mBufferType        = VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR;
+		mBufferFormat      = VERTEXBUFFER_FORMAT::UNKNOWN;
+		mBufferType        = VERTEXBUFFER_TYPE::UNKNOWN;
 		mBufferElementSize = 0;
 		mBuffer			   = _ptr;
 		mBufferUsed		   = 0;
@@ -272,15 +272,15 @@ namespace FlexKit
         };
 
         bool UVsPresent     = buffers[2] != nullptr;
-        auto indexBuffer    = GetBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX);
-        auto vertices       = GetBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)->CreateTypedProxy<float3>();
-        auto normalBuffer   = GetBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL);
+        auto indexBuffer    = GetBuffer(VERTEXBUFFER_TYPE::INDEX);
+        auto vertices       = GetBuffer(VERTEXBUFFER_TYPE::POSITION)->CreateTypedProxy<float3>();
+        auto normalBuffer   = GetBuffer(VERTEXBUFFER_TYPE::NORMAL);
         auto normals        = normalBuffer->CreateTypedProxy<float3>();
-        auto UVBuffer       = GetBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV);
+        auto UVBuffer       = GetBuffer(VERTEXBUFFER_TYPE::UV);
 
         const size_t tangentBufferSize = normalBuffer->GetBufferSizeRaw() + sizeof(VertexBufferView);
         auto tangentBuffer = CreateVertexBufferView(allocator, tangentBufferSize);
-        tangentBuffer->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
+        tangentBuffer->Begin(VERTEXBUFFER_TYPE::TANGENT, VERTEXBUFFER_FORMAT::R32G32B32);
 
 
         auto GetIndex =

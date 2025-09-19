@@ -1,3 +1,11 @@
+#ifdef WIN32
+#include <cstddef>
+#include "windows.h"
+#undef GetObject
+
+using std::byte;
+#endif
+
 #include <angelscript/scriptany/scriptany.cpp>
 #include <angelscript/scriptarray/scriptarray.cpp>
 #include <angelscript/scriptbuilder/scriptbuilder.cpp>

@@ -1,5 +1,6 @@
 #include "AnimationUtilities.hpp"
 #include "RenderSystemInterface.hpp"
+#include "TriMeshResource.hpp"
 
 
 namespace FlexKit

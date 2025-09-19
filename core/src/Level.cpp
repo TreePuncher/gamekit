@@ -89,10 +89,10 @@ namespace FlexKit
 			return false;
 
 		iAllocator& allocator	= core.GetBlockMemory();
-		auto& physX				= PhysXComponent::GetComponent();
+		//auto& physX				= PhysXComponent::GetComponent();
 		auto& loadedLevel		= allocator.allocate<LoadedLevel>();
 
-		loadedLevel.level.layer	= physX.CreateLayer(true);
+		//loadedLevel.level.layer	= physX.CreateLayer(true);
 		loadedLevel.allocator	= &allocator;
 		loadedLevel.ID			= ID;
 		loadedLevels.push_back(&loadedLevel);
@@ -151,11 +151,11 @@ namespace FlexKit
 		if (res == loadedLevels.end())
 			return;
 
-		auto& physX = PhysXComponent::GetComponent();
+		//auto& physX = PhysXComponent::GetComponent();
 
 		LoadedLevel* loaded= *res;
 		loaded->level.scene.ClearScene();
-		physX.ReleaseScene(loaded->level.layer);
+		//physX.ReleaseScene(loaded->level.layer);
 
 		loaded->allocator->release(*loaded);
 
@@ -170,11 +170,11 @@ namespace FlexKit
 	{
 		activeLevel = nullptr;
 
-		auto& physX = PhysXComponent::GetComponent();
+		//auto& physX = PhysXComponent::GetComponent();
 		for (auto& levelEntry : loadedLevels)
 		{
 			levelEntry->level.scene.ClearScene();
-			physX.ReleaseScene(levelEntry->level.layer);
+			//physX.ReleaseScene(levelEntry->level.layer);
 
 			levelEntry->allocator->release(*levelEntry);
 		}

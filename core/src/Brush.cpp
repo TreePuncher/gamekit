@@ -1,5 +1,7 @@
 #include "Brush.hpp"
+#include "CameraComponent.hpp"
 #include "MathUtilities.hpp"
+#include "Transforms.hpp"
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -19,7 +21,7 @@ namespace FlexKit
 		if(!drawList.size())
 			return;
 
-		auto CP = FlexKit::GetPositionW( C->Node );
+		auto CP = FlexKit::GetPositionW(C->Node);
 		for(auto& v : drawList)
 		{
 			auto b = v.brush;

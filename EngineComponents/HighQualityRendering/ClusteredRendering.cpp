@@ -1109,8 +1109,8 @@ namespace FlexKit
 
 
 	ClusteredRender::ClusteredRender(IRenderSystem& renderSystem, iAllocator& persistent) :
-		dispatch				{ renderSystem.CreateIndirectLayout({ { ILE_DispatchCall } },	&persistent) },
-		draw					{ renderSystem.CreateIndirectLayout({ { ILE_DrawCall } },		&persistent) }
+		dispatch				{ renderSystem.CreateIndirectLayout({ { IndirectLayoutEntryType::DispatchCall } },	&persistent) },
+		draw					{ renderSystem.CreateIndirectLayout({ { IndirectLayoutEntryType::DrawCall } },		&persistent) }
 	{
 		renderSystem.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,		CreateComputeTiledDeferredPSO);
 
@@ -1377,7 +1377,7 @@ namespace FlexKit
 				transferCtx.CreateResource(resourceHandles[0], shadowMaps);
 			},
 
-			.layout		= DeviceLayout::DeviceLayout_Common,
+			.layout		= DeviceLayout::Common,
 			.access		= DeviceAccessState::DASPixelShaderResource,
 			.max		= 1,
 			.pool		= nullptr,
@@ -1945,10 +1945,10 @@ namespace FlexKit
 									triMesh,
 									lodIdx,
 									{
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+										VERTEXBUFFER_TYPE::POSITION,
+										VERTEXBUFFER_TYPE::NORMAL,
+										VERTEXBUFFER_TYPE::TANGENT,
+										VERTEXBUFFER_TYPE::UV,
 									});
 							}
 
@@ -2043,12 +2043,12 @@ namespace FlexKit
 									triMesh,
 									lodIdx,
 									{
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-										VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+										VERTEXBUFFER_TYPE::POSITION,
+										VERTEXBUFFER_TYPE::NORMAL,
+										VERTEXBUFFER_TYPE::TANGENT,
+										VERTEXBUFFER_TYPE::UV,
+										VERTEXBUFFER_TYPE::ANIMATION1,
+										VERTEXBUFFER_TYPE::ANIMATION2,
 									});
 							}
 

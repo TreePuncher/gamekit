@@ -11,7 +11,7 @@ int main()
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
 
-		app->PushState<AnimationTest>();
+		//app->PushState<AnimationTest>();
 		app->GetCore().FPSLimit		= 144;
 		app->GetCore().FrameLock	= true;
 		app->GetCore().vSync		= true;

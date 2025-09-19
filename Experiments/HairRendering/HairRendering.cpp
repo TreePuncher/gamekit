@@ -828,8 +828,8 @@ void HairRenderingTest::DrawStrandsOIT(
 			ctx.ClearUAVTextureFloat(momentBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 			ctx.ClearRenderTarget(accumBuffer, { 0.0f, 0.0f, 0.0f, 0.0f });
 
-			ctx.AddUAVBarrier(b0Buffer,		-1, DeviceLayout_UnorderedAccess,	Sync_Compute,	Sync_PixelShader);
-			ctx.AddTextureBarrier(accumBuffer,	DASRenderTarget, DASRenderTarget, DeviceLayout_RenderTarget, DeviceLayout_RenderTarget,	Sync_RenderTarget,	Sync_RenderTarget);
+			ctx.AddUAVBarrier(b0Buffer,		-1, DeviceLayout::UnorderedAccess,	Sync_Compute,	Sync_PixelShader);
+			ctx.AddTextureBarrier(accumBuffer,	DASRenderTarget, DASRenderTarget, DeviceLayout::RenderTarget, DeviceLayout::RenderTarget,	Sync_RenderTarget,	Sync_RenderTarget);
 
 			// Pass 1
 			ctx.SetGraphicsPipelineState(MBOITRender1, threadLocalAllocator);

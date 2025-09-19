@@ -434,7 +434,7 @@ namespace FlexKit
 					ctx.SetComputeConstantValue(1, 6, &constants);
 					ctx.Dispatch({ steps / 1024 + (steps % 1024 != 0 ? 1 : 0), 1, 1 });
 
-					ctx.AddUAVBarrier(handler.GetResource(args.buffer), -1, DeviceLayout_Unknown, Sync_Compute, Sync_Compute);
+					ctx.AddUAVBarrier(handler.GetResource(args.buffer), -1, DeviceLayout::Unknown, Sync_Compute, Sync_Compute);
 
 					stepSize	+= 1;
 					steps		/= 2;

@@ -39,7 +39,7 @@ namespace FlexKit
 	class RmlRenderer : public Rml::RenderInterface
 	{
 	public:
-		explicit RmlRenderer(IRenderSystem& IN_renderSystem);
+		explicit RmlRenderer(IRenderSystem& IN_renderSystem, iAllocator& allocator);
 
 		~RmlRenderer() override {}
 
@@ -66,7 +66,7 @@ namespace FlexKit
 		IDirectContext*		ctx				= nullptr;
 		iAllocator*			allocator		= nullptr;
 		ResourceHandle		renderTarget	= InvalidHandle;
-		RenderSystem&		renderSystem;
+		IRenderSystem*		renderSystem	= nullptr;
 		uint64_t			randState		= 1234;
 
 		CopyContextHandle copyHandle	= InvalidHandle;
@@ -112,7 +112,7 @@ namespace FlexKit
 	class RmlUI
 	{
 	public:
-		explicit RmlUI(IRenderSystem& IN_renderSystem);
+		explicit RmlUI(IRenderSystem& IN_renderSystem, iAllocator& IN_allocator);
 
 		~RmlUI();
 		FlexKit::UpdateTask* Update(Rml::Context* ctx, struct EngineCore&, UpdateDispatcher&, double dT);
@@ -122,7 +122,7 @@ namespace FlexKit
 		void HandleEvent(Rml::Context* ctx, const FlexKit::Event& evt);
 
 		Rml::Context*		context;  // Main context
-		IRenderSystem&		renderSystem;
+		IRenderSystem*		renderSystem;
 		RmlRenderer			renderer;
 		RmlSystemInterface	systemInterface;
 	};
@@ -131,16 +131,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlRenderer::RmlRenderer(IRenderSystem& IN_renderSystem) :
-		renderSystem	{ IN_renderSystem			},
-		textures		{ IN_renderSystem.Memory	},
-		geometry		{ IN_renderSystem.Memory	}
+	RmlRenderer::RmlRenderer(IRenderSystem& IN_renderSystem, iAllocator& allocator) :
+		renderSystem	{ &IN_renderSystem },
+		textures		{ allocator	},
+		geometry		{ allocator	}
 	{
-		renderSystem.RegisterPSOLoader(RMLDrawPSO,
-			[&](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
+		renderSystem->RegisterPSOLoader(RMLDrawPSO,
+			[&](IRenderSystem& rs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return PipelineBuilder{ allocator }
+				return PipelineBuilder{ rs, allocator }
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(
 						{	.inputs		= {
@@ -173,11 +172,10 @@ namespace FlexKit
 					.Build(*renderSystem);
 			});
 
-		renderSystem.RegisterPSOLoader(RMLDraw2PSO,
-			[&](IRenderSystem& irs, iAllocator& allocator) -> LoadPipelineStateRes
+		renderSystem->RegisterPSOLoader(RMLDraw2PSO,
+			[&](IRenderSystem& rs, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				auto& renderSystem = static_cast<RenderSystem&>(irs);
-				return PipelineBuilder{ allocator }
+				return PipelineBuilder{ rs, allocator }
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(
 						{	.inputs		= {
@@ -210,8 +208,8 @@ namespace FlexKit
 					.Build(*renderSystem);
 			});
 
-		renderSystem.QueuePSOLoad(RMLDrawPSO);
-		renderSystem.QueuePSOLoad(RMLDraw2PSO);
+		renderSystem->QueuePSOLoad(RMLDrawPSO);
+		renderSystem->QueuePSOLoad(RMLDraw2PSO);
 	}
 
 
@@ -227,7 +225,7 @@ namespace FlexKit
 		pass = &resources;
 
 		renderTarget	= resources.renderTarget;
-		copyHandle		= renderSystem.OpenUploadQueue();
+		copyHandle		= renderSystem->OpenUploadQueue();
 		transform		= float4x4::Identity();
 	}
 
@@ -237,8 +235,8 @@ namespace FlexKit
 
 	void RmlRenderer::End()
 	{
-		renderSystem.SubmitUploadQueues(&copyHandle);
-		renderSystem.SyncDirectTo(renderSystem.SyncUploadTicket());
+		renderSystem->SubmitUploadQueues(&copyHandle);
+		renderSystem->SyncDirectTo(renderSystem->SyncUploadTicket());
 
 		ctx			= nullptr;
 		pass		= nullptr;
@@ -255,11 +253,11 @@ namespace FlexKit
 		const uint32_t		vbSize = vertices.size() * sizeof(RMLVertex);
 		const uint32_t		ibSize = indices.size() * sizeof(uint32_t);
 
-		auto copyCtx		= renderSystem.GetImmediateCopyQueue();
-		auto vertexBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource(vbSize));
-		auto indexBuffer	= renderSystem.CreateGPUResource(GPUResourceDesc::StructuredResource(ibSize));
+		auto copyCtx		= renderSystem->GetImmediateCopyQueue();
+		auto vertexBuffer	= renderSystem->CreateGPUResource(GPUResourceDesc::StructuredResource(vbSize));
+		auto indexBuffer	= renderSystem->CreateGPUResource(GPUResourceDesc::StructuredResource(ibSize));
 
-		auto& ctx = renderSystem._GetCopyContext(copyCtx);
+		auto& ctx = renderSystem->GetCopyContext(copyCtx);
 
 		const auto vbReservation = ctx.Reserve(vbSize);
 		const auto ibReservation = ctx.Reserve(ibSize);
@@ -308,8 +306,8 @@ namespace FlexKit
 		if (!geometryEntry)
 			return;
 
-		renderSystem.ReleaseResource(geometryEntry->indexBuffer);
-		renderSystem.ReleaseResource(geometryEntry->vertexBuffer);
+		renderSystem->ReleaseResource(geometryEntry->indexBuffer);
+		renderSystem->ReleaseResource(geometryEntry->vertexBuffer);
 
 		geometry.remove(geometryHandle);
 	}
@@ -327,7 +325,7 @@ namespace FlexKit
 		if (!geometryEntry)
 			return;
 
-		auto wh = renderSystem.GetTextureWH(renderTarget);
+		auto wh = renderSystem->GetTextureWH(renderTarget);
 
 		if (!texture)
 			ctx->SetGraphicsPipelineState(RMLDrawPSO, *allocator);
@@ -373,7 +371,7 @@ namespace FlexKit
 
 		if (!enable)
 		{
-			auto WH = renderSystem.GetTextureWH(renderTarget);
+			auto WH = renderSystem->GetTextureWH(renderTarget);
 			ctx->SetScissorRects(
 				static_vector{
 					Rect{
@@ -448,10 +446,10 @@ namespace FlexKit
 
 			TextureBuffer buffer{
 				uint2{ (uint32_t)w, (uint32_t)h },
-				(std::byte*)renderSystem.Memory->_aligned_malloc(rowPitch * h, 256),
+				(std::byte*)allocator->_aligned_malloc(rowPitch * h, 256),
 				bufferSize,
 				sizeof(FlexKit::RGBA),
-				renderSystem.Memory
+				allocator
 			};
 
 			TextureBufferView<RGB>	inputView	{ sourceBuffer };
@@ -509,16 +507,17 @@ namespace FlexKit
 
 			free(img);
 
-			auto copy		= renderSystem.OpenUploadQueue();
-			auto resource	= FlexKit::LoadTexture(&buffer, copy, renderSystem, renderSystem.Memory);
+			auto copy		= renderSystem->OpenUploadQueue();
+			auto resource	= renderSystem->LoadTexture(&buffer, copy, DeviceFormat::R8G8B8A8_UNORM, allocator);
 
-			renderSystem.SubmitUploadQueues(&copy);
+			renderSystem->SubmitUploadQueues(&copy);
 
-			const auto res = renderSystem._AllocateDescriptorRange(1);
+			const auto res = renderSystem->CreateDescriptorRange(1);
 			if (!res.has_value())
 				return false;
 
-			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
+			renderSystem->CreateTextureView(resource, res.value());
+			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t textureHandle = std::hash<uint64_t>{}(resource);
 			textures.insert(textureHandle, { res.value(), resource });
@@ -537,7 +536,7 @@ namespace FlexKit
 	{
 		if (!ctx)
 		{
-			auto resource = renderSystem.CreateGPUResource(
+			auto resource = renderSystem->CreateGPUResource(
 				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
 			size_t bufferSize	= source_dimensions.x * source_dimensions.y * 4;
@@ -551,11 +550,12 @@ namespace FlexKit
 			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
 			ctx->AddCopyResourceBarrier(resource, DASCopyDest, DASCommon);
 
-			const auto res = renderSystem._AllocateDescriptorRange(1);
+			const auto res = renderSystem->CreateDescriptorRange(1);
 			if (!res.has_value())
 				return false;
 
-			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
+			renderSystem->CreateTextureView(resource, res.value());
+			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t texture_handle = std::hash<uint64_t>{}(resource);
 			textures.insert(texture_handle, { res.value(), resource });
@@ -564,22 +564,23 @@ namespace FlexKit
 		}
 		else
 		{
-			auto resource = renderSystem.CreateGPUResource(
+			auto resource = renderSystem->CreateGPUResource(
 				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
 			size_t bufferSize = source_dimensions.x * source_dimensions.y * 4;
 
-			auto& copyContext	= renderSystem._GetCopyContext(copyHandle);
+			auto& copyContext	= renderSystem->GetCopyContext(copyHandle);
 
 			auto uploadSpace = copyContext.Reserve(bufferSize);
 			memcpy(uploadSpace.buffer, source.data(), source.size());
 			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
 
-			const auto res = renderSystem._AllocateDescriptorRange(1);
+			const auto res = renderSystem->CreateDescriptorRange(1);
 			if (!res.has_value())
 				return false;
 
-			PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
+			renderSystem->CreateTextureView(resource, res.value());
+			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t texture_handle = xorshift64(randState);
 			textures.insert(texture_handle, { res.value(), resource });
@@ -598,8 +599,8 @@ namespace FlexKit
 	{
 		if (auto res = textures.find(texture); res)
 		{
-			renderSystem._ReleaseDescriptorRange(res->range, renderSystem.GetCurrentCounter());
-			renderSystem.ReleaseResource(res->handle);
+			renderSystem->ReleaseDescriptorRange(res->range, renderSystem->GetCurrentCounter());
+			renderSystem->ReleaseResource(res->handle);
 		}
 	}
 
@@ -637,9 +638,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlUI::RmlUI(IRenderSystem& IN_renderSystem) :
-		renderSystem	{ IN_renderSystem },
-		renderer		{ IN_renderSystem }
+	RmlUI::RmlUI(IRenderSystem& IN_renderSystem, iAllocator& allocator) :
+		renderSystem	{ &IN_renderSystem },
+		renderer		{ IN_renderSystem, allocator }
 	{
 		Rml::SetRenderInterface(&renderer);
 		Rml::SetSystemInterface(&systemInterface);
@@ -746,7 +747,7 @@ namespace FlexKit
 
 	RmlIntegrator::RmlIntegrator(IRenderSystem& renderSystem, iAllocator& IN_allocator)
 	{
-		impl = &IN_allocator.allocate<RmlUI>(renderSystem);
+		impl = &IN_allocator.allocate<RmlUI>(renderSystem, IN_allocator);
 
 		allocator = IN_allocator;
 	}

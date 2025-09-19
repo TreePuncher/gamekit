@@ -1,4 +1,4 @@
-#include "AnimationRendering.hpp"
+#include "AnimationClusteredRendering.hpp"
 #include "RenderSystemInterface.hpp"
 #include <fmt/format.h>
 #include <ranges>
@@ -98,7 +98,7 @@ namespace FlexKit
 					}
 				},
 
-			.layout		= FlexKit::DeviceLayout::DeviceLayout_Common,
+			.layout		= FlexKit::DeviceLayout::Common,
 			.access		= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
 			.max		= 32,
 			.pool		= &pool,
@@ -178,7 +178,7 @@ namespace FlexKit
 					}
 				},
 
-			.layout	= FlexKit::DeviceLayout::DeviceLayout_Common,
+			.layout	= FlexKit::DeviceLayout::Common,
 			.access	= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
 			.max	= 32,
 			.pool	= &pool

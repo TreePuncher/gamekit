@@ -1,10 +1,11 @@
 #include "pch.h"
 #include "level.hpp"
 #include "AnimationTest.h"
+#include "AnimationComponents.hpp"
 #include <KeyValueIDs.hpp>
 #include <SceneLoadingContext.hpp>
 #include <imgui.h>
-#include <PhysicsDebugVis.hpp>
+//#include <PhysicsDebugVis.hpp>
 #include <TriggerSlotIDs.hpp>
 #include <ScriptingRuntime.hpp>
 #include <fmt/format.h>
@@ -12,7 +13,6 @@
 
 
 using namespace FlexKit;
-
 
 /************************************************************************************************/
 
@@ -46,6 +46,8 @@ public:
 	iAllocator* allocator			= nullptr;
 };
 
+
+#if 0
 
 /************************************************************************************************/
 
@@ -477,6 +479,8 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 	//else
 		return false;
 }
+
+#endif
 
 /**********************************************************************
 

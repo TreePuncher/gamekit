@@ -1,12 +1,10 @@
 #pragma once
 
 #include "scene.hpp"
-#include "physicsutilities.hpp"
 
 namespace FlexKit
 {
 	class EngineCore;
-	class PhysXComponent;
 
 	struct Level
 	{

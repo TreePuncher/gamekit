@@ -316,15 +316,15 @@ namespace FlexKit
 	};
 
 
-	enum class SHADER_TYPE
+	enum class SHADER_TYPE : uint8_t
 	{
-		SHADER_TYPE_Compute,
-		SHADER_TYPE_Domain,
-		SHADER_TYPE_Geometry,
-		SHADER_TYPE_Hull,
-		SHADER_TYPE_Pixel,
-		SHADER_TYPE_Vertex,
-		SHADER_TYPE_Unknown
+		Compute,
+		Domain,
+		Geometry,
+		Hull,
+		Pixel,
+		Vertex,
+		Unknown
 	};
 
 	
@@ -335,7 +335,7 @@ namespace FlexKit
 	};
 
 
-	enum DeviceAccessState
+	enum DeviceAccessState : uint16_t
 	{
 		DASReadFlag					= 0x0001,
 		DASWriteFlag				= 0x0002,
@@ -388,7 +388,7 @@ namespace FlexKit
 	};
 
 
-	enum DeviceSyncPoint
+	enum DeviceSyncPoint : uint8_t
 	{
 		Sync_None,
 		Sync_Auto,
@@ -419,47 +419,47 @@ namespace FlexKit
 	};
 
 	
-	enum DeviceLayout
+	enum class DeviceLayout : uint32_t
 	{
-		DeviceLayout_Common,
-		DeviceLayout_Present,
-		DeviceLayout_GenericRead,
-		DeviceLayout_RenderTarget,
-		DeviceLayout_UnorderedAccess,
-		DeviceLayout_DepthStencilWrite,
-		DeviceLayout_DepthStencilRead,
-		DeviceLayout_ShaderResource,
-		DeviceLayout_CopySrc,
-		DeviceLayout_CopyDst,
-		DeviceLayout_ResolveSrc,
-		DeviceLayout_ResolveDst,
-		DeviceLayout_ShadingRateSrc,
-		DeviceLayout_VideoDecodeRead,
-		DeviceLayout_DecodeWrite,
-		DeviceLayout_ProcessRead,
-		DeviceLayout_ProcessWrite,
-		DeviceLayout_EncodeRead,
-		DeviceLayout_EncodeWrite,
-		DeviceLayout_DirectQueueCommon,
-		DeviceLayout_DirectQueueGenericRead,
-		DeviceLayout_DirectQueueUnorderedAccess,
-		DeviceLayout_DirectQueueShaderResource,
-		DeviceLayout_DirectQueueCopySrc,
-		DeviceLayout_DirectQueueCopyDst,
-		DeviceLayout_ComputeQueueCommon,
-		DeviceLayout_ComputeQueueGenericRead,
-		DeviceLayout_ComputeQueueUnorderedAccess,
-		DeviceLayout_ComputeQueueShaderResource,
-		DeviceLayout_ComputeQueueCopySrc,
-		DeviceLayout_ComputeQueueCopyDst,
-		DeviceLayout_VideoQueueCommon,
-		DeviceLayout_Undefined,
+		Common,
+		Present,
+		GenericRead,
+		RenderTarget,
+		UnorderedAccess,
+		DepthStencilWrite,
+		DepthStencilRead,
+		ShaderResource,
+		CopySrc,
+		CopyDst,
+		ResolveSrc,
+		ResolveDst,
+		ShadingRateSrc,
+		VideoDecodeRead,
+		DecodeWrite,
+		ProcessRead,
+		ProcessWrite,
+		EncodeRead,
+		EncodeWrite,
+		DirectQueueCommon,
+		DirectQueueGenericRead,
+		DirectQueueUnorderedAccess,
+		DirectQueueShaderResource,
+		DirectQueueCopySrc,
+		DirectQueueCopyDst,
+		ComputeQueueCommon,
+		ComputeQueueGenericRead,
+		ComputeQueueUnorderedAccess,
+		ComputeQueueShaderResource,
+		ComputeQueueCopySrc,
+		ComputeQueueCopyDst,
+		VideoQueueCommon,
+		Undefined,
 
-		DeviceLayout_Unknown = 0xffffffff,
+		Unknown = 0xffffffff,
 	};
 
 
-	enum BufferResourceFlags
+	enum class BufferResourceFlags : uint8_t
 	{
 		UAV_Resource,
 		Byte_Buffer,
@@ -467,7 +467,7 @@ namespace FlexKit
 	};
 
 
-	enum BufferDimension
+	enum class BufferDimension : uint8_t
 	{
 		Resource_1D,
 		Resource_2D,
@@ -484,7 +484,7 @@ namespace FlexKit
 
 	namespace DeviceHeapFlags
 	{
-		enum DeviceHeapFlagEnums: uint32_t
+		enum DeviceHeapFlagEnums : uint32_t
 		{
 			NONE			= 0,
 			RenderTarget	= 1,
@@ -495,7 +495,7 @@ namespace FlexKit
 	}
 
 
-	enum class ResourceAllocationType
+	enum class ResourceAllocationType : uint8_t
 	{
 		Committed,
 		Placed,
@@ -503,7 +503,7 @@ namespace FlexKit
 	};
 
 
-	enum class ResourceType
+	enum class ResourceType : uint8_t
 	{
 		RenderTarget,
 		DepthTarget,
@@ -524,7 +524,7 @@ namespace FlexKit
 	};
 
 
-	enum class TextureDimension
+	enum class TextureDimension : uint8_t
 	{
 		Buffer,
 		Texture1D,
@@ -536,7 +536,7 @@ namespace FlexKit
 	};
 
 
-	enum class QueryType
+	enum class QueryType : uint8_t
 	{
 		OcclusionQuery,
 		BinaryOcclusionQuery,
@@ -545,16 +545,16 @@ namespace FlexKit
 	};
 
 	
-	enum IndirectLayoutEntryType
+	enum class IndirectLayoutEntryType : uint8_t
 	{
-		ILE_DrawCall,
-		ILE_DrawIndexedCall,
-		ILE_DispatchCall,
-		ILE_DispatchMesh,
-		ILE_DispatchRays,
-		ILE_UpdateVBBindings,
-		ILE_RootDescriptorUINT,
-		ILE_UNKNOWN,
+		DrawCall,
+		DrawIndexedCall,
+		DispatchCall,
+		DispatchMesh,
+		DispatchRays,
+		UpdateVBBindings,
+		RootDescriptorUINT,
+		UNKNOWN,
 	};
 
 
@@ -576,20 +576,20 @@ namespace FlexKit
 
 	enum class VERTEXBUFFER_FORMAT
 	{
-		VERTEXBUFFER_FORMAT_UNKNOWN			= -1,
-		VERTEXBUFFER_FORMAT_R8				= 1,
-		VERTEXBUFFER_FORMAT_R8G8B8			= 3,
-		VERTEXBUFFER_FORMAT_R8G8B8A8		= 8,
-		VERTEXBUFFER_FORMAT_R16				= 2,
-		VERTEXBUFFER_FORMAT_R16G16			= 4,
-		VERTEXBUFFER_FORMAT_R16G16B16		= 6,
-		VERTEXBUFFER_FORMAT_R16G16B16A16	= 8,
-		VERTEXBUFFER_FORMAT_R32				= 4,
-		VERTEXBUFFER_FORMAT_R32G32			= 8,
-		VERTEXBUFFER_FORMAT_R32G32B32		= 12,
-		VERTEXBUFFER_FORMAT_R32G32B32A32	= 16,
-		VERTEXBUFFER_FORMAT_MATRIX			= 64,
-		VERTEXBUFFER_FORMAT_COMBINED		= 32
+		UNKNOWN			= -1,
+		R8				= 1,
+		R8G8B8			= 3,
+		R8G8B8A8		= 8,
+		R16				= 2,
+		R16G16			= 4,
+		R16G16B16		= 6,
+		R16G16B16A16	= 8,
+		R32				= 4,
+		R32G32			= 8,
+		R32G32B32		= 12,
+		R32G32B32A32	= 16,
+		MATRIX			= 64,
+		COMBINED		= 32
 	};
 
 
@@ -598,28 +598,28 @@ namespace FlexKit
 
 	enum class VERTEXBUFFER_TYPE
 	{
-		VERTEXBUFFER_TYPE_COLOR,
-		VERTEXBUFFER_TYPE_NORMAL,
-		VERTEXBUFFER_TYPE_TANGENT,
-		VERTEXBUFFER_TYPE_UV,
-		VERTEXBUFFER_TYPE_POSITION,
-		VERTEXBUFFER_TYPE_USERTYPE,
-		VERTEXBUFFER_TYPE_USERTYPE2,
-		VERTEXBUFFER_TYPE_USERTYPE3,
-		VERTEXBUFFER_TYPE_USERTYPE4,
-		VERTEXBUFFER_TYPE_COMBINED,
-		VERTEXBUFFER_TYPE_PACKED,
-		VERTEXBUFFER_TYPE_PACKEDANIMATION,
-		VERTEXBUFFER_TYPE_INDEX,
-		VERTEXBUFFER_TYPE_ANIMATION1,
-		VERTEXBUFFER_TYPE_ANIMATION2,
-		VERTEXBUFFER_TYPE_ANIMATION3,
-		VERTEXBUFFER_TYPE_ANIMATION4,
-		VERTEXBUFFER_TYPE_MORPHTARGETPOS,
-		VERTEXBUFFER_TYPE_MORPHTARGETNORMAL,
-		VERTEXBUFFER_TYPE_MORPHTARGETTANGENT,
+		COLOR,
+		NORMAL,
+		TANGENT,
+		UV,
+		POSITION,
+		USERTYPE,
+		USERTYPE2,
+		USERTYPE3,
+		USERTYPE4,
+		COMBINED,
+		PACKED,
+		PACKEDANIMATION,
+		INDEX,
+		ANIMATION1,
+		ANIMATION2,
+		ANIMATION3,
+		ANIMATION4,
+		MORPHTARGETPOS,
+		MORPHTARGETNORMAL,
+		MORPHTARGETTANGENT,
 
-		VERTEXBUFFER_TYPE_ERROR
+		UNKNOWN
 	};
 
 
@@ -953,10 +953,6 @@ namespace FlexKit
 
 
 		operator bool() const { return ( buffer != nullptr ); }
-		//operator D3D12_SHADER_BYTECODE() const
-		//{
-		//	
-		//}
 
 
 		Shader& operator = (const Shader& rhs)
@@ -1179,8 +1175,8 @@ namespace FlexKit
 			uint32_t numValues;
 		};
 
-		IndirectDrawDescription(IndirectLayoutEntryType IN_type = ILE_UNKNOWN) : type{ IN_type } {}
-		IndirectDrawDescription(Constant IN_constant) : type{ ILE_RootDescriptorUINT }, description{ IN_constant } {}
+		IndirectDrawDescription(IndirectLayoutEntryType IN_type = IndirectLayoutEntryType::UNKNOWN) : type{ IN_type } {}
+		IndirectDrawDescription(Constant IN_constant) : type{ IndirectLayoutEntryType::RootDescriptorUINT }, description{ IN_constant } {}
 
 		IndirectLayoutEntryType type;
 
@@ -1199,8 +1195,17 @@ namespace FlexKit
 		bool					independentBlendEnable	= false;
 		RenderTargetStateDesc	renderTarget[8];
 
-		static BlendState Default() { return {}; }
-		static BlendState Blend();
+		static BlendState Default()
+		{
+			FK_ASSERT(false);
+		    return {};
+		}
+
+		static BlendState Blend()
+		{
+			FK_ASSERT(false);
+		    return {};
+		}
 	};
 
 
@@ -1308,7 +1313,7 @@ namespace FlexKit
 		TextureDimension		Dimensions		= TextureDimension::Texture2D;
 		ResourceAllocationType	allocationType	= ResourceAllocationType::Committed;
 		DeviceFormat			format;
-		DeviceLayout			initialLayout	= DeviceLayout_Common;
+		DeviceLayout			initialLayout	= DeviceLayout::Common;
 
 		// Dimensions
 		uint2					WH;
@@ -1369,7 +1374,7 @@ namespace FlexKit
 				.Dimensions		= TextureDimension::Texture2D,
 				.allocationType = allocationType,
 				.format			= IN_format,
-				.initialLayout	= DeviceLayout_DepthStencilWrite,
+				.initialLayout	= DeviceLayout::DepthStencilWrite,
 
 				.WH				= IN_WH,
 				.arraySize		= arraySize,
@@ -1421,7 +1426,7 @@ namespace FlexKit
 				.Dimensions		= TextureDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
-				.initialLayout	= DeviceLayout_Undefined,
+				.initialLayout	= DeviceLayout::Undefined,
 
 				.WH				= { bufferSize, 1 },
 				.arraySize		= 1,
@@ -1438,7 +1443,7 @@ namespace FlexKit
 				.Dimensions		= TextureDimension::Buffer, // dimensions
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
-				.initialLayout	= DeviceLayout_Undefined,
+				.initialLayout	= DeviceLayout::Undefined,
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= 1,
@@ -1457,7 +1462,7 @@ namespace FlexKit
 				.Dimensions		= TextureDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
-				.initialLayout	= DeviceLayout_Undefined,
+				.initialLayout	= DeviceLayout::Undefined,
 
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
@@ -1523,7 +1528,7 @@ namespace FlexKit
 				.Dimensions		= TextureDimension::Texture2D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= format,
-				.initialLayout	= DeviceLayout_Present,
+				.initialLayout	= DeviceLayout::Present,
 
 
 				.WH				= WH,
@@ -1671,18 +1676,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<size_t ENTRYCOUNT = 16>
 	class DesciptorHeapLayout
 	{
 	public:
 		DesciptorHeapLayout() {}
 
-		template<size_t RHS_SIZE>
-		DesciptorHeapLayout(const DesciptorHeapLayout<RHS_SIZE>& RHS)
+		DesciptorHeapLayout(const DesciptorHeapLayout& RHS)
 		{
-			static_assert(ENTRYCOUNT >= RHS_SIZE);
-
-			Entries = RHS.Entries;
+			entries = RHS.entries;
 
 #ifdef _DEBUG
 			Check();
@@ -1699,14 +1700,10 @@ namespace FlexKit
 			Desc.Type     = DescHeapEntryType::ConstantBuffer;
 			Desc.Count	  = RegisterCount;
 
-			if (Entries.size() <= Index)
-			{
-				if (!Entries.full())
-					Entries.resize(Index + 1);
-				else
-					return false;
-			}
-			Entries[Index] = Desc;
+			if (entries.size() <= Index)
+			    entries.resize(Index + 1);
+
+		    entries[Index] = Desc;
 
 			return true;
 		}
@@ -1721,15 +1718,10 @@ namespace FlexKit
 			Desc.Type		= DescHeapEntryType::ShaderResource;
 			Desc.Count		= RegisterCount;
 
-			if (Entries.size() <= Index)
-			{
-				if (Entries.full())
-					return false;
+			if (entries.size() <= Index)
+				entries.resize(Index + 1);
 
-				Entries.resize(Index + 1);
-			}
-
-			Entries[Index] = Desc;
+			entries[Index] = Desc;
 
 			return true;
 		}
@@ -1744,15 +1736,10 @@ namespace FlexKit
 			Desc.Count    = RegisterCount;
 			Desc.Type     = DescHeapEntryType::UAVBuffer;
 
-			if (Entries.size() <= Index)
-			{
-				if (Entries.full())
-					return false;
+			if (entries.size() <= Index)
+				entries.resize(Index + 1);
 
-				Entries.resize(Index + 1);
-			}
-
-			Entries[Index] = Desc;
+			entries[Index] = Desc;
 
 			return true;
 		}
@@ -1760,7 +1747,7 @@ namespace FlexKit
 
 		bool Check()
 		{
-			return (!IsXInSet(DescHeapEntryType::HeapError, Entries, [](auto a, auto b) -> bool
+			return (!IsXInSet(DescHeapEntryType::HeapError, entries, [](auto a, auto b) -> bool
 				{ return a == b.Type; }));
 		}
 
@@ -1768,7 +1755,7 @@ namespace FlexKit
 		const size_t size() const
 		{
 			size_t out = 0;
-			for (auto& e : Entries)
+			for (auto& e : entries)
 				out += e.Count + e.Space;
 
 			FK_ASSERT(out);
@@ -1776,8 +1763,8 @@ namespace FlexKit
 			return out;
 		}
 
-
-		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
+		static constexpr size_t EntryCount = 16;
+		Vector<HeapDescriptor, EntryCount> entries;
 	};
 
 
@@ -1840,6 +1827,57 @@ namespace FlexKit
 			FK_ASSERT(false);
 		    return false;
 		}
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct RootSignatureHeapEntry
+	{
+		size_t					idx;
+		DesciptorHeapLayout		Heap;
+	};
+
+
+	struct RootSignatureBuilderImpl
+	{
+	};
+
+
+	struct RootSignatureBuilder : NoCopy, NoMove
+	{
+		RootSignatureBuilder(iAllocator& allocator){}
+		~RootSignatureBuilder();
+
+		void Release();
+
+				bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+
+		bool SetParameterAsDescriptorTable(
+			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE_DESTINATION accessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+
+		bool SetParameterAsCBV(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+
+		bool SetParameterAsUAV(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+
+		bool SetParameterAsSRV(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+
+		void Clear();
+
+		bool AllowIA = false;
+
+		[[nodiscard]] IRootSignature* Build(iAllocator& TempMemory);
+		[[nodiscard]] IRootSignature* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp);
+		[[nodiscard]] IRootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp);
+
+
 	};
 
 
@@ -1913,8 +1951,8 @@ namespace FlexKit
 		IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
 		IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
 
-		FlexKit::LoadPipelineStateRes Build(IRenderSystem& renderSystem);
-		FlexKit::LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size);
+		LoadPipelineStateRes Build(IRenderSystem& renderSystem);
+		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size);
 
 
 	private:
@@ -1946,7 +1984,7 @@ namespace FlexKit
 		virtual void DiscardResource(ResourceHandle resource) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) IDIRECTCONTEXTDEBUGBODY;
-		virtual void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) IDIRECTCONTEXTDEBUGBODY;
+		virtual void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) IDIRECTCONTEXTDEBUGBODY;
@@ -2151,7 +2189,7 @@ namespace FlexKit
 	struct DescriptorHeap
 	{
 		DescriptorHeap() = default;
-		DescriptorHeap(IContext&, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap(IContext&, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory);
 
 		DescriptorHeap& operator = (const DescriptorHeap&);
 
@@ -2159,9 +2197,9 @@ namespace FlexKit
 		DescriptorHeap(DescriptorHeap&& rhs);
 		DescriptorHeap& operator = (DescriptorHeap&&);
 
-		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& Init2(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
+		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
+		DescriptorHeap& Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
 		DescriptorHeap& NullFill(IContext& ctx, const size_t end = -1);
 
 		DescriptorHeap& SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
@@ -2205,7 +2243,7 @@ namespace FlexKit
 
 	struct IRootSignature
 	{
-		virtual const DesciptorHeapLayout<16>&	GetDescHeap(uint32_t idx) const noexcept = 0;
+		virtual const DesciptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
 		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
 
 		virtual void Release() const = 0;
@@ -2425,14 +2463,13 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize);
+	void			MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize);
 
-	ResourceHandle MoveTextureBufferToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
-	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
-	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
-	ResourceHandle MoveBufferToDevice(IRenderSystem& RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle);
+	ResourceHandle	MoveTextureBufferToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
+	ResourceHandle	MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
+	ResourceHandle	MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
+	ResourceHandle	MoveBufferToDevice(IRenderSystem& RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle);
 
-	ResourceHandle	LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, iAllocator* Memout, DeviceFormat format);
 	void			UpdateSubResourceByUploadQueue(IRenderSystem& RS, CopyContextHandle uploadHandle, ResourceHandle dstResource, SubResourceUpload_Desc* desc);
 
 
@@ -2453,51 +2490,51 @@ namespace FlexKit
 	{
 		switch (layout)
 		{
-		case DeviceLayout_Common:
+		case DeviceLayout::Common:
 			return (access & DASReadFlag);
-		case DeviceLayout_Present:
+		case DeviceLayout::Present:
 			return (access & DASReadFlag);
-		case DeviceLayout_GenericRead:
+		case DeviceLayout::GenericRead:
 			return (access & DASReadFlag);
-		case DeviceLayout_RenderTarget:
+		case DeviceLayout::RenderTarget:
 			return (access & DASRenderTarget);
-		case DeviceLayout_UnorderedAccess:
+		case DeviceLayout::UnorderedAccess:
 			return (access & DASUAV);
-		case DeviceLayout_DepthStencilWrite:
+		case DeviceLayout::DepthStencilWrite:
 			return (access & DASDEPTHBUFFERWRITE);
-		case DeviceLayout_DepthStencilRead:
+		case DeviceLayout::DepthStencilRead:
 			return (access & DASDEPTHBUFFERREAD);
-		case DeviceLayout_ShaderResource:
+		case DeviceLayout::ShaderResource:
 			return (access & DASPixelShaderResource);
-		case DeviceLayout_CopySrc:
+		case DeviceLayout::CopySrc:
 			return (access & DASCopySrc);
-		case DeviceLayout_CopyDst:
+		case DeviceLayout::CopyDst:
 			return (access & DASCopyDest);
-		case DeviceLayout_ResolveSrc:
-		case DeviceLayout_ResolveDst:
+		case DeviceLayout::ResolveSrc:
+		case DeviceLayout::ResolveDst:
 			return true;
-		case DeviceLayout_ShadingRateSrc:
+		case DeviceLayout::ShadingRateSrc:
 			return (access & DASShadingRateSrc);
-		case DeviceLayout_VideoDecodeRead:
+		case DeviceLayout::VideoDecodeRead:
 			return (access & DASShadingRateSrc);
-		case DeviceLayout_DecodeWrite:
-		case DeviceLayout_ProcessRead:
-		case DeviceLayout_ProcessWrite:
-		case DeviceLayout_EncodeRead:
-		case DeviceLayout_EncodeWrite:
-		case DeviceLayout_DirectQueueCommon:
-		case DeviceLayout_DirectQueueGenericRead:
-		case DeviceLayout_DirectQueueUnorderedAccess:
-		case DeviceLayout_DirectQueueShaderResource:
-		case DeviceLayout_DirectQueueCopySrc:
-		case DeviceLayout_DirectQueueCopyDst:
-		case DeviceLayout_ComputeQueueCommon:
-		case DeviceLayout_ComputeQueueGenericRead:
-		case DeviceLayout_ComputeQueueUnorderedAccess:
-		case DeviceLayout_ComputeQueueShaderResource:
-		case DeviceLayout_ComputeQueueCopySrc:
-		case DeviceLayout_ComputeQueueCopyDst:
-		case DeviceLayout_VideoQueueCommon:
+		case DeviceLayout::DecodeWrite:
+		case DeviceLayout::ProcessRead:
+		case DeviceLayout::ProcessWrite:
+		case DeviceLayout::EncodeRead:
+		case DeviceLayout::EncodeWrite:
+		case DeviceLayout::DirectQueueCommon:
+		case DeviceLayout::DirectQueueGenericRead:
+		case DeviceLayout::DirectQueueUnorderedAccess:
+		case DeviceLayout::DirectQueueShaderResource:
+		case DeviceLayout::DirectQueueCopySrc:
+		case DeviceLayout::DirectQueueCopyDst:
+		case DeviceLayout::ComputeQueueCommon:
+		case DeviceLayout::ComputeQueueGenericRead:
+		case DeviceLayout::ComputeQueueUnorderedAccess:
+		case DeviceLayout::ComputeQueueShaderResource:
+		case DeviceLayout::ComputeQueueCopySrc:
+		case DeviceLayout::ComputeQueueCopyDst:
+		case DeviceLayout::VideoQueueCommon:
 		default:
 			return false;
 		}

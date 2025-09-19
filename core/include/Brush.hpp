@@ -69,10 +69,10 @@ namespace FlexKit
 
 	struct BrushEntry
 	{
-		uint64_t		SortID			= 0u;
-		const Brush*	brush			= nullptr;
-		GameObject*		gameObject		= nullptr;
-		uint32_t		submissionID	= (uint32_t)-1;
+		uint64_t			SortID			= 0u;
+		const Brush*		brush			= nullptr;
+		struct GameObject*	gameObject		= nullptr;
+		uint32_t			submissionID	= (uint32_t)-1;
 
 		static_vector<uint8_t>	LODlevel{ 0 };
 

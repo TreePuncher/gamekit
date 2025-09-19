@@ -1,8 +1,8 @@
-#include "GraphicsComponents.hpp"
 #include "Intersection.hpp"
 #include "Scene.hpp"
 
-#include "AnimationRuntimeUtilities.hpp"
+#include "Brush.hpp"
+#include "CameraComponent.hpp"
 #include "Components.hpp"
 #include "ComponentBlobs.hpp"
 #include "ProfilingUtilities.hpp"
@@ -12,9 +12,7 @@
 #include "TriggerSlotIDs.hpp"
 #include "TriMeshResource.hpp"
 
-#include <any>
 #include <cmath>
-#include <numeric>
 #include <ranges>
 
 using std::ranges::sort;
@@ -1025,7 +1023,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PushDraw(GameObject& gameObject, const Brush& brush, DrawList& pvs, const float3 CameraPosition, float maxZ)
+	void PushDraw(GameObject& gameObject, const Brush& brush, BrushDrawList& pvs, const float3 CameraPosition, float maxZ)
 	{
 		auto brushPosition      = GetPositionW(brush.Node);
 		auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
@@ -1065,7 +1063,7 @@ namespace FlexKit
 		}
 
 		pvs.push_back(
-			DrawEntry{
+			BrushEntry{
 				.SortID         = CreateSortingID(false, false, (size_t)distanceFromView),
 				.brush          = &brush,
 				.gameObject     = &gameObject,
@@ -1076,7 +1074,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GatherScene(Scene* SM, CameraHandle Camera, DrawList& solid)
+	void GatherScene(Scene* SM, CameraHandle Camera, BrushDrawList& solid)
 	{
 		ProfileFunction();
 
@@ -1140,7 +1138,7 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
-				DrawList drawList{ &threadAllocator };
+				BrushDrawList drawList{ &threadAllocator };
 
 				auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
 

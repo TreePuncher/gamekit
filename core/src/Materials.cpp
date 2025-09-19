@@ -1,6 +1,5 @@
 #include "Materials.hpp"
 #include "Scene.hpp"
-#include "TextureStreamingUtilities.hpp"
 #include <ranges>
 
 namespace FlexKit
@@ -75,6 +74,7 @@ namespace FlexKit
 
 	MaterialTextureEntry* MaterialComponent::_AddTextureAsset(GUID_t textureAsset, ReadContext& readContext, const bool loadLowest)
 	{
+#if 0
 		const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
 		const auto resourceStrID					= GetResourceStringID(textureAsset);
 
@@ -99,6 +99,9 @@ namespace FlexKit
 		const auto idx = textures.push_back({ 1, textureResource, textureAsset });
 
 		return textures.begin() + idx;
+#endif
+		FK_ASSERT(0);
+		return 0;
 	}
 
 
@@ -808,8 +811,7 @@ namespace FlexKit
 			return;
 
 		auto res				= renderSystem.CreateDescriptorRange(textureCount);
-		if (!res.has_value())
-			DebugBreak();
+		FK_ASSERT(!res.has_value());
 
 		auto& descriptorRange	= res.value();
 

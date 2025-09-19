@@ -17,73 +17,54 @@ find_package(scn CONFIG REQUIRED)
 find_package(RmlUi CONFIG REQUIRED)
 find_package(PkgConfig)
 
+add_library(AngelScriptComponents
+    "src/angelScriptAddons.cpp")
+
+target_link_libraries(AngelScriptComponents PRIVATE Angelscript::angelscript)
+
+
 add_library(flex
     "src/AnimationComponents.cpp"
-    "src/AnimationRendering.cpp"
     "src/AnimationRuntimeUtilities.cpp"
     "src/AnimationUtilities.cpp"
     "src/Application.cpp"
     "src/Assets.cpp"
     "src/CameraComponent.cpp"
-    "src/CBT.cpp"
-    "src/CBTTerrain.cpp"
-    "src/ClusteredRendering.cpp"
     "src/Components.cpp"
     "src/Console.cpp"
     "src/Brush.cpp"
-#    "src/DDSUtilities.cpp"
-  #  "src/DebugPanel.cpp"
- #   "src/DebugUI.cpp"
- #   "src/Defaultpipelinestates.cpp"
- #   "src/DungeonGen.cpp"
- #   "src/EngineCore.cpp"
- #   "src/Framegraph.cpp"
- #   "src/GameFramework.cpp"
-#    "src/Geometry.cpp"
-#    "src/GILightingUtilities.cpp"
-#    "src/GPUAllocators.cpp"
-#    "src/DX12Graphics.cpp"
-#    "src/GraphicsComponents.cpp"
-#    "src/GUIInputState.cpp"
-#    "src/GuiUtilities.cpp"
-  #  "src/Intersection.cpp"
-  #  "src/Level.cpp"
-  #  "src/Logging.cpp"
-  #  "src/MathUtilities.cpp"
- #   "src/Materials.cpp"
- #   "src/MemoryUtilities.cpp"
- #   "src/Meshutilities.cpp"
- #   "src/ModifiableShape.cpp"
- #   "src/NetworkUtilities.cpp"
- #   "src/OcclusionCulling.cpp"
- #   "src/ParticleRendering.cpp"
- #   "src/Particles.cpp"
- #   "src/PhysicsDebugVis.cpp"
- #   "src/physicsutilities.cpp"
- #   "src/PipelineState.cpp"
- #   "src/PlanetComponent.cpp"
- #   "src/ProfilingUtilities.cpp"
- #   "src/RayTracingUtilities.cpp"
- #   "src/RenderSystemInterface.cpp"
- #   "src/RMLRenderer.cpp"
- #   "src/Scene.cpp"
- #   "src/ScriptingRuntime.cpp"
- #   "src/Serialization.cpp"
-#    "src/SHADOWMAPPING.CPP"
-#    "src/Signals.cpp"
-#    "src/SVOGI.cpp"
-#    "src/TextRendering.cpp"
-#    "src/TextureStreamingUtilities.cpp"
-#    "src/TextureUtilities.cpp"
-#    "src/ThreadUtilities.cpp"
-#    "src/ThirdPartyTranslationUnit.cpp"
-#    "src/timeutilities.cpp"
-#    "src/Transforms.cpp"
-#    "src/Transparency.cpp"
-#    "src/TriggerComponent.cpp"
-#    "src/TriMeshResource.cpp"
-#    "src/Win32Graphics.cpp"
-#    "src/WorldRender.cpp"
+    "src/DDSUtilities.cpp"
+    "src/DebugPanel.cpp"
+    "src/DebugUI.cpp"
+    "src/Defaultpipelinestates.cpp"
+    "src/EngineCore.cpp"
+    "src/Framegraph.cpp"
+    "src/GameFramework.cpp"
+    "src/Geometry.cpp"
+    "src/GPUAllocators.cpp"
+    "src/Intersection.cpp"
+    "src/Level.cpp"
+    "src/Logging.cpp"
+    "src/MathUtilities.cpp"
+    "src/Materials.cpp"
+    "src/MemoryUtilities.cpp"
+    "src/Meshutilities.cpp"
+    "src/ModifiableShape.cpp"
+    "src/NetworkUtilities.cpp"
+    "src/Particles.cpp"
+    "src/ProfilingUtilities.cpp"
+    "src/RenderSystemInterface.cpp"
+    "src/RMLRenderer.cpp"
+    "src/Scene.cpp"
+    "src/ScriptingRuntime.cpp"
+    "src/Serialization.cpp"
+    "src/Signals.cpp"
+    "src/TextureUtilities.cpp"
+    "src/ThreadUtilities.cpp"
+    "src/timeutilities.cpp"
+    "src/Transforms.cpp"
+    "src/TriggerComponent.cpp"
+    "src/TriMeshResource.cpp"
 )
 
 target_sources(
@@ -92,7 +73,6 @@ target_sources(
     TYPE HEADERS
     FILES
     "include/AnimationComponents.hpp"
-    "include/AnimationRendering.hpp"
     "include/AnimationRuntimeUtilities.hpp"
     "include/AnimationUtilities.hpp"
     "include/Application.hpp"
@@ -100,9 +80,6 @@ target_sources(
     "include/BuildSettings.hpp"
     "include/DoOnce.hpp"
     "include/CameraComponent.hpp"
-    "include/CBT.hpp"
-    "include/CBTTerrain.hpp"
-    "include/ClusteredRendering.hpp"
     "include/CommonStructs.hpp"
     "include/CameraComponent.hpp"
     "include/ComponentBlobs.hpp"
@@ -123,11 +100,6 @@ target_sources(
     "include/GameFramework.hpp"
     "include/GPUAllocators.hpp"
     "include/Geometry.hpp"
-    "include/GILightingUtilities.hpp"
-#    "include/DX12Graphics.hpp"
-    "include/GraphicsComponents.hpp"
-    "include/GUIInputState.hpp"
-#    "include/GUIUtilities.hpp"
     "include/Handle.hpp"
     "include/Input.hpp"
     "include/Intersection.hpp"
@@ -141,15 +113,8 @@ target_sources(
     "include/MeshUtilities.hpp"
     "include/ModifiableShape.hpp"
     "include/NetworkUtilities.hpp"
-    "include/OcclusionCulling.hpp"
-    "include/ParticleRendering.hpp"
     "include/Particles.hpp"
-    "include/PhysicsDebugVis.hpp"
-    "include/PhysicsUtilities.hpp"
-    "include/PipelineState.hpp"
-    "include/PlanetComponent.hpp"
     "include/ProfilingUtilities.hpp"
-    "include/RayTracingUtilities.hpp"
     "include/RenderSystemInterface.hpp"
     "include/ResourceHandles.hpp"
     "include/RMLRenderer.hpp"
@@ -158,25 +123,17 @@ target_sources(
     "include/SceneLoadingContext.hpp"
     "include/ScriptingRuntime.hpp"
     "include/Serialization.hpp"
-    "include/ShadowMapping.hpp"
     "include/Signals.hpp"
     "include/static_vector.hpp"
-    "include/SVOGI.hpp"
-#    "include/TextRendering.hpp"
-    "include/TextureStreamingUtilities.hpp"
     "include/TextureUtilities.hpp"
     "include/ThreadUtilities.hpp"
     "include/TimeUtilities.hpp"
     "include/Transforms.hpp"
     "include/TriMeshResource.hpp"
-    "include/Transparency.hpp"
     "include/TriggerComponent.hpp"
     "include/TriggerSlotIDs.hpp"
     "include/Type.hpp"
     "include/VertexBuffer.hpp"
-#    "include/Win32Graphics.hpp"
-    "include/WorldRender.hpp"
-#    "include/XMMathConversion.hpp"
 )
 
 target_include_directories(flex
@@ -209,6 +166,7 @@ if(WIN32)
     target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
     #target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 
+    target_link_libraries(flex PRIVATE AngelScriptComponents)
     target_link_libraries(flex PRIVATE unofficial::omniverse-physx-sdk::sdk)
     target_link_libraries(flex PRIVATE imgui::imgui)
     target_link_libraries(flex PRIVATE imguizmo::imguizmo)
@@ -217,6 +175,7 @@ if(WIN32)
     target_link_libraries(flex PRIVATE loguru::loguru)
     target_link_libraries(flex PRIVATE scn::scn)
     target_link_libraries(flex PRIVATE ZLIB-NG)
+
     #target_link_libraries(flex PRIVATE WINPIX) 
     #target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
     target_link_libraries(flex PRIVATE RmlUi::Core RmlUi::Debugger)

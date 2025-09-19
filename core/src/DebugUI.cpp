@@ -1,8 +1,11 @@
 #include "DebugUI.hpp"
-//#include "Win32Graphics.hpp"
 #include <imgui.h>
 #include <implot.h>
 
+#ifdef WIN32
+//#define WIN32_WINDOW 1
+//#include "Win32Graphics.hpp"
+#endif
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -135,6 +138,9 @@ namespace FlexKit
 		if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
 			return;
 
+
+#ifdef WIN32
+#if 0
 		ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
 		if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
 		{
@@ -159,12 +165,15 @@ namespace FlexKit
 			}
 			::SetCursor(::LoadCursor(NULL, win32_cursor));
 		}
+#endif
+#endif
 	}
 
 
 
 	void ImGUIIntegrator::Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{
+#ifdef WIN32_WINDOW
 		const auto WH   = window.GetWH();
 		HWND hwnd       = (HWND)INTERNAL_WindowHandle(&window);
 
@@ -212,10 +221,12 @@ namespace FlexKit
 		// Set mouse position
 		io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
 		POINT pos;
+
 		if (HWND active_window = ::GetForegroundWindow())
 			if (active_window == hwnd || ::IsChild(active_window, hwnd))
 				if (::GetCursorPos(&pos) && ::ScreenToClient(hwnd, &pos))
 					io.MousePos = ImVec2((float)pos.x, (float)pos.y);
+#endif
 
 	}
 

@@ -1,5 +1,7 @@
+#include "angelscript.h"
 #include "AnimationComponents.hpp"
-#include <angelscript.h>
+#include "CameraComponent.hpp"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -1445,3 +1447,4 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+

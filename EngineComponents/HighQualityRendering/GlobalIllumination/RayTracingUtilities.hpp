@@ -53,7 +53,7 @@ namespace FlexKit
     class RTX_RayTracer : public iRayTracer
     {
     public:
-        RTX_RayTracer(RenderSystem& renderSystem, iAllocator* allocator)
+        RTX_RayTracer(IRenderSystem& renderSystem, iAllocator* allocator)
         {
         }
 
