@@ -1,10 +1,10 @@
-#if 0
-
 #include "Transforms.hpp"
 #include "TriggerSlotIDs.hpp"
 
 #include <any>
 #include <iostream>
+
+#include "RenderSystemInterface.hpp"
 
 namespace FlexKit
 {
@@ -257,13 +257,12 @@ namespace FlexKit
 
 	float3 GetPositionW(NodeHandle node)
 	{
-		DirectX::XMMATRIX wt;
-		GetTransform(node, &wt);
+		float4x4 wt = GetWT(node);
 
-		return float3(
-			FlexKit::GetArray_ptr(wt.r[0])[3],
-			FlexKit::GetArray_ptr(wt.r[1])[3],
-			FlexKit::GetArray_ptr(wt.r[2])[3] );
+		return float3{
+					wt[0, 3],
+					wt[1, 3],
+					wt[2, 3] };
 	}
 
 
@@ -283,32 +282,28 @@ namespace FlexKit
 
 	void SetPositionW(NodeHandle node, float3 in) // Sets Position in World Space
 	{
-		DirectX::XMMATRIX wt;
-		DirectX::XMMATRIX parentWT;
+		float4x4 wt			= GetWT(node);
+		float4x4 parentWT	= GetWT(GetParentNode(node));
 
-		GetTransform(node, &wt);
-		GetTransform(GetParentNode(node), &parentWT);
+		wt[0,3] = in.x;
+		wt[1,3] = in.y;
+		wt[2,3] = in.z;
 
-		GetArray_ptr(wt.r[0])[3] = in.x;
-		GetArray_ptr(wt.r[1])[3] = in.y;
-		GetArray_ptr(wt.r[2])[3] = in.z;
+		auto tmp = Inverse(parentWT) * wt;
 
-		auto tmp = DirectX::XMMatrixInverse(nullptr, parentWT) * wt;
-		float3 lPosition = float3(
-			FlexKit::GetArray_ptr(tmp.r[0])[3],
-			FlexKit::GetArray_ptr(tmp.r[1])[3],
-			FlexKit::GetArray_ptr(tmp.r[2])[3] );
+	    float3 lPosition = float3(
+					tmp[0, 3],
+					tmp[1, 3],
+					tmp[2, 3]);
 
 		// Set New Local Position
 		LT_Entry Local = GetLocal(node);
 
-		FlexKit::GetArray_ptr(Local.T)[0] = lPosition[0];
-		FlexKit::GetArray_ptr(Local.T)[1] = lPosition[1];
-		FlexKit::GetArray_ptr(Local.T)[2] = lPosition[2];
+		Local.T = lPosition;
 
-		SetWT       (node, &wt);
-		SetLocal	(node, &Local);
-		SetFlag		(node, SceneNodes::DIRTY);
+		SetWT(node, wt);
+		SetLocal(node, &Local);
+		SetFlag(node, SceneNodes::DIRTY);
 	}
 
 
@@ -329,7 +324,7 @@ namespace FlexKit
 
 	float3 LocalToGlobal(NodeHandle Node, float3 POS)
 	{
-		float4x4 WT; GetTransform(Node, &WT);
+		float4x4 WT = GetWT(Node);
 		return (WT * float4(POS, 1)).xyz();
 	}
 
@@ -355,22 +350,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetTransform(NodeHandle node, DirectX::XMMATRIX* __restrict out)
-	{
-		auto index		= _SNHandleToIndex(node);
-#if 0
-		auto WorldQRS	= Nodes->WT[index];
-		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
-		*out = wt;
-#else
-		*out = SceneNodeTable.WT[index].m4x4;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
 	float4x4 GetWT(NodeHandle node)
 	{
 		if (node == InvalidHandle)
@@ -378,7 +357,7 @@ namespace FlexKit
 		else if (!GetFlag(node, SceneNodes::DIRTY))
 		{
 			auto index	= _SNHandleToIndex(node);
-			auto WT		= XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+			auto WT		= SceneNodeTable.WT[index].m4x4;
 			return WT;
 		}
 		else
@@ -402,24 +381,26 @@ namespace FlexKit
 
 	float4x4 GetLT(NodeHandle node)
 	{
-		using DirectX::XMMatrixIdentity;
-		using DirectX::XMMatrixMultiply;
-		using DirectX::XMMatrixTranspose;
-		using DirectX::XMMatrixTranslationFromVector;
-		using DirectX::XMMatrixScalingFromVector;
-		using DirectX::XMMatrixRotationQuaternion;
-
-		auto idx = _SNHandleToIndex(node);
-
-		XMMatrixIdentity();
-		LT_Entry TRS = SceneNodeTable.LT[idx];
-
-		DirectX::XMMATRIX LT =
-				XMMatrixRotationQuaternion(TRS.R) *
-				XMMatrixScalingFromVector(TRS.S) *
-				XMMatrixTranslationFromVector(TRS.T);
-
-		return XMMatrixToFloat4x4(LT);
+		FK_ASSERT(0);
+		//using DirectX::XMMatrixIdentity;
+		//using DirectX::XMMatrixMultiply;
+		//using DirectX::XMMatrixTranspose;
+		//using DirectX::XMMatrixTranslationFromVector;
+		//using DirectX::XMMatrixScalingFromVector;
+		//using DirectX::XMMatrixRotationQuaternion;
+		//
+		//auto idx = _SNHandleToIndex(node);
+		//
+		//XMMatrixIdentity();
+		//LT_Entry TRS = SceneNodeTable.LT[idx];
+		//
+		//DirectX::XMMATRIX LT =
+		//		XMMatrixRotationQuaternion(TRS.R) *
+		//		XMMatrixScalingFromVector(TRS.S) *
+		//		XMMatrixTranslationFromVector(TRS.T);
+		//
+		//return XMMatrixToFloat4x4(LT);
+		return {};
 	}
 
 
@@ -428,38 +409,24 @@ namespace FlexKit
 
 	float4x4 GetLT_Internal(uint32_t idx)
 	{
-		using DirectX::XMMatrixIdentity;
-		using DirectX::XMMatrixMultiply;
-		using DirectX::XMMatrixTranspose;
-		using DirectX::XMMatrixTranslationFromVector;
-		using DirectX::XMMatrixScalingFromVector;
-		using DirectX::XMMatrixRotationQuaternion;
+		FK_ASSERT(0);
 
-		const auto	index	= _SNHandleToIndex(idx);
-		LT_Entry	TRS		= SceneNodeTable.LT[idx];
+		//using DirectX::XMMatrixIdentity;
+		//using DirectX::XMMatrixMultiply;
+		//using DirectX::XMMatrixTranspose;
+		//using DirectX::XMMatrixTranslationFromVector;
+		//using DirectX::XMMatrixScalingFromVector;
+		//using DirectX::XMMatrixRotationQuaternion;
+		//
+		//const auto	index	= _SNHandleToIndex(idx);
+		//LT_Entry	TRS		= SceneNodeTable.LT[idx];
+		//
+		//auto LT =
+		//	XMMatrixRotationQuaternion(TRS.R) *
+		//	XMMatrixScalingFromVector(TRS.S) *
+		//	XMMatrixTranslationFromVector(TRS.T);
 
-		auto LT =
-			XMMatrixRotationQuaternion(TRS.R) *
-			XMMatrixScalingFromVector(TRS.S) *
-			XMMatrixTranslationFromVector(TRS.T);
-
-		return XMMatrixToFloat4x4(XMMatrixTranspose(LT));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GetTransform(NodeHandle node, float4x4* __restrict out)
-	{
-		auto index		= _SNHandleToIndex(node);
-#if 0
-		auto WorldQRS	= Nodes->WT[index];
-		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
-		*out = wt;
-#else
-		*out = XMMatrixToFloat4x4(&SceneNodeTable.WT[index].m4x4).Transpose();
-#endif
+		return {};
 	}
 
 
@@ -469,9 +436,7 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(Node));
 
-		FlexKit::GetArray_ptr(Local.S)[0] = XYZ[0];
-		FlexKit::GetArray_ptr(Local.S)[1] = XYZ[1];
-		FlexKit::GetArray_ptr(Local.S)[2] = XYZ[2];
+		Local.S = XYZ;
 
 		SetLocal(Node, &Local, SceneNodes::SCALE);
 	}
@@ -480,16 +445,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetWT(NodeHandle node, DirectX::XMMATRIX* __restrict In)
+	void SetWT(NodeHandle node, const float4x4& in)
 	{
-		SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = *In;
-		SetFlag(node, SceneNodes::DIRTY);
-	}
-
-
-	void SetWT(NodeHandle node, const float4x4  in)
-	{
-		SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = Float4x4ToXMMATIRX(in);
+		SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = in;
 		SetFlag(node, SceneNodes::DIRTY);
 	}
 
@@ -532,12 +490,8 @@ namespace FlexKit
 
 	Quaternion GetOrientation(NodeHandle node)
 	{
-		DirectX::XMMATRIX WT;
-		GetTransform(node, &WT);
-
-		DirectX::XMVECTOR q = DirectX::XMQuaternionRotationMatrix(WT);
-
-		return q;
+		float4x4 WT = GetWT(node);
+		return Matrix2Quat(WT);
 	}
 
 	Quaternion GetOrientationLocal(NodeHandle node)
@@ -553,14 +507,13 @@ namespace FlexKit
 
 	void SetOrientation(NodeHandle node, const Quaternion& in)
 	{
-		DirectX::XMMATRIX wt;
+		float4x4 wt = GetWT(FlexKit::GetParentNode(node));
 		LT_Entry Local(GetLocal(node));
-		GetTransform(FlexKit::GetParentNode(node), &wt);
 
-		const auto transposed = DirectX::XMMatrixTranspose(wt);
-		const auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&transposed)).Inverse();
+		const auto tmp2 = Matrix2Quat(wt);
 
-		Local.R = DirectX::XMQuaternionMultiply(in, tmp2);
+		Local.R = in * tmp2;
+
 		SetLocal(node, &Local);
 		SetFlag(node, SceneNodes::DIRTY);
 	}
@@ -627,7 +580,9 @@ namespace FlexKit
 
 		SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
 
+		FK_ASSERT(0);
 		size_t Unused_Nodes = 0;
+#if 0
 		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
 			const auto flag         = SceneNodeTable.Flags[itr];
@@ -659,6 +614,8 @@ namespace FlexKit
 
 			Unused_Nodes += (SceneNodeTable.Flags[itr] & SceneNodes::FREE);
 		}
+#endif
+
 #endif
 
 		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
@@ -966,14 +923,12 @@ namespace FlexKit
 	NodeHandle ZeroNode(NodeHandle node)
 	{
 		FlexKit::LT_Entry LT;
-		LT.S = DirectX::XMVectorSet(1, 1, 1, 1);
-		LT.R = DirectX::XMQuaternionIdentity();
-		LT.T = DirectX::XMVectorZero();
+		LT.S = float3{ 1, 1, 1 };
+		LT.R = Quaternion::Identity();
+		LT.T = float3::Zero();
 		FlexKit::SetLocal(node, &LT);
 
-		DirectX::XMMATRIX WT;
-		WT = DirectX::XMMatrixIdentity();
-		FlexKit::SetWT(node, &WT);
+		FlexKit::SetWT(node, float4x4::Identity());
 
 		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Scaleflag  = false;
 		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent     = InvalidHandle;
@@ -1008,9 +963,7 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(node));
 
-		FlexKit::GetArray_ptr(Local.S)[0] *= XYZ[0];
-		FlexKit::GetArray_ptr(Local.S)[1] *= XYZ[1];
-		FlexKit::GetArray_ptr(Local.S)[2] *= XYZ[2];
+		Local.S *= XYZ;
 
 		SetLocal(node, &Local);
 	}
@@ -1023,9 +976,7 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(node));
 
-		FlexKit::GetArray_ptr(Local.T)[0] += XYZ[0];
-		FlexKit::GetArray_ptr(Local.T)[1] += XYZ[1];
-		FlexKit::GetArray_ptr(Local.T)[2] += XYZ[2];
+		Local.T += XYZ;
 
 		SetLocal(node, &Local);
 	}
@@ -1036,11 +987,10 @@ namespace FlexKit
 
 	void TranslateWorld(NodeHandle Node, float3 XYZ)
 	{
-		DirectX::XMMATRIX WT;
-		GetTransform(GetParentNode(Node), &WT);
+		float4x4 WT = GetWT(GetParentNode(Node));
 
-		auto MI = DirectX::XMMatrixInverse(nullptr, WT);
-		auto V	= DirectX::XMVector4Transform(XYZ.pfloats, MI);
+		auto MI = Inverse(WT);
+		auto V	= GetTranslation(MI);
 		TranslateLocal(Node, float3(V));
 	}
 
@@ -1408,5 +1358,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-#endif

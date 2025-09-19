@@ -1,20 +1,18 @@
 #pragma once
 
+#if 0
 #include "Player.hpp"
 #include <Application.hpp>
 #include <DebugUI.hpp>
 #include <GameplayComponents.hpp>
 #include <physicsutilities.hpp>
-#include <TextureStreamingUtilities.hpp>
 #include <TriggerComponent.hpp>
 #include <Scene.hpp>
-#include <WorldRender.hpp>
 //#include <Win32Graphics.hpp>
 #include <Signals.hpp>
 
 
 /************************************************************************************************/
-
 
 class AnimationTest : public FlexKit::FrameworkState
 {
@@ -80,6 +78,7 @@ public:
 };
 
 
+#endif
 
 /**********************************************************************
 

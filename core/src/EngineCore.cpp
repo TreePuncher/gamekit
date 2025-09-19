@@ -90,8 +90,8 @@ namespace FlexKit
 		BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
 		const auto preallocationSize = sizeof(EngineMemory);
-		auto allocation = VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
-		auto* Memory = new(allocation) EngineMemory{ BAdesc };
+		auto allocation		= _aligned_malloc(preallocationSize, 64);//VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
+		auto* Memory		= new(allocation) EngineMemory{ BAdesc };
 
 		
 
@@ -111,7 +111,7 @@ namespace FlexKit
 	void ReleaseEngineMemory(EngineMemory* Memory)
 	{
 		DEBUGBLOCK(PrintBlockStatus(&Memory->GetBlockMemory()));
-		VirtualFree(Memory, 0, MEM_RELEASE);
+		_aligned_free(Memory);// VirtualFree(Memory, 0, MEM_RELEASE);
 	}
 
 

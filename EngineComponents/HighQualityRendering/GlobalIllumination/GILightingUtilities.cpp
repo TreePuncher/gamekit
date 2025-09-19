@@ -618,7 +618,7 @@ namespace FlexKit
 							resourceCtx.BuildBLAS(frameHandle, lod);
 						}
 					},
-				.layout			= DeviceLayout::DeviceLayout_Unknown,
+				.layout			= DeviceLayout::Unknown,
 				.access			= DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
 				.max			= 16,
 				.pool			= &ASpool,

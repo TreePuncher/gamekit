@@ -27,12 +27,12 @@ namespace FlexKit
 	void InitiateGeometryTable(IRenderSystem* renderSystem, iAllocator* allocator)
 	{
 		GeometryTable.Handles.Initiate(allocator);
-		GeometryTable.Handle = Vector<TriMeshHandle>(allocator);
-		GeometryTable.Geometry = Vector<TriMesh>(allocator);
-		GeometryTable.ReferenceCounts = Vector<size_t>(allocator);
-		GeometryTable.Guids = Vector<GUID_t>(allocator);
-		GeometryTable.GeometryIDs = Vector<const char*>(allocator);
-		GeometryTable.FreeList = Vector<size_t>(allocator);
+		GeometryTable.Handle			= Vector<TriMeshHandle>(allocator);
+		GeometryTable.Geometry			= Vector<TriMesh>(allocator);
+		GeometryTable.ReferenceCounts	= Vector<size_t>(allocator);
+		GeometryTable.Guids				= Vector<GUID_t>(allocator);
+		GeometryTable.GeometryIDs		= Vector<const char*>(allocator);
+		GeometryTable.FreeList			= Vector<size_t>(allocator);
 		GeometryTable.allocator			= allocator;
 		GeometryTable.renderSystem		= renderSystem;
 	}
@@ -470,7 +470,7 @@ namespace FlexKit
 	{
 		for (auto view : views)
 		{
-			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
+			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::TANGENT)
 				return true;
 		}
 
@@ -485,7 +485,7 @@ namespace FlexKit
 	{
 		for (auto view : views)
 		{
-			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::NORMAL)
 				return true;
 		}
 
@@ -500,7 +500,7 @@ namespace FlexKit
 	{
 		for (auto view : views)
 		{
-			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::NORMAL)
 				return view;
 		}
 
@@ -515,7 +515,7 @@ namespace FlexKit
 	{
 		for (auto view : views)
 		{
-			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::INDEX)
 				return view;
 		}
 
@@ -530,7 +530,7 @@ namespace FlexKit
 	{
 		for (auto view : views)
 		{
-			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
+			if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::POSITION)
 				return view;
 		}
 
@@ -640,7 +640,7 @@ namespace FlexKit
 
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
-			if( Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(*GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -667,7 +667,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(*GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -711,7 +711,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(*GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -738,7 +738,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 
-			if(Asset2TriMesh(GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(*GeometryTable.renderSystem, handle, RHandle, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -777,7 +777,7 @@ namespace FlexKit
 			GeometryTable.Handle.push_back			(Handle);
 
 
-			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(*GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= (index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;
@@ -794,7 +794,7 @@ namespace FlexKit
 
 			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			if(Buffer2TriMesh(GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
+			if(Buffer2TriMesh(*GeometryTable.renderSystem, handle, buffer, bufferSize, GeometryTable.allocator, &GeometryTable.Geometry[Index]))
 			{
 				GeometryTable.Handles[Handle]			= (FlexKit::index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= Blob->header.ID;

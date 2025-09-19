@@ -6917,7 +6917,7 @@ namespace FlexKit
 
 		_UpdateSubResourceByUploadQueue(this, queue, resource, &desc);
 
-		Textures.SetLayout(handle, DeviceLayout_Common);
+		Textures.SetLayout(handle, DeviceLayout::Common);
 	}
 
 
@@ -7402,7 +7402,7 @@ namespace FlexKit
 			SETDEBUGNAME(Counter, "StreamOutCounter" );
 		}
 
-		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceLayout_Common);
+		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceLayout::Common);
 	}
 
 
@@ -9128,7 +9128,7 @@ namespace FlexKit
 
 		for (size_t itr = 0; itr < 3; ++itr)
 		{
-			newResEntry.layouts[itr] = DeviceLayout_Common;
+			newResEntry.layouts[itr] = DeviceLayout::Common;
 			newResEntry.resourceLocks[itr] = 0;
 			RS->pDevice->CreateQueryHeap(
 				&heapDesc,
@@ -11946,7 +11946,7 @@ namespace FlexKit
 		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
 		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
-		texture_desc.initialLayout = DeviceLayout_Common;
+		texture_desc.initialLayout = DeviceLayout::Common;
 
 		auto textureHandle = RS->CreateGPUResource(texture_desc);
 		RS->UploadTexture(textureHandle, handle, buffer, resourceCount);
@@ -11964,7 +11964,7 @@ namespace FlexKit
 		FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
 
 		auto textureDesc			= GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)MIPCount, arrayCount);
-		textureDesc.initialLayout	= DeviceLayout_Common;
+		textureDesc.initialLayout	= DeviceLayout::Common;
 
 		auto textureHandle = RS->CreateGPUResource(textureDesc);
 		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);

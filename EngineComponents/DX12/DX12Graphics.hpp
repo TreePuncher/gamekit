@@ -143,8 +143,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		switch (layout)
 		{
-		case DeviceLayout_ShaderResource:
-			return DeviceLayout_Common;
+		case DeviceLayout::ShaderResource:
+			return DeviceLayout::Common;
 		default:
 			return layout;
 		}
@@ -289,73 +289,73 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	{
 		switch (layout)
 		{
-		case DeviceLayout_Common:
+		case DeviceLayout::Common:
 			return D3D12_BARRIER_LAYOUT_COMMON;
-		case DeviceLayout_Present:
+		case DeviceLayout::Present:
 			return D3D12_BARRIER_LAYOUT_PRESENT;
-		case DeviceLayout_GenericRead:
+		case DeviceLayout::GenericRead:
 			return D3D12_BARRIER_LAYOUT_GENERIC_READ;
-		case DeviceLayout_RenderTarget:
+		case DeviceLayout::RenderTarget:
 			return D3D12_BARRIER_LAYOUT_RENDER_TARGET;
-		case DeviceLayout_UnorderedAccess:
+		case DeviceLayout::UnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS;
-		case DeviceLayout_DepthStencilWrite:
+		case DeviceLayout::DepthStencilWrite:
 			return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE;
-		case DeviceLayout_DepthStencilRead:
+		case DeviceLayout::DepthStencilRead:
 			return D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ;
-		case DeviceLayout_ShaderResource:
+		case DeviceLayout::ShaderResource:
 			return D3D12_BARRIER_LAYOUT_SHADER_RESOURCE;
-		case DeviceLayout_CopySrc:
+		case DeviceLayout::CopySrc:
 			return D3D12_BARRIER_LAYOUT_COPY_SOURCE;
-		case DeviceLayout_CopyDst:
+		case DeviceLayout::CopyDst:
 			return D3D12_BARRIER_LAYOUT_COPY_DEST;
-		case DeviceLayout_ResolveSrc:
+		case DeviceLayout::ResolveSrc:
 			return D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE;
-		case DeviceLayout_ResolveDst:
+		case DeviceLayout::ResolveDst:
 			return D3D12_BARRIER_LAYOUT_RESOLVE_DEST;
-		case DeviceLayout_ShadingRateSrc:
+		case DeviceLayout::ShadingRateSrc:
 			return D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE;
-		case DeviceLayout_VideoDecodeRead:
+		case DeviceLayout::VideoDecodeRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ;
-		case DeviceLayout_DecodeWrite:
+		case DeviceLayout::DecodeWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE;
-		case DeviceLayout_ProcessRead:
+		case DeviceLayout::ProcessRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ;
-		case DeviceLayout_ProcessWrite:
+		case DeviceLayout::ProcessWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE;
-		case DeviceLayout_EncodeRead:
+		case DeviceLayout::EncodeRead:
 			return D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ;
-		case DeviceLayout_EncodeWrite:
+		case DeviceLayout::EncodeWrite:
 			return D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE;
-		case DeviceLayout_DirectQueueCommon:
+		case DeviceLayout::DirectQueueCommon:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON;
-		case DeviceLayout_DirectQueueGenericRead:
+		case DeviceLayout::DirectQueueGenericRead:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ;
-		case DeviceLayout_DirectQueueUnorderedAccess:
+		case DeviceLayout::DirectQueueUnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS;
-		case DeviceLayout_DirectQueueShaderResource:
+		case DeviceLayout::DirectQueueShaderResource:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE;
-		case DeviceLayout_DirectQueueCopySrc:
+		case DeviceLayout::DirectQueueCopySrc:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE;
-		case DeviceLayout_DirectQueueCopyDst:
+		case DeviceLayout::DirectQueueCopyDst:
 			return D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST;
-		case DeviceLayout_ComputeQueueCommon:
+		case DeviceLayout::ComputeQueueCommon:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON;
-		case DeviceLayout_ComputeQueueGenericRead:
+		case DeviceLayout::ComputeQueueGenericRead:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ;
-		case DeviceLayout_ComputeQueueUnorderedAccess:
+		case DeviceLayout::ComputeQueueUnorderedAccess:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS;
-		case DeviceLayout_ComputeQueueShaderResource:
+		case DeviceLayout::ComputeQueueShaderResource:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE;
-		case DeviceLayout_ComputeQueueCopySrc:
+		case DeviceLayout::ComputeQueueCopySrc:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE;
-		case DeviceLayout_ComputeQueueCopyDst:
+		case DeviceLayout::ComputeQueueCopyDst:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
-		case DeviceLayout_VideoQueueCommon:
+		case DeviceLayout::VideoQueueCommon:
 			return D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
-		case DeviceLayout_Undefined:
+		case DeviceLayout::Undefined:
 			return D3D12_BARRIER_LAYOUT_UNDEFINED;
-		case DeviceLayout_Unknown:
+		case DeviceLayout::Unknown:
 		default:
 			DebugBreak();
 		};
@@ -2702,7 +2702,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void DiscardResource(ResourceHandle resource) final;
 
 		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) final;
-		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::DeviceLayout_Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) final;
+		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) final;
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) final;
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) final;
 		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) final;

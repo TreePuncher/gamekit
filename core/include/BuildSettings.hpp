@@ -240,9 +240,9 @@ template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 #if WIN32
 #define NOMINMAX
 #define WINDOWS_LEAN_AND_MEAN
-//#include <Windows.h>
-//#include <Windowsx.h>
-//#include <debugapi.h>
+#include <Windows.h>
+#include <Windowsx.h>
+#include <debugapi.h>
 
 #ifdef GetNextSibling
 #undef GetNextSibling

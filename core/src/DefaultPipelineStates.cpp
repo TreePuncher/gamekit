@@ -1,7 +1,5 @@
-#include "CoreSceneObjects.hpp"
 #include "DefaultPipelineStates.hpp"
 #include "RenderSystemInterface.hpp"
-#include "../include/DX12Graphics.hpp"
 
 
 namespace FlexKit
@@ -47,6 +45,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTexturedTriStatePSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",			"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS.LoadShader("DrawRectTextured",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -88,6 +87,8 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawRectTextured");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+		return {};
 	}
 
 
@@ -96,6 +97,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateTexturedTriStateDEBUGPSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto DrawRectVShader = RS.LoadShader("VS",	"vs_6_0", "assets\\shaders\\temp.hlsl");
 		auto DrawRectPShader = RS.LoadShader("PS",	"ps_6_0", "assets\\shaders\\temp.hlsl");
@@ -137,6 +139,8 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawTextured");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+		return {};
 	}
 
 
@@ -145,6 +149,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateDrawLineStatePSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto DrawRectVShader = RS.LoadShader("DrawRect_VS",	"vs_6_0",	"assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS.LoadShader("DrawRect",		"ps_6_0",	"assets\\shaders\\pshader.hlsl");
@@ -186,6 +191,8 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawLine");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+		return {};
 	}
 
 
@@ -201,6 +208,7 @@ namespace FlexKit
 	*/
 	LoadPipelineStateRes CreateDraw2StatePSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto DrawRectVShader = RS.LoadShader("V10Main",		"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS.LoadShader("DrawRect",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -244,6 +252,9 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "Draw2");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+
+		return {};
 	}
 
 
@@ -252,6 +263,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes CreateDrawTri3DStatePSO(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto DrawRectVShader = RS.LoadShader("V11Main",				"vs_6_0", "assets\\shaders\\vshader.hlsl");
 		auto DrawRectPShader = RS.LoadShader("DrawFlatTriangle",	"ps_6_0", "assets\\shaders\\pshader.hlsl");
@@ -295,6 +307,9 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawMeshFlat");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+
+#endif
+		return {};
 	}
 
 
@@ -303,6 +318,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes LoadOcclusionState(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		Shader VShader = RS.LoadShader("VMain", "vs_6_0", "assets\\shaders\\VShader.hlsl" );
 
@@ -342,6 +358,8 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawOcclusion");
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
+#endif
+		return {};
 	}
 
 
@@ -506,6 +524,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes LoadClearRenderTarget_RG32(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& renderSystem = static_cast<RenderSystem&>(irs);
 
 		auto VShader = renderSystem.LoadShader("FullscreenQuad", "vs_6_0", "assets\\shaders\\FullscreenQuad.hlsl");
@@ -548,6 +567,9 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ClearRenderTargetUINT2");
 
 		return { PSO, renderSystem.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+
+		return {};
 	}
 
 

@@ -417,8 +417,6 @@ namespace FlexKit
 
 	Vector<TextureBuffer>		LoadCubeMapAsset	(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator*);
 
-	TextureSet*		LoadTextureSet	 (GUID_t ID, iAllocator* Memory);
-
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 
 	LoadFontResult	LoadFontAsset	(const char* file, const char* dir, IRenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );

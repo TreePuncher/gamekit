@@ -2,6 +2,7 @@
 #include "Assets.hpp"
 #include "KeyValueIds.hpp"
 #include "physicsutilities.hpp"
+#include "Scene.hpp"
 #include "SceneLoadingContext.hpp"
 #include "TriggerComponent.hpp"
 #include "TriggerSlotIDs.hpp"

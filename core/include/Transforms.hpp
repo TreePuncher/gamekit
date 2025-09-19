@@ -1,30 +1,4 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2023 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-#ifndef TRANSFORMS_H
-#define TRANSFORMS_H
-
+#pragma once
 #include "MathUtilities.hpp"
 #include "Handle.hpp"
 #include "Components.hpp"
@@ -134,61 +108,60 @@ namespace FlexKit
 	/************************************************************************************************/
 	// TODO: add no except where applicable
 
-	FLEXKITAPI uint16_t	_SNHandleToIndex	(NodeHandle Node);
-	FLEXKITAPI void		_SNSetHandleIndex	(NodeHandle Node, uint16_t index);
+	uint16_t		_SNHandleToIndex			(NodeHandle Node);
+	void			_SNSetHandleIndex			(NodeHandle Node, uint16_t index);
 
-	FLEXKITAPI void			InitiateSceneNodeBuffer		( iAllocator* persistent );
-	FLEXKITAPI void			SortNodes					( StackAllocator* Temp );
-	FLEXKITAPI void			ReleaseNode					( NodeHandle Node );
+	void			InitiateSceneNodeBuffer		(iAllocator* persistent);
+	void			SortNodes					(StackAllocator* Temp);
+	void			ReleaseNode					(NodeHandle Node);
 
-	FLEXKITAPI float3		LocalToGlobal				( NodeHandle Node, float3 POS);
+	float3			LocalToGlobal				(NodeHandle Node, float3 POS);
 
-	FLEXKITAPI LT_Entry		GetLocal					( NodeHandle Node );
-	FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
-	FLEXKITAPI float4x4		GetWT						( NodeHandle Node );
-	FLEXKITAPI float4x4		GetLT						( NodeHandle Node );
-	FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
-	FLEXKITAPI Quaternion	GetOrientation				( NodeHandle Node );
-	FLEXKITAPI Quaternion	GetOrientationLocal			( NodeHandle Node );
-	FLEXKITAPI float3		GetPositionW				( NodeHandle Node );
-	FLEXKITAPI float3		GetPositionL				( NodeHandle Node );
-	FLEXKITAPI NodeHandle	GetNewNode					();
-	FLEXKITAPI NodeHandle	GetZeroedNode				();
-	FLEXKITAPI bool			GetFlag						( NodeHandle Node,	size_t f );
-	FLEXKITAPI uint32_t		GetFlags					( NodeHandle Node);
-	FLEXKITAPI NodeHandle	GetParentNode				( NodeHandle Node );
+	LT_Entry		GetLocal					(NodeHandle Node);
+	float3			GetLocalScale				(NodeHandle Node);
+	float4x4		GetWT						(NodeHandle Node);
+	float4x4		GetLT						(NodeHandle Node);
+	Quaternion		GetOrientation				(NodeHandle Node);
+	Quaternion		GetOrientationLocal			(NodeHandle Node);
+	float3			GetPositionW				(NodeHandle Node);
+	float3			GetPositionL				(NodeHandle Node);
+	NodeHandle		GetNewNode					();
+	NodeHandle		GetZeroedNode				();
+	bool			GetFlag						(NodeHandle Node, size_t f);
+	uint32_t		GetFlags					(NodeHandle Node);
+	NodeHandle		GetParentNode				(NodeHandle Node);
 
-	FLEXKITAPI void			SetFlag						( NodeHandle Node,	uint32_t f );
-	FLEXKITAPI void			SetLocal					( NodeHandle Node,	LT_Entry* __restrict In, uint32_t extraFlags = 0);
-	FLEXKITAPI void			SetOrientation				( NodeHandle Node,	const Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetOrientationL				( NodeHandle Node,	const Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetParentNode				( NodeHandle Parent, NodeHandle Node );
-	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetWT						( NodeHandle Node,	const float4x4  in); // Set World Transform
-	FLEXKITAPI void			SetScale					( NodeHandle Node,	float3 In );
+	void			SetFlag						(NodeHandle Node,	uint32_t f );
+	void			SetLocal					(NodeHandle Node,	LT_Entry* __restrict In, uint32_t extraFlags = 0);
+	void			SetOrientation				(NodeHandle Node,	const Quaternion& In);	// Sets World Orientation
+	void			SetOrientationL				(NodeHandle Node,	const Quaternion& In);	// Sets World Orientation
+	void			SetParentNode				(NodeHandle Parent, NodeHandle Node);
+	void			SetPositionW				(NodeHandle Node,	float3 in);
+	void			SetPositionL				(NodeHandle Node,	float3 in);
+	void			SetWT						(NodeHandle Node,	const float4x4& in); // Set World Transform
+	void			SetScale					(NodeHandle Node,	float3 In);
 
-	FLEXKITAPI void			Scale						( NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateLocal				( NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateWorld				( NodeHandle Node,	float3 In );
-	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool		UpdateTransforms();
+	void			Scale						(NodeHandle Node,	float3 In);
+	void			TranslateLocal				(NodeHandle Node,	float3 In);
+	void			TranslateWorld				(NodeHandle Node,	float3 In);
+	NodeHandle		ZeroNode					(NodeHandle Node );
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void Yaw		(NodeHandle Node,	float r );
-	FLEXKITAPI void Roll	(NodeHandle Node,	float r );
-	FLEXKITAPI void Pitch	(NodeHandle Node,	float r );
+	bool		UpdateTransforms();
 
 
-	FLEXKITAPI  void UpdateNode(NodeHandle Node);
+	/************************************************************************************************/
+
+
+	void Yaw		(NodeHandle Node,	float r );
+	void Roll	(NodeHandle Node,	float r );
+	void Pitch	(NodeHandle Node,	float r );
+
+
+    void UpdateNode(NodeHandle Node);
 
 	/************************************************************************************************/
 
@@ -360,4 +333,26 @@ namespace FlexKit
 }	/************************************************************************************************/
 
 
-#endif
+/**********************************************************************
+
+Copyright (c) 2015 - 2023 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

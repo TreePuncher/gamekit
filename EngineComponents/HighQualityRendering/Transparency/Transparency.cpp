@@ -1,7 +1,9 @@
-#include "FrameGraph.hpp"
-#include "Materials.hpp"
-#include "Transparency.hpp"
-#include "WorldRender.hpp"
+#include <CameraComponent.hpp>
+#include <FrameGraph.hpp>
+#include <Materials.hpp>
+#include <RenderSystemInterface.hpp>
+#include <Transparency.hpp>
+#include <WorldRender.hpp>
 
 
 namespace FlexKit
@@ -66,7 +68,7 @@ namespace FlexKit
 		            { "POSITION",	0, DeviceFormat::R32G32B32_FLOAT,	0, 0,	EInputClassification::PerVertex, 0 },
 			        { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT,	1, 0,	EInputClassification::PerVertex, 0 },
 			        { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT,	2, 0,	EInputClassification::PerVertex, 0 },
-			        { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	3, 0,	EInputClassification::PerVertex, 0 },
+			        { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,		3, 0,	EInputClassification::PerVertex, 0 },
 				},
 		        .count	= 4 }
 			)
@@ -84,31 +86,27 @@ namespace FlexKit
             .AddDepthStencilFormat(DeviceFormat::D32_FLOAT)
             .AddBlendState(
 				BlendState{
+					.independentBlendEnable = true,
 					.renderTarget = {
 						RenderTargetStateDesc{
 						    .blendEnable	= true,
 							.srcBlend		= EBlend::INV_SRC_ALPHA,
-							.blendOp		= EBlendOP::ADD,
-							.blendOpAlpha	= EBlendOP::ADD,
-
-							.srcBlendAlpha	= EBlend::ONE,
-
 							.dstBlend		= EBlend::SRC_ALPHA,
+							.blendOp		= EBlendOP::ADD,
+							.srcBlendAlpha	= EBlend::ONE,
 							.dstBlendAlpha	= EBlend::ONE,
+							.blendOpAlpha	= EBlendOP::ADD,
 						},
 						RenderTargetStateDesc{
 						    .blendEnable	= true,
 							.srcBlend		= EBlend::ZERO,
-							.blendOp		= EBlendOP::ADD,
-							.blendOpAlpha	= EBlendOP::ADD,
-
-							.srcBlendAlpha	= EBlend::ZERO,
-
 							.dstBlend		= EBlend::INV_SRC_ALPHA,
+							.blendOp		= EBlendOP::ADD,
+							.srcBlendAlpha	= EBlend::ZERO,
 							.dstBlendAlpha	= EBlend::INV_SRC_ALPHA,
+							.blendOpAlpha	= EBlendOP::ADD,
 						},
 					},
-					.independentBlendEnable = true,
 				})
 	        .Build(rs);
 		/*
@@ -176,6 +174,7 @@ namespace FlexKit
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
         */
+	    return {};
 	}
 
 
@@ -207,20 +206,18 @@ namespace FlexKit
             .AddDepthStencilFormat(DeviceFormat::D32_FLOAT)
             .AddBlendState(
 				BlendState{
+					.independentBlendEnable = true,
 					.renderTarget = {
 						RenderTargetStateDesc{
 						    .blendEnable	= true,
 							.srcBlend		= EBlend::INV_SRC_ALPHA,
-							.blendOp		= EBlendOP::ADD,
-							.blendOpAlpha	= EBlendOP::ADD,
-
-							.srcBlendAlpha	= EBlend::ONE,
-
 							.dstBlend		= EBlend::SRC_ALPHA,
+							.blendOp		= EBlendOP::ADD,
+							.srcBlendAlpha	= EBlend::ONE,
 							.dstBlendAlpha	= EBlend::ONE,
+						    .blendOpAlpha	= EBlendOP::ADD,
 						},
 					},
-					.independentBlendEnable = true,
 				})
 	        .Build(RS);
 	    /*
@@ -267,6 +264,7 @@ namespace FlexKit
 
 		return { PSO, static_cast<RenderSystem&>(RS).Library(ROOTLIBRARYSIG::RSDefault) };
         */
+		return {};
 	}
 
 
@@ -411,7 +409,7 @@ namespace FlexKit
 				ctx.ClearRenderTarget(resources.GetResource(data.counterObject), float4{ 1, 1, 1, 1 });
 
 				auto& passes					= data.drawList.GetData().passes;
-				std::span<const DrawEntry> drawList;
+				std::span<const BrushEntry> drawList;
 
 				if (auto res = std::find_if(passes.begin(), passes.end(),
 					[](auto& pass) -> bool
@@ -484,10 +482,10 @@ namespace FlexKit
 								triMesh,
 								lodLevel,
 								{
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-									VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+									VERTEXBUFFER_TYPE::POSITION,
+									VERTEXBUFFER_TYPE::NORMAL,
+									VERTEXBUFFER_TYPE::TANGENT,
+									VERTEXBUFFER_TYPE::UV,
 								}
 							);
 						}

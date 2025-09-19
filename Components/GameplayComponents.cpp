@@ -18,6 +18,7 @@ void PortalFactory::OnCreateView(
 	const size_t			bufferSize,
 	FlexKit::iAllocator*	allocator)
 {
+#if 0
 	PortalComponentBlob portal;
 	memcpy(&portal, buffer, sizeof(portal));
 
@@ -78,6 +79,7 @@ void PortalFactory::OnCreateView(
 		});
 
 	triggers->Connect(ActivateTrigger, PortalSlot);
+#endif
 }
 
 

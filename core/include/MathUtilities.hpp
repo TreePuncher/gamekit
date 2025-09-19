@@ -2988,15 +2988,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI int			Exp( int32_t Number, uint32_t exp );
-	FLEXKITAPI Quaternion	MatrixToQuat(const Matrix<4,4>& );
-	FLEXKITAPI void			NumberToString( int32_t n, std::string& _Dest );
-	FLEXKITAPI int			Testing();
+	int			Exp( int32_t Number, uint32_t exp );
+	Quaternion	MatrixToQuat(const Matrix<4,4>& );
+	void			NumberToString( int32_t n, std::string& _Dest );
+	int			Testing();
 
-	FLEXKITAPI void printfloat2(const float2& in);
-	FLEXKITAPI void printfloat3(const float3& in);
-	FLEXKITAPI void printfloat4(const float4& in);
-	FLEXKITAPI void printQuaternion(const Quaternion in);
+
+	inline float3 GetTranslation(const float4x4&)
+	{
+		return float3{ 0, 0, 0 };
+	}
+
+	void printfloat2(const float2& in);
+	void printfloat3(const float3& in);
+	void printfloat4(const float4& in);
+	void printQuaternion(const Quaternion in);
 
 
 	inline float dot(const float3 lhs, const float3 rhs)

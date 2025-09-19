@@ -1,6 +1,7 @@
 #include "Player.hpp"
 #include "level.hpp"
 
+#if 0
 #include <MemoryUtilities.hpp>
 #include <PhysicsUtilities.hpp>
 #include <TriggerComponent.hpp>
@@ -520,7 +521,7 @@ void Player::OnCrouchRelease()
 	}
 }
 
-
+#endif
 /**********************************************************************
 
 Copyright (c) 2019-2023 Robert May

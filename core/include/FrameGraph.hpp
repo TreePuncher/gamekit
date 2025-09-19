@@ -4,7 +4,6 @@
 #include "Containers.hpp"
 #include "Components.hpp"
 #include "DefaultPipelineStates.hpp"
-#include "GraphicsComponents.hpp"
 #include "PushBuffers.hpp"
 #include "RenderSystemInterface.hpp"
 #include "TriMeshResource.hpp"
@@ -89,7 +88,7 @@ namespace FlexKit
 
 		uint32_t						lastSubmission	= -1;
 		DeviceAccessState				access			= DeviceAccessState::DASCommon;
-		DeviceLayout					layout			= DeviceLayout_Unknown;
+		DeviceLayout					layout			= DeviceLayout::Unknown;
 
 		TextureDimension				dimensions		= TextureDimension::Unknown;
 		VirtualResourceState			virtualState	= VirtualResourceState::NonVirtual;
@@ -110,7 +109,7 @@ namespace FlexKit
 		static FrameObject PixelShaderResourceObject(ResourceHandle resource, TextureDimension dimensions, iAllocator& allocator)
 		{
 			FrameObject shaderResource;
-			shaderResource.layout			= DeviceLayout::DeviceLayout_ShaderResource;
+			shaderResource.layout			= DeviceLayout::ShaderResource;
 			shaderResource.type				= OT_RenderTarget;
 			shaderResource.shaderResource	= resource;
 			shaderResource.dimensions		= dimensions;
@@ -123,7 +122,7 @@ namespace FlexKit
 		static FrameObject RenderTargetObject(ResourceHandle resource, iAllocator& allocator)
 		{
 			FrameObject renderTarget;
-			renderTarget.layout			= DeviceLayout::DeviceLayout_RenderTarget;
+			renderTarget.layout			= DeviceLayout::RenderTarget;
 			renderTarget.type			= OT_RenderTarget;
 			renderTarget.shaderResource = resource;
 			renderTarget.dimensions		= TextureDimension::Texture2D;
@@ -133,7 +132,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject BackBufferObject(ResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_RenderTarget)
+		static FrameObject BackBufferObject(ResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::RenderTarget)
 		{
 			FrameObject renderTarget;
 			renderTarget.layout			= initialLayout;
@@ -196,7 +195,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject SOBufferObject(SOResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_Common)
+		static FrameObject SOBufferObject(SOResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::Common)
 		{
 			FrameObject Streamout;
 			Streamout.layout		= initialLayout;
@@ -209,7 +208,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject QueryObject(QueryHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::DeviceLayout_Common)
+		static FrameObject QueryObject(QueryHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::Common)
 		{
 			FrameObject query;
 			query.layout		= initialLayout;
@@ -231,7 +230,7 @@ namespace FlexKit
 			FrameObject virtualObject;
 			virtualObject.virtualState		= VirtualResourceState::Virtual_Null;
 			virtualObject.access			= DeviceAccessState::DASNOACCESS;
-			virtualObject.layout			= DeviceLayout::DeviceLayout_Common;
+			virtualObject.layout			= DeviceLayout::Common;
 			virtualObject.type				= OT_Virtual;
 			virtualObject.lastUsers			= Vector<FrameGraphNodeHandle>{ allocator };
 
@@ -336,7 +335,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void AddRenderTarget(ResourceHandle handle, DeviceLayout layout = DeviceLayout_Common)
+		void AddRenderTarget(ResourceHandle handle, DeviceLayout layout = DeviceLayout::Common)
 		{
 			objects.push_back(
 				FrameObject::BackBufferObject(handle, *allocator, layout));
@@ -811,7 +810,7 @@ namespace FlexKit
 			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
 
 			DebugBreak();
-			if (res.access != DASVERTEXBUFFER && res.layout != DeviceLayout_GenericRead) 
+			if (res.access != DASVERTEXBUFFER && res.layout != DeviceLayout::GenericRead) 
 				ctx.AddStreamOutBarrier(SOHandle, res.access, DASVERTEXBUFFER);
 
 			res.access = DASVERTEXBUFFER;
@@ -864,73 +863,73 @@ namespace FlexKit
 
 		ResourceHandle CopyDest(FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASCopyDest, DeviceLayout::DeviceLayout_DirectQueueCopyDst, ctx, before, after);
+			return Transition(resource, DASCopyDest, DeviceLayout::DirectQueueCopyDst, ctx, before, after);
 		}
 
 		ResourceHandle CopySrc(FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASCopySrc, DeviceLayout::DeviceLayout_DirectQueueCopySrc, ctx, before, after);
+			return Transition(resource, DASCopySrc, DeviceLayout::DirectQueueCopySrc, ctx, before, after);
 		}
 
 		ResourceHandle UAV(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASUAV, DeviceLayout::DeviceLayout_UnorderedAccess, ctx, before, after);
+			return Transition(resource, DASUAV, DeviceLayout::UnorderedAccess, ctx, before, after);
 		}
 
 		ResourceHandle AccelerationStructure(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASACCELERATIONSTRUCTURE_READ, DeviceLayout::DeviceLayout_Common, ctx, before, after);
+			return Transition(resource, DASACCELERATIONSTRUCTURE_READ, DeviceLayout::Common, ctx, before, after);
 		}
 
 		ResourceHandle RenderTarget(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASRenderTarget, DeviceLayout::DeviceLayout_RenderTarget, ctx, before, after);
+			return Transition(resource, DASRenderTarget, DeviceLayout::RenderTarget, ctx, before, after);
 		}
 
 		ResourceHandle PixelShaderResource(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASPixelShaderResource, DeviceLayout::DeviceLayout_DirectQueueShaderResource, ctx, before, after);
+			return Transition(resource, DASPixelShaderResource, DeviceLayout::DirectQueueShaderResource, ctx, before, after);
 		}
 
 		ResourceHandle DepthTarget(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASDEPTHBUFFERWRITE, DeviceLayout::DeviceLayout_DepthStencilWrite, ctx, before, after);
+			return Transition(resource, DASDEPTHBUFFERWRITE, DeviceLayout::DepthStencilWrite, ctx, before, after);
 		}
 
 		ResourceHandle DepthRead(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASDEPTHBUFFERREAD, DeviceLayout::DeviceLayout_DepthStencilRead, ctx, before, after);
+			return Transition(resource, DASDEPTHBUFFERREAD, DeviceLayout::DepthStencilRead, ctx, before, after);
 		}
 
 		ResourceHandle NonPixelShaderResource(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::DeviceLayout_ShaderResource, ctx, before, after);
+			return Transition(resource, DASNonPixelShaderResource, DeviceLayout::ShaderResource, ctx, before, after);
 		}
 
 		ResourceHandle IndirectArgs(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
+			return Transition(resource, DASINDIRECTARGS, DeviceLayout::DirectQueueGenericRead, ctx, before, after);
 		}
 
 		ResourceHandle VertexBuffer(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_DirectQueueGenericRead, ctx, before, after);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DirectQueueGenericRead, ctx, before, after);
 		}
 
 		ResourceHandle ResolveDst(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::ResolveDst, ctx, before, after);
 		}
 
 		ResourceHandle ResolveSrc(const FrameResourceHandle resource, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
-			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveSrc, ctx, before, after);
+			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::ResolveSrc, ctx, before, after);
 		}
 
 		ID3D12Resource* ResolveDst(const ReadBackResourceHandle resource, IDirectContext& ctx) const
 		{
 			return renderSystem().GetDeviceResource(resource);
-			//return Transition(resource, DASVERTEXBUFFER, DeviceLayout::DeviceLayout_ResolveDst, ctx, before, after);
+			//return Transition(resource, DASVERTEXBUFFER, DeviceLayout::ResolveDst, ctx, before, after);
 		}
 
 		std::pair<DeviceAccessState, DeviceLayout> GetObjectStates(FrameResourceHandle handle) const
@@ -1067,7 +1066,7 @@ namespace FlexKit
 			FrameResourceHandle		IN_handle			= InvalidHandle,
 			FrameGraphNodeHandle	IN_sourceObject		= InvalidHandle,
 			DeviceAccessState		IN_neededAccess		= DeviceAccessState::DASUNKNOWN,
-			DeviceLayout			IN_neededLayout		= DeviceLayout::DeviceLayout_Unknown) :
+			DeviceLayout			IN_neededLayout		= DeviceLayout::Unknown) :
 				source			{ IN_sourceObject },
 				neededAccess	{ IN_neededAccess },
 				neededLayout	{ IN_neededLayout },
@@ -1463,7 +1462,7 @@ namespace FlexKit
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
-		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+		const DesciptorHeapLayout&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
 		IRenderSystem&	GetRenderSystem();
 		FrameResources& GetResources() { return *resources; }
@@ -1488,7 +1487,7 @@ namespace FlexKit
 			for(auto& writer : frameObject.lastUsers)
 				inputNodes.push_back(writer);
 
-			if (layout == DeviceLayout_Unknown)
+			if (layout == DeviceLayout::Unknown)
 				layout = frameObject.layout;
 
 			InputObject inputObject{ node.handle, frameResourceHandle, frameObject.access, frameObject.layout };
@@ -1553,7 +1552,7 @@ namespace FlexKit
 			for (auto& user : frameObject.lastUsers)
 				inputNodes.push_back(user);
 
-			if (layout == DeviceLayout_Unknown)
+			if (layout == DeviceLayout::Unknown)
 				layout = frameObject.layout;
 
 			if (!CheckCompatibleLayout(frameObject.layout, layout) || !CheckCompatibleAccessState(frameObject.layout, frameObject.access))
@@ -2409,7 +2408,7 @@ namespace FlexKit
 				data.resources.handles.push_back(resource);
 			}
 
-			data.scratchPad = builder.AcquireResourceHandle(DASUAV, DeviceLayout_UnorderedAccess);
+			data.scratchPad = builder.AcquireResourceHandle(DASUAV, DeviceLayout::UnorderedAccess);
 
 			builder.BuildNode(this);
 

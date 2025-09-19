@@ -1,5 +1,6 @@
 #include "BuildSettings.hpp"
 #include "RenderSystemInterface.hpp"
+#include "TextureUtilities.hpp"
 #include <new>
 
 namespace FlexKit
@@ -171,6 +172,16 @@ namespace FlexKit
 		return impl;
 	}
 
+	LoadPipelineStateRes PipelineBuilder::Build(IRenderSystem& renderSystem)
+	{
+		return {};
+	}
+
+	LoadPipelineStateRes PipelineBuilder::BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size)
+	{
+		return {};
+	}
+
 	IPipelineBuilderImpl& PipelineBuilder::GetImpl()
 	{
 		return *std::launder<IPipelineBuilderImpl>((IPipelineBuilderImpl*)implSpace);
@@ -180,7 +191,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(IContext&, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeap::DescriptorHeap(IContext&, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
 	{
 	}
 
@@ -202,19 +213,19 @@ namespace FlexKit
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
 	{
 		return *this;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
 		return *this;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init2(IContext& ctx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
 	{
 		return *this;
 	}
@@ -364,7 +375,7 @@ namespace FlexKit
 		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
 		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
-		texture_desc.initialLayout = DeviceLayout_Common;
+		texture_desc.initialLayout = DeviceLayout::Common;
 
 		auto textureHandle = RS.CreateGPUResource(texture_desc);
 		RS.UploadTexture(textureHandle, copyHandle, buffer, resourceCount);
@@ -379,7 +390,7 @@ namespace FlexKit
 		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
 		auto texture_desc = GPUResourceDesc::ShaderResource(buffer[0].WH, format, (uint8_t)resourceCount);
-		texture_desc.initialLayout = DeviceLayout_Common;
+		texture_desc.initialLayout = DeviceLayout::Common;
 
 		auto textureHandle = RS.CreateGPUResource(texture_desc);
 		RS.UploadTexture(textureHandle, copyHandle, buffer, resourceCount);
@@ -405,14 +416,12 @@ namespace FlexKit
 	}
 
 
-	ResourceHandle LoadTexture(RenderSystem& RS, TextureBuffer* Buffer, CopyContextHandle handle, iAllocator* Memout, DeviceFormat format)
+	ResourceHandle LoadTexture(IRenderSystem& RS, TextureBuffer* Buffer, CopyContextHandle handle, iAllocator* Memout, DeviceFormat format)
 	{
 		GPUResourceDesc GPUResourceDesc = GPUResourceDesc::ShaderResource(Buffer->WH, format);
 		GPUResourceDesc.initial = Buffer->Buffer;
-		GPUResourceDesc.initialLayout = DeviceLayout_Common;
+		GPUResourceDesc.initialLayout = DeviceLayout::Common;
 
-		size_t elementSize = GetFormatElementSize(TextureFormat2DXGIFormat(format));
-		size_t ResourceSizes[] = { Buffer->Size };
 
 		auto texture = RS.CreateGPUResource(GPUResourceDesc);
 		SubResourceUpload_Desc desc = {};
@@ -433,7 +442,7 @@ namespace FlexKit
 	}
 
 
-	void UpdateSubResourceByUploadQueue(RenderSystem& RS, CopyContextHandle uploadHandle, ResourceHandle destinationResource, SubResourceUpload_Desc* desc)
+	void UpdateSubResourceByUploadQueue(IRenderSystem& RS, CopyContextHandle uploadHandle, ResourceHandle destinationResource, SubResourceUpload_Desc* desc)
 	{
 		auto& copyCtx = RS.GetCopyContext(uploadHandle);
 

@@ -95,8 +95,7 @@ namespace FlexKit
 
 				const auto offset = blockSize * node->begin;
 
-				if (size == 0)
-					DebugBreak();
+				FK_ASSERT(size > 0);
 
 				return GPURange{
 					.devicePtr	= { gpuBegin + offset },
@@ -106,10 +105,6 @@ namespace FlexKit
 				};
 			}
 		}
-
-#ifdef _DEBUG
-		DebugBreak();
-#endif
 
 		return {};
 	}
