@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GuiUtilities.hpp"
-#include "Graphics.hpp"
 #include "FrameGraph.hpp"
 #include "TextRendering.hpp"
 

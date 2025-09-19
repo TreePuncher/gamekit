@@ -755,7 +755,7 @@ namespace FlexKit
 
 		const uint32_t neededFlags = GetNeededFlags(desc);
 
-		auto allocationSize = resources->renderSystem.GetAllocationSize(desc);
+		auto allocationSize = resources->renderSystem->GetAllocationSize(desc);
 
 		ResourceHandle virtualResource	= InvalidHandle;
 		ResourceHandle overlap			= InvalidHandle;
@@ -765,7 +765,7 @@ namespace FlexKit
 		if (found || reuseableResource != InvalidHandle)
 		{
 			auto reusedResource = resources->objects[reuseableResource].shaderResource;
-			auto deviceResource = resources->renderSystem.GetHeapOffset(reusedResource);
+			auto deviceResource = resources->renderSystem->GetHeapOffset(reusedResource);
 		}
 		else
 		{
@@ -845,7 +845,8 @@ namespace FlexKit
 			barrier.type					= BarrierType::Texture;
 			barrier.texture.layoutBefore	= DeviceLayout_Undefined;
 			barrier.texture.layoutAfter		= layout;
-			barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
+			FK_ASSERT(0);
+			//barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
 		}	break;
 		}
 
@@ -980,7 +981,7 @@ namespace FlexKit
 		virtualObject.pool				= &poolAllocator;
 		virtualObject.resourceFlags		= neededFlags;
 
-		resources->renderSystem.SetDebugName(virtualResource, "Un-named virtual resources");
+		resources->renderSystem->SetDebugName(virtualResource, "Un-named virtual resources");
 
 		auto virtualResourceHandle = FrameResourceHandle{ resources->objects.emplace_back(virtualObject) };
 		resources->objects[virtualResourceHandle].handle = virtualResourceHandle;
@@ -993,7 +994,7 @@ namespace FlexKit
 			outputObject.handle			= virtualResourceHandle;
 
 		//FK_LOG_9("Allocated Resource: %u", Resources->GetObjectResource(virtualResource));
-		resources->renderSystem.SetDebugName(virtualResource, "Virtual Resource");
+		resources->renderSystem->SetDebugName(virtualResource, "Virtual Resource");
 
 
 		context.AddWriteable(outputObject);
@@ -1120,7 +1121,7 @@ namespace FlexKit
 	void FrameGraphNodeBuilder::SetDebugName(FrameResourceHandle handle, const char* debugName)
 	{
 		if (auto res = resources->GetResource(handle); res != InvalidHandle)
-			resources->renderSystem.SetDebugName(res, debugName);
+			resources->renderSystem->SetDebugName(res, debugName);
 	}
 
 
@@ -1129,7 +1130,7 @@ namespace FlexKit
 
 	const DesciptorHeapLayout<16>&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
-		auto rootSig = resources->renderSystem.GetPSORootSignature(State);
+		auto rootSig = resources->renderSystem->GetPSORootSignature(State);
 		return rootSig->GetDescHeap(idx);
 	}
 
@@ -1137,10 +1138,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	IRenderSystem& FrameGraphNodeBuilder::GetRenderSystem() { return resources->renderSystem; }
+	IRenderSystem& FrameGraphNodeBuilder::GetRenderSystem() { return *resources->renderSystem; }
 
 	FrameGraphNodeBuilder::operator FrameResources& () const	{ return *resources; }
-	FrameGraphNodeBuilder::operator IRenderSystem& ()			{ return resources->renderSystem; }
+	FrameGraphNodeBuilder::operator IRenderSystem& ()			{ return *resources->renderSystem; }
 
 
 	/************************************************************************************************/
@@ -1230,7 +1231,7 @@ namespace FlexKit
 		Vector<SubmissionContext>		queuedSubmissions{ threadLocalAllocator };
 		static_vector<WorkBarrier*, 16> barriers;
 
-		const auto tickets = renderSystem.GetSubmissionTicket((uint32_t)submissions.size());
+		const auto tickets = renderSystem->GetSubmissionTicket((uint32_t)submissions.size());
 
 		for(const auto&& [idx, pass] : enumerate(submissions))
 		{
@@ -1323,7 +1324,7 @@ namespace FlexKit
 
 				for (auto& workerTask : workerTaskList)
 				{
-					auto& context = renderSystem.GetDirectCommandList(submissionTicket);
+					auto& context = renderSystem->GetDirectCommandList(submissionTicket);
 					contexts.push_back(&context);
 
 #if USING(DEBUGGRAPHICS)
@@ -1348,12 +1349,12 @@ namespace FlexKit
 
 							// syncing between submissions of the same queue are uneeded, but inter-queue submission is needed.
 							if (prev)
-								renderSystem.SyncDirectTo(prev);
+								renderSystem->SyncDirectTo(prev);
 							//
 							if (contexts.size())
-								renderSystem.Submit(contexts);
+								renderSystem->Submit(contexts);
 							else
-								renderSystem.Signal(submissionTicket);
+								renderSystem->Signal(submissionTicket);
 
 							submissionBarrier.JoinLocal();
 						});
@@ -1387,10 +1388,10 @@ namespace FlexKit
 						FK_LOG_9("Submitting %u", a.sync.syncCounter);
 
 						if (a.prev)
-							renderSystem.SyncDirectTo(a.prev);
+							renderSystem->SyncDirectTo(a.prev);
 
 						if (a.contexts.size())
-							renderSystem.Submit(a.contexts);
+							renderSystem->Submit(a.contexts);
 					}
 				});
 		}
@@ -1398,7 +1399,7 @@ namespace FlexKit
 		if(barriers.size())
 			barriers.front()->JoinLocal();
 
-		renderSystem.EndFrame();
+		renderSystem->EndFrame();
 		UpdateResourceFinalState();
 	}
 
@@ -1470,8 +1471,8 @@ namespace FlexKit
 		struct SubmitData
 		{
 			FrameGraph*		frameGraph;
-			RenderSystem*	renderSystem;
-			RenderWindow*	renderWindow;
+			IRenderSystem*	renderSystem;
+			IRenderWindow*	renderWindow;
 		};
 
 		auto framegraph = this;
@@ -1494,7 +1495,7 @@ namespace FlexKit
 				builder.SetDebugString("Frame Graph Task");
 
 				data.frameGraph		= framegraph;
-				data.renderSystem	= (RenderSystem*)&resources.renderSystem;
+				data.renderSystem	= resources.renderSystem;
 
 				for (auto dependency : globalDependencies)
 					builder.AddInput(*dependency);
@@ -1592,12 +1593,12 @@ namespace FlexKit
 
 				auto nodeIdx = I.lastUsers.back();
 				if(nodes[nodeIdx].executed)
-					resources.renderSystem.SetObjectLayout(shaderResource, layout);
+					resources.renderSystem->SetObjectLayout(shaderResource, layout);
 				else
 				{
 					auto res = nodes[nodeIdx].GetInputObject(I.handle);
 					if (res)
-						resources.renderSystem.SetObjectLayout(shaderResource, res.value().initialLayout);
+						resources.renderSystem->SetObjectLayout(shaderResource, res.value().initialLayout);
 					//else
 					//	DebugBreak();
 				}
@@ -1609,7 +1610,7 @@ namespace FlexKit
 
 				if (I.virtualState == VirtualResourceState::Virtual_Released)
 				{
-					resources.renderSystem.ReleaseResource(I.shaderResource);
+					resources.renderSystem->ReleaseResource(I.shaderResource);
 					resourcesFreed++;
 				}
 			}	break;
@@ -1791,7 +1792,7 @@ namespace FlexKit
 
 	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle pushBuffer)
 	{
-		FG.resources.renderSystem.ResetVertexBuffer(pushBuffer);
+		FG.resources.renderSystem->ResetVertexBuffer(pushBuffer);
 	}
 
 

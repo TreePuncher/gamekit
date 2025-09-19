@@ -1185,7 +1185,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& passes, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator)
+	void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& passes, CameraHandle camera, IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 		struct _ {};
 
@@ -1268,7 +1268,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid, iAllocator* allocator, iAllocator* temp)
+	bool LoadScene(IRenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid, iAllocator* allocator, iAllocator* temp)
 	{
 		bool Available = isAssetAvailable(Guid);
 		if (Available)
@@ -1424,7 +1424,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName, iAllocator* allocator, iAllocator* Temp)
+	bool LoadScene(IRenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName, iAllocator* allocator, iAllocator* Temp)
 	{
 		if (isAssetAvailable(LevelName))
 		{
@@ -1885,6 +1885,15 @@ namespace FlexKit
 		}
 	}
 
+
+	/************************************************************************************************/
+
+
+	AABB VisibilityFields::GetAABB() const
+	{
+		const auto posW = GetPositionW(node);
+		return { posW - boundingSphere.w, posW + boundingSphere.w };
+	}
 
 }	/************************************************************************************************/
 

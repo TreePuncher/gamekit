@@ -63,7 +63,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateParticleMeshInstancedDepthPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateParticleMeshInstancedDepthPSO(IRenderSystem* RS)
 	{
 #if 0
 		auto VShader = RS->LoadShader("ParticleMeshInstanceDepthVS", "vs_6_0", "assets\\shaders\\ParticleShadowMapping.hlsl");

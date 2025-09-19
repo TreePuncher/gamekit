@@ -16,6 +16,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes ShadowMapper::CreateRowSums(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto CShader = RS.LoadShader("RowSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
@@ -29,6 +30,7 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, rootSignature };
+#endif
 	}
 
 
@@ -37,6 +39,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes ShadowMapper::CreateColumnSums(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto CShader = RS.LoadShader("ColumnSumsMain", "cs_6_0", "assets\\shaders\\SACM\\Create2DSAT.hlsl");
 
@@ -50,6 +53,7 @@ namespace FlexKit
 		FK_ASSERT(SUCCEEDED(HR));
 
 		return { PSO, rootSignature };
+#endif
 	}
 
 
@@ -58,6 +62,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes ShadowMapper::CreateShadowMapPass(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto VShader = RS.LoadShader("VS_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS.LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -113,6 +118,7 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ShadowMapPass");
 
 		return { PSO, rootSignature };
+#endif
 	}
 
 
@@ -121,6 +127,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes ShadowMapper::CreateShadowMapAnimatedPass(IRenderSystem& irs, iAllocator&)
 	{
+#if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
 		auto VShader = RS.LoadShader("VS_Skinned_Main", "vs_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
 		auto PShader = RS.LoadShader("PS_Main", "ps_6_0", "assets\\shaders\\CubeMapShadowMapping.hlsl");
@@ -179,6 +186,7 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "ShadowMapAnimatedPass");
 
 		return { PSO, rootSignature };
+#endif
 	}
 
 

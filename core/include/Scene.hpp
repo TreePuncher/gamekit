@@ -1,13 +1,12 @@
 #pragma once
 
 #include "buildsettings.hpp"
-#include "Assets.hpp"
 #include "GraphicsComponents.hpp"
 #include "Materials.hpp"
 
 #include "Handle.hpp"
 #include "AnimationUtilities.hpp" 
-#include "CoreSceneObjects.hpp"
+#include "Brush.hpp"
 #include "DefaultPipelineStates.hpp"
 #include "RuntimeComponentIDs.hpp"
 
@@ -262,11 +261,7 @@ namespace FlexKit
 
 		BoundingSphere	boundingSphere = { 0, 0, 0, 0 }; // model space
 
-		AABB			GetAABB() const
-		{
-			const auto posW = GetPositionW(node);
-			return { posW - boundingSphere.w, posW + boundingSphere.w };
-		}
+		AABB			GetAABB() const;
 	};
 
 
@@ -600,7 +595,7 @@ namespace FlexKit
 
 	ComputeLod_RES ComputeLOD(const Brush& b, const float3 CameraPosition, const float maxZ);
 
-	void PushDraw(GameObject&, const Brush& b, DrawList& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
+	void PushDraw(GameObject&, const Brush& b, BrushDrawList& pvs, const float3 CameraPosition, float maxZ = 10'000.0f);
 
 	struct SceneRayCastResult
 	{
@@ -759,17 +754,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct PassDrawList
+	{
+		PassHandle		pass;
+		BrushDrawList	drawList;
+	};
+
+
 	struct GetDrawListTaskData
 	{
 		CameraHandle	camera;
 		Scene*			scene; // Source Scene
-		DrawList		solid;
-		DrawList		transparent;
+		BrushDrawList	solid;
+		BrushDrawList	transparent;
 
 		UpdateTask*				task;
 		Vector<PassDrawList>	passes;
 
-		std::span<const DrawEntry> GetPass(PassHandle passID) const
+		std::span<const BrushEntry> GetPass(PassHandle passID) const
 		{
 			for (auto& pass : passes)
 			{
@@ -797,18 +799,18 @@ namespace FlexKit
 	FLEXKITAPI void UpdateScenePoseTransform	(Scene* SM );
 	FLEXKITAPI void UpdateShadowCasters			(Scene* SM);
 
-	FLEXKITAPI void					GatherScene(Scene* SM, CameraHandle Camera, DrawList& solid);
+	FLEXKITAPI void					GatherScene(Scene* SM, CameraHandle Camera, BrushDrawList& solid);
 	FLEXKITAPI GatherPassesTask&	GatherScene(UpdateDispatcher& dispatcher, Scene* scene, CameraHandle C, iAllocator& allocator);
 
-	FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, RenderSystem& renderSystem, iAllocator& allocator);
+	FLEXKITAPI void LoadLodLevels(UpdateDispatcher& dispatcher, GatherPassesTask& PVS, CameraHandle camera, IRenderSystem& renderSystem, iAllocator& allocator);
 
 	FLEXKITAPI void ReleaseScene				(Scene* SM);
 	FLEXKITAPI void BindJoint					(Scene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
 	struct SceneLoadingContext;
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid,				iAllocator* allocator, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName,	iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(IRenderSystem* RS, SceneLoadingContext& ctx, GUID_t Guid,				iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(IRenderSystem* RS, SceneLoadingContext& ctx, const char* LevelName,	iAllocator* allocator, iAllocator* Temp);
 
 
 	/************************************************************************************************/

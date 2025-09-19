@@ -20,7 +20,7 @@ namespace FlexKit
 	class GBuffer
 	{
 	public:
-		GBuffer(const uint2 WH, RenderSystem& RS_IN);
+		GBuffer(const uint2 WH, IRenderSystem& RS_IN);
 
 		~GBuffer();
 
@@ -29,8 +29,6 @@ namespace FlexKit
 		ResourceHandle albedo;	 // rgba_UNORM, Albedo + Metal
 		ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
 		ResourceHandle normal;	 // float16_RGBA
-
-		RenderSystem& RS;
 	};
 
 
@@ -322,12 +320,11 @@ namespace FlexKit
 	{
 	public:
 
-		ClusteredRender(RenderSystem&, iAllocator& persistent);
+		ClusteredRender(IRenderSystem&, iAllocator& persistent);
 
 
 		TypeErasedCallable<void (FrameGraph&), 64>
-			CreateClusterBuffer(
-								RenderSystem&					renderSystem,
+			CreateClusterBuffer(IRenderSystem&					renderSystem,
 								uint2							WH,
 								CameraHandle					camera,
 				                PoolAllocatorInterface&			UAVPool);

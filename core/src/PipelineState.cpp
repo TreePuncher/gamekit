@@ -54,8 +54,9 @@ namespace FlexKit
 
 	void PipelineStateObject::Release(iAllocator* allocator)
 	{
-		if(PSO.state)
-			PSO.state->Release();
+		FK_ASSERT(0);
+		//if(PSO.state)
+		//	PSO.state->Release();
 
 		PSO.state = nullptr;
 

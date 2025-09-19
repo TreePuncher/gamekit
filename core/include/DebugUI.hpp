@@ -15,7 +15,7 @@ namespace FlexKit
     class ImGUIIntegrator
     {
     public:
-        ImGUIIntegrator(RenderSystem& renderSystem, iAllocator* memory);
+        ImGUIIntegrator(IRenderSystem& renderSystem, iAllocator* memory);
         ~ImGUIIntegrator();
 
         void Update(uint2 MouseXY, uint2 WH, FlexKit::UpdateDispatcher& dispatcher, double dT);

@@ -26,14 +26,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DebugUI.hpp"
 #include "GameFramework.hpp"
 #include "Fonts.hpp"
-#include "Graphics.hpp"
 #include "Level.hpp"
 #include "TextRendering.hpp"
 #include "TextureUtilities.hpp"
 #include "Logging.hpp"
 #include <fmt/printf.h>
 #include <imgui.h>
-
+#include <RenderSystemInterface.hpp>
 
 // Todo List
 //	Gameplay:
@@ -139,7 +138,7 @@ namespace FlexKit
 	void GameFramework::Initiate()
 	{
 		InitiateAssetTable		(core.GetBlockMemory());
-		InitiateGeometryTable	(&core.RenderSystem, core.GetBlockMemory());
+		InitiateGeometryTable	(core.RenderSystem, core.GetBlockMemory());
 
 		quit						= false;
 		physicsUpdateTimer			= 0.0f;
@@ -167,7 +166,7 @@ namespace FlexKit
 		AddLogCallback(&logMessagePipe, Verbosity_INFO);
 
 		if(options.integrateIMGUI)
-			debugUI = &core.GetBlockMemory().allocate<ImGUIIntegrator>(core.RenderSystem, core.GetBlockMemory());
+			debugUI = &core.GetBlockMemory().allocate<ImGUIIntegrator>(*core.RenderSystem, core.GetBlockMemory());
 	}
 
 
@@ -216,11 +215,9 @@ namespace FlexKit
 	{
 		ProfileFunctionTextName(Draw);
 
-		FrameGraph&	frameGraph = TempMemory.allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
+		FrameGraph&	frameGraph = TempMemory.allocate_aligned<FrameGraph>(*core.RenderSystem, core.Threads, TempMemory);
 
 		subStates.back()->Draw(update, core, dispatcher, dT, frameGraph);
-
-		Free_DelayedReleaseResources(core.RenderSystem);
 
 		auto temp = &frameGraph.Finish(dispatcher, core.GetBlockMemory());
 		return temp;
@@ -323,9 +320,6 @@ namespace FlexKit
 		}
 
 		console.Release();
-		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
-		FlexKit::Release(DefaultAssets.Terrain);
-
 
 		FreeAllAssetFiles	();
 		FreeAllAssets		();

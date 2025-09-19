@@ -270,7 +270,7 @@ namespace FlexKit
 			allocator				{ IN_allocator },
 			memoryPools				{ IN_allocator },
 			outputObjects			{ IN_allocator },
-			renderSystem			{ IN_renderSystem },
+			renderSystem			{ &IN_renderSystem },
 			objects					{ IN_allocator },
 			virtualResources		{ IN_allocator },
 			cbAllocators			{ IN_allocator },
@@ -287,7 +287,7 @@ namespace FlexKit
 
 		std::mutex		m;
 
-		IRenderSystem&	renderSystem;
+		IRenderSystem*	renderSystem;
 		iAllocator*		allocator;
 
 		uint32_t		virtualResourceCount = 0;
@@ -309,7 +309,7 @@ namespace FlexKit
 		{
 			AddRenderTarget(
 				Handle,
-				renderSystem.GetObjectLayout(Handle));
+				renderSystem->GetObjectLayout(Handle));
 		}
 
 
@@ -318,8 +318,8 @@ namespace FlexKit
 
 		void AddConstantBuffer(ConstantBufferHandle constantBuffer)
 		{
-			renderSystem.ResetConstantBuffer(constantBuffer);
-			cbAllocators.emplace_back(CreateConstantBufferReserveObject(constantBuffer, renderSystem, allocator));
+			renderSystem->ResetConstantBuffer(constantBuffer);
+			cbAllocators.emplace_back(CreateConstantBufferReserveObject(constantBuffer, *renderSystem, allocator));
 		}
 
 
@@ -328,8 +328,8 @@ namespace FlexKit
 
 		void AddVertexBuffer(VertexBufferHandle vertexBuffer)
 		{
-			renderSystem.ResetVertexBuffer(vertexBuffer);
-			vbAllocators.emplace_back(CreateVertexBufferReserveObject(vertexBuffer, renderSystem, allocator));
+			renderSystem->ResetVertexBuffer(vertexBuffer);
+			vbAllocators.emplace_back(CreateVertexBufferReserveObject(vertexBuffer, *renderSystem, allocator));
 		}
 
 
@@ -379,7 +379,7 @@ namespace FlexKit
 		{
 			AddDepthBuffer(
 				Handle,
-				renderSystem.GetObjectLayout(Handle));
+				renderSystem->GetObjectLayout(Handle));
 		}
 
 
@@ -400,7 +400,7 @@ namespace FlexKit
 
 		void AddSOResource(SOResourceHandle handle)
 		{
-			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
+			DeviceLayout layout = renderSystem->GetObjectLayout(handle);
 
 			objects.push_back(
 				FrameObject::SOBufferObject(handle, *allocator, layout));
@@ -414,8 +414,8 @@ namespace FlexKit
 
 		FrameResourceHandle AddResource(ResourceHandle handle)
 		{
-			const DeviceLayout		layout = renderSystem.GetObjectLayout(handle);
-			const TextureDimension	dimensions = renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout = renderSystem->GetObjectLayout(handle);
+			const TextureDimension	dimensions = renderSystem->GetTextureDimension(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
@@ -439,8 +439,8 @@ namespace FlexKit
 		{
 			std::scoped_lock lock{};
 
-			const DeviceLayout		layout = renderSystem.GetObjectLayout(handle);
-			const TextureDimension	dimensions = renderSystem.GetTextureDimension(handle);
+			const DeviceLayout		layout = renderSystem->GetObjectLayout(handle);
+			const TextureDimension	dimensions = renderSystem->GetTextureDimension(handle);
 
 			const auto resourceHandle =
 				FrameResourceHandle{
@@ -457,7 +457,7 @@ namespace FlexKit
 
 		void AddQuery(QueryHandle handle)
 		{
-			DeviceLayout layout = renderSystem.GetObjectLayout(handle);
+			DeviceLayout layout = renderSystem->GetObjectLayout(handle);
 
 			objects.push_back(
 				FrameObject::QueryObject(handle, *allocator, layout));
@@ -472,12 +472,12 @@ namespace FlexKit
 		template<typename TY>
 		ID3D12Resource* GetDeviceResource(TY handle) const
 		{
-			return renderSystem.GetDeviceResource(handle);
+			return renderSystem->GetDeviceResource(handle);
 		}
 
 		ID3D12Resource* GetDeviceResource(FrameResourceHandle handle) const
 		{
-			return renderSystem.GetDeviceResource(GetResource(handle));
+			return renderSystem->GetDeviceResource(GetResource(handle));
 		}
 
 
@@ -486,7 +486,7 @@ namespace FlexKit
 
 		const IPipelineState* GetPipelineState(PSOHandle stateID, iAllocator& temp)	const
 		{
-			if (auto state = renderSystem.GetPSO(stateID, temp); state != nullptr)
+			if (auto state = renderSystem->GetPSO(stateID, temp); state != nullptr)
 				return state;
 			else
 				return nullptr;
@@ -495,7 +495,7 @@ namespace FlexKit
 
 		const IRootSignature* GetPipelineStateRootSig(PSOHandle state) const
 		{
-			return renderSystem.GetPSORootSignature(state);
+			return renderSystem->GetPSORootSignature(state);
 		}
 
 
@@ -504,7 +504,7 @@ namespace FlexKit
 
 		size_t GetVertexBufferOffset(VertexBufferHandle handle, size_t elementSize)
 		{
-			return renderSystem.GetVertexBufferOffset(handle) / elementSize;
+			return renderSystem->GetVertexBufferOffset(handle) / elementSize;
 		}
 
 
@@ -513,7 +513,7 @@ namespace FlexKit
 
 		size_t GetVertexBufferByteOffset(VertexBufferHandle handle)
 		{
-			return renderSystem.GetVertexBufferOffset(handle);
+			return renderSystem->GetVertexBufferOffset(handle);
 		}
 
 
@@ -667,14 +667,14 @@ namespace FlexKit
 
 		operator IRenderSystem& ()
 		{
-			return renderSystem;
+			return *renderSystem;
 		}
 
 
 		uint2 GetTextureWH(FrameResourceHandle handle) const
 		{
 			if (auto res = GetResource(handle); res != InvalidHandle)
-				return renderSystem.GetTextureWH(res);
+				return renderSystem->GetTextureWH(res);
 			else
 				return { 0, 0 };
 		}
@@ -717,21 +717,29 @@ namespace FlexKit
 		DeviceResource_ptr		GetDeviceResource(TY handle) const							{ return globalResources.GetDeviceResource(handle); }
 		DeviceResource_ptr		GetDeviceResource(FrameResourceHandle handle) const			{ return globalResources.GetDeviceResource(GetResource(handle)); }
 
-		DevicePointer			GetDevicePointer		(auto handle) const	{ return { GetDeviceResource(handle)->GetGPUVirtualAddress() }; }
+		DevicePointer			GetDevicePointer		(auto handle) const
+		{
+		    return { globalResources.renderSystem->GetDevicePointer(handle) };
+		}
+
+		DevicePointer			GetDevicePointer		(FrameResourceHandle handle) const
+		{
+		    return { globalResources.renderSystem->GetDevicePointer(GetResource(handle)) };
+		}
 
 		DeviceAddressRange		GetDevicePointerRange	(FrameResourceHandle handle) const
 		{
-		    return globalResources.renderSystem.GetDeviceRange(GetResource(handle));
+		    return globalResources.renderSystem->GetDeviceRange(GetResource(handle));
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(ResourceHandle handle) const
 		{
-			return globalResources.renderSystem.GetDeviceRange(handle);
+			return globalResources.renderSystem->GetDeviceRange(handle);
 		}
 
 		DeviceAddressRange		GetDevicePointerRange(const ConstantBufferDataSet& dataSet) const
 		{
-			const auto range = globalResources.renderSystem.GetDeviceRange(dataSet.Handle());
+			const auto range = globalResources.renderSystem->GetDeviceRange(dataSet.Handle());
 
 			return DeviceAddressRange{
 				.address	= range.address + dataSet.Offset(),
@@ -785,7 +793,6 @@ namespace FlexKit
 					});
 
 				FK_ASSERT(res != globalResources.objects.end());
-				DebugBreak();
 				//SubNodeTracking.push_back({ res->Handle, res->State });
 
 				return res->SOBuffer;
@@ -943,7 +950,6 @@ namespace FlexKit
 					});
 
 				FK_ASSERT(res != globalResources.objects.end());
-				DebugBreak();
 				//SubNodeTracking.push_back({ res->Handle, res->State });
 
 				return { res->access, res->layout };
@@ -989,12 +995,12 @@ namespace FlexKit
 #endif
 #endif
 
-		IRenderSystem& renderSystem() const { return globalResources.renderSystem; }
+		IRenderSystem& renderSystem() const { return *globalResources.renderSystem; }
 
 
 		operator IRenderSystem& ()
 		{
-			return globalResources.renderSystem;
+			return *globalResources.renderSystem;
 		}
 
 
@@ -1631,7 +1637,7 @@ namespace FlexKit
 	using DataDependencyList = Vector<UpdateTask*>;
 	struct PassPVS;
 
-	template<typename Shared_TY, typename TY = const DrawEntry>
+	template<typename Shared_TY, typename TY = const BrushEntry>
 	struct PassDescription
 	{
 		Shared_TY							sharedData;
@@ -1641,7 +1647,7 @@ namespace FlexKit
 		using GetPass_TY	= TypeErasedCallable<std::span<TY> ()>;
 	};
 
-	template<typename Shared_TY, typename TY_PassData, typename TY_PVSElements = const DrawEntry>
+	template<typename Shared_TY, typename TY_PassData, typename TY_PVSElements = const BrushEntry>
 	struct DataDrivenMultiPassDescription
 	{
 		Shared_TY														sharedData;
@@ -2240,7 +2246,7 @@ namespace FlexKit
 
 				void BuildBLAS(FrameResourceHandle resource, TriMesh::LOD_Runtime& src_lod)
 				{
-					const auto prebuildInfo	= frameResources.renderSystem.GetBLASPreBuildInfo(src_lod.bufferSet);
+					const auto prebuildInfo	= frameResources.renderSystem->GetBLASPreBuildInfo(*src_lod.bufferSet);
 					const auto desc			= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
 
 					auto [handle, _] = AllocateResource(resource, desc);
@@ -2262,12 +2268,9 @@ namespace FlexKit
 					return frameResources.GetResource(resource);
 				}
 
-				DevicePointer	GetDevicePointer(FrameResourceHandle resource) const
+				DevicePointer	GetDevicePointer(FrameResourceHandle frameResource) const
 				{
-					if (auto deviceObject = frameResources.GetDeviceResource(resource); deviceObject)
-						return { deviceObject->GetGPUVirtualAddress() };
-					else
-						return {};
+                    return frameResources.renderSystem->GetDevicePointer(GetResource(frameResource));
 				}
 
 			};
@@ -2317,7 +2320,7 @@ namespace FlexKit
 								}
 							}
 
-							auto uploadReservation = resources.renderSystem.ReserveDirectUploadSpace(nodeData->uploadSize, 256);
+							auto uploadReservation = resources.renderSystem->ReserveDirectUploadSpace(nodeData->uploadSize, 256);
 							size_t offset = 0;
 
 							// Copy Data into resources, insert barrier/transition
@@ -2374,7 +2377,7 @@ namespace FlexKit
 
 								for (auto&& [resource, lod] : nodeData->BVHBuilds)
 								{
-									ctx.BuildBLAS(lod->bufferSet, resource, scratchPad);
+									ctx.BuildBLAS(*lod->bufferSet, resource, scratchPad);
 									ctx.AddUAVBarrier(scratchPad);
 									ctx.AddBufferBarrier(resource, DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, Sync_BuildRaytracingAccellerationStructure, Sync_All_Shading);
 								}
@@ -2430,7 +2433,7 @@ namespace FlexKit
 		void SyncDirectTo(uint32_t);
 
 		UpdateTask&		Finish(UpdateDispatcher& dispatcher, iAllocator* persistentAllocator);
-		IRenderSystem&	GetRenderSystem() noexcept { return resources.renderSystem; }
+		IRenderSystem&	GetRenderSystem() noexcept { return *resources.renderSystem; }
 
 		FrameResources				resources;
 		Vector<ResourceHandle>		acquiredResources;
@@ -2527,13 +2530,13 @@ namespace FlexKit
 	template<typename TY_V>
 	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		return Resources.renderSystem.GetVertexBufferOffset(Buffer) / sizeof(TY_V);
+		return Resources.renderSystem->GetVertexBufferOffset(Buffer) / sizeof(TY_V);
 	}
 
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
-		return Resources.renderSystem.ConstantBufferAlign(CB);
+		return Resources.renderSystem->ConstantBufferAlign(CB);
 	}
 
 	/************************************************************************************************/
@@ -3074,8 +3077,8 @@ namespace FlexKit
 				VertexBufferList instancedBuffers;
 				instancedBuffers.push_back(VertexBufferEntry{
 					data.instanceBuffer,
-					(UINT)data.instanceElementSize,
-					(UINT)data.instanceBuffer.begin() });
+					(uint32_t)data.instanceElementSize,
+					(uint32_t)data.instanceBuffer.begin() });
 
 
 				ctx.AddIndexBuffer(triMesh);

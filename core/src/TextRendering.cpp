@@ -1,5 +1,7 @@
 #include "TextRendering.hpp"
-#include "Graphics.hpp"
+#include "RenderSystemInterface.hpp"
+
+#if 0
 
 #include <memory>
 #include <Windows.h>
@@ -14,7 +16,7 @@ namespace FlexKit
 {
 
 	// Create/Load Text Rendering State
-	ID3D12PipelineState* LoadSpriteTextPSO(RenderSystem* RS)
+	ID3D12PipelineState* LoadSpriteTextPSO(IRenderSystem* RS)
 	{
 		Shader DrawTextVShader = RS->LoadShader("VTextMain", "vs_6_0", "assets\\Shaders\\TextRendering.hlsl");
 		Shader DrawTextGShader = RS->LoadShader("GTextMain", "gs_6_0", "assets\\Shaders\\TextRendering.hlsl");
@@ -271,3 +273,5 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+
+#endif

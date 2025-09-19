@@ -115,9 +115,9 @@ namespace FlexKit
 	typedef FlexKit::Pair<DDSTexture3D*, bool>	DDSTexture3DLoad_RES; // Not-Implemented
 	typedef FlexKit::Pair<ResourceHandle, bool>	LoadDDSTexture2DFromFile_RES;
 
-	DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, CopyContextHandle);
+	DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, IRenderSystem* RS, CopyContextHandle);
 	DDSTexture3DLoad_RES			LoadDDSTexture3DFromFile();
-	LoadDDSTexture2DFromFile_RES	LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, CopyContextHandle);
+	LoadDDSTexture2DFromFile_RES	LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, IRenderSystem* RS, CopyContextHandle);
 
 	/*
 	bool CreateDDSTextureFromFile12(

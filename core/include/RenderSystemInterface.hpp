@@ -689,7 +689,7 @@ namespace FlexKit
 			return {
 				GetTileX(),
 				GetTileY(),
-				(UINT)GetMipLevel()
+				(uint32_t)GetMipLevel()
 			};
 		}
 
@@ -1150,8 +1150,8 @@ namespace FlexKit
 	struct VertexBufferEntry
 	{
 		VertexBufferHandle	VertexBuffer	= InvalidHandle;
-		UINT				Stride			= 0;
-		UINT				Offset			= 0;
+		uint32_t			Stride			= 0;
+		uint32_t			Offset			= 0;
 	};
 
 	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
@@ -1161,8 +1161,8 @@ namespace FlexKit
 	struct VertexBufferResource
 	{
 		ResourceHandle		resource = InvalidHandle;
-		UINT				stride = 0;
-		UINT				offset = 0;
+		uint32_t			stride = 0;
+		uint32_t			offset = 0;
 	};
 
 
@@ -1291,6 +1291,16 @@ namespace FlexKit
 		};
 	};
 
+
+    struct SubResourceUpload_Desc
+	{
+		struct TextureBuffer* buffers;
+
+		size_t	        subResourceStart;
+		size_t	        subResourceCount;
+
+		DeviceFormat       format;
+	};
 
 	struct GPUResourceDesc
 	{
@@ -1987,14 +1997,14 @@ namespace FlexKit
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct IDescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct DescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 
 
 		virtual void SetComputeDescriptorTable		(size_t idx) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetComputeDescriptorTable		(size_t idx, const struct IDescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeDescriptorTable		(size_t idx, const struct DescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) IDIRECTCONTEXTDEBUGBODY;
@@ -2122,19 +2132,25 @@ namespace FlexKit
 
 	struct ICopyContext : public IContext
 	{
-		virtual UploadReservation Reserve(size_t) { return {}; }
+		virtual void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
+
+	    virtual UploadReservation	Reserve(size_t byteSize, uint32_t alignment = 256) { return {}; }
+		virtual void				CopyBuffer(ResourceHandle source, size_t dstOffset, UploadReservation) {}
+		virtual void                CopyBuffer(GPURange dest, void* source_ptr, uint64_t size) {}
+		virtual void                CopyBuffer(ResourceHandle destination, const size_t destinationOffset, ResourceHandle source, const size_t sourceOffset, const size_t copySize) {}
+		virtual void                CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format) {}
+		virtual void                CopyTile(ResourceHandle dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src) {}
+
+		bool						IsSubResourceTiled(ResourceHandle Resource, const size_t level) const { return false; }
 	};
 
 
 	/************************************************************************************************/
 
 
-	struct IDescriptorHeap
-	{
-	};
-
 	struct DescriptorHeap
 	{
+		DescriptorHeap() = default;
 		DescriptorHeap(IContext&, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
 		DescriptorHeap& operator = (const DescriptorHeap&);
@@ -2275,6 +2291,7 @@ namespace FlexKit
 		virtual CopyContextHandle		GetImmediateCopyQueue() = 0;
 
 		virtual IDirectContext&	GetDirectCommandList(std::optional<SyncPoint> ticket = {}) = 0;
+		virtual ICopyContext&	GetCopyContext(CopyContextHandle handle = InvalidHandle) = 0;
 
 		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
 
@@ -2302,6 +2319,8 @@ namespace FlexKit
 		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
 
 		virtual void				MarkTextureUsed			(ResourceHandle Handle) = 0;
+
+		virtual DevicePointer		GetDevicePointer		(const ResourceHandle)			const noexcept = 0;
 
 		virtual DeviceAddressRange	GetDeviceRange			(const ResourceHandle)			const noexcept = 0;
 		virtual DeviceAddressRange	GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
@@ -2356,7 +2375,7 @@ namespace FlexKit
 		virtual SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept = 0;
 		virtual SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept = 0;
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment)					noexcept = 0;
-
+		virtual UploadReservation	ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)			noexcept = 0;
 
 		// Shader
 		virtual Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) = 0;
@@ -2400,8 +2419,21 @@ namespace FlexKit
 		virtual void ReleaseHeap(DeviceHeapHandle) = 0;
 		virtual void ReleaseQuery(QueryHandle) = 0;
 		virtual void ReleaseDescriptorRange(DescriptorRange, uint64_t) = 0;
-
+		virtual void Release() = 0;
 	};
+
+
+	/************************************************************************************************/
+
+	void MoveBuffer2UploadBuffer(const UploadReservation& data, const std::byte* source, const size_t uploadSize);
+
+	ResourceHandle MoveTextureBufferToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
+	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
+	ResourceHandle MoveTextureBuffersToVRAM(IRenderSystem& RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
+	ResourceHandle MoveBufferToDevice(IRenderSystem& RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle);
+
+	ResourceHandle	LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, iAllocator* Memout, DeviceFormat format);
+	void			UpdateSubResourceByUploadQueue(IRenderSystem& RS, CopyContextHandle uploadHandle, ResourceHandle dstResource, SubResourceUpload_Desc* desc);
 
 
 	/************************************************************************************************/

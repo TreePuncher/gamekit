@@ -9,7 +9,7 @@
 #include <TriggerComponent.hpp>
 #include <Scene.hpp>
 #include <WorldRender.hpp>
-#include <Win32Graphics.hpp>
+//#include <Win32Graphics.hpp>
 #include <Signals.hpp>
 
 
@@ -49,7 +49,7 @@ public:
 
 	FlexKit::GBuffer						gbuffer;
 	FlexKit::DepthBuffer					depthBuffer;
-	FlexKit::Win32RenderWindow*				renderWindow;
+	FlexKit::IRenderWindow*					renderWindow;
 	FlexKit::ConstantBufferHandle			constantBuffer;
 	FlexKit::VertexBufferHandle				vertexBuffer;
 

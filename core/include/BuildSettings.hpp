@@ -68,7 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RESCOMPILERVERBOSE	ON
 #define TOOTLE				OFF
 #define AFTERMATH			OFF
-#define PIX					ON
+#define PIX					OFF
 #define ENABLEPROFILER		OFF
 #define ENABLEDEBUGVIS		ON
 #define STACKTRACEMALLOC	OFF
@@ -240,9 +240,9 @@ template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 #if WIN32
 #define NOMINMAX
 #define WINDOWS_LEAN_AND_MEAN
-#include <Windows.h>
-#include <Windowsx.h>
-#include <debugapi.h>
+//#include <Windows.h>
+//#include <Windowsx.h>
+//#include <debugapi.h>
 
 #ifdef GetNextSibling
 #undef GetNextSibling

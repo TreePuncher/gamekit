@@ -6,8 +6,6 @@
 
 namespace FlexKit
 {
-	class RenderSystem;
-
 
 	struct DepthBuffer
 	{

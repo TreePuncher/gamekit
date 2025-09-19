@@ -6,7 +6,7 @@
 #include "WorldRender.hpp"
 #include <ranges>
 
-
+#if 0
 namespace FlexKit
 {   /************************************************************************************************/
 	using std::views::iota;
@@ -2079,3 +2079,5 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+
+#endif

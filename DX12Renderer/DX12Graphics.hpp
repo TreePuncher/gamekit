@@ -8,7 +8,6 @@
 #include "Containers.hpp"
 #include "Geometry.hpp"
 #include "Handle.hpp"
-#include "Intersection.hpp"
 #include "Logging.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
@@ -16,9 +15,7 @@
 #include "RenderSystemInterface.hpp"
 #include "Transforms.hpp"
 #include "Type.hpp"
-#include "KeycodesEnums.hpp"
 #include "ThreadUtilities.hpp"
-#include "TextureUtilities.hpp"
 
 #include <algorithm>
 #include <string>
@@ -47,8 +44,8 @@
 #if USING(PIX)
 #define USE_PIX
 
-#include <pix3.h>
-#include <DXProgrammableCapture.h>
+//#include <pix3.h>
+//#include <DXProgrammableCapture.h>
 
 #endif
 
@@ -1047,19 +1044,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	private:
 
-		DescriptorHeap Clone() const
-		{
-			/*
-			DescriptorHeap heap{ Render, FillState.Allocator };
-			heap.descriptorHeap		= descriptorHeap;
-			heap.Layout				= Layout;
-			heap.FillState			= FillState;
-
-			return heap;
-            */
-
-			return {};
-		}
+		DescriptorHeap Clone() const;
 
 
 		static bool CheckType(const DesciptorHeapLayout<>& layout, DescHeapEntryType type, size_t idx);
@@ -2378,6 +2363,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		virtual void			MarkTextureUsed(ResourceHandle Handle) final;
 
+		virtual DevicePointer		GetDevicePointer(const ResourceHandle) const noexcept final;
 
 		virtual DeviceAddressRange	GetDeviceRange(const ResourceHandle) const noexcept final;
 		virtual DeviceAddressRange	GetDeviceRange(const ConstantBufferHandle) const noexcept final;
@@ -2958,7 +2944,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
+		UploadReservation		ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle	uploadQueue);
 		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256) noexcept;
+
 		const RootSignature*	CurrentGraphicsRootSig() const		{ return CurrentRootSignature; }
 		const RootSignature*	CurrentComputeRootSig() const		{ return CurrentComputeRootSignature; }
 
@@ -3329,9 +3317,6 @@ private:
 	/************************************************************************************************/
 
 	// INTERNAL USE ONLY!
-	FLEXKITAPI UploadReservation	ReserveUploadBuffer		(RenderSystem& renderSystem, const size_t uploadSize, CopyContextHandle = InvalidHandle);
-	FLEXKITAPI void					MoveBuffer2UploadBuffer	(const UploadReservation& data, const std::byte* source, const size_t uploadSize);
-
 	FLEXKITAPI DescHeapPOS PushRenderTarget				(RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 
 
@@ -3361,16 +3346,6 @@ private:
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap		(RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2		(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVCubeMapToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS);
-
-
-	/************************************************************************************************/
-
-
-	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
-
-	ResourceHandle MoveBufferToDevice		(RenderSystem* RS, const char* buffer, const size_t, CopyContextHandle ctx = InvalidHandle);
 
 
 	/************************************************************************************************/
@@ -3537,18 +3512,6 @@ private:
 	// Depreciated API
 
 	void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
-
-	struct SubResourceUpload_Desc
-	{
-		TextureBuffer*  buffers;
-
-		size_t	        subResourceStart;
-		size_t	        subResourceCount;
-
-		DeviceFormat       format;
-	};
-
-	void _UpdateSubResourceByUploadQueue (RenderSystem* RS, CopyContextHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc);
 
 
 	/************************************************************************************************/

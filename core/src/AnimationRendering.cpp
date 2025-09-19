@@ -76,9 +76,9 @@ namespace FlexKit
 		iAllocator&						allocator)
 	{
 		PassDrivenResourceAllocation allocation {
-			.getPass				= [&passes]() -> std::span<const DrawEntry> { return passes.GetData().GetPass(GBufferAnimatedPassID); },
+			.getPass				= [&passes]() -> std::span<const BrushEntry> { return passes.GetData().GetPass(GBufferAnimatedPassID); },
 			.initializeResources	=
-				[](std::span<const DrawEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				[](std::span<const BrushEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
 				{
 					auto itr = handles.begin();
 
@@ -165,7 +165,7 @@ namespace FlexKit
 		PassDrivenResourceAllocation desc {
 			.getPass			= [&passes] { return passes.GetData().GetPass(MorphTargetID); },
 			.initializeResources =
-				[](std::span<const DrawEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
+				[](std::span<const BrushEntry> draws, std::span<const FrameResourceHandle> handles, auto& transferContext, iAllocator& allocator)
 				{
 					auto itr = handles.begin();
 

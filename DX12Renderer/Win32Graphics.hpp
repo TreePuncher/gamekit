@@ -50,6 +50,7 @@ namespace FlexKit
 
 	void			ToggleMouseCapture(IRenderWindow*);
 	MouseInputState	UpdateCapturedMouseInput(double dT, IRenderWindow*);
+	bool			IsMouseCaptured(IRenderWindow*);
 
 	bool			isValid(const IRenderWindow*);
 

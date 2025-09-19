@@ -11,7 +11,7 @@ namespace FlexKit
 			uint32_t		IN_blockSize,
 			iAllocator*		IN_allocator)
 	{
-		const size_t resourceSize = RenderSystem::_GetInstance().GetResourceSize(IN_resource);
+		const size_t resourceSize = IRenderSystem::GetInstance().GetResourceSize(IN_resource);
 		
 		root			= Node{ .begin = 0, .end = resourceSize /  IN_blockSize };
 		freeList		= Vector<Node*>{ IN_allocator };

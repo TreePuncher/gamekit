@@ -24,67 +24,67 @@ add_library(flex
     "src/AnimationUtilities.cpp"
     "src/Application.cpp"
     "src/Assets.cpp"
-    "src/CameraUtilities.cpp"
+    "src/CameraComponent.cpp"
     "src/CBT.cpp"
     "src/CBTTerrain.cpp"
     "src/ClusteredRendering.cpp"
     "src/Components.cpp"
     "src/Console.cpp"
-    "src/CoreSceneObjects.cpp"
-    "src/DDSUtilities.cpp"
-    "src/DebugPanel.cpp"
-    "src/DebugUI.cpp"
-    "src/Defaultpipelinestates.cpp"
-    "src/DungeonGen.cpp"
-    "src/EngineCore.cpp"
-    "src/Framegraph.cpp"
-    "src/GameFramework.cpp"
-    "src/Geometry.cpp"
-    "src/GILightingUtilities.cpp"
-    "src/GPUAllocators.cpp"
-    "src/DX12Graphics.cpp"
-    "src/GraphicsComponents.cpp"
-    "src/GUIInputState.cpp"
-    "src/GuiUtilities.cpp"
-    "src/Intersection.cpp"
-    "src/Level.cpp"
-    "src/Logging.cpp"
-    "src/MathUtilities.cpp"
-    "src/Materials.cpp"
-    "src/MemoryUtilities.cpp"
-    "src/Meshutilities.cpp"
-    "src/ModifiableShape.cpp"
-    "src/NetworkUtilities.cpp"
-    "src/OcclusionCulling.cpp"
-    "src/ParticleRendering.cpp"
-    "src/Particles.cpp"
-    "src/PhysicsDebugVis.cpp"
-    "src/physicsutilities.cpp"
-    "src/PipelineState.cpp"
-    "src/PlanetComponent.cpp"
-    "src/ProfilingUtilities.cpp"
-    "src/RayTracingUtilities.cpp"
-    "src/RenderSystemInterface.cpp"
-    "src/RMLRenderer.cpp"
-    "src/Scene.cpp"
-    "src/ScriptingRuntime.cpp"
-    "src/Serialization.cpp"
-    "src/SHADOWMAPPING.CPP"
-    "src/Signals.cpp"
-    "src/SVOGI.cpp"
-    "src/TerrainRendering.cpp"
-    "src/TextRendering.cpp"
-    "src/TextureStreamingUtilities.cpp"
-    "src/TextureUtilities.cpp"
-    "src/ThreadUtilities.cpp"
-    "src/ThirdPartyTranslationUnit.cpp"
-    "src/timeutilities.cpp"
-    "src/Transforms.cpp"
-    "src/Transparency.cpp"
-    "src/TriggerComponent.cpp"
-    "src/TriMeshResource.cpp"
-    "src/Win32Graphics.cpp"
-    "src/WorldRender.cpp")
+    "src/Brush.cpp"
+#    "src/DDSUtilities.cpp"
+  #  "src/DebugPanel.cpp"
+ #   "src/DebugUI.cpp"
+ #   "src/Defaultpipelinestates.cpp"
+ #   "src/DungeonGen.cpp"
+ #   "src/EngineCore.cpp"
+ #   "src/Framegraph.cpp"
+ #   "src/GameFramework.cpp"
+#    "src/Geometry.cpp"
+#    "src/GILightingUtilities.cpp"
+#    "src/GPUAllocators.cpp"
+#    "src/DX12Graphics.cpp"
+#    "src/GraphicsComponents.cpp"
+#    "src/GUIInputState.cpp"
+#    "src/GuiUtilities.cpp"
+  #  "src/Intersection.cpp"
+  #  "src/Level.cpp"
+  #  "src/Logging.cpp"
+  #  "src/MathUtilities.cpp"
+ #   "src/Materials.cpp"
+ #   "src/MemoryUtilities.cpp"
+ #   "src/Meshutilities.cpp"
+ #   "src/ModifiableShape.cpp"
+ #   "src/NetworkUtilities.cpp"
+ #   "src/OcclusionCulling.cpp"
+ #   "src/ParticleRendering.cpp"
+ #   "src/Particles.cpp"
+ #   "src/PhysicsDebugVis.cpp"
+ #   "src/physicsutilities.cpp"
+ #   "src/PipelineState.cpp"
+ #   "src/PlanetComponent.cpp"
+ #   "src/ProfilingUtilities.cpp"
+ #   "src/RayTracingUtilities.cpp"
+ #   "src/RenderSystemInterface.cpp"
+ #   "src/RMLRenderer.cpp"
+ #   "src/Scene.cpp"
+ #   "src/ScriptingRuntime.cpp"
+ #   "src/Serialization.cpp"
+#    "src/SHADOWMAPPING.CPP"
+#    "src/Signals.cpp"
+#    "src/SVOGI.cpp"
+#    "src/TextRendering.cpp"
+#    "src/TextureStreamingUtilities.cpp"
+#    "src/TextureUtilities.cpp"
+#    "src/ThreadUtilities.cpp"
+#    "src/ThirdPartyTranslationUnit.cpp"
+#    "src/timeutilities.cpp"
+#    "src/Transforms.cpp"
+#    "src/Transparency.cpp"
+#    "src/TriggerComponent.cpp"
+#    "src/TriMeshResource.cpp"
+#    "src/Win32Graphics.cpp"
+#    "src/WorldRender.cpp"
+)
 
 target_sources(
     flex PUBLIC
@@ -99,16 +99,17 @@ target_sources(
     "include/Assets.hpp"
     "include/BuildSettings.hpp"
     "include/DoOnce.hpp"
-    "include/CameraUtilities.hpp"
+    "include/CameraComponent.hpp"
     "include/CBT.hpp"
     "include/CBTTerrain.hpp"
     "include/ClusteredRendering.hpp"
     "include/CommonStructs.hpp"
+    "include/CameraComponent.hpp"
     "include/ComponentBlobs.hpp"
     "include/Components.hpp"
     "include/Console.hpp"
     "include/Containers.hpp"
-    "include/CoreSceneObjects.hpp"
+    "include/Brush.hpp"
     "include/DDSUtilities.hpp"
     "include/DebugPanel.hpp"
     "include/DebugUI.hpp"
@@ -123,10 +124,10 @@ target_sources(
     "include/GPUAllocators.hpp"
     "include/Geometry.hpp"
     "include/GILightingUtilities.hpp"
-    "include/DX12Graphics.hpp"
+#    "include/DX12Graphics.hpp"
     "include/GraphicsComponents.hpp"
     "include/GUIInputState.hpp"
-    "include/GUIUtilities.hpp"
+#    "include/GUIUtilities.hpp"
     "include/Handle.hpp"
     "include/Input.hpp"
     "include/Intersection.hpp"
@@ -161,8 +162,7 @@ target_sources(
     "include/Signals.hpp"
     "include/static_vector.hpp"
     "include/SVOGI.hpp"
-    "include/TerrainRendering.hpp"
-    "include/TextRendering.hpp"
+#    "include/TextRendering.hpp"
     "include/TextureStreamingUtilities.hpp"
     "include/TextureUtilities.hpp"
     "include/ThreadUtilities.hpp"
@@ -174,9 +174,9 @@ target_sources(
     "include/TriggerSlotIDs.hpp"
     "include/Type.hpp"
     "include/VertexBuffer.hpp"
-    "include/Win32Graphics.hpp"
+#    "include/Win32Graphics.hpp"
     "include/WorldRender.hpp"
-    "include/XMMathConversion.hpp"
+#    "include/XMMathConversion.hpp"
 )
 
 target_include_directories(flex
@@ -191,8 +191,8 @@ target_link_libraries(flex PRIVATE range-v3::meta range-v3::concepts range-v3::r
 if(WIN32)
     find_path(SIMDE_INCLUDE_DIRS "simde")
 
-    find_package(directx-headers CONFIG REQUIRED)
-    find_package(directx12-agility CONFIG REQUIRED)
+    #find_package(directx-headers CONFIG REQUIRED)
+    #find_package(directx12-agility CONFIG REQUIRED)
 
     message(${SIMDE_INCLUDE_DIRS})
 
@@ -200,14 +200,14 @@ if(WIN32)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
 
-    set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
-    ADD_LIBRARY(WINPIX SHARED IMPORTED)
-    SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
-    SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
+    #set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
+    #ADD_LIBRARY(WINPIX SHARED IMPORTED)
+    #SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
+    #SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
 
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
     target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
-    target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
+    #target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 
     target_link_libraries(flex PRIVATE unofficial::omniverse-physx-sdk::sdk)
     target_link_libraries(flex PRIVATE imgui::imgui)
@@ -217,8 +217,8 @@ if(WIN32)
     target_link_libraries(flex PRIVATE loguru::loguru)
     target_link_libraries(flex PRIVATE scn::scn)
     target_link_libraries(flex PRIVATE ZLIB-NG)
-    target_link_libraries(flex PRIVATE WINPIX) 
-    target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
+    #target_link_libraries(flex PRIVATE WINPIX) 
+    #target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
     target_link_libraries(flex PRIVATE RmlUi::Core RmlUi::Debugger)
 
     target_compile_definitions(flex PUBLIC UNICODE)
@@ -226,9 +226,9 @@ if(WIN32)
     target_compile_options(flex PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     target_compile_options(flex PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
-    add_custom_command(TARGET flex POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
-        COMMAND_EXPAND_LISTS)
+    #add_custom_command(TARGET flex POST_BUILD
+    #    COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
+    #    COMMAND_EXPAND_LISTS)
 
     file(COPY ${D3D12CORE_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
     file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})

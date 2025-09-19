@@ -70,7 +70,7 @@ namespace FlexKit
 	class StaticVoxelizer
 	{
 	public:
-		StaticVoxelizer(RenderSystem& renderSystem, iAllocator& allocator);
+		StaticVoxelizer(IRenderSystem& renderSystem, iAllocator& allocator);
 
 		
 		// No Copy
@@ -142,7 +142,7 @@ namespace FlexKit
 	class GILightingEngine
 	{
 	public:
-		GILightingEngine(RenderSystem& renderSystem, iAllocator& allocator);
+		GILightingEngine(IRenderSystem& renderSystem, iAllocator& allocator);
 		~GILightingEngine();
 
 		// No Copy
@@ -196,7 +196,7 @@ namespace FlexKit
 
 		void _GatherArgs(FrameResourceHandle source, FrameResourceHandle argsBuffer, ResourceHandler& resources, IDirectContext& ctx, iAllocator& temp);
 
-		RenderSystem& renderSystem;
+		IRenderSystem& renderSystem;
 
 		ResourceHandle  octreeBuffer;
 

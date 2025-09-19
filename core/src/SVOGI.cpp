@@ -5,9 +5,8 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	GILightingEngine::GILightingEngine(RenderSystem& IN_renderSystem, iAllocator& allocator) :
+	GILightingEngine::GILightingEngine(IRenderSystem& IN_renderSystem, iAllocator& allocator) :
 			renderSystem    { IN_renderSystem },
-
 			octreeBuffer    { renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(768 * MEGABYTE)) },
 
 

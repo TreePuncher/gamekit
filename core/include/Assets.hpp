@@ -9,11 +9,9 @@
 #include "TextureUtilities.hpp"
 #include "Intersection.hpp"
 
-#define WINDOW_LEAN_AND_MEAN
 
 #include <variant>
 #include <iostream>
-#include <Windows.h>
 
 
 /************************************************************************************************/
@@ -23,7 +21,6 @@ namespace FlexKit
 {
 	static const size_t ID_LENGTH = 64;
 
-	class RenderSystem;
 	struct TriMesh;
 	struct TriMesh;
 	struct TextureSet;
@@ -99,31 +96,31 @@ namespace FlexKit
 	using AssetFailureHandler	= TypeErasedCallable<AssetHandle (AssetIdentifier)>;
 	struct ResourceTable;
 
-	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);
-	FLEXKITAPI void			ReleaseAssetTable	();
+	void		InitiateAssetTable	(iAllocator* Memory);
+	void		ReleaseAssetTable	();
 
-	FLEXKITAPI size_t		ReadAssetTableSize	    (FILE* F);
-	FLEXKITAPI size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
+	size_t		ReadAssetTableSize	    (FILE* F);
+	size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void					    AddAssetFile	(const char* FILELOC);
-	FLEXKITAPI AssetHandle			    AddAssetBuffer	(Resource*);            // Will increment resource refcount
-	FLEXKITAPI Resource*			    GetAsset		(AssetHandle RHandle);
-	FLEXKITAPI std::optional<GUID_t>    FindAssetGUID	(const char* Str);
+	void						AddAssetFile	(const char* FILELOC);
+	AssetHandle					AddAssetBuffer	(Resource*);            // Will increment resource refcount
+	Resource*					GetAsset		(AssetHandle RHandle);
+	std::optional<GUID_t>		FindAssetGUID	(const char* Str);
 
-	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
-	FLEXKITAPI bool			ReadResource	(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
+	bool ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
+	bool ReadResource	(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
-	FLEXKITAPI AssetHandle LoadGameAsset (const char* ID);  // Asset refcount starts at 1
-	FLEXKITAPI AssetHandle LoadGameAsset (GUID_t GUID);     // Asset refcount starts at 1
+	AssetHandle LoadGameAsset (const char* ID);  // Asset refcount starts at 1
+	AssetHandle LoadGameAsset (GUID_t GUID);     // Asset refcount starts at 1
 
-	FLEXKITAPI void FreeAsset			    (AssetHandle RHandle);
-	FLEXKITAPI void FreeAllAssets		();
-	FLEXKITAPI void FreeAllAssetFiles	();
+	void FreeAsset			    (AssetHandle RHandle);
+	void FreeAllAssets		();
+	void FreeAllAssetFiles	();
 
-	FLEXKITAPI bool isAssetAvailable		(GUID_t ID);
-	FLEXKITAPI bool isAssetAvailable		(const char* ID);
+	bool isAssetAvailable		(GUID_t ID);
+	bool isAssetAvailable		(const char* ID);
 
-	FLEXKITAPI void SetLoadFailureHandler   (AssetFailureHandler handler);
+	void SetLoadFailureHandler   (AssetFailureHandler handler);
 
 
 	/************************************************************************************************/
@@ -260,10 +257,6 @@ namespace FlexKit
 
 		}	header;
 	};
-
-
-	bool LoadLOD				(TriMesh* triMesh, uint level, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory);
-	bool LoadAllLODFromMemory	(TriMesh* triMesh, const char* buffer, const size_t bufferSize, RenderSystem& renderSystem, CopyContextHandle copyCtx, iAllocator& memory);
 
 
 	/************************************************************************************************/
@@ -422,21 +415,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool						Asset2TriMesh		( RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI bool						Buffer2TriMesh		( RenderSystem* RS, CopyContextHandle handle, const char* buffer, size_t bufferSize, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI Vector<TextureBuffer>	LoadCubeMapAsset	( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* );
+	Vector<TextureBuffer>		LoadCubeMapAsset	(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator*);
 
-	FLEXKITAPI TextureSet*		LoadTextureSet	 (GUID_t ID, iAllocator* Memory );
-	FLEXKITAPI void				LoadTriangleMesh (GUID_t ID, iAllocator* Memory, TriMesh* out );
-
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, size_t guid );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, const char* ID );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(CopyContextHandle handle, const char* buffer, const size_t bufferSize );
+	TextureSet*		LoadTextureSet	 (GUID_t ID, iAllocator* Memory);
 
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 
-	FLEXKITAPI LoadFontResult	LoadFontAsset	(const char* file, const char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
-	FLEXKITAPI void				Release			( SpriteFontAsset* asset, RenderSystem* RS);
+	LoadFontResult	LoadFontAsset	(const char* file, const char* dir, IRenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
+	void			Release			(SpriteFontAsset* asset, IRenderSystem& RS);
 
 
 	/************************************************************************************************/
@@ -508,6 +494,156 @@ namespace FlexKit
 	ReadAsset_RC	ReadAsset(ReadContext& readContext, GUID_t Asset, void* _ptr, size_t readSize, iAllocator& , size_t readOffset = 0);
 
 	const char*		GetResourceStringID(GUID_t guid);
+
+#if 0
+    struct FileContext : public ReadContextInterface
+	{
+		FileContext() = default;
+
+		FileContext(const char* IN_fileDir, size_t IN_offset)
+		{
+			WCHAR wFileDir[256];
+			memset(wFileDir, 0, sizeof(wFileDir));
+			size_t converted = 0;
+
+			mbstowcs_s(&converted, wFileDir, IN_fileDir, strnlen_s(IN_fileDir, sizeof(wFileDir)));
+
+			file = CreateFile2(
+				wFileDir,
+				GENERIC_READ,
+				FILE_SHARE_READ,
+				OPEN_EXISTING,
+				nullptr);
+
+
+			if (file == INVALID_HANDLE_VALUE)
+			{
+				auto err = GetLastError();
+				//__debugbreak();
+			}
+
+			fileDir = IN_fileDir;
+			offset  = IN_offset;
+		}
+
+		~FileContext() { Close(); }
+
+		HANDLE          file    = INVALID_HANDLE_VALUE;
+		const char*     fileDir = nullptr;
+		size_t          offset  = 0;
+
+		// Non-copyable
+		FileContext(const FileContext& rhs)                 = delete;
+		FileContext& operator = (const FileContext& rhs)    = delete;
+
+		FileContext& operator = (FileContext&& rhs) noexcept
+		{
+			Close();
+
+			file        = rhs.file;
+			fileDir     = rhs.fileDir;
+			offset      = rhs.offset;
+
+			rhs.file        = INVALID_HANDLE_VALUE;
+			rhs.fileDir     = nullptr;
+			rhs.offset      = 0;
+
+			return *this;
+		}
+
+		void Close() final
+		{
+			if(file != INVALID_HANDLE_VALUE)
+				CloseHandle(file);
+		}
+
+		void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+		{
+			if (file != INVALID_HANDLE_VALUE)
+			{
+				DWORD bytesRead = 0;
+
+				OVERLAPPED overlapped   = { 0 };
+				overlapped.Offset       = static_cast<DWORD>(readOffset + offset);
+
+				if (bool res = ReadFile(file, dst_ptr, static_cast<DWORD>(readSize), &bytesRead, &overlapped); res != true)
+					throw std::runtime_error("Failed to read");
+			}
+		}
+
+		void SetOffset(size_t readOffset) final
+		{
+			offset = readOffset;
+		}
+
+		bool IsValid() const noexcept
+		{
+			return file != INVALID_HANDLE_VALUE;
+		}
+	};
+#else
+	struct NullFileContext : public ReadContextInterface, public NoCopy, public NoMove
+	{
+		NullFileContext() = default;
+
+		NullFileContext(const char* IN_fileDir, size_t IN_offset)
+		{}
+
+
+		void Close() final
+		{
+			FK_ASSERT(false);
+		}
+
+		void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+		{
+			FK_ASSERT(false);
+		}
+
+		void SetOffset(size_t readOffset) final
+		{
+			FK_ASSERT(false);
+		}
+
+		bool IsValid() const noexcept
+		{
+			return false;
+		}
+	};
+
+	using FileContext = NullFileContext;
+#endif
+
+
+	struct BufferContext : public ReadContextInterface
+	{
+		BufferContext(std::byte* IN_buffer, size_t IN_bufferSize, size_t IN_offset) :
+			buffer      { IN_buffer },
+			bufferSize  { IN_bufferSize },
+			offset      { IN_offset } {}
+
+		void Close() final {}
+
+		void Read(void* dst_ptr, size_t readSize, size_t readOffset) final
+		{
+			if(readOffset + offset + readSize <= bufferSize)
+				memcpy(dst_ptr, buffer + readOffset + offset, readSize);
+		}
+
+		void SetOffset(size_t readOffset) final
+		{
+			offset = readOffset;
+		}
+
+		bool IsValid() const noexcept final
+		{
+			return (buffer != nullptr && bufferSize > 0);
+		}
+
+		std::byte*  buffer      = nullptr;
+		size_t		bufferSize  = 0;
+		size_t		offset      = 0;
+	};
 
 
 }	/************************************************************************************************/

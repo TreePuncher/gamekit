@@ -27,9 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BuildSettings.hpp"
 #include "Components.hpp"
+#include "ComponentBlobs.hpp"
 #include "Containers.hpp"
 #include "Events.hpp"
-#include "Scene.hpp"
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 #include "ThreadUtilities.hpp"
@@ -40,7 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <physx/characterkinematic/PxController.h>
 #include <physx/extensions/PxDefaultAllocator.h>
 #include <physx/pvd/PxPvd.h>
-#include <physx/pvd/PxPvdTransport.h>
 #include <physx/characterkinematic/PxControllerManager.h>
 #include <physx/PxQueryReport.h>
 
@@ -945,7 +944,7 @@ namespace FlexKit
 			physx::PxFilterObjectAttributes	attributes1,
 			physx::PxFilterData				filterData1,
 			physx::PxPairFlags&				pairFlags,
-			const uint8_t*					constantBlock,
+			const std::byte*				constantBlock,
 			physx::PxU32					constantBlockSize);
 
 

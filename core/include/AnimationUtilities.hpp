@@ -259,7 +259,7 @@ namespace FlexKit
 
 
 	PoseState           CreatePoseState(Skeleton& skeleton, iAllocator* allocator);
-	ResourceHandle      LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, RenderSystem&, CopyContextHandle handle, iAllocator&);
+	ResourceHandle      LoadMorphTarget(TriMesh* triMesh, const char* morphTargetName, IRenderSystem&, CopyContextHandle handle, iAllocator&);
 
 
 	/************************************************************************************************/

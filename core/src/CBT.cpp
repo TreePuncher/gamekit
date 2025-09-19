@@ -323,9 +323,9 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(
 			SumReductionCBT, [](IRenderSystem& renderSystem, iAllocator& allocator) -> LoadPipelineStateRes
 			{
-				return PipelineBuilder{ allocator }.
+				return PipelineBuilder{ renderSystem, allocator }.
 						AddComputeShader("SumReduction", "assets\\shaders\\cbt\\CBT_SumReduction.hlsl", { .hlsl2021 = true }).
-						Build(static_cast<RenderSystem&>(renderSystem));
+						Build(renderSystem);
 			});
 
 

@@ -1,4 +1,5 @@
 #include "CBTTerrain.hpp"
+#include <CameraComponent.hpp>
 #include <TextureUtilities.hpp>
 #include <stb_image.h>
 

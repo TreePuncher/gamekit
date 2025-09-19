@@ -1,5 +1,5 @@
 #include "DebugUI.hpp"
-#include "Win32Graphics.hpp"
+//#include "Win32Graphics.hpp"
 #include <imgui.h>
 #include <implot.h>
 
@@ -18,6 +18,7 @@ namespace FlexKit
 
 	LoadPipelineStateRes Create_DrawImGUI(IRenderSystem& irs, iAllocator& allocator)
 	{
+#if 0
 		auto& renderSystem = static_cast<RenderSystem&>(irs);
 
 		auto DrawRectVShader = renderSystem.LoadShader("ImGui_VS", "vs_6_0", "assets\\shaders\\imguiShaders.hlsl");
@@ -70,6 +71,8 @@ namespace FlexKit
 		SETDEBUGNAME(PSO, "DrawIMGUI");
 
 		return { PSO, renderSystem.Library(ROOTLIBRARYSIG::RSDefault) };
+#endif
+		return {};
 	}
 
 
@@ -79,7 +82,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ImGUIIntegrator::ImGUIIntegrator(RenderSystem& renderSystem, iAllocator* memory)
+	ImGUIIntegrator::ImGUIIntegrator(IRenderSystem& renderSystem, iAllocator* memory)
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
@@ -87,7 +90,7 @@ namespace FlexKit
 
 		//ImPlot::GetStyle().AntiAliasedLines = true;
 
-		FlexKit::CopyContextHandle  uploadQueue = renderSystem.ImmediateUpload;
+		FlexKit::CopyContextHandle  uploadQueue = renderSystem.GetImmediateCopyQueue();
 		ImGuiIO& io                     = ImGui::GetIO();
 		io.FontGlobalScale              = 1.5f;
 

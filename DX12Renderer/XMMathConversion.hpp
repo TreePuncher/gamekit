@@ -1,3 +1,4 @@
+#if 0
 #ifndef XMMATHCONVERSION_H
 #define XMMATHCONVERSION_H
 
@@ -44,4 +45,5 @@ namespace FlexKit
 
 }
 
+#endif
 #endif

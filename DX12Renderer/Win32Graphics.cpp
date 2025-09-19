@@ -1,3 +1,4 @@
+#if 0
 #include "DX12Graphics.hpp"
 #include "MemoryUtilities.hpp"
 #include "ProfilingUtilities.hpp"
@@ -437,7 +438,7 @@ namespace FlexKit
 		}
 
 
-		void Resize(const uint2 newWH) override
+		void Resize(const uint2 newWH) final
 		{
 			if (!swapChain)
 				return;
@@ -491,7 +492,7 @@ namespace FlexKit
 		}
 
 
-		void Release() override final
+		void Release() final
 		{
 			if (!swapChain)
 				return;
@@ -979,6 +980,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool IsMouseCaptured(IRenderWindow* iWindow)
+	{
+		Win32RenderWindow* window = static_cast<Win32RenderWindow*>(iWindow);
+
+		return window->mouseCapture;
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool isValid(const IRenderWindow* iwindow)
 	{
 		const Win32RenderWindow* window = static_cast<const Win32RenderWindow*>(iwindow);
@@ -1083,3 +1095,4 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+#endif
