@@ -11,7 +11,7 @@ option(BuildEditor "Build Editor" ON)
 
 add_subdirectory(Core)
 add_subdirectory(Components)
-
+add_subdirectory(EngineComponents)
 
 if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     file(TO_NATIVE_PATH ${FLEX_ROOT}/shaders ASSETSRCPATH)

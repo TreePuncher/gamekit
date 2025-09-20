@@ -110,12 +110,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	typedef IRenderSystem* (*fnCreateRenderSystem)(const RenderSystemOptions&);
+
 	struct CoreOptions
 	{
 		uint32_t	threadCount		= FlexKit::Max(std::thread::hardware_concurrency() / 2, 1u) - 1;
 		bool		GPUdebugMode	= false;
 		bool		GPUValidation	= false;
 		bool		GPUSyncQueues	= false;
+
+		fnCreateRenderSystem	CreateRenderSystem = nullptr;
 	};
 
 	class EngineCore

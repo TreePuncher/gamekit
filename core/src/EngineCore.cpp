@@ -38,13 +38,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	RenderSystemOptions GetRSOptions(EngineCore& core, const CoreOptions& options)
+	{
+		RenderSystemOptions out{
+			.threads	= &core.Threads,
+			.allocator	= core.GetBlockMemory(),
+			.modes		= options.GPUdebugMode ? RenderSystemModes::Debug : RenderSystemModes::Normal, 
+		};
+
+		return out;
+	}
+
 	EngineCore::EngineCore(EngineMemory* memory, const CoreOptions& options) :
 		Memory			{ memory										},
 		CmdArguments	{ memory->BlockAllocator						},
 		Time			{ memory->BlockAllocator						},
 		Threads			{ options.threadCount, memory->BlockAllocator	},
-		//RenderSystem	{ *(new FlexKit::RenderSystem{ memory->BlockAllocator, &Threads }) }
-		RenderSystem	{ nullptr }
+		RenderSystem	{ options.CreateRenderSystem != nullptr ? options.CreateRenderSystem(GetRSOptions(*this, options)) : nullptr }
 	{
 		profiler.GetThreadProfiler();
 		InitiateSceneNodeBuffer(memory->BlockAllocator);
@@ -128,11 +138,11 @@ namespace FlexKit
 		desc.DX_GPUvalidation				= debugMode & gpuValidation;
 		desc.DX_SynchronizedQueueValidation = debugMode & syncQueues;
 
-		//if (!RenderSystem.Initiate(&desc)) {
-		//	FK_LOG_ERROR("Failed to initiate renderSystem");
+		if (!RenderSystem->Initiate(desc)) {
+			FK_LOG_ERROR("Failed to initiate renderSystem");
 
-		//	return false;
-		//}
+			return false;
+		}
 
 		InitiateAssetTable(GetBlockMemory());
 

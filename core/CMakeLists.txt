@@ -22,7 +22,6 @@ add_library(AngelScriptComponents
 
 target_link_libraries(AngelScriptComponents PRIVATE Angelscript::angelscript)
 
-
 add_library(flex
     "src/AnimationComponents.cpp"
     "src/AnimationRuntimeUtilities.cpp"
@@ -144,6 +143,14 @@ target_include_directories(flex
 
 target_link_libraries(flex PRIVATE fmt::fmt)
 target_link_libraries(flex PRIVATE range-v3::meta range-v3::concepts range-v3::range-v3)
+target_link_libraries(flex PRIVATE AngelScriptComponents)
+target_link_libraries(flex PRIVATE imgui::imgui)
+target_link_libraries(flex PRIVATE imguizmo::imguizmo)
+target_link_libraries(flex PRIVATE Angelscript::angelscript)
+target_link_libraries(flex PRIVATE implot::implot)
+target_link_libraries(flex PRIVATE loguru::loguru)
+target_link_libraries(flex PRIVATE scn::scn)
+target_link_libraries(flex PRIVATE ZLIB-NG)
 
 if(WIN32)
     find_path(SIMDE_INCLUDE_DIRS "simde")
@@ -157,24 +164,11 @@ if(WIN32)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
 
-    #set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
-    #ADD_LIBRARY(WINPIX SHARED IMPORTED)
-    #SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
-    #SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
-
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
     target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
-    #target_include_directories(flex PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)
 
-    target_link_libraries(flex PRIVATE AngelScriptComponents)
     target_link_libraries(flex PRIVATE unofficial::omniverse-physx-sdk::sdk)
-    target_link_libraries(flex PRIVATE imgui::imgui)
-    target_link_libraries(flex PRIVATE imguizmo::imguizmo)
-    target_link_libraries(flex PRIVATE Angelscript::angelscript)
-    target_link_libraries(flex PRIVATE implot::implot)
-    target_link_libraries(flex PRIVATE loguru::loguru)
-    target_link_libraries(flex PRIVATE scn::scn)
-    target_link_libraries(flex PRIVATE ZLIB-NG)
+
 
     #target_link_libraries(flex PRIVATE WINPIX) 
     #target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
@@ -184,10 +178,6 @@ if(WIN32)
     target_compile_options(flex PUBLIC /UTF-8)
     target_compile_options(flex PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     target_compile_options(flex PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-
-    #add_custom_command(TARGET flex POST_BUILD
-    #    COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
-    #    COMMAND_EXPAND_LISTS)
 
     file(COPY ${D3D12CORE_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
     file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})

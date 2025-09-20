@@ -2157,7 +2157,7 @@ namespace FlexKit
 		virtual void SetViewports				(std::span<const Viewport>	VPs)	IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetScissorRects			(std::span<const Rect>		rects)	IDIRECTCONTEXTDEBUGBODY;
 
-		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment = 256)
+		virtual UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment = 256)
 		{
 			FK_ASSERT(false, "NOT IMPLEMENTED: " __FUNCSIG__);
 		    return {};
@@ -2170,6 +2170,7 @@ namespace FlexKit
 
 	struct ICopyContext : public IContext
 	{
+		virtual ~ICopyContext() = 0;
 		virtual void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
 
 	    virtual UploadReservation	Reserve(size_t byteSize, uint32_t alignment = 256) { return {}; }
@@ -2179,7 +2180,7 @@ namespace FlexKit
 		virtual void                CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format) {}
 		virtual void                CopyTile(ResourceHandle dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src) {}
 
-		bool						IsSubResourceTiled(ResourceHandle Resource, const size_t level) const { return false; }
+		virtual bool				IsSubResourceTiled(ResourceHandle Resource, const size_t level) const { return false; }
 	};
 
 
@@ -2283,6 +2284,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	enum class RenderSystemModes
+	{
+	    Normal,
+	    Diagnostic,
+		Debug
+	};
+
+
+    struct RenderSystemOptions
+	{
+		struct ThreadManager*	threads;
+		iAllocator*				allocator;
+		RenderSystemModes		modes = RenderSystemModes::Normal;
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct IRenderSystem
 	{
 		IRenderSystem()
@@ -2298,14 +2318,16 @@ namespace FlexKit
 			return *instance;
 		}
 
+		virtual bool											Initiate(Graphics_Desc& desc) = 0;
+
 		virtual void											BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
 		virtual void											RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
 		virtual void											LoadPSOIfRequired		(PSOHandle State) = 0;
 		virtual void											QueuePSOLoad			(PSOHandle State) = 0;
 
-		virtual const IPipelineState*							GetPSO					(PSOHandle State, iAllocator& temp) = 0;
-		virtual const IRootSignature* const 					GetPSORootSignature		(PSOHandle state) const = 0;
-		std::tuple<IPipelineState*, const IRootSignature*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const;
+		virtual const IPipelineState*								GetPSO					(PSOHandle State, iAllocator& temp) = 0;
+		virtual const IRootSignature* const 						GetPSORootSignature		(PSOHandle state) const = 0;
+		virtual std::tuple<IPipelineState*, const IRootSignature*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
 
 		// Sync functions
 		virtual size_t		GetCurrentCounter()						= 0;
