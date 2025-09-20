@@ -1,19 +1,13 @@
 {
   "name": "flexkit",
   "version-string": "0.0.1",
-  "supports": "(!x86 & windows)",
+  "supports": "!x86 & windows",
+  "builtin-baseline": "d5ec528843d29e3a52d745a64b469f810b2cedbf",
   "dependencies": [
     {
       "name": "angelscript",
       "features": [
         "addons"
-      ]
-    },
-    {
-      "name": "directxtex",
-      "features": [
-        "dx12",
-        "openexr"
       ]
     },
     "boost-interprocess",
@@ -23,26 +17,39 @@
     "directx-dxc",
     "directx12-agility",
     "directxmesh",
+    {
+      "name": "directxtex",
+      "features": [
+        "dx12",
+        "openexr"
+      ]
+    },
     "directxtk12",
     "fmt",
     "fp16",
     "imgui",
-    "implot",
     "imguizmo",
+    "implot",
     "loguru",
     "ois",
     "physx",
     "qtbase",
-    "rmlui",
     "range-v3",
     "recastnavigation",
+    "rmlui",
     "scnlib",
     "simde",
     "slikenet",
     "stb",
     "tinygltf",
     "usd",
-    "zlib-ng"
-  ],
-  "builtin-baseline": "d5ec528843d29e3a52d745a64b469f810b2cedbf"
+    "zlib-ng",
+    "vulkan", 
+    "vulkan-loader",
+    "vulkan-tools", 
+    "vulkan-validationlayers",
+    "vulkan-utility-libraries",
+    "vulkan-extensionlayer",
+    "vulkan-sdk-components"
+  ]
 }

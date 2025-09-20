@@ -14,7 +14,7 @@ add_executable(
 )
 
 set_property(TARGET AnimationTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(AnimationTest PRIVATE flex flex_optional)
+target_link_libraries(AnimationTest PRIVATE flex flex_optional vkBackend)
 add_dependencies(AnimationTest ASSETS)
 
 Flex_LinkAssets(AnimationTest)

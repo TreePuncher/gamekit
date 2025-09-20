@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <Application.hpp>
 #include "AnimationTest.h"
+#include <vkBackend.hpp>
 
 int main()
 {
@@ -9,7 +10,7 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator);
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{ .CreateRenderSystem = FlexKit::CreateVK });
 
 		//app->PushState<AnimationTest>();
 		app->GetCore().FPSLimit		= 144;
