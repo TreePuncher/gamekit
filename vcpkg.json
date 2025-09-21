@@ -45,6 +45,7 @@
     "usd",
     "zlib-ng",
     "vulkan", 
+    "vk-bootstrap",
     "vulkan-loader",
     "vulkan-tools", 
     "vulkan-validationlayers",

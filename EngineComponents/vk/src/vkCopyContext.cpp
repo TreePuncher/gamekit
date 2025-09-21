@@ -4,7 +4,7 @@ namespace VK_internal
 {
 	using namespace FlexKit;
 
-	void vkCopyContext::Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after)
+	void vkCopyContext::Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after)
 	{}
 
 	UploadReservation vkCopyContext::Reserve(size_t byteSize, uint32_t alignment)

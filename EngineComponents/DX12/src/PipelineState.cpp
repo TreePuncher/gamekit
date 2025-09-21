@@ -23,11 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "RenderSystemInterface.hpp"
 #include "PipelineState.hpp"
+#include <RenderSystemInterface.hpp>
 
 
-namespace FlexKit
+namespace dx_Internal
 {
 	/************************************************************************************************/
 

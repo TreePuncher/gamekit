@@ -3307,6 +3307,21 @@ namespace FlexKit
 		NoMove				(const NoCopy&&) = delete;
 		NoMove& operator =	(const NoCopy&&) = delete;
 	};
+
+
+	/************************************************************************************************/
+
+
+	template<size_t I = 0, typename TY_Tuple, typename FN>
+	void Tuple_For(TY_Tuple& tuple, FN fn)
+	{
+		constexpr size_t end = std::tuple_size_v<TY_Tuple>;
+
+		if constexpr (I < end) {
+			fn(std::get<I>(tuple));
+			Tuple_For<I + 1>(tuple, fn);
+		}
+	}
 }	// namespace FlexKit;
 	/************************************************************************************************/
 #endif

@@ -29,11 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 
-#include <algorithm>
 #include <bitset>
 #include <functional>
 #include <variant>
-#include <limits>
 
 namespace FlexKit
 {

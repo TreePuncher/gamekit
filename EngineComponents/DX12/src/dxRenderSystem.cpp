@@ -4,11 +4,9 @@
 #include "AnimationUtilities.hpp"
 #include "Containers.hpp"
 #include "DDSUtilities.hpp"
-#include "DX12Graphics.hpp"
+#include "dxRenderSystem.hpp"
 #include "Logging.hpp"
 #include "MemoryUtilities.hpp"
-#include "MeshUtilities.hpp"
-#include "PushBuffers.hpp"
 #include "ThreadUtilities.hpp"
 #include "TriMeshResource.hpp"
 
@@ -38,8 +36,12 @@ extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1
 extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 615; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\"; }
 
-namespace FlexKit
+
+namespace dx_Internal
 {
+
+	using namespace FlexKit;
+
 	using std::ranges::sort;
 	using std::views::iota;
 	using std::views::zip;
@@ -178,7 +180,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DescriptorHeapAllocator::Initialize(FlexKit::RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator)
+	void DescriptorHeapAllocator::Initialize(RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator)
 	{
 		descHeap		= IN_renderSystem._CreateShaderVisibleHeap(numDescCount);
 		renderSystem	= &IN_renderSystem;
@@ -603,891 +605,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeapImpl::DescriptorHeapImpl(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
-		FillState(TempMemory)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(TempMemory);
-
-		const size_t EntryCount = Layout_IN.size();
-		descriptorHeap	= ctx._ReserveSRV(EntryCount).value();
-		Layout			= &Layout_IN;
-
-		for (size_t I = 0; I < EntryCount; I++)
-			FillState.push_back(false);
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl::DescriptorHeapImpl(DescriptorHeapImpl&& rhs)
-	{
-		descriptorHeap	= rhs.descriptorHeap;
-		FillState		= std::move(rhs.FillState);
-		Layout			= rhs.Layout;
-
-		rhs.descriptorHeap	= DescHeapPOS{ InvalidHandle, InvalidHandle };
-		rhs.Layout			= nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::operator = (DescriptorHeapImpl&& rhs)
-	{
-		descriptorHeap	= rhs.descriptorHeap;
-		FillState		= std::move(rhs.FillState);
-		Layout			= rhs.Layout;
-
-		rhs.descriptorHeap = DescHeapPOS{ InvalidHandle, InvalidHandle };
-		rhs.Layout = nullptr;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(TempMemory);
-		FillState = Vector<bool>(TempMemory);
-
-		const size_t EntryCount	= Layout_IN.size();
-		descriptorHeap			= ctx._ReserveSRV(EntryCount).value();
-		Layout					= &Layout_IN;
-
-		for (size_t I = 0; I < EntryCount; I++)
-			FillState.push_back(false);
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::Init(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(TempMemory);
-		FillState = Vector<bool>(TempMemory);
-
-		const size_t EntryCount = Layout_IN.size() * reserveCount;
-		descriptorHeap = ctx._ReserveSRV(EntryCount).value();
-		Layout = &Layout_IN;
-
-		for (size_t I = 0; I < EntryCount; I++)
-			FillState.push_back(false);
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::Init2(IContext& ictx, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(TempMemory);
-		FillState = Vector<bool>(TempMemory, reserveCount);
-
-		descriptorHeap = ctx._ReserveSRV(reserveCount).value();
-		Layout = &Layout_IN;
-
-		for (size_t I = 0; I < reserveCount; I++)
-			FillState.push_back(false);
-
-		return *this;
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::NullFill(IContext& ictx, const size_t end)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		auto& Entries = Layout->Entries;
-		for (size_t I = 0, Idx = 0; I < Entries.size(); I++)
-		{
-			auto& e = Entries[I];
-			//
-			for (size_t II = 0; II < e.Count + e.Space; II++)
-			{
-				if (I + II > end)
-					return *this;
-				if (!FillState[Idx])
-				{
-					switch (e.Type)
-					{
-					case DescHeapEntryType::ConstantBuffer:
-					{
-						auto POS = IncrementHeapPOS(
-							descriptorHeap,
-							ctx.renderSystem->DescriptorCBVSRVUAVSize,
-							Idx);
-
-						PushCBToDescHeap(
-							ctx.renderSystem, 0,
-							POS, 1024);
-					}	break;
-					case DescHeapEntryType::ShaderResource:
-					{
-						auto POS = IncrementHeapPOS(
-							descriptorHeap,
-							ctx.renderSystem->DescriptorCBVSRVUAVSize,
-							Idx);
-
-						PushSRVToDescHeap(
-							ctx.renderSystem,
-							nullptr,
-							POS, 16, 16);
-					}	break;
-					case DescHeapEntryType::UAVBuffer:
-					{
-						auto POS = IncrementHeapPOS(
-							descriptorHeap,
-							ctx.renderSystem->DescriptorCBVSRVUAVSize,
-							Idx);
-
-						Texture2D nullTexture{ nullptr };
-						nullTexture.Format = DXGI_FORMAT_R8G8B8A8_UINT;
-
-						PushUAV2DToDescHeap(
-							ctx.renderSystem,
-							nullTexture,
-							POS);
-					}	break;
-					case DescHeapEntryType::HeapError:
-					{
-						FK_ASSERT(false, "ERROR IN HEAP LAYOUT!");
-					}	break;
-					default:
-						break;
-					}
-				}
-				Idx++;
-			}
-		}
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		PushTextureToDescHeap(
-			ctx.renderSystem,
-			ctx.renderSystem->GetTextureDeviceFormat(handle),
-			handle,
-			IncrementHeapPOS(
-					descriptorHeap, 
-					ctx.renderSystem->DescriptorCBVSRVUAVSize,
-					idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		PushCubeMapTextureToDescHeap(
-			ctx.renderSystem,
-			handle,
-			IncrementHeapPOS(
-					descriptorHeap, 
-					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
-					idx),
-			ctx.renderSystem->GetTextureFormat(handle));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		PushCubeMapTextureToDescHeap(
-			ctx.renderSystem,
-			handle,
-			IncrementHeapPOS(
-					descriptorHeap, 
-					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
-					idx),
-			format);
-
-		return *this;
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto dxFormat = TextureFormat2DXGIFormat(format);
-
-		PushTextureToDescHeap(
-			ctx.renderSystem,
-			dxFormat,
-			handle,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto dxFormat = TextureFormat2DXGIFormat(format);
-
-		PushTextureToDescHeap(
-			ctx.renderSystem,
-			dxFormat,
-			MipOffset,
-			handle,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto dxFormat = TextureFormat2DXGIFormat(format);
-
-		PushTextureToDescHeap(
-			ctx.renderSystem,
-			dxFormat,
-			handle,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		const uint32_t	mipCount	= ctx.renderSystem->GetTextureMipCount(handle);
-		const auto		format		= ctx.renderSystem->GetTextureFormat(handle);
-		const auto		dxFormat	= TextureFormat2DXGIFormat(format);
-
-		PushTexture3DToDescHeap(
-			ctx.renderSystem,
-			dxFormat,
-			mipCount,
-			0,
-			0,
-			handle,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto resource = ctx.renderSystem->GetDeviceResource(constants.Handle());
-
-		PushCBToDescHeap(
-			ctx.renderSystem,
-			resource,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			constants.Size(),
-			constants.Offset());
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto resource = ctx.renderSystem->GetDeviceResource(handle);
-		PushCBToDescHeap(
-			ctx.renderSystem,
-			resource,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			(bufferSize / 256) * 256 + 256,
-			offset);
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		auto resource = ctx.renderSystem->GetDeviceResource(handle);
-		PushCBToDescHeap(
-			ctx.renderSystem,
-			resource,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx),
-			(bufferSize / 256) * 256 + 256,
-			offset);
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-		FK_ASSERT(offset < std::numeric_limits<uint32_t>::max());
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		UAVBuffer UAV{ *ctx.renderSystem, handle };
-		UAV.offset = (uint32_t)offset;
-
-		PushUAVBufferToDescHeap(
-			ctx.renderSystem,
-			UAV,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-	
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		Texture2D tex;
-		tex.WH			= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture		= ctx.renderSystem->GetDeviceResource(handle);
-		tex.Format		= ctx.renderSystem->GetTextureDeviceFormat(handle);
-
-		PushUAV2DToDescHeap(
-			ctx.renderSystem,
-			tex, 
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
-		tex.Format	= TextureFormat2DXGIFormat(format);
-
-		PushUAV2DToDescHeap(
-			ctx.renderSystem,
-			tex, 
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-		FK_ASSERT(mipLevel < std::numeric_limits<uint32_t>::max());
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
-		tex.Format	= TextureFormat2DXGIFormat(format);
-
-		PushUAV2DToDescHeap(
-			ctx.renderSystem,
-			tex,
-			(uint32_t)mipLevel,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		PushUAVCubeMapToDescHeap(
-			ctx.renderSystem,
-			ctx.renderSystem->GetTextureDeviceFormat(handle),
-			ctx.renderSystem->GetDeviceResource(handle),
-			IncrementHeapPOS(
-					descriptorHeap, 
-					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
-					idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
-	{
-		Context& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
-		tex.Format	= TextureFormat2DXGIFormat(format);
-
-		PushUAV3DToDescHeap(
-			ctx.renderSystem,
-			tex,
-			tex.WH[0],
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		UAVBuffer uavDesc{ *ctx.renderSystem, handle, stride, offset };
-		
-		PushUAVBufferToDescHeap(
-			ctx.renderSystem,
-			uavDesc,
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetUAVStructured(
-		IContext&		ictx,
-		size_t			idx,
-		ResourceHandle	resource,
-		ResourceHandle	counter,
-		size_t			stride,
-		size_t			counterOffset)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		FK_ASSERT(idx < std::numeric_limits<uint32_t>::max());
-		FK_ASSERT(stride < std::numeric_limits<uint32_t>::max());
-		FK_ASSERT(counterOffset < std::numeric_limits<uint32_t>::max());
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || resource == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, resource.to_uint());
-			return *this;
-		}
-#endif
-
-		FillState[idx] = true;
-
-		UAVBuffer uavDesc{ *ctx.renderSystem, resource, stride, 0 };
-		uavDesc.counterOffset   = (uint32_t)counterOffset;
-		uavDesc.offset          = (uint32_t)(resource == counter ? Max(4096 / stride, 1) : 0);
-
-		PushUAVBufferToDescHeap2(
-			ctx.renderSystem,
-			uavDesc,
-			ctx.renderSystem->GetDeviceResource(counter),
-			IncrementHeapPOS(
-				descriptorHeap,
-				ctx.renderSystem->DescriptorCBVSRVUAVSize,
-				idx));
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl& DescriptorHeapImpl::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-#if USING(DEBUGGRAPHICS)
-		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
-		{
-			FK_LOG_ERROR("DescriptorHeapImpl::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
-			return *this;
-		}
-#endif
-
-		if (handle == InvalidHandle)
-		{
-			PushSRVNULLDescHeap(
-				ctx.renderSystem,
-				IncrementHeapPOS(
-					descriptorHeap,
-					ctx.renderSystem->DescriptorCBVSRVUAVSize,
-					idx));
-
-			return *this;
-		}
-		else
-		{
-			FillState[idx] = true;
-
-			const auto byteSize = ctx.renderSystem->GetResourceSize(handle);
-
-			PushSRVToDescHeap(
-				ctx.renderSystem,
-				ctx.renderSystem->Textures[handle],
-				IncrementHeapPOS(descriptorHeap,
-					ctx.renderSystem->DescriptorCBVSRVUAVSize,
-					idx),
-				byteSize / stride,
-				stride,
-				D3D12_BUFFER_SRV_FLAG_NONE,
-				offset);
-
-			return *this;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescriptorHeapImpl DescriptorHeapImpl::GetHeapOffsetted(size_t offset, IContext& ictx) const
-	{
-		auto& ctx = static_cast<Context&>(ictx);
-
-		DescriptorHeap subHeap = Clone();
-		subHeap.descriptorHeap = IncrementHeapPOS(
-										descriptorHeap,
-										ctx.renderSystem->DescriptorCBVSRVUAVSize,
-										offset);
-
-		return subHeap;
-	}
-
-
-	//void DescriptorHeap::Mirror(const DescriptorHeap& rhs);
-	//DescriptorHeap DescriptorHeap::Clone() const;
-
-	DescriptorHeap::operator DescriptorRange() const noexcept
-	{
-		return {
-			.begin		= descriptorHeap,
-			.size		= static_cast<uint32_t>(FillState.size()),
-			.stride		= static_cast<uint32_t>(RenderSystem::_GetInstance().DescriptorCBVSRVUAVSize)
-		};
-	}
-
-
-	bool DescriptorHeapImpl::CheckType(const DesciptorHeapLayout<>& layout, DescHeapEntryType type, size_t idx)
-	{
-		size_t entryIdx = 0;
-		for (HeapDescriptor entry : layout.Entries)
-		{
-			if ((entry.Type == type)	&& 
-				(entryIdx <= idx)		&&
-				(entryIdx + entry.Space + entry.Count > idx))
-				return true;
-
-			entryIdx += entry.Count + entry.Space;
-		}
-
-		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
 	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages)
 	{
 		RootEntry Desc;
@@ -1506,6 +623,32 @@ namespace FlexKit
 		}
 
 		RootEntries[Index]  = Desc;
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+    bool RootSignatureBuilder::SetParameterAsDescriptorTable(
+		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE_DESTINATION accessableStages)
+	{
+		RootEntry Desc;
+		Desc.Type							= RootSignatureEntryType::DescriptorHeap;
+		Desc.DescriptorHeap.HeapIdx			= Heaps.push_back({ index, layout });
+		Desc.DescriptorHeap.Accessibility	= accessableStages;
+
+		if (RootEntries.size() <= index)
+		{
+			if (!RootEntries.full()) {
+				RootEntries.resize(index + 1);
+			}
+			else
+				return false;
+		}
+
+		RootEntries[index] = Desc;
 
 		return true;
 	}
@@ -1563,7 +706,7 @@ namespace FlexKit
 
 		RootEntries[Index] = Desc;
 
-		return false;
+		return true;
 	}
 
 
@@ -1590,7 +733,7 @@ namespace FlexKit
 
 		RootEntries[Index] = Desc;
 
-		return false;
+		return true;
 	}
 
 
@@ -1666,7 +809,7 @@ namespace FlexKit
 						
 						for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 						{
-							DesciptorHeapLayout<16> layout;
+							DesciptorHeapLayout layout;
 							switch(range.RangeType)
 							{
 							case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
@@ -1702,7 +845,7 @@ namespace FlexKit
 							Heaps.emplace_back(Heaps.size(), layout);
 						}
 					
-						SetParameterAsDescriptorTable(itr, Heaps.back().Heap, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+						SetParameterAsDescriptorTable(itr, Heaps.back().heap, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 					}	break;
 					case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
 					{
@@ -1777,7 +920,7 @@ namespace FlexKit
 				case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
 				{
 					auto& parameter = desc->pParameters[itr].DescriptorTable;
-					DesciptorHeapLayout<16> layout;
+					DesciptorHeapLayout layout;
 
 					for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 					{
@@ -1874,7 +1017,7 @@ namespace FlexKit
 	size_t RootSignature::GetDesciptorTableSize(size_t idx) const
 	{
 		FK_ASSERT(idx < Heaps.size());
-		return Heaps[idx].Heap.size();
+		return Heaps[idx].heap.size();
 	}
 
 
@@ -2322,2768 +1465,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Context::Context(
-				RenderSystem*	renderSystem_IN,
-				iAllocator*		allocator) :
-			CurrentRootSignature	{ nullptr			},
-			pendingBarriers			{ },
-			renderSystem			{ renderSystem_IN	},
-			Memory					{ allocator			},
-			RenderTargetCount		{ 0					},
-			DepthStencilEnabled		{ false				},
-			TrackedSOBuffers		{ }
-	{
-		HRESULT HR;
-
-		D3D12_DESCRIPTOR_HEAP_DESC cpuDescriptorHeapdesc;
-		cpuDescriptorHeapdesc.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		cpuDescriptorHeapdesc.NumDescriptors	= 1024;
-		cpuDescriptorHeapdesc.NodeMask			= 0;
-		cpuDescriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		HR = renderSystem->pDevice->CreateDescriptorHeap(&cpuDescriptorHeapdesc, IID_PPV_ARGS(&descHeapSRVLocal));
-		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
-
-		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
-		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		descriptorHeapdesc.NumDescriptors	= 128;
-		descriptorHeapdesc.NodeMask			= 0;
-		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapRTV));
-		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
-
-		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		descriptorHeapdesc.NumDescriptors	= 128;
-		descriptorHeapdesc.NodeMask			= 0;
-		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapDSV));
-		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
-
-		FK_LOG_9("GRAPHICS SRV DESCRIPTOR HEAP CREATED: %u", descHeapSRVLocal);
-		FK_LOG_9("GRAPHICS RTV DESCRIPTOR HEAP CREATED: %u", descHeapRTV);
-		FK_LOG_9("GRAPHICS DSV DESCRIPTOR HEAP CREATED: %u", descHeapDSV);
-
-		SETDEBUGNAME(descHeapRTV, "GPURESOURCEHEAP");
-		SETDEBUGNAME(descHeapDSV, "RENDERTARGETHEAP");
-
-		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));												FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, IID_PPV_ARGS(&DeviceContext));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-
-#if USING(DEBUGGRAPHICS)
-		DeviceContext->QueryInterface(IID_PPV_ARGS(&debugCommandList));
-#endif
-
-		SETDEBUGNAME(DeviceContext, "GraphicsContext");
-		SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
-
-#if USING(AFTERMATH)
-		auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
-#endif
-
-		DeviceContext->Close();
-	}
-
-
-	/************************************************************************************************/
-
-	Context::Context(Context&& RHS)
-	{
-		DeviceContext			= RHS.DeviceContext;
-		CurrentRootSignature	= RHS.CurrentRootSignature;
-		CurrentPipelineState	= RHS.CurrentPipelineState;
-		renderSystem			= RHS.renderSystem;
-
-#if USING(DEBUGGRAPHICS)
-		debugCommandList		= RHS.debugCommandList;
-#endif
-
-		RTV_CPU = RHS.RTV_CPU;
-
-		shaderResources = RHS.shaderResources;
-		heapUsed		= RHS.heapUsed;
-
-		DSV_CPU = RHS.DSV_CPU;
-
-		descHeapRTV = RHS.descHeapRTV;
-		descHeapDSV = RHS.descHeapDSV;
-
-		RenderTargetCount		= RHS.RenderTargetCount;
-		DepthStencilEnabled		= RHS.DepthStencilEnabled;
-
-		DesciptorHeaps			= RHS.DesciptorHeaps;
-		VBViews					= RHS.VBViews;
-		pendingBarriers			= RHS.pendingBarriers;
-		Memory					= RHS.Memory;
-		commandAllocator		= RHS.commandAllocator;
-
-		// Null out old Context
-		RHS.commandAllocator		= nullptr;
-		RHS.DeviceContext			= nullptr;
-		RHS.CurrentRootSignature	= nullptr;
-
-#if USING(DEBUGGRAPHICS)
-		RHS.debugCommandList		= nullptr;
-#endif
-
-		RHS.RenderTargetCount		= 0;
-		RHS.DepthStencilEnabled		= false;
-		RHS.Memory					= nullptr;
-
-		RHS.DesciptorHeaps.clear();
-		RHS.VBViews.clear();
-		RHS.pendingBarriers.clear();
-
-		RHS.RTV_CPU = { 0 };
-
-		RHS.shaderResources = {};
-		RHS.heapUsed		= 0;
-
-		RHS.DSV_CPU = { 0 };
-		RHS.descHeapRTV = nullptr;
-		RHS.descHeapDSV = nullptr;
-
-#if USING(AFTERMATH)
-		AFTERMATH_context       = RHS.AFTERMATH_context;
-		RHS.AFTERMATH_context   = nullptr;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	Context& Context::operator = (Context&& RHS)// Moves only
-	{
-		DeviceContext			= RHS.DeviceContext;
-		CurrentRootSignature	= RHS.CurrentRootSignature;
-		CurrentPipelineState	= RHS.CurrentPipelineState;
-		renderSystem			= RHS.renderSystem;
-
-#if USING(DEBUGGRAPHICS)
-		debugCommandList		= RHS.debugCommandList;
-#endif
-
-		
-		shaderResources = RHS.shaderResources;
-		heapUsed		= RHS.heapUsed;
-
-
-		RTV_CPU = RHS.RTV_CPU;
-		DSV_CPU = RHS.DSV_CPU;
-
-		descHeapRTV = RHS.descHeapRTV;
-		descHeapDSV = RHS.descHeapDSV;
-
-		RenderTargetCount		= RHS.RenderTargetCount;
-		DepthStencilEnabled		= RHS.DepthStencilEnabled;
-
-		DesciptorHeaps			= RHS.DesciptorHeaps;
-		VBViews					= RHS.VBViews;
-		pendingBarriers			= RHS.pendingBarriers;
-		Memory					= RHS.Memory;
-		commandAllocator		= RHS.commandAllocator;
-
-		// Null out old Context
-		RHS.commandAllocator		= nullptr;
-		RHS.DeviceContext			= nullptr;
-		RHS.CurrentRootSignature	= nullptr;
-
-#if USING(DEBUGGRAPHICS)
-		RHS.debugCommandList		= nullptr;
-#endif
-
-		RHS.RenderTargetCount		= 0;
-		RHS.DepthStencilEnabled		= false;
-		RHS.Memory					= nullptr;
-
-		RHS.DesciptorHeaps.clear();
-		RHS.VBViews.clear();
-		RHS.pendingBarriers.clear();
-
-		RHS.DSV_CPU			= { 0 };
-		RHS.RTV_CPU			= { 0 };
-		RHS.shaderResources = {};
-		RHS.heapUsed		= 0;
-
-		RHS.descHeapRTV = nullptr;
-		RHS.descHeapDSV = nullptr;
-
-
-#if USING(AFTERMATH)
-		AFTERMATH_context       = RHS.AFTERMATH_context;
-		RHS.AFTERMATH_context   = nullptr;
-#endif
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::Release()
-	{
-#if USING(AFTERMATH)
-		GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
-#endif
-
-		if(descHeapRTV)
-			descHeapRTV->Release();
-
-		if (descHeapSRVLocal)
-			descHeapSRVLocal->Release();
-
-		if (descHeapDSV)
-			descHeapDSV->Release();
-
-		if(commandAllocator)
-			commandAllocator->Release();
-
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->Release();
-#endif
-
-		if(DeviceContext)
-			DeviceContext->Release();
-
-		shaderResources			= {};
-		heapUsed				= 0;
-		descHeapDSV				= nullptr;
-		descHeapRTV				= nullptr;
-		descHeapSRVLocal		= nullptr;
-		commandAllocator		= nullptr;
-		DeviceContext			= nullptr;
-		CurrentPipelineState	= nullptr;
-
-#if USING(DEBUGGRAPHICS)
-		debugCommandList	 = nullptr;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CreateAS(const AccelerationStructureDesc& asDesc, const TriMesh&)
-	{
-		FK_ASSERT(0);
-	}
-
-
-	void Context::BuildBLAS(IVertexBufferSet& bufferSet, ResourceHandle destination, ResourceHandle scratchSpace)
-	{
-		auto indexBuffer    = bufferSet[bufferSet.GetIndexBufferIndex()];
-		auto positionBuffer = bufferSet.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
-
-		D3D12_RAYTRACING_GEOMETRY_DESC desc;
-		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-		desc.Flags =
-			D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-
-		desc.Triangles.Transform3x4 = 0;
-		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-		desc.Triangles.IndexBuffer  = GetDevicePointer(indexBuffer);
-		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
-
-		desc.Triangles.VertexFormat                 = DXGI_FORMAT_R32G32B32_FLOAT;
-		desc.Triangles.VertexBuffer.StartAddress    = GetDevicePointer(positionBuffer.value());
-		desc.Triangles.VertexBuffer.StrideInBytes   = positionBuffer.value().byteStride;
-		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
-
-		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
-							.DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
-							.Inputs = {
-								.Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
-								.Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
-								.NumDescs       = 1,
-								.DescsLayout    = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
-								.pGeometryDescs = &desc,
-							},
-							.ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace)->GetGPUVirtualAddress(),
-		};
-
-		UpdateResourceStates();
-		DeviceContext->BuildRaytracingAccelerationStructure(&build_desc, 0, nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::DiscardResource(ResourceHandle resource)
-	{
-		UpdateResourceStates();
-
-		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddAliasingBarrier(ResourceHandle before, ResourceHandle after)
-	{
-		DebugBreak();
-
-		/*
-		auto res = find(PendingBarriers,
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					(rhs.Type            == Barrier::Type::Aliasing) &&
-					((before != InvalidHandle &&  rhs.aliasedResources[0] == before) ||
-					 (after != InvalidHandle &&   rhs.aliasedResources[1] == after));
-			});
-
-		if (std::end(PendingBarriers) == res)
-		{
-			Barrier barrier;
-			barrier.Type                = Barrier::Type::Aliasing;
-			barrier.aliasedResources[0] = before;
-			barrier.aliasedResources[1] = after;
-
-			PendingBarriers.push_back(barrier);
-		}
-		else
-		{
-			Barrier barrier;
-			barrier.Type                = Barrier::Type::Aliasing;
-			barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle ? before : res->aliasedResources[0];
-			barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle ? after  : res->aliasedResources[1];
-
-			PendingBarriers.push_back(barrier);
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddUAVBarrier(ResourceHandle resource, uint32_t subresource, DeviceLayout layout, DeviceSyncPoint src, DeviceSyncPoint dst)
-	{
-		if(resource != FlexKit::InvalidHandle)
-		{
-			const auto dimension = renderSystem->GetTextureDimension(resource);
-			Barrier barrier;
-			barrier.resource		= resource;
-			barrier.accessBefore	= DASUAV;
-			barrier.accessAfter		= DASUAV;
-			barrier.src				= src;
-			barrier.dst				= dst;
-
-			switch (dimension)
-			{
-			case TextureDimension::Buffer:
-				barrier.type = BarrierType::Buffer;
-				break;
-			case TextureDimension::Texture2D:
-			case TextureDimension::Texture2DArray:
-			{
-				barrier.type					= BarrierType::Texture;
-				barrier.texture.layoutAfter		= layout;
-				barrier.texture.layoutBefore	= layout;
-			}	break;
-			case TextureDimension::Texture1D:
-			case TextureDimension::Texture3D:
-			case TextureDimension::TextureCubeMap:
-				DebugBreak();
-			}
-
-			pendingBarriers.push_back(barrier);
-		}
-		else
-		{
-			Barrier barrier;
-			barrier.accessBefore	= DASUAV;
-			barrier.accessAfter		= DASUAV;
-			barrier.src				= src;
-			barrier.dst				= dst;
-			barrier.type			= BarrierType::Global;
-
-			pendingBarriers.push_back(barrier);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before)
-	{
-		DebugBreak();
-
-		/*
-		Barrier NewBarrier;
-		NewBarrier.OldState		    = Before;
-		NewBarrier.NewState		    = DeviceAccessState::DASPresent;
-		NewBarrier.Type			    = Barrier::Type::Resource;
-		NewBarrier.resourceHandle	= Handle;
-
-		PendingBarriers.push_back(NewBarrier);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddStreamOutBarrier(SOResourceHandle streamOut, DeviceAccessState Before, DeviceAccessState State)
-	{
-		DebugBreak();
-
-		/*
-		auto res = find(PendingBarriers, 
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.Type		== Barrier::Type::StreamOut &&
-					rhs.streamOut	== streamOut;
-			});
-
-		if (res != PendingBarriers.end()) {
-			res->NewState = State;
-		}
-		else
-		{
-			Barrier NewBarrier;
-			NewBarrier.OldState		= Before;
-			NewBarrier.NewState		= State;
-			NewBarrier.Type			= Barrier::Type::StreamOut;
-			NewBarrier.streamOut	= streamOut;
-
-			PendingBarriers.push_back(NewBarrier);
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-	void Context::AddGlobalBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
-	{
-		Barrier barrier;
-		barrier.accessBefore	= accessBefore;
-		barrier.accessAfter		= accessAfter;
-		barrier.src				= syncBefore;
-		barrier.dst				= syncAfter;
-		barrier.resource		= resource;
-		barrier.type			= BarrierType::Global;
-
-		auto res = find(pendingBarriers, [&](const auto& i) { return (i.resource == resource); });
-
-		if (res == std::end(pendingBarriers))
-			pendingBarriers.push_back(barrier);
-		else
-			(*res) = barrier;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddTextureBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceLayout layoutBefore, DeviceLayout layoutAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter, BarrierSubResourceRange range)
-	{
-		auto res = find(pendingBarriers,
-			[&](Barrier& rhs) -> bool { return (rhs.resource == resource); });
-
-		if (res != pendingBarriers.end())
-		{
-			res->accessAfter			= accessAfter;
-			res->texture.layoutAfter	= layoutAfter;
-			res->dst					= syncAfter;
-		}
-		else
-		{
-			Barrier barrier;
-			barrier.accessBefore	= accessBefore;
-			barrier.accessAfter		= accessAfter;
-			barrier.src				= syncBefore;
-			barrier.dst				= syncAfter;
-			barrier.resource		= resource;
-			barrier.type			= BarrierType::Texture;
-
-			barrier.texture.layoutBefore	= layoutBefore;
-			barrier.texture.layoutAfter		= layoutAfter;
-			barrier.texture.flags			= 0;
-
-			pendingBarriers.push_back(barrier);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddBufferBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
-	{
-		auto res = find(pendingBarriers,
-			[&](Barrier& rhs) -> bool { return (rhs.resource == resource); });
-
-		if (res != pendingBarriers.end())
-		{
-			res->accessAfter		= accessAfter;
-		}
-		else
-		{
-			Barrier barrier;
-			barrier.accessBefore	= accessBefore;
-			barrier.accessAfter		= accessAfter;
-			barrier.src				= syncBefore;
-			barrier.dst				= syncAfter;
-			barrier.resource		= resource;
-			barrier.type			= BarrierType::Buffer;
-
-			pendingBarriers.push_back(barrier);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddBarriers(std::span<const Barrier> barriers)
-	{
-		for (auto& barrier : barriers)
-		{
-			if (barrier.resource != InvalidHandle)
-				pendingBarriers.push_back(barrier);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddCopyResourceBarrier(ResourceHandle resource, DeviceAccessState Before, DeviceAccessState State)
-	{
-		DebugBreak();
-
-		/*
-		auto res = find(PendingBarriers,
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.Type            == Barrier::Type::Resource &&
-					rhs.resourceHandle  == resource;
-			});
-
-		if (res != PendingBarriers.end()) {
-			res->NewState = State;
-		}
-		else
-		{
-			Barrier NewBarrier;
-			NewBarrier.OldState         = Before;
-			NewBarrier.NewState         = State;
-			NewBarrier.Type             = Barrier::Type::Resource;
-			NewBarrier.resourceHandle   = resource;
-
-			PendingBarriers.push_back(NewBarrier);
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRootSignature(RootSigHandle rootSigHandle)
-	{
-		auto rootSig			= renderSystem->_GetRootSignature(rootSigHandle);
-		CurrentRootSignature	= rootSig;
-		DeviceContext->SetGraphicsRootSignature(*rootSig);
-	}
-
-	void Context::SetRootSignature(const IRootSignature* rootSig)
-	{
-		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
-		CurrentRootSignature	= dxRootSig;
-		DeviceContext->SetGraphicsRootSignature(*dxRootSig);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeRootSignature(RootSigHandle rootSigHandle)
-	{
-		auto rootSig = renderSystem->_GetRootSignature(rootSigHandle);
-
-		CurrentComputeRootSignature = rootSig;
-		DeviceContext->SetComputeRootSignature(*rootSig);
-	}
-
-
-	void Context::SetComputeRootSignature(const IRootSignature* rootSig)
-	{
-		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
-
-		CurrentComputeRootSignature = dxRootSig;
-		DeviceContext->SetComputeRootSignature(*dxRootSig);
-	}
-
-
-	/************************************************************************************************/
-
-
-	/*
-	void Context::SetPipelineState(ID3D12PipelineState* PSO)
-	{
-		FK_ASSERT(PSO);
-
-		if (PSO == nullptr)
-			__debugbreak();
-
-		if (CurrentPipelineState == PSO)
-			return;
-
-		CurrentPipelineState = PSO;
-		DeviceContext->SetPipelineState(PSO);
-	}
-	*/
-
-	/************************************************************************************************/
-
-
-	void Context::SetPipelineState(const IPipelineState* const PSO)
-	{
-		FK_ASSERT(PSO);
-
-		const DXPipelineState* pso = static_cast<const DXPipelineState*>(PSO);
-
-		if (PSO == nullptr)
-			__debugbreak();
-
-		if (CurrentPipelineState == pso->state)
-			return;
-
-		CurrentPipelineState = pso->state;
-		DeviceContext->SetPipelineState(pso->state);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputePipelineState(const PSOHandle stateHandle, iAllocator& temp)
-	{
-		auto [PSO, rootSignature]	= renderSystem->GetPSOAndRootSignature(stateHandle, temp);
-		auto implRootSignature		= static_cast<const RootSignature*>(rootSignature);
-
-		if (PSO == nullptr)
-			__debugbreak();
-
-		if (CurrentComputeRootSignature != rootSignature)
-		{
-			DeviceContext->SetComputeRootSignature(*implRootSignature);
-			CurrentComputeRootSignature = implRootSignature;
-		}
-
-		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
-		{
-			CurrentPipelineState = implPSO;
-			DeviceContext->SetPipelineState(implPSO);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsPipelineState(const PSOHandle stateHandle, iAllocator& temp)
-	{
-		auto [PSO, rootSignature] = renderSystem->GetPSOAndRootSignature(stateHandle, temp);
-		auto implRootSignature = static_cast<const RootSignature*>(rootSignature);
-
-		if (PSO == nullptr)
-		{
-			FK_LOG_ERROR("Failed to load pipeline state! %u", stateHandle.to_uint());
-
-#if _DEBUG
-			__debugbreak();
-#endif
-		}
-
-		if (CurrentRootSignature != implRootSignature)
-		{
-			DeviceContext->SetGraphicsRootSignature(*implRootSignature);
-			CurrentRootSignature = implRootSignature;
-		}
-
-		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
-		{
-			CurrentPipelineState = implPSO;
-			DeviceContext->SetPipelineState(implPSO);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool enableDepthStencil, ResourceHandle depthStencil, const size_t MIPMapOffset)
-	{
-		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
-
-
-		bool WHsAllEqual = true;
-
-		uint2 depthWH;
-		uint2 textureWH;
-
-		if (RTs.size() && enableDepthStencil)
-		{
-			depthWH = renderSystem->GetTextureWH(depthStencil);
-			textureWH = renderSystem->GetTextureWH(RTs.front());
-
-			WHsAllEqual = depthWH == textureWH;;
-		}
-
-
-		if (!MIPMapOffset && WHsAllEqual)
-		{
-			for (auto renderTarget : RTs) {
-				auto res = std::find_if(
-					renderTargetViews.begin(),
-					renderTargetViews.end(),
-					[&](RTV_View& view)
-					{
-						return view.resource == renderTarget;
-					});
-
-				if (res != renderTargetViews.end())
-				{
-					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 });
-				}
-				else
-				{
-					auto view = _ReserveRTV(1);
-					PushRenderTarget(renderSystem, renderTarget, view);
-					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
-					renderTargetViews.push_back({ renderTarget, view });
-				}
-			}
-		}
-		else
-		{
-			auto view = _ReserveRTV(RTs.size());
-			
-			for (auto& renderTarget : RTs)
-			{
-				auto WH = Min(depthWH, textureWH);
-
-				RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
-				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
-			}
-		}
-
-		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
-
-		if(enableDepthStencil)
-		{
-			if (auto res = std::find_if(
-					depthStencilViews.begin(),
-					depthStencilViews.end(),
-					[&](RTV_View& view)
-					{
-						return view.resource == depthStencil;
-					});
-					res == depthStencilViews.end())
-			{
-				auto DSV = _ReserveDSV(1);
-				PushDepthStencil(renderSystem, depthStencil, DSV);
-
-				DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ DSV.V1 };
-			}
-			else
-				DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 };
-		}
-
-
-		DeviceContext->OMSetRenderTargets(
-			(UINT)RTV_CPU_HANDLES.size(),
-			RTV_CPU_HANDLES.begin(),
-			enableDepthStencil,
-			enableDepthStencil ? &DSV_CPU_HANDLE : nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
-	{
-		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
-
-		if (!MIPMapOffset)
-		{
-			for (auto renderTarget : RTs) {
-				auto res = std::find_if(
-					renderTargetViews.begin(),
-					renderTargetViews.end(),
-					[&](RTV_View& view)
-					{
-						return view.resource == renderTarget;
-					});
-
-				if (res != renderTargetViews.end())
-				{
-					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.V1 });
-				}
-				else
-				{
-					auto view = _ReserveRTV(1);
-					PushRenderTarget(renderSystem, renderTarget, view);
-					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
-					renderTargetViews.push_back({ renderTarget, view });
-				}
-			}
-		}
-		else
-		{
-			auto view = _ReserveRTV(RTs.size());
-			
-			for (auto& renderTarget : RTs)
-			{
-				RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
-				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
-			}
-		}
-		
-		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
-
-		const bool depthEnabled = DSV.depthStencil != InvalidHandle;
-
-		if(depthEnabled)
-		{
-			auto descriptor = _GetDepthDesciptor(DSV.depthStencil);
-
-			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor, DSV.arraySize);
-
-			DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.V1 };
-		}
-
-		DeviceContext->OMSetRenderTargets(
-			(UINT)RTV_CPU_HANDLES.size(),
-			RTV_CPU_HANDLES.begin(),
-			depthEnabled,
-			depthEnabled ? &DSV_CPU_HANDLE : nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-	/*
-	void Context::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
-	{
-		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.begin());
-	}
-
-
-	void Context::SetViewports(std::span<const D3D12_VIEWPORT>	VPs)
-	{
-		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.data());
-	}
-
-	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>	Rects)
-	{
-		DeviceContext->RSSetScissorRects((UINT)Rects.size(), Rects.begin());
-	}
-
-
-	void Context::SetScissorRects(std::span<const D3D12_RECT> rects)
-	{
-		DeviceContext->RSSetScissorRects((UINT)rects.size(), rects.data());
-	}
-
-	*/
-
-	/************************************************************************************************/
-
-
-	void Context::SetViewports(std::span<const Viewport> rects)
-	{
-		DeviceContext->RSSetViewports((UINT)rects.size(), (const D3D12_VIEWPORT*)rects.data());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetScissorRects(std::span<const Rect>	rects)
-	{
-		DeviceContext->RSSetScissorRects((UINT)rects.size(), (const D3D12_RECT*)rects.data());
-	}
-
-
-	/************************************************************************************************/
-
-	// Assumes setting each to fullscreen
-	void Context::SetScissorAndViewports(static_vector<ResourceHandle, 16>	RenderTargets)
-	{
-		static_vector<Viewport, 16>	VPs;
-		static_vector<Rect, 16>		Rects;
-
-		for (auto RT : RenderTargets)
-		{
-			auto WH = renderSystem->GetTextureWH(RT);
-			VPs.emplace_back	(0.0f, 0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f);
-			Rects.emplace_back	(0u, 0u, WH[0], WH[1]);
-		}
-
-		SetViewports(VPs);
-		SetScissorRects(Rects);
-	}
-
-	/************************************************************************************************/
-
-
-	void Context::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
-	{
-		static_vector<Viewport, 16>	VPs;
-		static_vector<Rect, 16>		Rects;
-
-		for (auto RT : RenderTargets)
-		{
-			auto WH = float2{ renderSystem->GetTextureWH(RT) } / std::pow(2.0f, (float)MIPMapOffset);
-			VPs.emplace_back	(0.0f, 0.0f,	WH[0], WH[1], 0.0f, 1.0f);
-			Rects.emplace_back	(0u, 0u, (uint32_t)WH[0], (uint32_t)WH[1]);
-		}
-
-		SetViewports(VPs);
-		SetScissorRects(Rects);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::QueueReadBack(ReadBackResourceHandle readBack)
-	{
-		queuedReadBacks.push_back(readBack);
-	}
-
-	void Context::QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback)
-	{
-		renderSystem->SetReadBackEvent(readBack, std::move(callback));
-		QueueReadBack(readBack);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetDepthStencil(ResourceHandle DS)
-	{
-		if (DS != InvalidHandle)
-		{
-			auto DSV = _ReserveDSV(1);
-			PushDepthStencil(renderSystem, DS, DSV);
-			DeviceContext->OMSetRenderTargets(
-				(UINT)RenderTargetCount,
-				RenderTargetCount ? &RTVPOSCPU : nullptr, true,
-				DepthStencilEnabled ? &DSVPOSCPU : nullptr);
-		}
-		else 
-			DepthStencilEnabled = false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetInputPrimitive(EInputPrimitive topology)
-	{
-		DeviceContext->IASetPrimitiveTopology((D3D12_PRIMITIVE_TOPOLOGY)topology);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
-	{
-		DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::NullGraphicsConstantBufferView(size_t idx)
-	{
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset)
-	{
-		FK_ASSERT(!(Offset % 256), "Incorrect CB Offset!");
-
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + (UINT)Offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
-	{
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, CB.Get()->GetGPUVirtualAddress());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
-	{
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsDescriptorTable(size_t idx, const IDescriptorHeap& IDH)
-	{
-		auto& DH = static_cast<const DescriptorHeap&>(IDH);
-		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, DH);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsConstantBufferView(size_t idx, DevicePointer devicePointer)
-	{
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, devicePointer);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
-	{
-		DeviceContext->SetGraphicsRootDescriptorTable(
-			(UINT)idx,
-			D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
-	{
-#if USING(DEBUGGRAPHICS)
-		if(debugCommandList)
-			debugCommandList->AssertResourceState(Resource->Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource->Get()->GetGPUVirtualAddress());
-	}
-
-
-	/************************************************************************************************/
-
-	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (resource != InvalidHandle && debugCommandList)
-			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		if(resource != InvalidHandle)
-			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
-		else
-			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, { 0 });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
-	{
-		auto resource = renderSystem->GetDeviceResource(UAVresource);
-
-#if USING(DEBUGGRAPHICS)
-		if(debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-#endif
-
-		DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeDescriptorTable(size_t idx)
-	{
-		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
-	}
-
-
-	void Context::SetComputeDescriptorTable(size_t idx, const IDescriptorHeap& IDH)
-	{
-		auto& DH = static_cast<const DescriptorHeap&>(IDH);
-		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
-	}
-
-
-	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)
-	{
-		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
-	{
-#if USING(DEBUGGRAPHICS)
-		auto resource = renderSystem->GetDeviceResource(CB);
-
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
-	{
-#if USING(DEBUGGRAPHICS)
-		auto resource = renderSystem->GetDeviceResource(CB.Handle());
-
-		if(debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
-	{
-		auto deviceResource     = renderSystem->GetDeviceResource(resource);
-		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
-
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
-#endif
-
-		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeConstantBufferView(size_t idx, DevicePointer pointer)
-	{
-		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, pointer);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-#endif
-
-		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-#endif
-		if(resource != InvalidHandle)
-			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
-		else
-			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
-	{
-		auto resource = renderSystem->GetDeviceResource(UAVresource);
-
-#if USING(DEBUGGRAPHICS)
-		if(debugCommandList)
-			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-#endif
-		if (UAVresource != InvalidHandle)
-			DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
-		else
-			DeviceContext->SetComputeRootUnorderedAccessView((UINT)idx, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
-	{
-		DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::BeginQuery(QueryHandle query, size_t idx)
-	{
-		if (query == InvalidHandle)
-			return;
-
-		auto resource	= renderSystem->Queries.GetDeviceObject(query);
-		auto queryType	= renderSystem->Queries.GetType(query);
-
-		DeviceContext->BeginQuery(resource, queryType, (UINT)idx);
-	}
-
-
-	void Context::EndQuery(QueryHandle query, size_t idx)
-	{
-		if (query == InvalidHandle)
-			return;
-
-		auto resource	= renderSystem->Queries.GetDeviceObject(query);
-		auto queryType	= renderSystem->Queries.GetType(query);
-
-		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
-	}
-
-
-	void Context::TimeStamp(QueryHandle query, size_t idx)
-	{
-		if (query == InvalidHandle)
-			return;
-
-		auto resource   = renderSystem->Queries.GetDeviceObject(query);
-		auto queryType  = renderSystem->Queries.GetType(query);
-
-		DeviceContext->EndQuery(resource, queryType, (UINT)idx);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetMarker_DEBUG(const char* str)
-	{
-#if USING(AFTERMATH)
-		GFSDK_Aftermath_GetShaderHash;
-		AFTERMATH_context;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::BeginEvent_DEBUG(const char* str)
-	{
-#if USING(PIX)
-		wchar_t temp[64];
-		mbstowcs(temp, str, 64);
-
-		PIXBeginEvent(DeviceContext, PIX_COLOR_INDEX(rand() % 255), temp);
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::EndEvent_DEBUG()
-	{
-#if USING(PIX)
-		PIXEndEvent(DeviceContext);
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyResource(ResourceHandle dest, ResourceHandle src)
-	{
-		FlushBarriers();
-
-		DeviceContext->CopyResource(
-			renderSystem->GetDeviceResource(dest),
-			renderSystem->GetDeviceResource(src));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyTextureRegion(
-		ID3D12Resource*		destination,
-		size_t				subResourceIdx,
-		uint3				XYZ,
-		UploadReservation	source,
-		uint2				WH,
-		DeviceFormat		format)
-	{
-		FlushBarriers();
-
-		const auto		deviceFormat	= TextureFormat2DXGIFormat(format);
-		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
-		const bool		BCformat		= IsDDS(format);
-		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
-		SubRegion.Footprint.Depth		= 1;
-		SubRegion.Footprint.Format		= deviceFormat;
-		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
-		SubRegion.Footprint.Width		= WH[0];
-		SubRegion.Footprint.Height		= WH[1];
-		SubRegion.Offset				= source.offset;
-
-		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
-
-		DeviceContext->CopyTextureRegion(
-			&destinationLocation,
-			XYZ[0], XYZ[1], XYZ[2],
-			&sourceLocation,
-			nullptr);
-	}
-
-	/************************************************************************************************/
-
-	void Context::CopyTextureRegion(
-		ResourceHandle		dest,
-		size_t				subResourceIdx,
-		uint3				XYZ,
-		UploadReservation	source)
-	{
-		FlushBarriers();
-
-		auto destination				= renderSystem->GetDeviceResource(dest);
-		const auto		WH				= renderSystem->GetTextureWH(dest);
-		const auto		deviceFormat	= renderSystem->GetTextureDeviceFormat(dest);
-		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
-		const bool		BCformat		= IsDDS(renderSystem->GetTextureFormat(dest));
-		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
-		SubRegion.Footprint.Depth		= 1;
-		SubRegion.Footprint.Format		= deviceFormat;
-		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
-		SubRegion.Footprint.Width		= WH[0];
-		SubRegion.Footprint.Height		= WH[1];
-		SubRegion.Offset				= source.offset;
-
-		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
-
-		DeviceContext->CopyTextureRegion(
-			&destinationLocation,
-			XYZ[0], XYZ[1], XYZ[2],
-			&sourceLocation,
-			nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
-	{
-		FlushBarriers();
-
-		D3D12_TILED_RESOURCE_COORDINATE coordinate;
-		coordinate.X			= (UINT)destTile[0];
-		coordinate.Y			= (UINT)destTile[1];
-		coordinate.Z			= (UINT)0;
-		coordinate.Subresource	= (UINT)destTile[2];
-		
-		D3D12_TILE_REGION_SIZE regionSize;
-		regionSize.NumTiles		= 1;
-		regionSize.UseBox		= false;
-		regionSize.Width		= 1;
-		regionSize.Height		= 1;
-		regionSize.Depth		= 1;
-
-		DeviceContext->CopyTiles(
-			dest,
-			&coordinate,
-			&regionSize,
-			src.resource,
-			src.offset,
-			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyTile(
-		ResourceHandle			dest,
-		const uint3				destTile,
-		const size_t			tileOffset,
-		const UploadReservation src)
-	{
-		FlushBarriers();
-
-		auto resource_ptr	= renderSystem->GetDeviceResource(dest);
-
-		D3D12_TILED_RESOURCE_COORDINATE coordinate;
-		coordinate.X			= (UINT)destTile[0];
-		coordinate.Y			= (UINT)destTile[1];
-		coordinate.Z			= (UINT)0;
-		coordinate.Subresource	= (UINT)destTile[2];
-		
-		D3D12_TILE_REGION_SIZE regionSize;
-		regionSize.NumTiles		= 1;
-		regionSize.UseBox		= false;
-		regionSize.Width		= 1;
-		regionSize.Height		= 1;
-		regionSize.Depth		= 1;
-
-		DeviceContext->CopyTiles(
-			resource_ptr,
-			&coordinate,
-			&regionSize,
-			src.resource,
-			src.offset,
-			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyBufferRegion(
-		ResourceHandle	destination,
-		ResourceHandle	source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset)
-	{
-		FlushBarriers();
-
-		DeviceContext->CopyBufferRegion(
-			renderSystem->GetDeviceResource(destination),
-			destinationOffset,
-			renderSystem->GetDeviceResource(source),
-			sourceOffset,
-			size);
-	}
-
-	void Context::CopyBufferRegion(
-		ResourceHandle	destination,
-		ID3D12Resource* source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset
-	)
-	{
-		FlushBarriers();
-
-		DeviceContext->CopyBufferRegion(
-			renderSystem->GetDeviceResource(destination),
-			destinationOffset,
-			source,
-			sourceOffset,
-			size);
-	}
-
-	void Context::CopyBufferRegion(
-		ID3D12Resource* destination,
-		ResourceHandle	source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset)
-	{
-		FlushBarriers();
-
-		DeviceContext->CopyBufferRegion(
-			destination,
-			destinationOffset,
-			renderSystem->GetDeviceResource(source),
-			sourceOffset,
-			size);
-	}
-
-	void Context::CopyBufferRegion(
-		ID3D12Resource*	destination,
-		ID3D12Resource* source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset)
-	{
-		FlushBarriers();
-
-		DeviceContext->CopyBufferRegion(
-			destination,
-			destinationOffset,
-			source,
-			sourceOffset,
-			size);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ImmediateWrite(
-		static_vector<ResourceHandle>		    handles,
-		static_vector<size_t>					value,
-		static_vector<DeviceAccessState>		currentStates,
-		static_vector<DeviceAccessState>		finalStates)
-	{
-		DebugBreak();
-
-		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
-
-		/*
-		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
-		{
-		D3D12_GPU_VIRTUAL_ADDRESS Dest;
-		UINT32 Value;
-		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
-		*/
-		/*
-		DeviceAccessState prevState		= DeviceAccessState::DASERROR;
-		ID3D12Resource*		prevResource	= nullptr;
-
-		for (size_t itr = 0; itr < handles.size(); ++itr)
-		{
-			auto resource	= renderSystem->GetDeviceResource(handles[itr]);
-			auto state		= currentStates[itr];
-
-			if(prevResource != resource && prevState != state)
-				_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
-
-			prevResource	= resource;
-			prevState		= state;
-		}
-
-		FlushBarriers();
-
-		for (size_t itr = 0; itr < handles.size(); ++itr)
-		{
-			auto resource = renderSystem->GetDeviceResource(handles[itr]);
-
-			D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[] = {
-				{resource->GetGPUVirtualAddress() + 0, 0u },
-			};
-
-			D3D12_WRITEBUFFERIMMEDIATE_MODE modes[] = {
-				D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT
-			};
-
-			DeviceContext->WriteBufferImmediate(1, params, nullptr);
-		}
-
-		prevState		= DeviceAccessState::DASERROR;
-		prevResource	= nullptr;
-
-		for (size_t itr = 0; itr < handles.size(); ++itr)
-		{
-			auto resource	= renderSystem->GetDeviceResource(handles[itr]);
-			auto state		= currentStates[itr];
-
-			if (prevResource != resource && prevState != state)
-				_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
-
-			prevResource	= resource;
-			prevState		= prevState;
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	// Requires SO resources to be in DeviceAccessState::DRS::STREAMOUTCLEAR!
-	/*
-	void Context::ClearSOCounters(static_vector<SOResourceHandle> handles)
-	{
-		
-		//typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
-		//{
-		//D3D12_GPU_VIRTUAL_ADDRESS Dest;
-		//UINT32 Value;
-		//} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
-		
-
-		static_vector<ID3D12Resource*>		sources;
-		static_vector<size_t>				sourceOffset;
-		static_vector<ID3D12Resource*>		destinations;
-		static_vector<size_t>				destinationOffset;
-		static_vector<size_t>				copySize;
-		static_vector<DeviceAccessState>	currentSOStates;
-		static_vector<DeviceAccessState>	finalStates;
-
-		for (auto& s : handles)
-			sources.push_back(nullptr);
-
-		for (auto& s : handles)
-			sourceOffset.push_back(0);
-
-		for (auto& s : handles)
-			destinations.push_back(renderSystem->GetSOCounterResource(s));
-
-		for (auto& s : handles)
-			destinationOffset.push_back(0);
-
-		for (auto& s : destinations)
-			copySize.push_back(16);
-
-		for (auto& s : handles)
-			currentSOStates.push_back(DeviceAccessState::DASCopyDest);
-
-		for (auto& s : handles)
-			finalStates.push_back(DeviceAccessState::DASCopyDest);
-
-
-		CopyBufferRegion(
-			sources,			// sources
-			sourceOffset,		// source offsets
-			destinations,		// destinations
-			destinationOffset,  // destination offsets
-			copySize,			// copy sizes
-			currentSOStates,	// source initial state
-			finalStates);		// source final	state
-	}
-	*/
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyUInt64(
-		static_vector<ID3D12Resource*>			sources,
-		static_vector<DeviceAccessState>		sourceState,
-		static_vector<size_t>					sourceOffsets,
-		static_vector<ID3D12Resource*>			destinations,
-		static_vector<DeviceAccessState>		destinationState,
-		static_vector<size_t>					destinationOffset)
-	{
-		DebugBreak();
-
-		FK_ASSERT(sources.size()		== sourceState.size(),			"Invalid argument!");
-		FK_ASSERT(sources.size()		== sourceOffsets.size(),		"Invalid argument!");
-		FK_ASSERT(destinations.size()	== destinationState.size(),		"Invalid argument!");
-		FK_ASSERT(destinations.size()	== destinationOffset.size(),	"Invalid argument!");
-		FK_ASSERT(sources.size()		== destinations.size(),			"Invalid argument!");
-
-		/*
-		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
-		{
-		D3D12_GPU_VIRTUAL_ADDRESS Dest;
-		UINT32 Value;
-		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
-		*/
-		/*
-
-		// transition source resources
-		for (size_t itr = 0; itr < sources.size(); ++itr) 
-		{
-			auto resource	= sources[itr];
-			auto state		= sourceState[itr];
-			_AddBarrier(resource, state, DeviceAccessState::DASCopySrc);
-		}
-
-		for (size_t itr = 0; itr < sources.size(); ++itr)
-		{
-			auto resource	= destinations[itr];
-			auto state		= destinationState[itr];
-			_AddBarrier(resource, state, DeviceAccessState::DASCopyDest);
-		}
-
-		FlushBarriers();
-
-		for (size_t itr = 0; itr < sources.size(); ++itr)
-		{
-			DeviceContext->AtomicCopyBufferUINT64(
-				destinations[itr],
-				destinationOffset[itr], 
-				sources[itr], 
-				sourceOffsets[itr], 
-				0, 
-				nullptr, 
-				nullptr);
-		}
-
-		for (size_t itr = 0; itr < sources.size(); ++itr) 
-		{
-			auto resource	= sources[itr];
-			auto state		= sourceState[itr];
-			_AddBarrier(resource, DeviceAccessState::DASCopySrc, state);
-		}
-
-		for (size_t itr = 0; itr < sources.size(); ++itr)
-		{
-			auto resource	= destinations[itr];
-			auto state		= destinationState[itr];
-			_AddBarrier(resource, DeviceAccessState::DASCopyDest, state);
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddIndexBuffer(TriMesh* Mesh, uint32_t lod)
-	{
-		const size_t	IBIndex		= Mesh->lods[lod].GetIndexBufferIndex();
-		const size_t	IndexCount	= Mesh->lods[lod].GetIndexCount();
-
-		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation	= GetBuffer(Mesh, lod, IBIndex)->GetGPUVirtualAddress();
-		IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-		IndexView.SizeInBytes		= (UINT)IndexCount * 4;
-
-		DeviceContext->IASetIndexBuffer(&IndexView);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetIndexBuffer(VertexBufferEntry buffer, DeviceFormat format)
-	{
-		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation    = renderSystem->GetVertexBufferAddress(buffer.VertexBuffer) + buffer.Offset;
-		IndexView.Format            = TextureFormat2DXGIFormat(format);
-		IndexView.SizeInBytes       = (UINT)(renderSystem->GetVertexBufferSize(buffer.VertexBuffer) - buffer.Offset);
-
-		DeviceContext->IASetIndexBuffer(&IndexView);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetIndexBuffer(ResourceHandle resource, DeviceFormat format)
-	{
-		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation    = renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress();
-		IndexView.Format            = TextureFormat2DXGIFormat(format);
-		IndexView.SizeInBytes       = (UINT)(renderSystem->GetResourceSize(resource));
-
-		DeviceContext->IASetIndexBuffer(&IndexView);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddVertexBuffers(TriMesh* mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* instanceBuffers)
-	{
-		AddVertexBuffers(mesh, lod, std::span{ buffers.begin(), buffers.size() }, instanceBuffers);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::AddVertexBuffers(TriMesh* mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* instanceBuffers)
-	{
-		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-
-		for (auto& I : buffers)
-			FK_ASSERT(AddVertexBuffer(I, mesh, lod, VBViews));
-
-		if (instanceBuffers)
-		{
-			for (auto& IB : *instanceBuffers)
-			{
-				VBViews.push_back({
-					renderSystem->GetVertexBufferAddress(IB.VertexBuffer) + IB.Offset,
-					(UINT)renderSystem->GetVertexBufferSize(IB.VertexBuffer) - IB.Offset,
-					IB.Stride });
-			}
-		}
-
-		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& list)
-	{
-		SetVertexBuffers(std::span{ list.begin(), list.end() });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers(const std::span<const VertexBufferEntry> list)
-	{
-		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-		for (auto& VB : list)
-		{
-			/*
-			typedef struct D3D12_VERTEX_BUFFER_VIEW
-			{
-			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-			UINT SizeInBytes;
-			UINT StrideInBytes;
-			} 	D3D12_VERTEX_BUFFER_VIEW;
-			*/
-
-			VBViews.push_back({
-				renderSystem->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
-				(UINT)renderSystem->GetVertexBufferSize(VB.VertexBuffer) - +VB.Offset,
-				VB.Stride});
-		}
-
-		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& span)
-	{
-		SetVertexBuffers(std::span{ span.begin(), span.end() });
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers(const std::span<const VertexBufferResource> list)
-	{
-		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-		for (auto& VB : list)
-		{
-			/*
-			typedef struct D3D12_VERTEX_BUFFER_VIEW
-			{
-			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-			UINT SizeInBytes;
-			UINT StrideInBytes;
-			} 	D3D12_VERTEX_BUFFER_VIEW;
-			*/
-
-			VBViews.push_back({
-				renderSystem->GetDeviceResource(VB.resource)->GetGPUVirtualAddress() + VB.offset,
-				(UINT)renderSystem->GetResourceSize(VB.resource) - VB.offset,
-				VB.stride});
-		}
-
-		DeviceContext->IASetVertexBuffers(0, (UINT)VBViews.size(), VBViews.begin());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers2(const std::initializer_list<D3D12_VERTEX_BUFFER_VIEW>& list)
-	{
-		SetVertexBuffers2(std::span(list.begin(), list.end()));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers2(const std::span<const D3D12_VERTEX_BUFFER_VIEW> list)
-	{
-		DeviceContext->IASetVertexBuffers(0, (UINT)list.size(), list.data());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetVertexBuffers2(const std::span<const VBView>	views, uint32_t offset)
-	{
-		D3D12_VERTEX_BUFFER_VIEW apiViews[16];
-		for (auto&& [idx, view] : enumerate(views))
-		{
-			apiViews[idx] = D3D12_VERTEX_BUFFER_VIEW{
-				.BufferLocation	= view.buffer,
-				.SizeInBytes	= view.size,
-				.StrideInBytes	= view.stride,
-			};
-		}
-
-		DeviceContext->IASetVertexBuffers(0, (UINT)views.size(), apiViews);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetSOTargets(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews)
-	{
-		DeviceContext->SOSetTargets(0, (UINT)SOViews.size(), SOViews.begin());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearDepthBuffer(ResourceHandle depthBuffer, float clearDepth)
-	{
-		UpdateResourceStates();
-
-		auto descriptor = _GetDepthDesciptor(depthBuffer);
-		PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
-
-		DeviceContext->ClearDepthStencilView(
-			D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.V1 },
-			D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
-
-		renderSystem->Textures.MarkRTUsed(depthBuffer);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearRenderTarget(ResourceHandle renderTarget, float4 clearColor)
-	{
-		UpdateResourceStates();
-
-		D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU_HANDLES{ 0 };
-
-		auto res = std::find_if(
-			renderTargetViews.begin(),
-			renderTargetViews.end(),
-			[&](RTV_View& view)
-			{
-				return view.resource == renderTarget;
-			});
-
-		if (res != renderTargetViews.end())
-		{
-			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ res->descriptor.GetByType<CPUDescriptorHandle>() };
-		}
-		else
-		{
-			auto view = _ReserveRTV(1);
-			PushRenderTarget(renderSystem, renderTarget, view);
-			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 };
-			renderTargetViews.push_back({ renderTarget, view });
-		}
-
-		DeviceContext->ClearRenderTargetView(RTV_CPU_HANDLES, clearColor, 0, nullptr);
-
-		renderSystem->Textures.MarkRTUsed(renderTarget);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor)
-	{
-		auto viewCPU    = _ReserveSRVLocal(1);
-		auto viewGPU    = _ReserveSRV(1).value();
-		auto resource   = renderSystem->GetDeviceResource(UAV);
-
-		Texture2D tex{
-			renderSystem->GetDeviceResource(UAV),
-			renderSystem->GetTextureWH(UAV),
-			renderSystem->GetTextureMipCount(UAV),
-			renderSystem->GetTextureDeviceFormat(UAV),
-		};
-
-		PushUAV2DToDescHeap(
-			renderSystem,
-			tex,
-			viewCPU);
-
-		PushUAV2DToDescHeap(
-			renderSystem,
-			tex,
-			viewGPU);
-
-		FlushBarriers();
-
-		DeviceContext->ClearUnorderedAccessViewFloat(
-			D3D12_GPU_DESCRIPTOR_HANDLE{ viewGPU.V2 },
-			D3D12_CPU_DESCRIPTOR_HANDLE{ viewCPU.V1 },
-			resource, clearColor, 0, nullptr);
-	}
-
-	/************************************************************************************************/
-
-
-	void Context::ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor)
-	{
-		auto CPUview	= _ReserveSRVLocal(1);
-		auto GPUview	= _ReserveSRV(1);
-		auto resource	= renderSystem->GetDeviceResource(UAV);
-
-		FK_ASSERT(GPUview.has_value() != false, "Failed to allocated descriptor");
-
-		Texture2D tex{
-			renderSystem->GetDeviceResource(UAV),
-			renderSystem->GetTextureWH(UAV),
-			renderSystem->GetTextureMipCount(UAV),
-			renderSystem->GetTextureDeviceFormat(UAV),
-		};
-
-		PushUAV2DToDescHeap(
-			renderSystem,
-			tex,
-			CPUview);
-
-		PushUAV2DToDescHeap(
-			renderSystem,
-			tex,
-			GPUview.value());
-
-		const auto CPUHandle = D3D12_CPU_DESCRIPTOR_HANDLE{ CPUview.Get<0>() };
-		const auto GPUHandle = D3D12_GPU_DESCRIPTOR_HANDLE{ GPUview.value().Get<1>() };
-
-		FlushBarriers();
-
-		DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, (UINT*)&clearColor, 0, nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearUAV(ResourceHandle resource, uint4 clearColor)
-	{
-		const auto view				= _ReserveSRVLocal(1);
-		const auto deviceResource	= renderSystem->GetDeviceResource(resource);
-		const auto deviceFormat		= renderSystem->GetTextureDeviceFormat(resource);
-
-		PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
-
-		const auto CPUHandle = D3D12_CPU_DESCRIPTOR_HANDLE{ view.Get<0>() };
-		const auto GPUHandle = D3D12_GPU_DESCRIPTOR_HANDLE{ view.Get<1>() };
-
-		FlushBarriers();
-
-		DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, deviceResource, clearColor, 0, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
-	{
-		BeginEvent_DEBUG("ClearUAVBuffer");
-
-		UpdateResourceStates();
-
-		static auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
-		DeviceContext->SetPipelineState(PSO->state);
-		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
-		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
-
-		auto resourceSize = renderSystem->GetResourceSize(UAV);
-
-		uint2 range{ 0, resourceSize / 16 };
-		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
-
-		DeviceContext->Dispatch(UINT(ceil(resourceSize / 1024.0f)), 1, 1);
-
-		if(CurrentComputeRootSignature)
-			DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
-
-		if(CurrentPipelineState)
-			DeviceContext->SetPipelineState(CurrentPipelineState);
-
-		EndEvent_DEBUG();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor)
-	{
-		FK_ASSERT(begin % 16 == 0, "Begin must be 16-byte aligned");
-		FK_ASSERT(end % 16 == 0, "End must be 16-byte aligned");
-
-		BeginEvent_DEBUG("ClearUAVBuffer");
-
-		UpdateResourceStates();
-
-		end = Min((uint32_t)renderSystem->GetResourceSize(UAV), end);
-		uint2 range{ begin / 16, end / 16};
-
-		auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
-		DeviceContext->SetPipelineState(PSO->state);
-		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
-		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
-		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
-
-		auto resourceSize = renderSystem->GetResourceSize(UAV);
-		DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin) / 1024.0f)), 1, 1);
-
-		if(CurrentComputeRootSignature)
-			DeviceContext->SetComputeRootSignature(*CurrentComputeRootSignature);
-
-		if(CurrentPipelineState)
-			DeviceContext->SetPipelineState(CurrentPipelineState);
-
-		EndEvent_DEBUG();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
-	{
-		if (query == InvalidHandle)
-			return;
-
-		auto res			= renderSystem->GetDeviceResource(destination);
-		auto type			= renderSystem->Queries.GetType(query);
-		auto queryResource	= renderSystem->Queries.GetDeviceObject(query);
-
-		UpdateResourceStates();
-
-		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), res, (UINT)destOffset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset)
-	{
-		if (query == InvalidHandle)
-			return;
-
-		auto type			= renderSystem->Queries.GetType(query);
-		auto queryResource	= renderSystem->Queries.GetDeviceObject(query);
-
-		UpdateResourceStates();
-
-		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), destination, (UINT)destOffset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::ExecuteIndirect(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
-	{
-		UpdateResourceStates();
-
-		DeviceContext->ExecuteIndirect(
-			layout.signature, 
-			(UINT)Min(layout.entries.size(), executionCount),
-			renderSystem->GetDeviceResource(args),
-			(UINT)argumentBufferOffset,
-			nullptr, 
-			0);
-	}
-
-
-	void Context::Draw(const size_t VertexCount, const size_t BaseVertex, const size_t baseIndex)
-	{
-		UpdateResourceStates();
-		DeviceContext->DrawInstanced((UINT)VertexCount, 1, (UINT)BaseVertex, (UINT)baseIndex);
-	}
-
-
-	void Context::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset )
-	{
-		UpdateResourceStates();
-		DeviceContext->DrawInstanced((UINT)vertexCount, (UINT)instanceCount, (UINT)baseVertex, (UINT)instanceOffset);
-	}
-
-
-	void Context::DrawIndexed(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex)
-	{
-		UpdateResourceStates();
-		DeviceContext->DrawIndexedInstanced((UINT)IndexCount, 1, (UINT)IndexOffet, (UINT)BaseVertex, 0);
-	}
-
-
-	void Context::DrawIndexedInstanced(
-		const size_t IndexCount, const size_t IndexOffet, 
-		const size_t BaseVertex, const size_t InstanceCount, 
-		const size_t InstanceOffset)
-	{
-		UpdateResourceStates();
-		DeviceContext->DrawIndexedInstanced(
-			(UINT)IndexCount, (UINT)InstanceCount,
-			(UINT)IndexOffet, (UINT)BaseVertex,
-			(UINT)InstanceOffset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::Dispatch(const uint3 xyz)
-	{
-		UpdateResourceStates();
-		DeviceContext->Dispatch((UINT)xyz[0], (UINT)xyz[1], (UINT)xyz[2]);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::DispatchRays(const uint3 WHD, const DispatchDesc desc)
-	{
-		UpdateResourceStates();
-
-		D3D12_DISPATCH_RAYS_DESC dispatchDesc{};
-		dispatchDesc.Width  = WHD[0];
-		dispatchDesc.Height = WHD[1];
-		dispatchDesc.Depth  = WHD[2];
-
-		dispatchDesc.CallableShaderTable		= DeviceAddressRangeStrideToDX(desc.callableShaderTable);
-		dispatchDesc.HitGroupTable				= DeviceAddressRangeStrideToDX(desc.hitGroupTable);
-		dispatchDesc.MissShaderTable			= DeviceAddressRangeStrideToDX(desc.missTable);
-		dispatchDesc.RayGenerationShaderRecord	= DeviceAddressRangeToDX(desc.rayGenerationRecord);
-
-		DeviceContext->DispatchRays(&dispatchDesc);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::DispatchMesh(const uint3 xyz)
-	{
-		UpdateResourceStates();
-		DeviceContext->DispatchMesh(xyz[0], xyz[1], xyz[2]);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::FlushBarriers() noexcept
-	{
-		UpdateResourceStates();
-	}
-
-	/************************************************************************************************/
-
-
-	void Context::SetPredicate(bool Enabled, ResourceHandle handle, size_t Offset, PredicateOp op)
-	{
-		if (Enabled)
-			DeviceContext->SetPredication(
-				renderSystem->GetDeviceResource(handle),
-				Offset * 8, 
-				op == PredicateOp::NotEqualZero ? D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
-		else
-			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyBuffer(const UploadReservation src, const ResourceHandle destination, const size_t destOffset)
-	{
-		const auto destinationResource	= renderSystem->GetDeviceResource(destination);
-		const auto sourceResource       = src.resource;
-
-		UpdateResourceStates();
-
-		DeviceContext->CopyBufferRegion(destinationResource, destOffset, sourceResource, src.offset, src.size);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
-	{
-		const auto destinationResource		= renderSystem->GetDeviceResource(destination);
-		const auto WH						= renderSystem->GetTextureWH(destination);
-		const auto format					= renderSystem->GetTextureDeviceFormat(destination);
-		const auto texelSize				= renderSystem->GetTextureElementSize(destination);
-
-		D3D12_TEXTURE_COPY_LOCATION destLocation{};
-		destLocation.pResource			= destinationResource;
-		destLocation.SubresourceIndex	= 0;
-		destLocation.Type				= D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-
-
-		D3D12_TEXTURE_COPY_LOCATION srcLocation{};
-		srcLocation.pResource							= src.resource;
-		srcLocation.Type								= D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		srcLocation.PlacedFootprint.Offset				= src.offset;
-		srcLocation.PlacedFootprint.Footprint.Depth		= 1;
-		srcLocation.PlacedFootprint.Footprint.Format	= format;
-		srcLocation.PlacedFootprint.Footprint.Height	= WH[1];
-		srcLocation.PlacedFootprint.Footprint.Width		= WH[0];
-		srcLocation.PlacedFootprint.Footprint.RowPitch	= (UINT)(BufferSize[0] * texelSize);
-
-		UpdateResourceStates();
-		DeviceContext->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::Clear()
-	{
-		pendingBarriers.clear();
-		RenderTargets.clear();
-		DesciptorHeaps.clear();
-		VBViews.clear();
-
-		TrackedSOBuffers.clear();
-
-		CurrentPipelineState = nullptr;
-
-		DeviceContext->ClearState(nullptr);
-
-		depthStencilViews.clear();
-		renderTargetViews.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRTRead(ResourceHandle Handle)
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRTWrite(ResourceHandle Handle)
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRTFree(ResourceHandle Handle)
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::Close()
-	{
-		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
-		shaderResources = {};
-
-		if (auto HR = DeviceContext->Close(); FAILED(HR)) {
-			FK_LOG_ERROR("Failed to close graphics context!");
-			renderSystem->_OnCrash();
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	Context& Context::Reset(DescriptorRange range, const size_t newDispatchIdx, ID3D12DescriptorHeap* heap)
-	{
-		shaderResources = range;
-
-		CurrentPipelineState		= nullptr;
-		CurrentRootSignature		= nullptr;
-		CurrentComputeRootSignature = nullptr;
-
-		if (FAILED(commandAllocator->Reset()))
-		{
-			DebugBreak();
-			FK_LOG_ERROR("Failed to reset command allocator");
-		}
-
-		if (FAILED(DeviceContext->Reset(commandAllocator, nullptr)))
-		{
-			DebugBreak();
-			FK_LOG_ERROR("Failed to reset device context");
-		}
-
-		_ResetDSV();
-		_ResetRTV();
-		_ResetSRV();
-
-		TrackedSOBuffers.clear();
-		pendingBarriers.clear();
-		queuedBarriers.clear();
-		renderTargetViews.clear();
-		depthStencilViews.clear();
-		queuedReadBacks.clear();
-
-		heapUsed	= 0;
-		dispatchIdx	= newDispatchIdx;
-
-		DeviceContext->SetDescriptorHeaps(1, &heap);
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	UploadReservation Context::ReserveDirectUploadSpace(size_t size, size_t alignment) noexcept
-	{
-		return renderSystem->ReserveDirectUploadSpace(size, alignment);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetUAVRead() 
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetUAVWrite() 
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetUAVFree() 
-	{
-		FK_ASSERT(0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	IRenderSystem& Context::GetRenderSystem() noexcept
-	{
-		return RenderSystem::_GetInstance();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::BeginMarker(const char* str)
-	{
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::EndMarker(const char* str)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS Context::_GetDepthDesciptor(ResourceHandle depthBuffer)
-	{
-		auto DSV_CPU_HANDLE = DescHeapPOS{};
-
-		if (auto res = std::find_if(
-			depthStencilViews.begin(),
-			depthStencilViews.end(),
-			[&](RTV_View& view)
-			{
-				return view.resource == depthBuffer;
-			});
-			res == depthStencilViews.end())
-		{
-			if (!depthStencilViews.full()) {
-				auto DSV        = _ReserveDSV(1);
-				DSV_CPU_HANDLE  = DSV;
-				depthStencilViews.push_back({ depthBuffer, DSV });
-			}
-			else
-				DSV_CPU_HANDLE = depthStencilViews[rand() % depthStencilViews.size()].descriptor;
-		}
-		else
-			DSV_CPU_HANDLE = res->descriptor;
-
-		return DSV_CPU_HANDLE;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::UpdateResourceStates()
-	{
-		if (!pendingBarriers.size())
-			return;
-
-		static_vector<D3D12_GLOBAL_BARRIER, 32>		globalBarriers;
-		static_vector<D3D12_TEXTURE_BARRIER, 32>	textureBarriers;
-		static_vector<D3D12_BUFFER_BARRIER, 32>		bufferBarriers;
-
-		for (const Barrier& barrier : pendingBarriers)
-		{
-			switch(barrier.type)
-			{
-			case BarrierType::Global:
-			{
-				D3D12_GLOBAL_BARRIER globalBarrier;
-				globalBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
-				globalBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
-				globalBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
-				globalBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
-
-				globalBarriers.push_back(globalBarrier);
-			}	break;
-			case BarrierType::Buffer:
-			{
-#ifdef USING(DEBUGGRAPHICS)
-				FK_ASSERT(renderSystem->GetTextureDimension(barrier.resource) == TextureDimension::Buffer);
-#endif
-
-				D3D12_BUFFER_BARRIER bufferBarrier;
-				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
-				bufferBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
-				bufferBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
-				bufferBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
-				bufferBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
-				bufferBarrier.Offset		= 0;// barrier.buffer.rangeBegin;
-				bufferBarrier.Size			= UINT64_MAX;//barrier.buffer.rangeEnd - barrier.buffer.rangeBegin;
-
-				bufferBarriers.push_back(bufferBarrier);
-			}	break;
-			case BarrierType::Texture:
-			{
-#ifdef USING(DEBUGGRAPHICS)
-				auto dimension = renderSystem->GetTextureDimension(barrier.resource);
-				FK_ASSERT(
-					dimension == TextureDimension::Texture1D ||
-					dimension == TextureDimension::Texture2D ||
-					dimension == TextureDimension::Texture2DArray ||
-					dimension == TextureDimension::Texture3D ||
-					dimension == TextureDimension::TextureCubeMap);
-#endif
-
-				D3D12_TEXTURE_BARRIER textureBarrier;
-				textureBarrier.AccessBefore		= DAS2AccessState(barrier.accessBefore);
-				textureBarrier.AccessAfter		= DAS2AccessState(barrier.accessAfter);
-				textureBarrier.LayoutBefore		= DeviceLayout2DX(barrier.texture.layoutBefore);
-				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
-				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
-				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
-				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
-				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.src);
-
-				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
-					.IndexOrFirstMipLevel	= 0,
-					.NumMipLevels			= renderSystem->GetTextureMipCount(barrier.resource),
-					.FirstArraySlice		= 0,
-					.NumArraySlices			= (uint32_t)renderSystem->GetTextureArraySize(barrier.resource),
-					.FirstPlane				= 0,
-					.NumPlanes				= 1,
-				};
-
-				textureBarriers.push_back(textureBarrier);
-			}	break;
-			default:
-				FK_ASSERT(0);
-			};
-		}
-
-		static_vector<D3D12_BARRIER_GROUP>		groups;
-		if (globalBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_GLOBAL, .NumBarriers = (uint32_t)globalBarriers.size(), .pGlobalBarriers = globalBarriers.data()});
-		if (textureBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_TEXTURE, .NumBarriers = (uint32_t)textureBarriers.size(), .pTextureBarriers = textureBarriers.data() });
-		if (bufferBarriers.size())	groups.emplace_back(D3D12_BARRIER_GROUP{ .Type = D3D12_BARRIER_TYPE::D3D12_BARRIER_TYPE_BUFFER, .NumBarriers =  (uint32_t)bufferBarriers.size(), .pBufferBarriers = bufferBarriers.data() });
-
-		if(groups.size())
-			DeviceContext->Barrier((uint32_t)groups.size(), groups);
-
-		pendingBarriers.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::_QueueReadBacks()
-	{
-		for (const auto readBackHandle : queuedReadBacks)
-		{
-			auto& readBack	= renderSystem->ReadBackTable[readBackHandle];
-			auto fence		= renderSystem->directFence;
-
-			auto HR	= fence->SetEventOnCompletion(dispatchIdx, readBack.event); FK_ASSERT(SUCCEEDED(HR));
-			renderSystem->GraphicsQueue->Signal(fence, dispatchIdx);
-
-			readBack.queueUntil	= dispatchIdx;
-			readBack.queued		= true;
-		}
-
-		queuedReadBacks.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS Context::_ReserveDSV(size_t count)
-	{
-		auto currentCPU = CPUDescriptorHandle{ DSV_CPU.ptr };
-		DSV_CPU.ptr = DSV_CPU.ptr + renderSystem->DescriptorDSVSize * count;
-
-		return { currentCPU, InvalidHandle };
-	}
-
-
-	/************************************************************************************************/
-
-
-	std::optional<DescHeapPOS> Context::_ReserveSRV(size_t count)
-	{
-		if (shaderResources.size > heapUsed + count)
-		{
-			auto out = shaderResources[heapUsed];
-
-			heapUsed += count;
-			return { out };
-		}
-		else
-		{
-			DebugBreak();
-			return {};
-		}
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS Context::_ReserveSRVLocal(size_t count)
-	{
-		auto currentCPU = SRV_LOCAL_CPU;
-		SRV_LOCAL_CPU.ptr = SRV_LOCAL_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
-
-		return { CPUDescriptorHandle{ currentCPU.ptr }, InvalidHandle };
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS Context::_ReserveRTV(size_t count)
-	{
-		auto currentCPU = RTV_CPU;
-		RTV_CPU.ptr = RTV_CPU.ptr + renderSystem->DescriptorRTVSize * count;
-
-		return { CPUDescriptorHandle{ currentCPU.ptr }, InvalidHandle };
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::_ResetRTV()
-	{
-		RTV_CPU = descHeapRTV->GetCPUDescriptorHandleForHeapStart();
-
-		renderTargetViews.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::_ResetDSV()
-	{
-		DSV_CPU = descHeapDSV->GetCPUDescriptorHandleForHeapStart();
-
-		depthStencilViews.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::_ResetSRV()
-	{
-		heapUsed = 0;
-
-		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
-	}
-
-
-	/************************************************************************************************/
-
-
 	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS, iAllocator& allocator, iAllocator& temp)
 	{
 		ID3D12Device* Device = RS->pDevice;
@@ -5119,7 +1500,7 @@ namespace FlexKit
 
 		{
 			builder.AllowIA = true;
-			DesciptorHeapLayout<2> DescriptorHeap;
+			DesciptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 6);
 			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
 			FK_ASSERT(DescriptorHeap.Check());
@@ -5138,7 +1519,7 @@ namespace FlexKit
 		{
 			builder.AllowIA	= true;
 			builder.AllowSO	= true;
-			DesciptorHeapLayout<1> DescriptorHeap;
+			DesciptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 8);
 
 			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
@@ -5152,7 +1533,7 @@ namespace FlexKit
 		}
 		{
 			builder.AllowIA = true;
-			DesciptorHeapLayout<16> DescriptorHeap;
+			DesciptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 4);
 			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
 			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
@@ -5165,7 +1546,7 @@ namespace FlexKit
 			SETDEBUGNAME(*RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
 		{
-			DesciptorHeapLayout<16> DescriptorHeap;
+			DesciptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV		(0, 0, 8);
 			DescriptorHeap.SetParameterAsShaderUAV	(1, 0, 1);
 			DescriptorHeap.SetParameterAsCBV		(2, 0, 2);
@@ -5179,11 +1560,11 @@ namespace FlexKit
 		}
 		{
 
-			DesciptorHeapLayout<16> DescriptorHeapSRV;
+			DesciptorHeapLayout DescriptorHeapSRV;
 			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
 			FK_ASSERT(DescriptorHeapSRV.Check());
 
-			DesciptorHeapLayout<16> DescriptorHeapUAV;
+			DesciptorHeapLayout DescriptorHeapUAV;
 			DescriptorHeapUAV.SetParameterAsShaderUAV(0, 0, -1);
 			FK_ASSERT(DescriptorHeapUAV.Check());
 
@@ -5200,7 +1581,7 @@ namespace FlexKit
 		}
 		{
 			builder.AllowIA = false;
-			DesciptorHeapLayout<16> DescriptorHeap;
+			DesciptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV(0, 0, 4, 0);
 			DescriptorHeap.SetParameterAsSRV(1, 0, 4, 0);
 			DescriptorHeap.SetParameterAsCBV(2, 0, 2, 0);
@@ -5217,451 +1598,6 @@ namespace FlexKit
 
 			SETDEBUGNAME(*ClearBuffer, "ClearBuffer");
 		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	UploadBuffer::UploadBuffer(ID3D12Device* pDevice)  :
-		parentDevice	{ pDevice		},
-		Size			{ MEGABYTE * 64	}
-	{
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(Size);
-		D3D12_HEAP_PROPERTIES HEAP_Props    = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-		HRESULT HR = pDevice->CreateCommittedResource(
-			&HEAP_Props,
-			D3D12_HEAP_FLAG_NONE,
-			&Resource_DESC,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&deviceBuffer));
-
-		SETDEBUGNAME(deviceBuffer, __func__);
-
-		CD3DX12_RANGE Range(0, 0);
-		HR = deviceBuffer->Map(0, &Range, (void**)&Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UploadBuffer::Release()
-	{
-		if (!deviceBuffer)
-			return;
-
-		deviceBuffer->Unmap(0, nullptr);
-		deviceBuffer->Release();
-
-		Position		= 0;
-		Size			= 0;
-		deviceBuffer	= nullptr;
-		Buffer			= nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	UploadBuffer::UploadBuffer(UploadBuffer&& rhs)
-	{
-		Release();
-
-		Position		= rhs.Position;
-		Size			= rhs.Size;
-		deviceBuffer	= rhs.deviceBuffer;
-		Buffer			= rhs.Buffer;
-		parentDevice	= rhs.parentDevice;
-
-		rhs.Position		= 0;
-		rhs.Size			= 0;
-		rhs.deviceBuffer	= nullptr;
-		rhs.Buffer			= nullptr;
-		rhs.parentDevice	= nullptr;
-	}
-
-
-	UploadBuffer& UploadBuffer::operator = (UploadBuffer&& rhs) noexcept
-	{
-		Release();
-
-		Position		= rhs.Position;
-		Size			= rhs.Size;
-		deviceBuffer	= rhs.deviceBuffer;
-		Buffer			= rhs.Buffer;
-		parentDevice	= rhs.parentDevice;
-
-		rhs.Position		= 0;
-		rhs.Size			= 0;
-		rhs.deviceBuffer	= nullptr;
-		rhs.Buffer			= nullptr;
-		rhs.parentDevice	= nullptr;
-
-		return *this;
-	}
-
-
-	UploadBuffer::~UploadBuffer()
-	{
-		Release();
-	}
-
-
-	/************************************************************************************************/
-
-
-	std::expected<UploadReservation, ReserveErrors> UploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
-	{
-		// Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
-		if	(Position + reserveSize > Size && Last != 0)
-			Position = 0;
-
-		auto GetOffset = [&]() {
-			auto offset = alignment - (Position & (alignment - 1));
-			return (offset == alignment) ? 0 : offset;
-		};
-
-		// Buffer too Small
-		if (Position + reserveSize + GetOffset() > Size)
-			return std::unexpected{ ReserveErrors::OutOfSpace };
-
-		if (Last > Position)
-		{	// Potential Overlap condition
-			if (Position + reserveSize + GetOffset() >= Last)
-				return std::unexpected{ ReserveErrors::OutOfSpace };  // Resize Buffer and then upload
-
-			const auto alignmentOffset  = GetOffset();
-			char*           buffer      = Buffer + Position + alignmentOffset;
-			const size_t    offset      = Position + alignmentOffset;
-
-			Position += reserveSize + alignmentOffset;
-
-			return UploadReservation{
-				.resource	= deviceBuffer,
-				.size		= reserveSize,
-				.offset		= offset,
-				.buffer		= buffer,
-			};
-		}
-
-		if(Last <= Position)
-		{	// Safe, Do Upload
-			const auto alignmentOffset = GetOffset();
-
-			char* buffer		= Buffer + Position + alignmentOffset;
-			size_t offset		= Position + alignmentOffset;
-			Position			+= reserveSize + alignmentOffset;
-
-			return UploadReservation{
-				.resource	= deviceBuffer,
-				.size		= reserveSize,
-				.offset		= offset,
-				.buffer		= buffer,
-			};
-		}
-
-		return std::unexpected{ ReserveErrors::Unknown };
-	}
-
-
-	/************************************************************************************************/
-
-
-	ID3D12Resource* UploadBuffer::Resize(const size_t size)
-	{
-		if(deviceBuffer)
-			deviceBuffer->Unmap(0, 0);
-
-		auto previousBuffer = deviceBuffer;
-
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(size);
-		D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-		ID3D12Resource* newDeviceBuffer = nullptr;
-
-		HRESULT HR = parentDevice->CreateCommittedResource(
-			&HEAP_Props,
-			D3D12_HEAP_FLAG_NONE,
-			&Resource_DESC,
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&newDeviceBuffer));
-
-		Position		= 0;
-		Last			= 0;
-		Size			= size;
-		deviceBuffer	= newDeviceBuffer;
-		SETDEBUGNAME(newDeviceBuffer, "TEMPORARY");
-
-		CD3DX12_RANGE Range(0, 0);
-		HR = newDeviceBuffer->Map(0, &Range, (void**)&Buffer);   CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
-
-		return previousBuffer;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::Barrier(ID3D12Resource* resource, const DeviceAccessState before, const DeviceAccessState after)
-	{
-		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			resource,
-			DRS2D3DState(before),
-			DRS2D3DState(after));
-
-
-		if (pendingBarriers.full())
-			flushPendingBarriers();
-
-		pendingBarriers.push_back(barrier);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::flushPendingBarriers()
-	{
-		if (pendingBarriers.empty())
-			return;
-
-		commandList->ResourceBarrier((UINT)pendingBarriers.size(), pendingBarriers.data());
-		pendingBarriers.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	IRenderSystem& CopyContext::GetRenderSystem() noexcept
-	{
-		return RenderSystem::_GetInstance();
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	UploadReservation CopyContext::Reserve(const size_t reserveSize, const size_t reserveAlignement)
-	{
-		// Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
-		if	(uploadBuffer.Position + reserveSize > uploadBuffer.Size && uploadBuffer.Last != 0)
-			uploadBuffer.Position = 0;
-
-		auto GetOffset = [&]() {
-			auto offset = reserveAlignement - (uploadBuffer.Position & (reserveAlignement - 1));
-			return (offset == reserveAlignement) ? 0 : offset;
-		};
-
-		auto ResizeBuffer = [&] {
-			const auto newSize = (size_t )std::pow(2, std::floor(std::log2(reserveSize)) + 1);
-			freeResources.push_back(uploadBuffer.Resize(newSize));
-		};
-
-		// Buffer too Small
-		auto temp = reserveSize + GetOffset();
-		if (uploadBuffer.Position + reserveSize + GetOffset() > uploadBuffer.Size)
-			ResizeBuffer();
-
-		if (uploadBuffer.Last > uploadBuffer.Position)
-		{	// Potential Overlap condition
-			if (uploadBuffer.Position + reserveSize + GetOffset() >= uploadBuffer.Last)
-				ResizeBuffer();  // Resize Buffer and then upload
-
-			const auto alignmentOffset  = GetOffset();
-			char*           buffer      = uploadBuffer.Buffer + uploadBuffer.Position + alignmentOffset;
-			const size_t    offset      = uploadBuffer.Position + alignmentOffset;
-
-			uploadBuffer.Position += reserveSize + alignmentOffset;
-
-			return UploadReservation{
-				.resource	= uploadBuffer.deviceBuffer,
-				.size		= reserveSize,
-				.offset		= offset,
-				.buffer		= buffer
-			};
-		}
-
-		if(uploadBuffer.Last <= uploadBuffer.Position)
-		{	// Safe, Do Upload
-			const auto alignmentOffset = GetOffset();
-
-			char* buffer            = uploadBuffer.Buffer + uploadBuffer.Position + alignmentOffset;
-			size_t offset           = uploadBuffer.Position + alignmentOffset;
-			uploadBuffer.Position  += reserveSize + alignmentOffset;
-
-			return UploadReservation{
-				.resource	= uploadBuffer.deviceBuffer,
-				.size		= reserveSize,
-				.offset		= offset,
-				.buffer		= buffer
-			};
-		}
-
-		return {};
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyBuffer(GPURange destRange, void* source_ptr, uint64_t size)
-	{
-		auto uploadSize		= Min(destRange.size, size);
-		auto uploadSpace	= Reserve(uploadSize);
-		auto dest			= RenderSystem::globalInstance->GetDeviceResource(destRange.resource);
-
-		commandList->CopyBufferRegion(
-			dest,
-			destRange.offset,
-			uploadSpace.resource,
-			uploadSpace.offset,
-			uploadSize);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyBuffer(ResourceHandle handle, const size_t destOffset, UploadReservation source)
-	{
-		flushPendingBarriers();
-
-		auto dest = RenderSystem::globalInstance->GetDeviceResource(handle);
-
-		commandList->CopyBufferRegion(
-			dest,
-			destOffset,
-			source.resource,
-			source.offset,
-			source.size);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, UploadReservation source)
-	{
-		flushPendingBarriers();
-
-		commandList->CopyBufferRegion(
-			destination,
-			destinationOffset,
-			source.resource,
-			source.offset,
-			source.size);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, ID3D12Resource* source, const size_t sourceOffset, const size_t sourceSize)
-	{
-		flushPendingBarriers();
-
-		commandList->CopyBufferRegion(
-			destination,
-			destinationOffset,
-			source,
-			sourceOffset,
-			sourceSize);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyTextureRegion(
-		ID3D12Resource*		destination,
-		size_t				subResourceIdx,
-		uint3				XYZ,
-		UploadReservation	source,
-		uint2				WH,
-		DeviceFormat		format)
-	{
-		flushPendingBarriers();
-
-		const auto		deviceFormat	= TextureFormat2DXGIFormat(format);
-		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
-		const bool		BCformat		= IsDDS(format);
-		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
-		//size_t alignmentOffset    = rowPitch & 0x01ff;
-
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
-		SubRegion.Footprint.Depth		= 1;
-		SubRegion.Footprint.Format		= deviceFormat;
-		SubRegion.Footprint.RowPitch	= (UINT)rowPitch;
-		SubRegion.Footprint.Width		= WH[0];
-		SubRegion.Footprint.Height		= WH[1];
-		SubRegion.Offset				= source.offset;
-
-		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
-
-		commandList->CopyTextureRegion(
-			&destinationLocation,
-			XYZ[0], XYZ[1], XYZ[2],
-			&sourceLocation,
-			nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CopyContext::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
-	{
-		flushPendingBarriers();
-
-		auto desc = dest->GetDesc();
-
-		D3D12_TILED_RESOURCE_COORDINATE coordinate;
-		coordinate.X			= (UINT)destTile[0];
-		coordinate.Y			= (UINT)destTile[1];
-		coordinate.Z			= (UINT)0;
-		coordinate.Subresource	= (UINT)destTile[2];
-		
-		D3D12_TILE_REGION_SIZE regionSize;
-		regionSize.NumTiles		= 1;
-		regionSize.UseBox		= false;
-		regionSize.Width		= 1;
-		regionSize.Height		= 1;
-		regionSize.Depth		= 1;
-
-		commandList->CopyTiles(
-			dest,
-			&coordinate,
-			&regionSize,
-			src.resource,
-			src.offset,
-			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool CopyContext::IsSubResourceTiled(ID3D12Resource* resource, const size_t level) const
-	{
-		ID3D12Device* device = nullptr;
-		commandList->GetDevice(IID_PPV_ARGS(&device));
-
-		UINT						TileCount = 0;
-		D3D12_PACKED_MIP_INFO		packedMipInfo;
-		D3D12_TILE_SHAPE			TileShape;
-		UINT						subResourceTilingCount = 1;
-		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
-
-		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, (UINT)level, &subResourceTiling_Packed);
-
-		return (subResourceTiling_Packed.HeightInTiles * subResourceTiling_Packed.WidthInTiles) != 0;
 	}
 
 
@@ -5748,7 +1684,7 @@ namespace FlexKit
 			cmdLists.push_back(context.commandList);
 
 			context.counter				= localCounter;
-			context.uploadBuffer.Last	= context.uploadBuffer.Position;
+			context.uploadBuffer.last	= context.uploadBuffer.position;
 			
 			Close(*itr);
 		}
@@ -6021,7 +1957,7 @@ namespace FlexKit
 		const auto HR = pDevice->CreateHeap(&heapDesc, IID_PPV_ARGS(&heap_ptr));
 
 #if USING(DEBUGGRAPHICS)
-		auto temp = fmt::format("Heap {}", heaps.size());
+		auto temp = fmt::format("heap {}", heaps.size());
 		SETDEBUGNAME(heap_ptr, temp.c_str());
 #endif
 
@@ -6036,7 +1972,7 @@ namespace FlexKit
 		}
 		else
 		{
-			FK_LOG_ERROR("Failed to create Heap. Flags: %u", flags);
+			FK_LOG_ERROR("Failed to create heap. Flags: %u", flags);
 			return InvalidHandle;
 		}
 	}
@@ -6955,7 +2891,7 @@ namespace FlexKit
 	{
 		uint8_t	indexBufferIdx	= vertexBufferSet.GetIndexBufferIndex();
 		auto indexBuffer		= vertexBufferSet[indexBufferIdx];
-		auto positionRes		= vertexBufferSet.Find(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION);
+		auto positionRes		= vertexBufferSet.Find(VERTEXBUFFER_TYPE::POSITION);
 
 		if (!positionRes.has_value())
 			return {};
@@ -7453,50 +3389,50 @@ namespace FlexKit
 		{
 			switch (entries[itr].type)
 			{
-				case ILE_DrawCall:
+			case IndirectLayoutEntryType::DrawCall:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
 
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_DrawCall);
+					layout.push_back(IndirectLayoutEntryType::DrawCall);
 					entryStride += sizeof(uint32_t) * 4; // uses 4 x 4 byte values
 				}	break;
-				case ILE_DrawIndexedCall:
+				case IndirectLayoutEntryType::DrawIndexedCall:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type	= D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_DrawCall);
+					layout.push_back(IndirectLayoutEntryType::DrawCall);
 					entryStride += sizeof(uint32_t) * 5; // uses 5 x 4 byte values
 				}	break;
-				case ILE_DispatchCall:
+				case IndirectLayoutEntryType::DispatchCall:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type   = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
 
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_DispatchCall);
+					layout.push_back(IndirectLayoutEntryType::DispatchCall);
 					entryStride += sizeof(uint4); // uses 4 x 4 byte values
 				}   break;
-				case ILE_DispatchMesh:
+				case IndirectLayoutEntryType::DispatchMesh:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_MESH;
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_DispatchCall);
+					layout.push_back(IndirectLayoutEntryType::DispatchCall);
 					entryStride += sizeof(uint3); // uses 4 x 4byte values
 				}   break;
-				case ILE_DispatchRays:
+				case IndirectLayoutEntryType::DispatchRays:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH_RAYS;
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_DispatchCall);
+					layout.push_back(IndirectLayoutEntryType::DispatchCall);
 					entryStride += sizeof(D3D12_DISPATCH_RAYS_DESC);
 				}   break;
-				case ILE_RootDescriptorUINT:
+				case IndirectLayoutEntryType::RootDescriptorUINT:
 				{
 					D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 					desc.Type                               = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT;
@@ -7505,7 +3441,7 @@ namespace FlexKit
 					desc.Constant.RootParameterIndex        = entries[itr].description.constantValue.rootParameterIdx;
 
 					signatureEntries.push_back(desc);
-					layout.push_back(ILE_RootDescriptorUINT);
+					layout.push_back(IndirectLayoutEntryType::RootDescriptorUINT);
 
 					entryStride += desc.Constant.Num32BitValuesToSet * sizeof(uint32_t);
 				}   break;
@@ -7529,7 +3465,10 @@ namespace FlexKit
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
 
-		return { signature, entryStride, std::move(layout) };
+		IndirectLayout out;
+		new(out.internal) dxIndirectLayout{ signature, entryStride, std::move(layout) };
+
+		return out;
 	}
 
 
@@ -8333,7 +4272,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc)
+	void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc)
 	{
 		auto& copyCtx = RS->_GetCopyContext(uploadHandle);
 
@@ -8683,7 +4622,7 @@ namespace FlexKit
 		for (uint32_t itr = 0; itr < BufferCount; ++itr)
 		{
 			auto& buffer = Buffers[itr];
-			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::INDEX)
 			{
 				// Create the Vertex Buffer
 				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
@@ -8739,23 +4678,23 @@ namespace FlexKit
 
 				switch (Buffers[itr]->GetBufferType())
 				{
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
+				case VERTEXBUFFER_TYPE::POSITION:
 					{SETDEBUGNAME(apiResource, "VERTEXBUFFER");				break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
+				case VERTEXBUFFER_TYPE::NORMAL:
 					{SETDEBUGNAME(apiResource, "NORMAL BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
+				case VERTEXBUFFER_TYPE::TANGENT:
 					{SETDEBUGNAME(apiResource, "TANGET BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_COLOR:
+				case VERTEXBUFFER_TYPE::COLOR:
 					{SETDEBUGNAME(apiResource, "COLOUR BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
+				case VERTEXBUFFER_TYPE::UV:
 					{SETDEBUGNAME(apiResource, "TEXCOORD BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
+				case VERTEXBUFFER_TYPE::ANIMATION1:
 					{SETDEBUGNAME(apiResource, "AnimationWeights");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
+				case VERTEXBUFFER_TYPE::ANIMATION2:
 					{SETDEBUGNAME(apiResource, "AnimationIndices");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKED:
+				case VERTEXBUFFER_TYPE::PACKED:
 					{SETDEBUGNAME(apiResource, "PACKED_BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR:
+				case VERTEXBUFFER_TYPE::UNKNOWN:
 				default:
 					{SETDEBUGNAME(apiResource, "VERTEXBUFFER_TYPE_ERROR");	break; }
 					break;
@@ -10692,7 +6631,7 @@ namespace FlexKit
 		TextureBuffer textureBuffer{ { 1,  1 }, (std::byte*)tempBuffer, 256, 4, nullptr };
 
 		auto defaultTexture = MoveTextureBuffersToVRAM(
-			this,
+			*this,
 			upload,
 			&textureBuffer,
 			1,
@@ -10720,7 +6659,7 @@ namespace FlexKit
 			return res.value();
 		else if(res.error() == ReserveErrors::OutOfSpace)
 		{
-			auto oldBuffer = directUploadBuffer.Resize(directUploadBuffer.Size * 2);
+			auto oldBuffer = directUploadBuffer.Resize(directUploadBuffer.size * 2);
 
 			if (oldBuffer)
 			{
@@ -10818,7 +6757,7 @@ namespace FlexKit
 
 				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(temp));
 
-				for (auto& H : HeapEntry.Heap.Entries)
+				for (auto& H : HeapEntry.heap.entries)
 				{
 					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
 					switch (H.Type)
@@ -11004,7 +6943,7 @@ namespace FlexKit
 				const size_t idx = contextIdx;
 				contextIdx = ++contextIdx % Contexts.size();
 
-				Context& context = Contexts[idx];
+				dxDirectContext& context = Contexts[idx];
 				if (context._GetCounter() <= completedCounter)
 				{
 					auto range = _AllocateDescriptorRange(1024);
@@ -11123,7 +7062,7 @@ namespace FlexKit
 
 		for (auto context : contexts)
 		{
-			auto deviceContext = static_cast<Context*>(context);
+			auto deviceContext = static_cast<dxDirectContext*>(context);
 			dispatchIdx = Max(deviceContext->dispatchIdx, dispatchIdx);
 
 			cls.push_back(deviceContext->GetCommandList());
@@ -11146,9 +7085,9 @@ namespace FlexKit
 			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
-			static_cast<Context*>(context)->_QueueReadBacks();
+			static_cast<dxDirectContext*>(context)->_QueueReadBacks();
 
-		directUploadBuffer.Last = directUploadBuffer.Position;
+		directUploadBuffer.last = directUploadBuffer.position;
 
 		FK_LOG_9("QUEUE:DIRECT Submitting. Signaling: %I64 : $I64 \n", directFence, dispatchIdx);
 
@@ -11243,11 +7182,11 @@ namespace FlexKit
 			{
 				switch (Buffers[itr]->GetBufferType())
 				{
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
+				case VERTEXBUFFER_TYPE::POSITION:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32:
+					case VERTEXBUFFER_FORMAT::R32G32B32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11266,13 +7205,13 @@ namespace FlexKit
 					}
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX:
+				case VERTEXBUFFER_TYPE::INDEX:
 					break;
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_COLOR:
+				case VERTEXBUFFER_TYPE::COLOR:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32A32:
+					case VERTEXBUFFER_FORMAT::R32G32B32A32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11291,11 +7230,11 @@ namespace FlexKit
 					}
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
+				case VERTEXBUFFER_TYPE::NORMAL:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32:
+					case VERTEXBUFFER_FORMAT::R32G32B32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11314,11 +7253,11 @@ namespace FlexKit
 					}
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
+				case VERTEXBUFFER_TYPE::TANGENT:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32:
+					case VERTEXBUFFER_FORMAT::R32G32B32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11337,11 +7276,11 @@ namespace FlexKit
 					}
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
+				case VERTEXBUFFER_TYPE::UV:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32:
+					case VERTEXBUFFER_FORMAT::R32G32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11361,11 +7300,11 @@ namespace FlexKit
 					UV_Buffer_Counter++;
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
+				case VERTEXBUFFER_TYPE::ANIMATION1:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32:
+					case VERTEXBUFFER_FORMAT::R32G32B32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11385,11 +7324,11 @@ namespace FlexKit
 					WEIGHT_Buffer_Counter++;
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
+				case VERTEXBUFFER_TYPE::ANIMATION2:
 				{
 					switch (Buffers[itr]->GetBufferFormat())
 					{
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32A32:
+					case VERTEXBUFFER_FORMAT::R32G32B32A32:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11402,7 +7341,7 @@ namespace FlexKit
 
 						Input_Desc.push_back(InputElementDesc);
 					}
-					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16:
+					case VERTEXBUFFER_FORMAT::R16G16B16A16:
 					{
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
@@ -11422,7 +7361,7 @@ namespace FlexKit
 					WINDICES_Buffer_Counter++;
 					break;
 				}
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKED:
+				case VERTEXBUFFER_TYPE::PACKED:
 				{
 					D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 					InputElementDesc.AlignedByteOffset		= 0;
@@ -11448,7 +7387,7 @@ namespace FlexKit
 					InputElementDesc.Format					= ::DXGI_FORMAT_R32G32_FLOAT;
 					Input_Desc.push_back(InputElementDesc);
 				}	break;
-				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKEDANIMATION:
+				case VERTEXBUFFER_TYPE::PACKEDANIMATION:
 				{
 					D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 					InputElementDesc.AlignedByteOffset		= 0;
@@ -11976,26 +7915,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	BlendState BlendState::Blend()
-	{
-		return
-			BlendState{
-				.alphaToCoverageEnable		= false,
-				.independentBlendEnable		= false,
-				.renderTarget = {
-					RenderTargetStateDesc{
-						.blendEnable	= true,
-						.srcBlend		= EBlend::SRC_ALPHA,
-						.dstBlend		= EBlend::INV_SRC_ALPHA,
-						.blendOp		= EBlendOP::ADD,
-						.srcBlendAlpha	= EBlend::ONE,
-						.dstBlendAlpha	= EBlend::ONE
-					}
-				}};
-	}
-
-	/************************************************************************************************/
-
 
 	MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
 		renderSystem	{ IN_renderSystem },
@@ -12061,7 +7980,7 @@ namespace FlexKit
 							.overlap	= (range.priorAllocation != InvalidHandle && (range.flags & AllowReallocation) && range.frameID == frameID) ? range.priorAllocation : InvalidHandle
 						};
 
-						FK_LOG_9("Allocated Blocks %u - %u from Heap %u during %u; Completed count %u; Last Used: %u", range.offset, range.offset + requestBlockCount, heap.INDEX, frameID, completionCount, range.frameID);
+						FK_LOG_9("Allocated Blocks %u - %u from heap %u during %u; Completed count %u; Last Used: %u", range.offset, range.offset + requestBlockCount, heap.INDEX, frameID, completionCount, range.frameID);
 
 						if (range.blockCount > requestBlockCount)
 						{
@@ -12110,9 +8029,9 @@ namespace FlexKit
 			if ((range1.offset + range1.blockCount) == range2.offset &&
 				range1.frameID < completedID && range2.frameID < completedID)
 			{
-				range1.blockCount += range2.blockCount;
-				range1.frameID = 0;
-				range1.flags = Clear;
+				range1.blockCount  += range2.blockCount;
+				range1.frameID		= 0;
+				range1.flags		= Clear;
 
 				freeRanges.remove_stable(&range2);
 			}
@@ -12348,7 +8267,7 @@ namespace FlexKit
 			if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
 				__debugbreak();
 
-			FK_LOG_9("Releasing Blocks %u - %u from Heap %u during %u", res->offset, res->offset + res->blockCount, heap.INDEX, submissionID);
+			FK_LOG_9("Releasing Blocks %u - %u from heap %u during %u", res->offset, res->offset + res->blockCount, heap.INDEX, submissionID);
 #endif
 
 			estimatedBlocksAvailable += res->blockCount;
