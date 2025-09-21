@@ -1,4 +1,5 @@
 #include <RenderSystemInterface.hpp>
+#include <vulkan/vulkan.h>
 
 namespace VK_internal
 {
@@ -181,6 +182,8 @@ namespace VK_internal
 
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment) final;
 		IRenderSystem&		GetRenderSystem() noexcept final;
+
+		VkCommandBuffer commandBuffer = nullptr;
 	};
 
 

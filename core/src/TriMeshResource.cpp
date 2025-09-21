@@ -279,21 +279,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline DeviceResource_ptr GetBuffer(TriMesh* Mesh, size_t lod, size_t Buffer)
+	uint32_t FindBufferIdx(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE type)
 	{
-		return Mesh->lods[lod].bufferSet->At(Buffer).resource;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline DeviceResource_ptr FindBuffer(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE type)
-	{
-		if (auto res = Mesh->lods[lod].bufferSet->Find(type); res.has_value())
-			return res.value().resource;
-		else
-			return nullptr;
+		return Mesh->lods[lod].bufferSet->FindIdx(type).value_or(-1);
 	}
 
 
@@ -306,42 +294,6 @@ namespace FlexKit
 		return mesh->lods[lod].bufferSet->Find(type);
 	}
 
-
-	/************************************************************************************************/
-
-	/*
-	bool AddVertexBuffer(VERTEXBUFFER_TYPE type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out)
-	{
-		auto res = FindBufferEntry(Mesh, lod, type);
-
-		if (!res)
-		{
-#ifdef _DBUG
-			return false;
-#else 
-
-			D3D12_VERTEX_BUFFER_VIEW VBView;
-
-			VBView.BufferLocation	= 0;
-			VBView.SizeInBytes		= 0;
-			VBView.StrideInBytes	= 0;
-			out.push_back(VBView);
-
-			return true;
-#endif
-		}
-
-		auto&& VB = res.value();
-		out.emplace_back(
-			D3D12_VERTEX_BUFFER_VIEW{
-				.BufferLocation = VB.resource->GetGPUVirtualAddress(),
-				.SizeInBytes	= VB.byteSize,
-				.StrideInBytes	= VB.byteStride,
-			});
-
-		return true;
-	}
-    */
 
 	/************************************************************************************************/
 

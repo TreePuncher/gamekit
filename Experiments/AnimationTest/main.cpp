@@ -11,7 +11,7 @@ int main()
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{ .CreateRenderSystem = FlexKit::CreateVK });
-
+		
 		//app->PushState<AnimationTest>();
 		app->GetCore().FPSLimit		= 144;
 		app->GetCore().FrameLock	= true;

@@ -4,13 +4,85 @@
 #include <Handle.hpp>
 #include <RenderSystemInterface.hpp>
 
+#include <vulkan/vulkan.hpp>
+
 namespace VK_internal
 {
 	using namespace FlexKit;
 	
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
-		return false;
+		vkb::InstanceBuilder builder;
+		auto instReq = builder.set_app_name("Hello Vulkan")
+			.request_validation_layers()
+			.set_headless()
+			.use_default_debug_messenger()
+			.build();
+
+		if (!instReq)
+		{
+			return false;
+		}
+
+		instance = instReq.value();
+		vkb::PhysicalDeviceSelector selector{ instance };
+
+		auto physRequest = selector.set_minimum_version(1, 3)
+			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+			.select_devices();
+
+		if (!physRequest)
+			return false;
+
+		auto res = physRequest.value();
+		vkb::DeviceBuilder deviceBuilder{ res[1] };
+		auto devRequest = deviceBuilder.build();
+
+	    device = devRequest.value();
+		auto queueRequest = device.get_queue(vkb::QueueType::graphics);
+		if (!queueRequest.has_value())
+		{
+			return false;
+		}
+
+		auto queue = queueRequest.value();
+		VkCommandPoolCreateInfo createPoolDesc{
+				.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+	            .pNext = nullptr,
+	            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+	            .queueFamilyIndex = 0
+		};
+
+		VkCommandPool commandPool;
+		if (auto res = vkCreateCommandPool(device, &createPoolDesc, nullptr, &commandPool); res != VK_SUCCESS)
+			return false;
+
+		VkCommandBufferAllocateInfo createCommandBuffer{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext				= nullptr,
+            .commandPool		= commandPool,
+			.level				= VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 32,
+		};
+
+		VkCommandBuffer commandBuffer[32];
+		vkAllocateCommandBuffers(device, &createCommandBuffer, commandBuffer);
+
+		VkDescriptorPoolSize sizes[3];
+
+		VkDescriptorPoolCreateInfo descriptorPoolCreateDesc{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+			.pNext				= nullptr,
+			.flags				= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV | VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV,
+            .maxSets			= 0,
+            .poolSizeCount		= 1,
+            .pPoolSizes			= sizes
+		};
+
+		VkDescriptorPool descriptorPool = nullptr;
+		vkCreateDescriptorPool(device, &descriptorPoolCreateDesc, nullptr, &descriptorPool);
+
+		return true;
 	}
 
 	void vkRenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc)
@@ -546,6 +618,9 @@ namespace VK_internal
     {}
 
 	void vkRenderSystem::Release()
-    {}
+	{
+		vkb::destroy_device(device);
+		vkb::destroy_instance(instance);
+	}
 
 }

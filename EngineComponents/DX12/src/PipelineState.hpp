@@ -45,8 +45,10 @@ struct ID3D12Device;
 struct ID3D12PipelineState;
 
 
-namespace FlexKit
+namespace dx_Internal
 {
+	using namespace FlexKit;
+
 	class RenderSystem;
 	class RootSignature;
 	class PipelineStateTable;

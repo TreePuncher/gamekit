@@ -472,7 +472,7 @@ namespace FlexKit
 		Resource_1D,
 		Resource_2D,
 		Resource_3D,
-		BYTEBUFFER,
+		ByteBuffer,
 	};
 
 	enum struct ResourceHeapTier
@@ -1203,8 +1203,20 @@ namespace FlexKit
 
 		static BlendState Blend()
 		{
-			FK_ASSERT(false);
-		    return {};
+			return
+			    BlendState{
+				    .alphaToCoverageEnable		= false,
+				    .independentBlendEnable		= false,
+				    .renderTarget = {
+					    RenderTargetStateDesc{
+						    .blendEnable	= true,
+						    .srcBlend		= EBlend::SRC_ALPHA,
+						    .dstBlend		= EBlend::INV_SRC_ALPHA,
+						    .blendOp		= EBlendOP::ADD,
+						    .srcBlendAlpha	= EBlend::ONE,
+						    .dstBlendAlpha	= EBlend::ONE
+					    }
+				    }};
 		}
 	};
 
@@ -1792,7 +1804,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	struct IIndirectLayoutIMPL
+	struct IIndirectLayout
 	{
 	};
 
@@ -1827,6 +1839,8 @@ namespace FlexKit
 			FK_ASSERT(false);
 		    return false;
 		}
+
+		std::byte internal[64];
 	};
 
 
@@ -1963,6 +1977,8 @@ namespace FlexKit
 
 	struct IContext
 	{
+		virtual ~IContext() {}
+
 		virtual struct IRenderSystem& GetRenderSystem() noexcept = 0;
 	};
 
@@ -2170,8 +2186,8 @@ namespace FlexKit
 
 	struct ICopyContext : public IContext
 	{
-		virtual ~ICopyContext() = 0;
-		virtual void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
+		virtual ~ICopyContext() {}
+		virtual void                Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after) = 0;
 
 	    virtual UploadReservation	Reserve(size_t byteSize, uint32_t alignment = 256) { return {}; }
 		virtual void				CopyBuffer(ResourceHandle source, size_t dstOffset, UploadReservation) {}
@@ -2185,6 +2201,52 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	struct IDescriptorHeap
+	{
+		virtual ~IDescriptorHeap() {}
+
+	    virtual IDescriptorHeap& operator = (IDescriptorHeap&&) = 0;
+
+		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory) = 0;
+		virtual void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory) = 0;
+		virtual void NullFill(IContext& ctx, const size_t end = -1) = 0;
+
+		virtual void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) = 0;
+		virtual void SetCBV(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize) = 0;
+		virtual void SetCBV(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize) = 0;
+
+		virtual void SetSRV(IContext& ctx, size_t idx, ResourceHandle) = 0;
+		virtual void SetSRV(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format) = 0;
+		virtual void SetSRV(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format) = 0;
+		virtual void SetSRVArray(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format) = 0;
+
+		virtual void SetSRV3D(IContext& ctx, size_t idx, ResourceHandle) = 0;
+
+		virtual void SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle Handle) = 0;
+		virtual void SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle Handle, DeviceFormat format) = 0;
+
+		virtual void SetUAVBuffer(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0) = 0;
+
+		virtual void SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle) = 0;
+
+		virtual void SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format) = 0;
+		virtual void SetUAVTexture(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format) = 0;
+
+		virtual void SetUAVCubemap(IContext& ctx, size_t idx, ResourceHandle handle) = 0;
+
+		virtual void SetUAVTexture3D(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format) = 0;
+
+		virtual void SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0) = 0;
+		virtual void SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset) = 0;
+
+		virtual void SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0) = 0; //
+
+		virtual DevicePointer	GetGPUDescriptorHandle	() const = 0;
+		virtual DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const = 0;
+	};
 
 
 	struct DescriptorHeap
@@ -2233,9 +2295,10 @@ namespace FlexKit
 
 		DescriptorHeap& SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
-		operator GPUDescriptorHandle	() const;
+		DescriptorHeap			GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		static DescriptorHeap&	GetImpl() noexcept;
 
-		DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		std::byte internal[64];
 	};
 
 
@@ -2275,6 +2338,7 @@ namespace FlexKit
 	{
 		virtual void						Clear() = 0;
 		virtual std::optional<VertexBuffer> Find			(VERTEXBUFFER_TYPE) const = 0;
+		virtual std::optional<uint32_t>		FindIdx			(VERTEXBUFFER_TYPE) const = 0;
 		virtual const VertexBuffer			operator []		(uint8_t idx) const = 0;
 		        const VertexBuffer			At				(uint8_t idx) const { return (*this)[idx]; }
 		virtual uint8_t						GetIndexBufferIndex() const = 0;

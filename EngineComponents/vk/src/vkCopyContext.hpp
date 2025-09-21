@@ -6,7 +6,9 @@ namespace VK_internal
 
 	struct vkCopyContext : public ICopyContext
 	{
-		void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after) final;
+		~vkCopyContext() final {}
+
+		void                Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after) final;
 
 		UploadReservation	Reserve(size_t byteSize, uint32_t alignment) final;
 		void				CopyBuffer(ResourceHandle source, size_t dstOffset, UploadReservation) final;

@@ -138,6 +138,8 @@ namespace FlexKit
 	size_t						GetSkeletonGUID(TriMeshHandle  TMHandle);
 	void						SetSkeleton(TriMeshHandle  TMHandle, Skeleton* S);
 
+	uint32_t FindBufferIdx	(TriMesh* Mesh, size_t lod, VERTEXBUFFER_TYPE type);
+
 	enum class FINDMESH_RES
 	{
 		NotFound,

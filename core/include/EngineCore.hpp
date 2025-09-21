@@ -135,12 +135,14 @@ namespace FlexKit
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
 
+
 		bool					FrameLock	= true;
 		bool					vSync		= false;
 		size_t					FPSLimit	= 120;
 		bool					End			= false;
-		ThreadManager			Threads;
 
+		EngineMemory*			Memory;
+	    ThreadManager			Threads;
 		IRenderSystem*			RenderSystem;
 
 		Time					Time;
@@ -148,7 +150,6 @@ namespace FlexKit
 		Vector<const char*>		CmdArguments;
 
 		IRenderWindow*			activeWindow = nullptr;
-		EngineMemory*			Memory;
 
 		BlockAllocator&			GetBlockMemory()	{ return  Memory->BlockAllocator; }
 		StackAllocator&			GetTempMemory()		{ return  Memory->GetTempMemory(); }

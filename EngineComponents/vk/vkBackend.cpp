@@ -1,10 +1,13 @@
 #include <RenderSystemInterface.hpp>
 
+#include "ThreadUtilities.hpp"
+#include "src/vkRenderSystem.hpp"
+
 namespace FlexKit
 {
     IRenderSystem* CreateVK(const RenderSystemOptions& options)
     {
-        return nullptr;
+        return &options.allocator->allocate<VK_internal::vkRenderSystem>();
     }
 }
 

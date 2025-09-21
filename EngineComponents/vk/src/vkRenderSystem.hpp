@@ -1,13 +1,14 @@
 #include <RenderSystemInterface.hpp>
+#include <VkBootstrap.h>
 
 namespace VK_internal
 {
     using namespace FlexKit;
 
-    class vkRenderSystem : public IRenderSystem
+    class vkRenderSystem : public IRenderSystem	
     {
     public:
-        bool													Initiate(Graphics_Desc& desc) = 0;
+        bool													Initiate(Graphics_Desc& desc) final;
 
 		void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) final;
 		void													RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) final;
@@ -67,7 +68,7 @@ namespace VK_internal
 		size_t				GetTextureFrameGraphIndex(ResourceHandle)			noexcept final;
 		void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept final;
 
-		void				MarkTextureUsed			(ResourceHandle Handle) = 0;
+		void				MarkTextureUsed			(ResourceHandle Handle) final;
 
 		DevicePointer		GetDevicePointer		(const ResourceHandle)			const noexcept final;
 
@@ -169,5 +170,15 @@ namespace VK_internal
 		void ReleaseQuery(QueryHandle) final;
 		void ReleaseDescriptorRange(DescriptorRange, uint64_t) final;
 		void Release() final;
+
+    private:
+		vkb::Instance			instance;
+		vkb::Device				device;
+		iAllocator*				allocator = nullptr;
+		VkAllocationCallbacks	vkAllocator;
+		VkDescriptorPool		descriptorPool = nullptr;
+
+		uint64_t directSubmissionCounter	= 0;
+		uint64_t copySubmissionCounter		= 0;
     };
 }
