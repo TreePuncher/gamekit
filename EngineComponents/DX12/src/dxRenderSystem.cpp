@@ -1823,7 +1823,7 @@ namespace dx_Internal
 			copyCtx.commandAllocator	= commandAllocator;
 			copyCtx.commandList			= copyCommandList;
 			copyCtx.eventHandle			= CreateEvent(nullptr, FALSE, FALSE, nullptr);
-			copyCtx.uploadBuffer		= UploadBuffer{ Device };
+			copyCtx.uploadBuffer		= dxUploadBuffer{ Device };
 			copyCtx.freeResources		= Vector<ID3D12Resource*>{ allocator };
 
 			copyContexts.emplace_back(std::move(copyCtx));
@@ -1834,7 +1834,7 @@ namespace dx_Internal
 					copyCommandList,
 					0,
 					CreateEvent(nullptr, FALSE, FALSE, nullptr),
-					UploadBuffer{ Device },
+					dxUploadBuffer{ Device },
 					Vector<ID3D12Resource*>{ allocator }});
 			*/
 			}
@@ -2242,9 +2242,9 @@ namespace dx_Internal
 			GFSDK_Aftermath_Version_API,
 			GFSDK_Aftermath_GpuCrashDumpWatchedApiFlags_DX,
 			GFSDK_Aftermath_GpuCrashDumpFeatureFlags_DeferDebugInfoCallbacks,   // Let the Nsight Aftermath library cache shader debug information.
-			GpuCrashDumpCallback,                                               // Register callback for GPU crash dumps.
-			nullptr,                                                            // Register callback for shader debug information.
-			nullptr,                                                            // Register callback for GPU crash dump description.
+			GpuCrashDumpCallback,                                               // registerIdx callback for GPU crash dumps.
+			nullptr,                                                            // registerIdx callback for shader debug information.
+			nullptr,                                                            // registerIdx callback for GPU crash dump description.
 			this);                                                              // Set the GpuCrashTracker object as user data for the above callbacks.
 
 		auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
@@ -2376,7 +2376,7 @@ namespace dx_Internal
 		RegisterPSOLoader(CLEARBUFFERPSO, CreateClearBufferPSO);
 		QueuePSOLoad(CLEARBUFFERPSO);
 
-		directUploadBuffer = UploadBuffer(pDevice);
+		directUploadBuffer = dxUploadBuffer(pDevice);
 
 		SetDebugName(DefaultTexture, "Default Texture");
 
@@ -6760,7 +6760,7 @@ namespace dx_Internal
 				for (auto& H : HeapEntry.heap.entries)
 				{
 					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
-					switch (H.Type)
+					switch (H.type)
 					{
 					case DescHeapEntryType::ConstantBuffer:
 						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
@@ -6780,7 +6780,7 @@ namespace dx_Internal
 					CD3DX12_DESCRIPTOR_RANGE Range;
 					Range.Init(
 						RangeType,
-						H.Count, H.Register, H.Space);
+						H.count, H.registerIdx, H.space);
 
 					DesciptorHeaps.back().push_back(Range);
 				}

@@ -711,7 +711,6 @@ namespace FlexKit
 
 		Window_Count++;
 
-		// Register Window Class
 		auto windowHWND = CreateWindowW(L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
 								renderWindowDesc.POS_X,
 								renderWindowDesc.POS_Y,

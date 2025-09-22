@@ -861,7 +861,7 @@ namespace FlexKit
 	{
 		for (auto& MetaData : MD)
 		{
-			std::cout << MetaData->ID << " : Type: ";
+			std::cout << MetaData->ID << " : type: ";
 			switch (MetaData->type)
 			{
 			case MetaData::EMETAINFOTYPE::EMI_COLLIDER:				

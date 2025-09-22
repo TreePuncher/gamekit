@@ -352,7 +352,7 @@ namespace dx_Internal
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					(rhs.Type            == Barrier::Type::Aliasing) &&
+					(rhs.type            == Barrier::type::Aliasing) &&
 					((before != InvalidHandle &&  rhs.aliasedResources[0] == before) ||
 					 (after != InvalidHandle &&   rhs.aliasedResources[1] == after));
 			});
@@ -360,7 +360,7 @@ namespace dx_Internal
 		if (std::end(PendingBarriers) == res)
 		{
 			Barrier barrier;
-			barrier.Type                = Barrier::Type::Aliasing;
+			barrier.type                = Barrier::type::Aliasing;
 			barrier.aliasedResources[0] = before;
 			barrier.aliasedResources[1] = after;
 
@@ -369,7 +369,7 @@ namespace dx_Internal
 		else
 		{
 			Barrier barrier;
-			barrier.Type                = Barrier::Type::Aliasing;
+			barrier.type                = Barrier::type::Aliasing;
 			barrier.aliasedResources[0] = res->aliasedResources[0] == InvalidHandle ? before : res->aliasedResources[0];
 			barrier.aliasedResources[1] = res->aliasedResources[1] == InvalidHandle ? after  : res->aliasedResources[1];
 
@@ -439,7 +439,7 @@ namespace dx_Internal
 		Barrier NewBarrier;
 		NewBarrier.OldState		    = Before;
 		NewBarrier.NewState		    = DeviceAccessState::DASPresent;
-		NewBarrier.Type			    = Barrier::Type::Resource;
+		NewBarrier.type			    = Barrier::type::Resource;
 		NewBarrier.resourceHandle	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
@@ -459,7 +459,7 @@ namespace dx_Internal
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type		== Barrier::Type::StreamOut &&
+					rhs.type		== Barrier::type::StreamOut &&
 					rhs.streamOut	== streamOut;
 			});
 
@@ -471,7 +471,7 @@ namespace dx_Internal
 			Barrier NewBarrier;
 			NewBarrier.OldState		= Before;
 			NewBarrier.NewState		= State;
-			NewBarrier.Type			= Barrier::Type::StreamOut;
+			NewBarrier.type			= Barrier::type::StreamOut;
 			NewBarrier.streamOut	= streamOut;
 
 			PendingBarriers.push_back(NewBarrier);
@@ -588,7 +588,7 @@ namespace dx_Internal
 			[&](Barrier& rhs) -> bool
 			{
 				return
-					rhs.Type            == Barrier::Type::Resource &&
+					rhs.type            == Barrier::type::Resource &&
 					rhs.resourceHandle  == resource;
 			});
 
@@ -600,7 +600,7 @@ namespace dx_Internal
 			Barrier NewBarrier;
 			NewBarrier.OldState         = Before;
 			NewBarrier.NewState         = State;
-			NewBarrier.Type             = Barrier::Type::Resource;
+			NewBarrier.type             = Barrier::type::Resource;
 			NewBarrier.resourceHandle   = resource;
 
 			PendingBarriers.push_back(NewBarrier);
@@ -1075,7 +1075,7 @@ namespace dx_Internal
 
 	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& IDH)
 	{
-		auto& impl = DescriptorHeapImpl::GetImpl(IDH);
+		auto& impl = dxDescriptorHeap::GetImpl(IDH);
 		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, impl);
 	}
 
@@ -1172,7 +1172,7 @@ namespace dx_Internal
 
 	void dxDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& IDH)
 	{
-		auto& DH = DescriptorHeapImpl::GetImpl(IDH);
+		auto& DH = dxDescriptorHeap::GetImpl(IDH);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
 	}
 
@@ -2893,7 +2893,7 @@ namespace dx_Internal
 
 	UploadReservation CopyContext::Reserve(const size_t reserveSize, const size_t reserveAlignement)
 	{
-		// Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
+		// Not enough remaining space in Buffer GOTO Beginning if space in front of upload buffer is available
 		if	(uploadBuffer.position + reserveSize > uploadBuffer.size && uploadBuffer.last != 0)
 			uploadBuffer.position = 0;
 

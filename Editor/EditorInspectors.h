@@ -197,13 +197,13 @@ struct CubicShadowMapFactory : public IComponentFactory
 	std::string				ComponentName() const noexcept { return name; }
 	FlexKit::ComponentID	ComponentID() const noexcept { return FlexKit::PointLightShadowMapID; }
 
-	static bool Register()
+	static bool registerIdx()
 	{
 		EditorInspectorView::AddComponentFactory(std::make_unique<CubicShadowMapFactory>());
 		return true;
 	}
 
-	inline static bool _registered = Register();
+	inline static bool _registered = registerIdx();
 };
 */
 

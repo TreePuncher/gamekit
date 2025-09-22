@@ -399,7 +399,7 @@ private:
 		size_t                      counter             = 0;
 		HANDLE                      eventHandle;
 
-		UploadBuffer                uploadBuffer;
+		dxUploadBuffer                uploadBuffer;
 
 		Vector<ID3D12Resource*>                 freeResources;
 		static_vector<D3D12_RESOURCE_BARRIER>   pendingBarriers;

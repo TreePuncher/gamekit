@@ -2405,7 +2405,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 		std::mutex						directUploadBufferMutex;
-		UploadBuffer					directUploadBuffer;
+		dxUploadBuffer					directUploadBuffer;
 
 		Vector<UploadSyncPoint>			Syncs;
 		Vector<FreeEntry>				FreeList_GraphicsQueue;
