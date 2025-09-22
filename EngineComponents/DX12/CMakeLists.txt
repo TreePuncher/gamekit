@@ -42,13 +42,14 @@ target_include_directories(dxBackend
 
 install(TARGETS dxBackend DESTINATION lib)
 
-#set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
-#ADD_LIBRARY(WINPIX SHARED IMPORTED)
-#SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
-#SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
+set(WINPIX_LOCATION "${FLEX_ROOT}/ThirdParty/pix/bin/x64/")
+ADD_LIBRARY(WINPIX SHARED IMPORTED)
+SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_IMPLIB     ${WINPIX_LOCATION}/WinPixEventRuntime.lib)
+SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPixEventRuntime.dll)
 
-#target_include_directories(D3D12Backend PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)    
+target_include_directories(dxBackend PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)    
 
-#add_custom_command(TARGET flex POST_BUILD
+#add_custom_command(TARGET dxBackend POST_BUILD
 #    COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
 #    COMMAND_EXPAND_LISTS)
+#

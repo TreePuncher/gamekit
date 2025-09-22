@@ -510,7 +510,7 @@ void EditorProjectScriptConnector::Register(EditorScriptEngine& engine)
 	scriptEngine->RegisterGlobalFunction("int GetResourceCount()", asMETHOD(EditorProjectScriptConnector, GetResourceCount), asCALL_THISCALL_ASGLOBAL, this);
 
 
-	// Register TextureBuffer Type
+	// Register TextureBuffer type
 	auto c = scriptEngine->RegisterObjectType("TextureBuffer", sizeof(FlexKit::TextureBuffer), asOBJ_VALUE | asGetTypeTraits<FlexKit::TextureBuffer>());                                               assert(c >= 0);
 	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f()",                                     asFunctionPtr(CreateTextureBufferDefault),  asCALL_CDECL_OBJLAST); assert(c >= 0);
 	c = scriptEngine->RegisterObjectBehaviour("TextureBuffer", asBEHAVE_CONSTRUCT,  "void f(uint width, uint height, uint format)", asFunctionPtr(CreateTextureBuffer),         asCALL_CDECL_OBJLAST); assert(c >= 0);

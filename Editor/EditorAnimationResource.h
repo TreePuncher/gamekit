@@ -205,7 +205,7 @@ namespace FlexKit
 		GUID_t								guid;
 		std::string							ID;
 
-		std::vector<float4x4>		IPoses; // Global Inverse Space Pose
+		std::vector<float4x4>		IPoses; // Global Inverse space Pose
 		std::vector<SkeletonJoint>	joints;
 		std::vector<std::string>	jointIDs;
 		std::vector<JointPose>		jointPoses;

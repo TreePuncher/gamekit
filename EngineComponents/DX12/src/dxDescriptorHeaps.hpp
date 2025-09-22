@@ -7,15 +7,15 @@ namespace dx_Internal
     using namespace FlexKit;
 	using FlexKit::IContext;
 
-	class DescriptorHeapImpl : public IDescriptorHeap
+	class dxDescriptorHeap : public IDescriptorHeap
 	{
 	public:
-		DescriptorHeapImpl() = default;
-		DescriptorHeapImpl(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		dxDescriptorHeap() = default;
+		dxDescriptorHeap(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory);
 
 		// moveable
-		DescriptorHeapImpl(DescriptorHeapImpl&& rhs);
-		DescriptorHeapImpl& operator = (DescriptorHeapImpl&&);
+		dxDescriptorHeap(dxDescriptorHeap&& rhs);
+		dxDescriptorHeap& operator = (dxDescriptorHeap&&);
 
 		void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory);
 		void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
@@ -60,8 +60,8 @@ namespace dx_Internal
 		void Mirror(const DescriptorHeap& rhs);
 		operator DescriptorRange() const noexcept;
 
-		static			DescriptorHeapImpl& GetImpl(DescriptorHeap&) noexcept;
-		static const	DescriptorHeapImpl& GetImpl(const DescriptorHeap&) noexcept;
+		static			dxDescriptorHeap& GetImpl(DescriptorHeap&) noexcept;
+		static const	dxDescriptorHeap& GetImpl(const DescriptorHeap&) noexcept;
 	private:
 
 		DescriptorHeap Clone() const;

@@ -290,7 +290,7 @@ public:
 				auto processChild = [&](this auto& self,  auto&& prim) -> void
 					{
 						const auto name = prim.GetName();
-						fmt::print("Name: {}, Type: {}\n", name.GetString(), prim.GetTypeName().GetString());
+						fmt::print("Name: {}, type: {}\n", name.GetString(), prim.GetTypeName().GetString());
 						fmt::print("Path {}\n", prim.GetPath().GetString());
 						fmt::print("Asset Info: \nCount: {}\n", prim.GetAssetInfo().size());
 
@@ -351,7 +351,7 @@ public:
 						}
 						else
 						{
-							fmt::print("Primitive Type: {}\n", prim.GetTypeName().GetString());
+							fmt::print("Primitive type: {}\n", prim.GetTypeName().GetString());
 						}
 
 						if (!prim.IsInPrototype())
@@ -376,7 +376,7 @@ public:
 			//		fmt::print("Primitive Attributes:\n");
 			//
 			//		for (auto&& attribute : prim.GetAttributes())
-			//			fmt::print("\tattribute: {}, Type: {}\n", attribute.GetName().GetString(), attribute.GetTypeName().GetCPPTypeName());
+			//			fmt::print("\tattribute: {}, type: {}\n", attribute.GetName().GetString(), attribute.GetTypeName().GetCPPTypeName());
 			//	}
 			//}
 

@@ -4,19 +4,215 @@
 #include <Handle.hpp>
 #include <RenderSystemInterface.hpp>
 
+#include "vkDescriptorHeap.hpp"
 #include <vulkan/vulkan.hpp>
+#include <print>
+
+#ifdef WIN32
+#include "vkWin32Surface.hpp"
+#endif
 
 namespace VK_internal
 {
 	using namespace FlexKit;
-	
+
+	VkBool32 VKErrorCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT          messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT                 messageTypes,
+		const VkDebugUtilsMessengerCallbackDataEXT*		pCallbackData,
+		void*											pUserData)
+	{
+		std::print("ERROR: {}", pCallbackData->pMessage);
+		return true;
+	}
+
+
+	VkDescriptorPool CreateDescriptorHeap(VkDevice device, size_t numDescriptors)
+	{
+	    VkDescriptorType typesAvailable[] = {
+			VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+			VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+			VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+			VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+		};
+
+		VkMutableDescriptorTypeListEXT availableTypesList[] {
+            {
+				.descriptorTypeCount	= 6,
+				.pDescriptorTypes		= typesAvailable
+            },
+            {
+				.descriptorTypeCount	= 6,
+				.pDescriptorTypes		= typesAvailable
+			},
+		};
+
+		VkMutableDescriptorTypeCreateInfoEXT ext0{
+	        .sType							= VkStructureType::VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
+		    .pNext							= nullptr,
+	        .mutableDescriptorTypeListCount = 2,
+	        .pMutableDescriptorTypeLists	= availableTypesList
+		};
+
+		VkDescriptorPoolCreateInfo descriptorPoolCreateDesc{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+			.pNext				= &ext0,
+			.flags				= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV | VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV,
+            .maxSets			= 10000,
+            .poolSizeCount		= 0,
+            .pPoolSizes			= nullptr
+		};
+
+		// Allocate Descriptor pool
+		VkDescriptorPool descriptorPool = nullptr;
+		if (auto res = vkCreateDescriptorPool(device, &descriptorPoolCreateDesc, nullptr, &descriptorPool); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("Failed to create descriptor set");
+			return nullptr;
+		}
+
+		return descriptorPool;
+	}
+
+	VkBuffer CreateConstantBuffer(VkDevice device, size_t bufferSize)
+	{
+	    // Create Buffer
+		VkBufferCreateInfo createBufferInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,			//VkBufferCreateFlags;
+			.size					= bufferSize,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,			// uint32_t               
+			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
+		};
+
+		VkBuffer buffer;
+		vkCreateBuffer(device, &createBufferInfo, nullptr, &buffer);
+		return buffer;
+	}
+
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
+	{
+		static constexpr VkDescriptorType typesAvailable[] = {
+		   VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		   VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		   VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		   VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+		};
+
+		Vector<VkDescriptorSetLayoutBinding>	bindings		{ allocator };
+		Vector<VkMutableDescriptorTypeListEXT>	validMutations	{ allocator };
+
+		for (auto& entry : layout.entries)
+		{
+			VkDescriptorSetLayoutBinding binding;
+			binding = VkDescriptorSetLayoutBinding{
+						.binding			= entry.registerIdx,
+						.descriptorType		= VkDescriptorType::VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
+						.descriptorCount	= entry.count,
+						.stageFlags			= VK_SHADER_STAGE_ALL,
+						.pImmutableSamplers = nullptr };
+
+			bindings.push_back(binding);
+			validMutations.push_back(
+				VkMutableDescriptorTypeListEXT{
+					.descriptorTypeCount	= 6,
+				    .pDescriptorTypes		= typesAvailable
+				});
+		}
+
+		VkMutableDescriptorTypeCreateInfoEXT ext0{
+			.sType							= VkStructureType::VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
+			.pNext							= nullptr,
+			.mutableDescriptorTypeListCount	= (uint32_t)validMutations.size(),
+			.pMutableDescriptorTypeLists	= validMutations.data()
+		};
+
+		VkDescriptorSetLayoutCreateInfo createLayoutDesc{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.pNext = &ext0,
+			.flags = VkDescriptorSetLayoutCreateFlagBits::VK_DESCRIPTOR_SET_LAYOUT_CREATE_PER_STAGE_BIT_NV,
+			.bindingCount = (uint32_t)bindings.size(),
+			.pBindings = bindings.data()
+		};
+
+		VkDescriptorSetLayout vkLayout = nullptr;
+		if (auto res = vkCreateDescriptorSetLayout(device, &createLayoutDesc, nullptr, &vkLayout); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("Failed to create descriptor heap layout!");
+			return nullptr;
+		}
+		else
+			return vkLayout;
+	}
+
+	VkDescriptorSet AllocateDescriptorSet(VkDevice device, VkDescriptorSetLayout vkLayout, VkDescriptorPool pool)
+	{
+	    // Allocate descriptor set
+		VkDescriptorSetAllocateInfo allocDSDesc{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+			.pNext				= nullptr,
+			.descriptorPool		= pool,
+			.descriptorSetCount	= 1,
+			.pSetLayouts		= &vkLayout
+		};
+
+		VkDescriptorSet descriptorSet;
+		if (auto res = vkAllocateDescriptorSets(device, &allocDSDesc, &descriptorSet); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("Failed to allocate descriptor set!");
+			return nullptr;
+		}
+		else
+            return descriptorSet;
+	}
+
+	struct DescriptorLocation
+	{
+		uint32_t idx		= 0;
+		uint32_t arrayIdx	= 0;
+	};
+
+	void CreateCBV(VkDevice device, VkDescriptorSet descriptorSet, VkBuffer buffer, const DescriptorLocation& viewLocation = {})
+	{
+		VkDescriptorBufferInfo bufferInfo{
+			.buffer = buffer,	// VkBuffer	
+	        .offset	= 0,		// VkDeviceSize    
+	        .range	= 1024		// VkDeviceSize
+		};
+
+		VkWriteDescriptorSet write{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext				= nullptr,
+            .dstSet				= descriptorSet,
+            .dstBinding			= viewLocation.idx,
+            .dstArrayElement	= viewLocation.arrayIdx,
+            .descriptorCount	= 1,
+            .descriptorType		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo		= &bufferInfo
+		};
+		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+	}
+
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
-		vkb::InstanceBuilder builder;
+		allocator = desc.Memory;
+		const char* extensions[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+
+	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
 			.request_validation_layers()
 			.set_headless()
-			.use_default_debug_messenger()
+		    .enable_extensions(2, extensions)
+			//.enable_extension("VK_KHR_win32_surface")
+			//.use_default_debug_messenger()
+			.set_debug_callback(VKErrorCallback)
 			.build();
 
 		if (!instReq)
@@ -24,18 +220,21 @@ namespace VK_internal
 			return false;
 		}
 
+
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
 
 		auto physRequest = selector.set_minimum_version(1, 3)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+			.add_required_extension("VK_EXT_mutable_descriptor_type")
+            .add_required_extension("VK_KHR_swapchain")
 			.select_devices();
 
 		if (!physRequest)
 			return false;
 
 		auto res = physRequest.value();
-		vkb::DeviceBuilder deviceBuilder{ res[1] };
+		vkb::DeviceBuilder deviceBuilder{ res.back() };
 		auto devRequest = deviceBuilder.build();
 
 	    device = devRequest.value();
@@ -44,6 +243,9 @@ namespace VK_internal
 		{
 			return false;
 		}
+
+		auto window = CreateWin32Surface(instance, device, { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+
 
 		auto queue = queueRequest.value();
 		VkCommandPoolCreateInfo createPoolDesc{
@@ -68,19 +270,20 @@ namespace VK_internal
 		VkCommandBuffer commandBuffer[32];
 		vkAllocateCommandBuffers(device, &createCommandBuffer, commandBuffer);
 
-		VkDescriptorPoolSize sizes[3];
+		
+		VkDescriptorPool descriptorPool = CreateDescriptorHeap(device, 1000);
 
-		VkDescriptorPoolCreateInfo descriptorPoolCreateDesc{
-			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-			.pNext				= nullptr,
-			.flags				= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV | VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV,
-            .maxSets			= 0,
-            .poolSizeCount		= 1,
-            .pPoolSizes			= sizes
-		};
+		// Create Heap Layout
+		DesciptorHeapLayout layout{};
+		layout.SetParameterAsCBV(0, 0, 1);
+		layout.SetParameterAsSRV(1, 1, 1);
 
-		VkDescriptorPool descriptorPool = nullptr;
-		vkCreateDescriptorPool(device, &descriptorPoolCreateDesc, nullptr, &descriptorPool);
+		auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
+
+		auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
+
+		auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
+		CreateCBV(device, descriptorSet, constantBuffer);
 
 		return true;
 	}
@@ -624,3 +827,28 @@ namespace VK_internal
 	}
 
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

@@ -1678,10 +1678,10 @@ namespace FlexKit
 
 	struct HeapDescriptor
 	{
-		uint32_t				Register = -1;
-		uint32_t				Count = 0;
-		uint32_t				Space = 0;
-		DescHeapEntryType		Type = DescHeapEntryType::HeapError;
+		uint32_t				registerIdx = -1;
+		uint32_t				count = 0;
+		uint32_t				space = 0;
+		DescHeapEntryType		type = DescHeapEntryType::HeapError;
 	};
 
 
@@ -1692,6 +1692,7 @@ namespace FlexKit
 	{
 	public:
 		DesciptorHeapLayout() {}
+		DesciptorHeapLayout(iAllocator& allocator) : entries{ allocator } {}
 
 		DesciptorHeapLayout(const DesciptorHeapLayout& RHS)
 		{
@@ -1707,10 +1708,10 @@ namespace FlexKit
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
-			Desc.Register = BaseRegister;
-			Desc.Space    = RegisterSpace;
-			Desc.Type     = DescHeapEntryType::ConstantBuffer;
-			Desc.Count	  = RegisterCount;
+			Desc.registerIdx	= BaseRegister;
+			Desc.space			= RegisterSpace;
+			Desc.type			= DescHeapEntryType::ConstantBuffer;
+			Desc.count			= RegisterCount;
 
 			if (entries.size() <= Index)
 			    entries.resize(Index + 1);
@@ -1725,10 +1726,10 @@ namespace FlexKit
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
-			Desc.Register	= uint32_t(BaseRegister);
-			Desc.Space		= uint32_t(RegisterSpace);
-			Desc.Type		= DescHeapEntryType::ShaderResource;
-			Desc.Count		= RegisterCount;
+			Desc.registerIdx	= uint32_t(BaseRegister);
+			Desc.space			= uint32_t(RegisterSpace);
+			Desc.type			= DescHeapEntryType::ShaderResource;
+			Desc.count			= RegisterCount;
 
 			if (entries.size() <= Index)
 				entries.resize(Index + 1);
@@ -1743,10 +1744,10 @@ namespace FlexKit
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
-			Desc.Register = BaseRegister;
-			Desc.Space    = RegisterSpace;
-			Desc.Count    = RegisterCount;
-			Desc.Type     = DescHeapEntryType::UAVBuffer;
+			Desc.registerIdx	= BaseRegister;
+			Desc.space			= RegisterSpace;
+			Desc.count			= RegisterCount;
+			Desc.type			= DescHeapEntryType::UAVBuffer;
 
 			if (entries.size() <= Index)
 				entries.resize(Index + 1);
@@ -1760,7 +1761,7 @@ namespace FlexKit
 		bool Check()
 		{
 			return (!IsXInSet(DescHeapEntryType::HeapError, entries, [](auto a, auto b) -> bool
-				{ return a == b.Type; }));
+				{ return a == b.type; }));
 		}
 
 
@@ -1768,14 +1769,14 @@ namespace FlexKit
 		{
 			size_t out = 0;
 			for (auto& e : entries)
-				out += e.Count + e.Space;
+				out += e.count + e.space;
 
 			FK_ASSERT(out);
 
 			return out;
 		}
 
-		static constexpr size_t EntryCount = 16;
+		static constexpr size_t EntryCount = 4;
 		Vector<HeapDescriptor, EntryCount> entries;
 	};
 
@@ -2209,9 +2210,9 @@ namespace FlexKit
 
 	    virtual IDescriptorHeap& operator = (IDescriptorHeap&&) = 0;
 
-		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory) = 0;
-		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory) = 0;
-		virtual void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
+		virtual void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
 		virtual void NullFill(IContext& ctx, const size_t end = -1) = 0;
 
 		virtual void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) = 0;

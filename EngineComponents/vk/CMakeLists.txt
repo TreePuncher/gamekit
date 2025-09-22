@@ -15,10 +15,12 @@ target_link_libraries(vkBackend PRIVATE Vulkan::Vulkan)
 target_sources(
     vkBackend PRIVATE
     vkBackend.cpp
-    "src/vkRenderSystem.cpp"
-    "src/vkDirectContext.cpp"
     "src/vkCopyContext.cpp"
-)
+    "src/vkDescriptorHeap.cpp"
+    "src/vkDirectContext.cpp"
+    "src/vkPipelineLayout.cpp"
+    "src/vkRenderSystem.cpp"
+    "src/vkWin32Surface.cpp")
 
 target_sources(
     vkBackend PUBLIC
@@ -26,10 +28,15 @@ target_sources(
     TYPE HEADERS
     FILES
     "include/vkBackend.hpp"
-    "src/vkRenderSystem.hpp"
-    "src/vkDirectContext.hpp"
     "src/vkCopyContext.hpp"
+    "src/vkDescriptorHeap.hpp"
+    "src/vkDirectContext.hpp"
+    "src/vkPipelineLayout.hpp"
+    "src/vkRenderSystem.hpp"
+    "src/vkWin32Surface.hpp"
 )
+
+target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
 
 target_include_directories(vkBackend
     PUBLIC

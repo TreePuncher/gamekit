@@ -6,7 +6,7 @@ namespace dx_Internal
 {
 
 
-	UploadBuffer::UploadBuffer(ID3D12Device* pDevice) :
+	dxUploadBuffer::dxUploadBuffer(ID3D12Device* pDevice) :
 		parentDevice{ pDevice },
 		size{ MEGABYTE * 64 }
 	{
@@ -31,7 +31,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void UploadBuffer::Release()
+	void dxUploadBuffer::Release()
 	{
 		if (!deviceBuffer)
 			return;
@@ -49,7 +49,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	UploadBuffer::UploadBuffer(UploadBuffer&& rhs)
+	dxUploadBuffer::dxUploadBuffer(dxUploadBuffer&& rhs)
 	{
 		Release();
 
@@ -67,7 +67,7 @@ namespace dx_Internal
 	}
 
 
-	UploadBuffer& UploadBuffer::operator = (UploadBuffer&& rhs) noexcept
+	dxUploadBuffer& dxUploadBuffer::operator = (dxUploadBuffer&& rhs) noexcept
 	{
 		Release();
 
@@ -87,7 +87,7 @@ namespace dx_Internal
 	}
 
 
-	UploadBuffer::~UploadBuffer()
+	dxUploadBuffer::~dxUploadBuffer()
 	{
 		Release();
 	}
@@ -96,7 +96,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	std::expected<UploadReservation, ReserveErrors> UploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
+	std::expected<UploadReservation, ReserveErrors> dxUploadBuffer::Reserve(const size_t reserveSize, const size_t alignment)
 	{
 		// Not enough remaining Space in buffer GOTO Beginning if space in front of upload buffer is available
 		if (position + reserveSize > size && last != 0)
@@ -153,7 +153,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource* UploadBuffer::Resize(const size_t newSize)
+	ID3D12Resource* dxUploadBuffer::Resize(const size_t newSize)
 	{
 		if (deviceBuffer)
 			deviceBuffer->Unmap(0, 0);

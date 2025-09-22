@@ -6,18 +6,18 @@ namespace dx_Internal
 {
 	using namespace FlexKit;
 
-	struct UploadBuffer
+	struct dxUploadBuffer
 	{
-		UploadBuffer() = default;
-		UploadBuffer(ID3D12Device* pDevice);
+		dxUploadBuffer() = default;
+		dxUploadBuffer(ID3D12Device* pDevice);
 
-		UploadBuffer(UploadBuffer&&);
-		UploadBuffer& operator = (UploadBuffer&&) noexcept;
+		dxUploadBuffer(dxUploadBuffer&&);
+		dxUploadBuffer& operator = (dxUploadBuffer&&) noexcept;
 
-		UploadBuffer(const UploadBuffer&) = delete;
-		UploadBuffer& operator =	(const UploadBuffer&) = delete;
+		dxUploadBuffer(const dxUploadBuffer&) = delete;
+		dxUploadBuffer& operator =	(const dxUploadBuffer&) = delete;
 
-		~UploadBuffer();
+		~dxUploadBuffer();
 
 		void Release();
 
