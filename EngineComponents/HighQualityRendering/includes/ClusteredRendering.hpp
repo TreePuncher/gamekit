@@ -312,6 +312,7 @@ namespace FlexKit
 	constexpr PassHandle GBufferPassID				= PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) };
 	constexpr PassHandle GBufferAnimatedPassID		= PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_ANIMATED) };
 
+
 	/************************************************************************************************/
 
 

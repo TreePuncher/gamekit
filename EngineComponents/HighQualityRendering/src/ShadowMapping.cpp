@@ -2,6 +2,7 @@
 #include "ShadowMapping.hpp"
 #include "AnimationComponents.hpp"
 #include "AnimationRendering.hpp"
+#include "CameraComponent.hpp"
 #include "TriMeshResource.hpp"
 
 #include <fmt/format.h>

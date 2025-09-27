@@ -1,10 +1,12 @@
 #include "angelscript.h"
 #include "AnimationComponents.hpp"
 #include "CameraComponent.hpp"
+#include "ComponentBlobs.hpp"
 
 
 namespace FlexKit
 {   /************************************************************************************************/
+
 
 	SkeletonComponent::SkeletonComponent(iAllocator* allocator) :
 		states		{ allocator },

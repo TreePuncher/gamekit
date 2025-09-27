@@ -1,18 +1,22 @@
 #pragma once
 
+#include "TextureManager.hpp"
 #include "MemoryUtilities.hpp"
+#include "Scene.hpp"
 #include "TextureUtilities.hpp"
 #include "ThreadUtilities.hpp"
-#include "Scene.hpp"
+#include <optional>
+#include <span>
 
 
 namespace FlexKit
 {   /************************************************************************************************/
 
 	class FrameGraph;
-	class RenderSystem;
+	class IRenderSystem;
 	struct ResourceAllocation;
 	struct BrushConstants;
+
 
 	/************************************************************************************************/
 
@@ -63,63 +67,6 @@ namespace FlexKit
 
 
 	DDSDecompressor* CreateDDSDecompressor(ReadContext& readCtx, const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
-
-
-	/************************************************************************************************/
-
-
-	inline size_t BlockSize(DeviceFormat format)
-	{
-		switch (format)
-		{
-		case DeviceFormat::BC1_TYPELESS:
-		case DeviceFormat::BC1_UNORM:
-		case DeviceFormat::BC1_UNORM_SRGB:
-		case DeviceFormat::BC2_TYPELESS:
-		case DeviceFormat::BC2_UNORM:
-		case DeviceFormat::BC2_UNORM_SRGB:
-		case DeviceFormat::BC3_TYPELESS:
-		case DeviceFormat::BC3_UNORM:
-		case DeviceFormat::BC3_UNORM_SRGB:
-		case DeviceFormat::BC4_TYPELESS:
-		case DeviceFormat::BC4_UNORM:
-		case DeviceFormat::BC4_SNORM:
-		case DeviceFormat::BC5_TYPELESS:
-		case DeviceFormat::BC5_UNORM:
-		case DeviceFormat::BC5_SNORM:
-		case DeviceFormat::BC7_UNORM:
-		case DeviceFormat::BC7_SNORM:
-			return 16;
-		default:
-			FK_ASSERT(false, "INVALID INPUT!");
-			return -1;
-			break;
-		}
-	}
-
-	struct DDSLevelInfo
-	{
-		size_t  RowPitch = 0;
-		uint2   WH;
-		bool    tiled;
-	};
-
-	struct DDSInfo
-	{
-		uint8_t     MIPCount    = 0;
-		uint2       WH          = { 0, 0 };
-
-		DeviceFormat format;
-	};
-
-	DDSInfo GetDDSInfo(AssetHandle asset, ReadContext& ctx);
-
-	inline DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
-	{
-		const uint32_t levelHeight  = Max(WH[0] >> Level, 4u);
-		const uint32_t levelWidth   = Max(WH[1] >> Level, 4u);
-		return { 0xff, { levelWidth, levelHeight }, levelWidth > GetFormatTileSize(format)[0] };
-	}
 
 
 	/************************************************************************************************/
@@ -302,6 +249,7 @@ namespace FlexKit
 		operator bool() const { return reallocations.size() + allocations.size() + packedAllocations.size(); }
 	};
 
+
 	class TextureBlockAllocator
 	{
 	public:
@@ -398,10 +346,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class FLEXKITAPI TextureStreamingEngine
+	class TextureStreamingEngine : public ITextureManager
 	{
 	public:
-		TextureStreamingEngine(IRenderSystem&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
+		TextureStreamingEngine(IRenderSystem&, ThreadManager&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
 		~TextureStreamingEngine();
 
 
@@ -447,7 +395,7 @@ namespace FlexKit
 		};
 
 
-		void LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue);
+		void LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue) final;
 
 		gpuTileList		UpdateTileStates	(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
 		BlockAllocation	AllocateTiles		(const gpuTileID* begin, const gpuTileID* end, iAllocator& allocator);
@@ -457,7 +405,7 @@ namespace FlexKit
 		size_t			TilesStale() const noexcept;
 		size_t			TilesTotal() const noexcept;
 
-		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource);
+		void						BindAsset			(const AssetHandle textureAsset, const ResourceHandle  resource) final;
 		std::optional<AssetHandle>	GetResourceAsset	(const ResourceHandle  resource) const;
 
 		void PostUpdatedTilesAsync	(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
@@ -495,6 +443,7 @@ namespace FlexKit
 		};
 
 		IRenderSystem&			renderSystem;
+		ThreadManager&			threads;
 
 		std::atomic_bool		updateInProgress	= false;
 		std::atomic_bool		taskInProgress		= false;

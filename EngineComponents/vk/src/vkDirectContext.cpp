@@ -227,7 +227,8 @@ namespace VK_internal
 		ResourceHandle		dest,
 		size_t				subResourceIdx,
 		uint3				XYZ,
-		UploadReservation	source)
+		UploadReservation	source,
+		uint2				wh)
     {}
 
 	void vkDirectContext::CopyTile(

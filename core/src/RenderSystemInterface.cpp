@@ -5,7 +5,76 @@
 
 namespace FlexKit
 {
+	RootSignatureBuilder::RootSignatureBuilder(iAllocator& allocator)
+	{
+	    
+	}
+
+    RootSignatureBuilder::~RootSignatureBuilder()
+	{
+	    
+	}
+
+	void RootSignatureBuilder::Release()
+	{
+	    
+	}
+
+	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages)
+	{
+		return false;
+	}
+
+	bool RootSignatureBuilder::SetParameterAsDescriptorTable(
+		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE_DESTINATION accessableStages)
+	{
+		return false;
+	}
+
+	bool RootSignatureBuilder::SetParameterAsCBV(
+		size_t Index, size_t Register, size_t RegisterSpace,
+		PIPELINE_DESTINATION AccessableStages)
+	{
+		return false;
+	}
+
+	bool RootSignatureBuilder::SetParameterAsUAV(
+		size_t Index, size_t Register, size_t RegisterSpace,
+		PIPELINE_DESTINATION AccessableStages)
+	{
+		return false;
+	}
+
+	bool RootSignatureBuilder::SetParameterAsSRV(
+		size_t Index, size_t Register, size_t RegisterSpace,
+		PIPELINE_DESTINATION AccessableStages)
+	{
+		return false;
+	}
+
+	void RootSignatureBuilder::Clear()
+	{
+	    
+	}
+
+	IRootSignature* RootSignatureBuilder::Build(iAllocator& TempMemory)
+	{
+		return nullptr;
+	}
+
+	IRootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp)
+	{
+		return nullptr;
+	}
+
+	IRootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp)
+	{
+		return nullptr;
+	}
+
+
 	class DescriptorHeapImpl;
+
 
 	PipelineBuilder::PipelineBuilder(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
@@ -345,16 +414,23 @@ namespace FlexKit
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset)
+	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
+		GetImpl(internal).SetStructuredResource(ctx, idx, handle, stride, offset);
 		return *this;
 	}
 
 
-	static DescriptorHeap& GetImpl() noexcept
+	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, IContext& ctx) const
 	{
-	    
+		return {};
 	}
+
+
+	IDescriptorHeap& DescriptorHeap::GetImpl(std::byte* _ptr) noexcept
+	{
+		return *std::launder<IDescriptorHeap>((IDescriptorHeap*)_ptr);
+	}	
 
 
 	/************************************************************************************************/
@@ -466,9 +542,55 @@ namespace FlexKit
 				I,
 				{ 0, 0, 0 },
 				region,
-				desc->buffers[I].WH,
-				desc->format);
+				desc->buffers[I].WH);
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	UniqueResourceHandle::UniqueResourceHandle(ResourceHandle IN_handle) :
+		handle{ IN_handle } {}
+
+
+	UniqueResourceHandle::UniqueResourceHandle(UniqueResourceHandle&& IN_handle)
+	{
+		handle = IN_handle;
+		IN_handle.handle = InvalidHandle;
+	}
+
+
+	UniqueResourceHandle& UniqueResourceHandle::operator = (UniqueResourceHandle&& rhs)
+	{
+		handle = rhs;
+
+		return *this;
+	}
+
+
+	UniqueResourceHandle::~UniqueResourceHandle()
+	{
+		if (handle)
+			IRenderSystem::GetInstance().ReleaseResource(handle);
+	}
+
+
+	ResourceHandle UniqueResourceHandle::Get() const noexcept
+	{
+		return handle;
+	}
+
+
+	UniqueResourceHandle::operator ResourceHandle () const noexcept
+	{
+	    return Get();
+	}
+
+
+	UniqueResourceHandle::operator bool() const noexcept
+	{
+		return handle;
 	}
 
 

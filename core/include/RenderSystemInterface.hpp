@@ -1862,12 +1862,12 @@ namespace FlexKit
 
 	struct RootSignatureBuilder : NoCopy, NoMove
 	{
-		RootSignatureBuilder(iAllocator& allocator){}
+		RootSignatureBuilder(iAllocator& allocator);
 		~RootSignatureBuilder();
 
 		void Release();
 
-				bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorTable(
 			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE_DESTINATION accessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
@@ -1891,8 +1891,6 @@ namespace FlexKit
 		[[nodiscard]] IRootSignature* Build(iAllocator& TempMemory);
 		[[nodiscard]] IRootSignature* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp);
 		[[nodiscard]] IRootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp);
-
-
 	};
 
 
@@ -2092,12 +2090,14 @@ namespace FlexKit
 			size_t			destinationOffset = 0,
 			size_t			sourceOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 
+
 		virtual void CopyBufferRegion(
 			ResourceHandle		destination,
 			DeviceResource_ptr	source,
 			size_t				size,
 			size_t				destinationOffset = 0,
 			size_t				sourceOffset = 0) IDIRECTCONTEXTDEBUGBODY;
+
 
 		virtual void CopyBufferRegion(
 			DeviceResource_ptr	destination,
@@ -2106,6 +2106,7 @@ namespace FlexKit
 			size_t				destinationOffset = 0,
 			size_t				sourceOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 
+
 		virtual void CopyBufferRegion(
 			DeviceResource_ptr	destination,
 			DeviceResource_ptr	source,
@@ -2113,17 +2114,21 @@ namespace FlexKit
 			size_t				destinationOffset = 0,
 			size_t				sourceOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 
-		virtual void CopyTextureRegion(
-			ResourceHandle		dest,
+
+	    virtual void CopyTextureRegion(
+			ResourceHandle		destination,
 			size_t				subResourceIdx,
 			uint3				XYZ,
-			UploadReservation	source) IDIRECTCONTEXTDEBUGBODY;
+			UploadReservation	source,
+			uint2				wh) IDIRECTCONTEXTDEBUGBODY;
+
 
 		virtual void CopyTile(
 			ResourceHandle			dest,
 			const uint3				destTile,
 			const size_t			tileOffset,
 			const UploadReservation src) IDIRECTCONTEXTDEBUGBODY;
+
 
 		virtual void ImmediateWrite(
 			static_vector<ResourceHandle>		handles,
@@ -2194,7 +2199,7 @@ namespace FlexKit
 		virtual void				CopyBuffer(ResourceHandle source, size_t dstOffset, UploadReservation) {}
 		virtual void                CopyBuffer(GPURange dest, void* source_ptr, uint64_t size) {}
 		virtual void                CopyBuffer(ResourceHandle destination, const size_t destinationOffset, ResourceHandle source, const size_t sourceOffset, const size_t copySize) {}
-		virtual void                CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format) {}
+		virtual void                CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH) {}
 		virtual void                CopyTile(ResourceHandle dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src) {}
 
 		virtual bool				IsSubResourceTiled(ResourceHandle Resource, const size_t level) const { return false; }
@@ -2297,7 +2302,7 @@ namespace FlexKit
 		DescriptorHeap& SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
 		DescriptorHeap			GetHeapOffsetted(size_t offset, IContext& ctx) const;
-		static DescriptorHeap&	GetImpl() noexcept;
+		static IDescriptorHeap&	GetImpl(std::byte*) noexcept;
 
 		std::byte internal[64];
 	};
@@ -2437,49 +2442,51 @@ namespace FlexKit
 		virtual void		SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept = 0;
 
 		// Info queries
-		virtual	size_t				GetVertexBufferSize		(const VertexBufferHandle)	const noexcept = 0;
-		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo		(const IVertexBufferSet&)	const noexcept = 0;
+		virtual	size_t					GetVertexBufferSize		(const VertexBufferHandle)	const noexcept = 0;
+		virtual BLAS_PreBuildInfo		GetBLASPreBuildInfo		(const IVertexBufferSet&)	const noexcept = 0;
 
-		virtual size_t				GetTextureFrameGraphIndex(ResourceHandle)			noexcept = 0;
-		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
+		virtual size_t					GetTextureFrameGraphIndex(ResourceHandle)			noexcept = 0;
+		virtual void					SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept = 0;
 
-		virtual void				MarkTextureUsed			(ResourceHandle Handle) = 0;
+		virtual void					MarkTextureUsed			(ResourceHandle Handle) = 0;
 
-		virtual DevicePointer		GetDevicePointer		(const ResourceHandle)			const noexcept = 0;
+		virtual DevicePointer			GetDevicePointer		(const ResourceHandle)			const noexcept = 0;
 
-		virtual DeviceAddressRange	GetDeviceRange			(const ResourceHandle)			const noexcept = 0;
-		virtual DeviceAddressRange	GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
+		virtual DeviceAddressRange		GetDeviceRange			(const ResourceHandle)			const noexcept = 0;
+		virtual DeviceAddressRange		GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
 
-		virtual DeviceLayout		GetObjectLayout			(const QueryHandle		handle) const noexcept = 0;
-		virtual DeviceLayout		GetObjectLayout			(const SOResourceHandle	handle) const noexcept = 0;
-		virtual DeviceLayout		GetObjectLayout			(const ResourceHandle	handle) const noexcept = 0;
+		virtual DeviceLayout			GetObjectLayout			(const QueryHandle		handle) const noexcept = 0;
+		virtual DeviceLayout			GetObjectLayout			(const SOResourceHandle	handle) const noexcept = 0;
+		virtual DeviceLayout			GetObjectLayout			(const ResourceHandle	handle) const noexcept = 0;
 
-		virtual size_t				GetResourceSize			(ConstantBufferHandle handle)	const noexcept = 0;
-		virtual size_t				GetResourceSize			(ResourceHandle desc)			const noexcept = 0;
+		virtual size_t					GetResourceSize			(ConstantBufferHandle handle)	const noexcept = 0;
+		virtual size_t					GetResourceSize			(ResourceHandle desc)			const noexcept = 0;
 
-		virtual size_t				GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
-		virtual size_t				GetAllocationSize		(GPUResourceDesc desc) const noexcept = 0; // Includes padding and alignment
+		virtual size_t					GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
+		virtual size_t					GetAllocationSize		(GPUResourceDesc desc) const noexcept = 0; // Includes padding and alignment
 
-		virtual size_t				GetTextureElementSize	(ResourceHandle   Handle) const = 0;
-		virtual uint2				GetTextureWH			(ResourceHandle   Handle) const = 0;
+		virtual size_t					GetTextureElementSize	(ResourceHandle   Handle) const = 0;
+		virtual uint2					GetTextureWH			(ResourceHandle   Handle) const = 0;
 
-		virtual DeviceFormat		GetTextureFormat		(ResourceHandle Handle) const = 0;
-		virtual uint8_t				GetTextureMipCount		(ResourceHandle Handle) const = 0;
-		virtual uint2				GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
-		virtual uint2				GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
+		virtual DeviceFormat			GetTextureFormat		(ResourceHandle Handle) const = 0;
+		virtual uint8_t					GetTextureMipCount		(ResourceHandle Handle) const = 0;
+		virtual uint2					GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
+		virtual uint2					GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
 
-		virtual TextureDimension	GetTextureDimension		(ResourceHandle handle) const = 0;
-		virtual	size_t				GetTextureArraySize		(ResourceHandle handle) const = 0;
+		virtual TextureDimension		GetTextureDimension		(ResourceHandle handle) const = 0;
+		virtual	size_t					GetTextureArraySize		(ResourceHandle handle) const = 0;
 
-		virtual	DeviceHeap_ptr		GetDeviceResource(const DeviceHeapHandle        handle) const = 0;
-		virtual	DeviceResource_ptr	GetDeviceResource(const ReadBackResourceHandle	handle) const = 0;
-		virtual	DeviceResource_ptr	GetDeviceResource(const ConstantBufferHandle	handle) const = 0;
-		virtual	DeviceResource_ptr	GetDeviceResource(const ResourceHandle		    handle) const = 0;
-		virtual	DeviceResource_ptr	GetDeviceResource(const SOResourceHandle		handle) const = 0;
+		virtual	DeviceHeap_ptr			GetDeviceResource		(const DeviceHeapHandle			handle) const = 0;
+		virtual	DeviceResource_ptr		GetDeviceResource		(const ReadBackResourceHandle	handle) const = 0;
+		virtual	DeviceResource_ptr		GetDeviceResource		(const ConstantBufferHandle		handle) const = 0;
+		virtual	DeviceResource_ptr		GetDeviceResource		(const ResourceHandle		    handle) const = 0;
+		virtual	DeviceResource_ptr		GetDeviceResource		(const SOResourceHandle			handle) const = 0;
 
-		virtual	DeviceResource_ptr	GetSOCounterResource(const SOResourceHandle handle)		const = 0;
-		virtual	size_t				GetStreamOutBufferSize(const SOResourceHandle handle)	const = 0;
-		virtual size_t				GetVertexBufferOffset(const VertexBufferHandle Handle)	const = 0;
+		virtual	DeviceResource_ptr		GetSOCounterResource	(const SOResourceHandle		handle)		const = 0;
+		virtual	size_t					GetStreamOutBufferSize	(const SOResourceHandle		handle)	const = 0;
+		virtual size_t					GetVertexBufferOffset	(const VertexBufferHandle	handle)	const = 0;
+
+		virtual PackedResourceTileInfo	GetPackedTileInfo(ResourceHandle)	const noexcept { return {}; }
 
 		virtual bool				VertexBufferPush		(VertexBufferHandle, void* _ptr, size_t elementSize) = 0;
 		virtual size_t				ConstantBufferAlign		(ConstantBufferHandle) = 0;
@@ -2527,11 +2534,17 @@ namespace FlexKit
 		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize) = 0;
 	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
 
+					  virtual void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
+	    [[nodiscard]] virtual std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) { return {nullptr, 0}; }
+
+		virtual void CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer) {}
+	    virtual void FlushPendingReadBacks() {}
+
 
 		virtual const IRootSignature*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
 		virtual ResourceHandle			DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
 
-		// Resetable resources
+		// Resettable resources
 		virtual void ResetConstantBuffer(ConstantBufferHandle constant) = 0;
 		virtual void ResetVertexBuffer(VertexBufferHandle constant) = 0;
 		virtual void ResetQuery(QueryHandle handle) = 0;
@@ -2772,6 +2785,26 @@ namespace FlexKit
 		return { 256, 256 };
 		//}
 	}
+
+
+	/************************************************************************************************/
+
+
+	struct UniqueResourceHandle : NoCopy
+	{
+		UniqueResourceHandle(ResourceHandle IN_handle = InvalidHandle);
+
+		UniqueResourceHandle(UniqueResourceHandle&& IN_handle);
+		UniqueResourceHandle& operator = (UniqueResourceHandle&&);
+
+		~UniqueResourceHandle();
+
+		operator ResourceHandle() const noexcept;
+		operator bool() const noexcept;
+
+	    ResourceHandle Get() const noexcept;
+		ResourceHandle handle;
+	};
 
 
 }	/************************************************************************************************/

@@ -244,9 +244,6 @@ namespace VK_internal
 			return false;
 		}
 
-		auto window = CreateWin32Surface(instance, device, { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
-
-
 		auto queue = queueRequest.value();
 		VkCommandPoolCreateInfo createPoolDesc{
 				.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,

@@ -3790,7 +3790,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ID3D12Resource* resource) const
+	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ID3D12Resource* resource) const noexcept
 	{
 		UINT						TileCount = 0;
 		D3D12_PACKED_MIP_INFO		packedMipInfo;
@@ -3810,7 +3810,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ResourceHandle resource)	const
+	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ResourceHandle resource)	const noexcept
 	{
 		UINT						tileCount = 0;
 		D3D12_PACKED_MIP_INFO		packedMipInfo;

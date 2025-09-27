@@ -268,6 +268,27 @@ namespace FlexKit
 	Vector<TextureBuffer> LoadHDR(const char* str, size_t MIPCount = 8, iAllocator* scratchSpace = SystemAllocator);
 
 	bool IsDDS(DeviceFormat format);
+
+	constexpr size_t BlockSize(DeviceFormat format);
+
+	struct DDSLevelInfo
+	{
+		size_t  RowPitch = 0;
+		uint2   WH;
+		bool    tiled;
+	};
+
+	struct DDSInfo
+	{
+		uint8_t     MIPCount = 0;
+		uint2       WH = { 0, 0 };
+
+		DeviceFormat format;
+	};
+
+	DDSInfo			GetDDSInfo(AssetHandle asset, struct ReadContext& ctx);
+	DDSLevelInfo	GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format);
+
 }
 
 

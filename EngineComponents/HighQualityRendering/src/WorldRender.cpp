@@ -1,6 +1,6 @@
 #include "AnimationRendering.hpp"
 #include <CameraComponent.hpp>
-#include "TextureStreamingUtilities.hpp"
+//#include "TextureStreamingUtilities.hpp"
 #include "WorldRender.hpp"
 
 
@@ -662,10 +662,10 @@ namespace FlexKit
 
 			streamingEngine				{ IN_streamingEngine },
 
-			lightingEngine				{ renderSystem, *persistent, options.GI },
+			//lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
-			transparency				{ renderSystem, *persistent },
+			//transparency				{ renderSystem, *persistent },
 			passHistories				{ *persistent }
 	{
 		FlexKit::DesciptorHeapLayout layout{};
@@ -751,7 +751,7 @@ namespace FlexKit
 		pendingGPUTasks.emplace_back(
 			[&](FrameGraph& frameGraph, auto& resources)
 			{
-				lightingEngine.Init(frameGraph);
+				//lightingEngine.Init(frameGraph);
 			});
 
 		readBackBuffers.push_back(renderSystem.CreateReadBackBuffer(64 * KILOBYTE));
@@ -786,8 +786,8 @@ namespace FlexKit
 				auto& gbuffer		= drawSceneDesc.gbuffer;
 		const	auto  t				= drawSceneDesc.t;
 
-		auto&		depthTarget		= targets.DepthTarget;
-		auto		renderTarget	= targets.RenderTarget;
+		const auto&		depthTarget		= targets.DepthTarget;
+		const auto		renderTarget	= targets.RenderTarget;
 
 		auto& passes = GatherScene(dispatcher, &scene, camera, temporary);
 
@@ -933,12 +933,14 @@ namespace FlexKit
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
 
+#if 0
 		auto updateVolumes =
 			lightingEngine.BuildScene(
 				frameGraph,
 				scene,
 				passes,
 				temporary);
+#endif
 
 		auto& shadingPass =
 			clusteredRender.ClusteredShading(
@@ -953,6 +955,7 @@ namespace FlexKit
 				(float)t,
 				temporary);
 
+#if 0
 		lightingEngine.RayTrace(
 				dispatcher,
 				frameGraph,
@@ -981,6 +984,8 @@ namespace FlexKit
 				OIT_pass,
 				shadingPass.renderTargetObject,
 				temporary);
+#endif
+
 
 		auto& toneMapped =
 			RenderPBR_ToneMapping(

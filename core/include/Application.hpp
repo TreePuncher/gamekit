@@ -64,8 +64,9 @@ namespace FlexKit
 
 		void PushArgument(const char* Str);
 
-		GameFramework&	GetFramework()  { return framework; }
-		EngineCore&		GetCore()       { return Core;      }
+		GameFramework&	GetFramework()		{ return framework; }
+		EngineCore&		GetCore()			{ return Core;      }
+		IRenderSystem&	GetRenderSystem()	{ return framework.GetRenderSystem(); }
 
 		bool running() { return framework.Running();  }
 	private:

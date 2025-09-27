@@ -20,7 +20,9 @@ target_sources(
     "src/vkDirectContext.cpp"
     "src/vkPipelineLayout.cpp"
     "src/vkRenderSystem.cpp"
-    "src/vkWin32Surface.cpp")
+    "src/vkResourceTable.cpp"
+    "src/vkWin32Surface.cpp"
+)
 
 target_sources(
     vkBackend PUBLIC
@@ -28,12 +30,14 @@ target_sources(
     TYPE HEADERS
     FILES
     "include/vkBackend.hpp"
+    "include/vkWin32Surface.hpp"
+
     "src/vkCopyContext.hpp"
     "src/vkDescriptorHeap.hpp"
     "src/vkDirectContext.hpp"
     "src/vkPipelineLayout.hpp"
     "src/vkRenderSystem.hpp"
-    "src/vkWin32Surface.hpp"
+    "src/vkResourceTable.hpp"
 )
 
 target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
@@ -41,7 +45,8 @@ target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
 target_include_directories(vkBackend
     PUBLIC
     "include"
-    "include"
-    )
+    PRIVATE
+    "src"
+)
 
 install(TARGETS vkBackend DESTINATION lib)

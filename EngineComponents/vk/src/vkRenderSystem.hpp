@@ -1,13 +1,13 @@
 #include <RenderSystemInterface.hpp>
 #include <VkBootstrap.h>
+#include <vkResourceTable.hpp>
 
 namespace VK_internal
 {
     using namespace FlexKit;
 
-    class vkRenderSystem : public IRenderSystem	
+    struct vkRenderSystem : IRenderSystem	
     {
-    public:
         bool													Initiate(Graphics_Desc& desc) final;
 
 		void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) final;
@@ -171,7 +171,6 @@ namespace VK_internal
 		void ReleaseDescriptorRange(DescriptorRange, uint64_t) final;
 		void Release() final;
 
-    private:
 		vkb::Instance			instance;
 		vkb::Device				device;
 		iAllocator*				allocator = nullptr;

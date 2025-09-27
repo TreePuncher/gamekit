@@ -2122,8 +2122,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual void SetDebugName(DeviceHeapHandle, const char*);
 
 
-		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const;
-		PackedResourceTileInfo  GetPackedTileInfo(ResourceHandle)	const;
+		PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource*)	const noexcept;
+		PackedResourceTileInfo  GetPackedTileInfo(ResourceHandle)	const noexcept final;
 
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
@@ -2201,10 +2201,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		virtual void BackResource(ResourceHandle, const GPUResourceDesc& desc) noexcept final;
 
-		void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-		std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
-		void						CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer);
-		void						FlushPendingReadBacks();
+		void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) final;
+		std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) final;
+		void						CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer) final;
+		void						FlushPendingReadBacks() final;
 
 		virtual void SetObjectLayout(SOResourceHandle	handle, DeviceLayout state) noexcept;
 		virtual void SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept;

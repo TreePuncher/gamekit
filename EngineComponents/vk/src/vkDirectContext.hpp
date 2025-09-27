@@ -123,7 +123,8 @@ namespace VK_internal
 			ResourceHandle		dest,
 			size_t				subResourceIdx,
 			uint3				XYZ,
-			UploadReservation	source) final;
+			UploadReservation	source,
+			uint2				wh) final;
 
 		void CopyTile(
 			ResourceHandle			dest,

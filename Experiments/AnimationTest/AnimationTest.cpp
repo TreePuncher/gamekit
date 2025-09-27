@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "level.hpp"
-#include "AnimationTest.h"
+#include "AnimationTest.hpp"
 #include "AnimationComponents.hpp"
 #include <KeyValueIDs.hpp>
 #include <SceneLoadingContext.hpp>
 #include <imgui.h>
-//#include <PhysicsDebugVis.hpp>
+#include <PhysicsDebugVis.hpp>
 #include <TriggerSlotIDs.hpp>
 #include <ScriptingRuntime.hpp>
 #include <fmt/format.h>
@@ -47,7 +47,7 @@ public:
 };
 
 
-#if 0
+
 
 /************************************************************************************************/
 
@@ -59,7 +59,7 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	brushes					{ framework.core.GetBlockMemory() },
 	cameras					{ framework.core.GetBlockMemory() },
 	sceneNodes				{ },
-	materials				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	materials				{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 	visibilityComponent		{ framework.core.GetBlockMemory() },
 	pointLights				{ framework.core.GetBlockMemory() },
 	orbitCameras			{ framework.core.GetBlockMemory() },
@@ -74,8 +74,8 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	staticBodies			{ physx },
 	characterController		{ physx, framework.core.GetBlockMemory() },
 
-	renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
+	//renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
+	//textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
 	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
@@ -330,16 +330,16 @@ FlexKit::UpdateTask* AnimationTest::Draw(FlexKit::UpdateTask* update, FlexKit::E
 		.cameraDependency		= cameraUpdate
 	};
 
-	auto res = renderer.DrawScene(
-		dispatcher,
-		frameGraph,
-		drawSceneDesc,
-		targets,
-		core.GetBlockMemory(),
-		core.GetTempMemoryMT()
-	);
-
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem->GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
+	//auto res = renderer.DrawScene(
+	//	dispatcher,
+	//	frameGraph,
+	//	drawSceneDesc,
+	//	targets,
+	//	core.GetBlockMemory(),
+	//	core.GetTempMemoryMT()
+	//);
+	//
+	//textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem->GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 	RenderPhysicsOverlay(frameGraph, targets.RenderTarget, depthBuffer.Get(), currentLevel->layer, activeCamera);
 
 	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
@@ -480,7 +480,6 @@ bool AnimationTest::EventHandler(FlexKit::Event evt)
 		return false;
 }
 
-#endif
 
 /**********************************************************************
 
