@@ -18,7 +18,7 @@ namespace VK_internal
 	void vkCopyContext::CopyBuffer(GPURange dest, void* source_ptr, uint64_t size)
     {}
 
-	void vkCopyContext::CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format)
+	void vkCopyContext::CopyTextureRegion(ResourceHandle, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH)
 	{}
 
 	void vkCopyContext::CopyTile(ResourceHandle dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)

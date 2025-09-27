@@ -246,34 +246,36 @@ namespace FlexKit
 				Indexes.Allocator   = Memory;
 			}
 
-			inline index_t&	operator[] ( const HANDLE in )
+			index_t&	operator[] ( const HANDLE in )
 			{
 				return Indexes[ in.INDEX ];
 			}
 
-			inline index_t	operator[] ( const HANDLE in ) const	{return Indexes[ in.INDEX ];}
+			index_t	operator[] ( const HANDLE in ) const	{return Indexes[ in.INDEX ];}
 
-			inline index_t&	Get( const HANDLE in )					{return Indexes[ in.INDEX ];}
-			inline index_t	Get( const HANDLE in ) const			{return Indexes[ in.INDEX ];}
+			index_t&	Get( const HANDLE in )					{return Indexes[ in.INDEX ];}
+			index_t		Get( const HANDLE in ) const			{return Indexes[ in.INDEX ];}
 
-			inline HANDLE	GetNewHandle()
+			[[nodiscard]]
+		    HANDLE GetNewHandle(index_t initialIndex = -1)
 			{
 				if (FreeList != -1) {
 					const auto idx = FreeList;
 					FreeList = Indexes[idx];
+					Indexes[idx] = initialIndex;
 
 					return { (index_t)idx };
 				}
 
-				return { (index_t)Indexes.push_back(-1) };
+				return { (index_t)Indexes.push_back(initialIndex) };
 			}
 
-			inline void	Clear()
+			void Clear()
 			{
 				Indexes.clear();
 			}
 
-			inline bool	Has( Handle find_this_Handle ) const
+			bool Has( Handle find_this_Handle ) const
 			{
 				if( std::find( Indexes.begin(), Indexes.end(), find_this_Handle.INDEX ) !=
 					Indexes.end() )
@@ -281,18 +283,18 @@ namespace FlexKit
 				return false;
 			}
 
-			inline void	RemoveHandle( HANDLE in )
+			void RemoveHandle( HANDLE in )
 			{
 				Indexes[in] = FreeList;
 				FreeList    = (index_t)in;
 			}
 
-			inline size_t size()
+			size_t size()
 			{
 				return Indexes.size();
 			}
 
-			inline size_t size() const
+			size_t size() const
 			{
 				return Indexes.size();
 			}
@@ -316,6 +318,11 @@ namespace FlexKit
 						return HANDLE(I);
 
 				return InvalidHandle;
+			}
+
+			bool IsValid(HANDLE handle)
+			{
+				return ((handle.INDEX < -1) && (Indexes[handle.INDEX] != (index_t)0xffffffffffffffff));
 			}
 
 			HandleTable( const HandleTable<HANDLE>& in )				= delete;	// Do not allow Table copying

@@ -1,7 +1,7 @@
 #pragma once
-#include "MathUtilities.hpp"
-#include "Handle.hpp"
 #include "Components.hpp"
+#include "Handle.hpp"
+#include "MathUtilities.hpp"
 #include "RuntimeComponentIDs.hpp"
 #include "ResourceHandles.hpp"
 #include "TriggerComponent.hpp"
@@ -197,7 +197,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
+	inline auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
 	{
 		struct TransformUpdateData
 		{};

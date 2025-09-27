@@ -539,7 +539,8 @@ namespace FlexKit
 			auto resource = renderSystem->CreateGPUResource(
 				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
-			size_t bufferSize	= source_dimensions.x * source_dimensions.y * 4;
+			uint2 wh{ source_dimensions.x * source_dimensions.y };
+			size_t bufferSize	= wh.Product() * 4;
 			auto uploadSpace	= ctx->ReserveDirectUploadSpace(bufferSize);
 
 			if (uploadSpace)
@@ -547,7 +548,7 @@ namespace FlexKit
 
 			memcpy(uploadSpace.buffer, source.data(), source.size());
 			ctx->AddCopyResourceBarrier(resource, DASCommon, DASCopyDest);
-			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
+			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace, wh);
 			ctx->AddCopyResourceBarrier(resource, DASCopyDest, DASCommon);
 
 			const auto res = renderSystem->CreateDescriptorRange(1);
@@ -564,8 +565,9 @@ namespace FlexKit
 		}
 		else
 		{
+			const uint2 WH{ source_dimensions.x, source_dimensions.y };
 			auto resource = renderSystem->CreateGPUResource(
-				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
+				GPUResourceDesc::ShaderResource(WH, DeviceFormat::R8G8B8A8_UNORM));
 
 			size_t bufferSize = source_dimensions.x * source_dimensions.y * 4;
 
@@ -573,7 +575,7 @@ namespace FlexKit
 
 			auto uploadSpace = copyContext.Reserve(bufferSize);
 			memcpy(uploadSpace.buffer, source.data(), source.size());
-			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace);
+			ctx->CopyTextureRegion(resource, 0, { 0, 0, 0 }, uploadSpace, WH);
 
 			const auto res = renderSystem->CreateDescriptorRange(1);
 			if (!res.has_value())

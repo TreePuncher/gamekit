@@ -2,6 +2,7 @@
 
 #include "AnimationComponents.hpp"
 #include "AnimationRendering.hpp"
+#include "CameraComponent.hpp"
 #include "ClusteredRendering.hpp"
 #include "WorldRender.hpp"
 #include <numeric>
@@ -1263,7 +1264,7 @@ namespace FlexKit
 								BrushConstants&					entityConstants,
 								iAllocator*						allocator)
 	{
-		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(MLAB_DRAW); };
+		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(GBufferPassID); };
 		
 		
 		PassDescription<MarkClustersPass> staticPass =

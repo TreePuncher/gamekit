@@ -1,7 +1,9 @@
 #include "pch.h"
 #include <Application.hpp>
-#include "AnimationTest.h"
+#include "AnimationTest.hpp"
 #include <vkBackend.hpp>
+#include <vkWin32Surface.hpp>
+
 
 int main()
 {
@@ -11,7 +13,9 @@ int main()
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{ .CreateRenderSystem = FlexKit::CreateVK });
-		
+
+		auto window = CreateWin32VKSurface(app.get()->GetRenderSystem(), { 800, 600 }, FlexKit::DeviceFormat::R8G8B8A8_UNORM);
+
 		//app->PushState<AnimationTest>();
 		app->GetCore().FPSLimit		= 144;
 		app->GetCore().FrameLock	= true;

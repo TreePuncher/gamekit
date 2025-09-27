@@ -1,25 +1,19 @@
-#include "RenderSystemInterface.hpp"
-#include "ProfilingUtilities.hpp"
+#include <CameraComponent.hpp>
+#include <RenderSystemInterface.hpp>
+#include <ProfilingUtilities.hpp>
+#include <WorldRender.hpp>
+
 #include "TextureStreamingUtilities.hpp"
-#include "WorldRender.hpp"
+
+#include <mutex>
 #include <ranges>
 
-#if 0
 namespace FlexKit
 {   /************************************************************************************************/
+
+
 	using std::views::iota;
 	using std::views::zip;
-
-
-	DDSInfo GetDDSInfo(AssetHandle assetID, ReadContext& ctx)
-	{
-		TextureResourceBlob resource;
-
-		if (ReadAsset(ctx, assetID, &resource, sizeof(resource), 0) != RAC_OK)
-			return {};
-
-		return { (uint8_t)resource.mipLevels, resource.WH, resource.format };
-	}
 
 
 	/************************************************************************************************/
@@ -200,7 +194,7 @@ namespace FlexKit
 		return { PSO, feedbackPassRootSignature };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
@@ -260,7 +254,7 @@ namespace FlexKit
 		return { PSO, feedbackPassRootSignature };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
@@ -268,7 +262,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackCompressorPSO(IRenderSystem* RS)
 	{
 #if 0
 		const char* file = RS->vendorID == DeviceVendor::AMD ?
@@ -293,7 +287,7 @@ namespace FlexKit
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
@@ -301,7 +295,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTextureFeedbackBlockSizePreFixSum(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackBlockSizePreFixSum(IRenderSystem* RS)
 	{
 #if 0
 		auto computeShader = RS->LoadShader(
@@ -323,14 +317,14 @@ namespace FlexKit
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
 
 	/************************************************************************************************/
 
-	LoadPipelineStateRes CreateTextureFeedbackMergeBlocks(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackMergeBlocks(IRenderSystem* RS)
 	{
 #if 0
 		auto computeShader = RS->LoadShader(
@@ -352,7 +346,7 @@ namespace FlexKit
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
@@ -360,7 +354,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateTextureFeedbackSetBlockSizes(RenderSystem* RS)
+	LoadPipelineStateRes CreateTextureFeedbackSetBlockSizes(IRenderSystem* RS)
 	{
 #if 0
 		auto computeShader = RS->LoadShader(
@@ -382,7 +376,7 @@ namespace FlexKit
 		return { PSO, RS->Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
 
-		static_assert(false);
+		FK_ASSERT(false);
 		return {};
 	}
 
@@ -522,6 +516,7 @@ namespace FlexKit
 
 	TextureStreamingEngine::TextureStreamingEngine(
 				IRenderSystem&	IN_renderSystem,
+		        ThreadManager&	IN_threads, 
 				iAllocator*		IN_allocator,
 				const TextureCacheDesc& desc) : 
 			allocator					{ IN_allocator		},
@@ -532,12 +527,13 @@ namespace FlexKit
 			heap						{ IN_renderSystem.CreateHeap(desc.textureCacheSize, 0) },
 			mappedAssets				{ IN_allocator },
 			timeStats					{ IN_renderSystem.CreateTimeStampQuery(512) },
-			pendingResults				{ { *IN_allocator }, 0 }
+			pendingResults				{ { *IN_allocator }, 0 },
+            threads						{ IN_threads }
 	{
-		RootSignatureBuilder builder{ IN_allocator };
+		RootSignatureBuilder builder{ *IN_allocator };
 		builder.AllowIA = true;
 
-		DesciptorHeapLayout<1> srvHeap;
+		DesciptorHeapLayout srvHeap;
 		srvHeap.SetParameterAsSRV(0, 0, -1);
 		FK_ASSERT(srvHeap.Check());
 
@@ -548,9 +544,9 @@ namespace FlexKit
 		builder.SetParameterAsSRV(4, 0, 0, PIPELINE_DEST_VS);
 		builder.SetParameterAsDescriptorTable(5, srvHeap, -1, PIPELINE_DEST_PS);
 
-		feedbackPassRootSignature = builder.Build(IN_renderSystem, *IN_allocator);
+		feedbackPassRootSignature = builder.Build(*IN_allocator);
 		FK_ASSERT(feedbackPassRootSignature != nullptr, "Failed to create feedbackPassRootSignature");
-		SETDEBUGNAME(*feedbackPassRootSignature, "textureFeedbackPassSignature");
+		//SETDEBUGNAME(*feedbackPassRootSignature, "textureFeedbackPassSignature");
 
 		builder.AllowIA = true;
 		builder.SetParameterAsUINT(0, 16, 0, 0);
@@ -558,7 +554,7 @@ namespace FlexKit
 		builder.SetParameterAsSRV(2, 1);
 		builder.SetParameterAsUAV(3, 0, 0);
 
-		sortingRootSignature = builder.Build(IN_renderSystem, *IN_allocator);
+		sortingRootSignature = builder.Build(*IN_allocator);
 		FK_ASSERT(sortingRootSignature != nullptr, "Failed to create root signature!");
 
 		renderSystem.RegisterPSOLoader(
@@ -567,6 +563,8 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(
 			TEXTUREFEEDBACKANIMATEDPASS, { this, &TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO });
 
+		FK_ASSERT(false);
+#if 0
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,
 			[&, textureStreamingEngine = this](ReadBackResourceHandle resource)
@@ -576,6 +574,7 @@ namespace FlexKit
 				else
 					CopyResults(resource);
 			});
+#endif
 
 		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
 		renderSystem.QueuePSOLoad(TEXTUREFEEDBACKANIMATEDPASS);
@@ -587,17 +586,20 @@ namespace FlexKit
 
 	TextureStreamingEngine::~TextureStreamingEngine()
 	{
+		FK_ASSERT(false);
 		updateInProgress = false;
 
+#if 0
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,
 			[](ReadBackResourceHandle resource){});
+#endif
 
 		if(taskStarted)
 			while (taskInProgress);
 
 		renderSystem.WaitForGPU(); // Flush any pending reads
-		renderSystem.FlushPendingReadBacks();
+		//renderSystem.FlushPendingReadBacks();
 
 		renderSystem.ReleaseReadBack(feedbackReturnBuffer);
 	}
@@ -759,7 +761,7 @@ namespace FlexKit
 		auto& feedbackPassRootSignature = this->feedbackPassRootSignature;
 		auto& feedbackTable				= pendingResults;
 
-		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> drawList, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
+		auto staticPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &feedbackTable](const auto begin, const auto end, std::span<const BrushEntry> drawList, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -816,10 +818,10 @@ namespace FlexKit
 							triMesh,
 							itr->LODlevel[I],
 							{
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								VERTEXBUFFER_TYPE::POSITION,
+								VERTEXBUFFER_TYPE::NORMAL,
+								VERTEXBUFFER_TYPE::TANGENT,
+								VERTEXBUFFER_TYPE::UV,
 							}
 						);
 					}
@@ -841,7 +843,7 @@ namespace FlexKit
 
 								if (offset == -1)
 								{
-									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
+									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, *resources.renderSystem);
 									offset				= feedbackTable.Reserve(blockSize);
 									feedbackTable.table.InsertItem(texture, offset, blockSize);
 								}
@@ -880,7 +882,7 @@ namespace FlexKit
 
 									if (offset == -1)
 									{
-										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
+										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, *resources.renderSystem);
 										offset				= feedbackTable.Reserve(blockSize);
 										feedbackTable.table.InsertItem(texture, offset, blockSize);
 									}
@@ -916,7 +918,7 @@ namespace FlexKit
 			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
 		};
 
-		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const DrawEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
+		auto animatedPassDrawFN = [&brushConstants, renderTargetWH, &feedbackPassRootSignature, &animationResources, &feedbackTable](const auto begin, const auto end, std::span<const BrushEntry> pvs, TextureFeedbackPass_Data& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Texture feedback pass");
 
@@ -972,12 +974,12 @@ namespace FlexKit
 							triMesh,
 							itr->LODlevel[I],
 							{
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+								VERTEXBUFFER_TYPE::POSITION,
+								VERTEXBUFFER_TYPE::NORMAL,
+								VERTEXBUFFER_TYPE::TANGENT,
+								VERTEXBUFFER_TYPE::UV,
+								VERTEXBUFFER_TYPE::ANIMATION1,
+								VERTEXBUFFER_TYPE::ANIMATION2,
 							}
 						);
 					}
@@ -1001,7 +1003,7 @@ namespace FlexKit
 
 								if (offset == -1)
 								{
-									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
+									uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, *resources.renderSystem);
 									offset				= feedbackTable.Reserve(blockSize);
 									feedbackTable.table.InsertItem(texture, offset, blockSize);
 								}
@@ -1032,7 +1034,7 @@ namespace FlexKit
 
 									if (offset == -1)
 									{
-										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, resources.renderSystem);
+										uint32_t blockSize	= (uint32_t)GetTextureBlockSize(texture, *resources.renderSystem);
 										offset				= feedbackTable.Reserve(blockSize);
 										feedbackTable.table.InsertItem(texture, offset, blockSize);
 									}
@@ -1293,8 +1295,7 @@ namespace FlexKit
 			blockChanges.reallocations.size()) return;
 
 		auto ctxHandle		= renderSystem.OpenUploadQueue();
-		auto& ctx			= renderSystem._GetCopyContext(ctxHandle);
-		auto uploadQueue	= renderSystem._GetCopyQueue();
+		auto& ctx			= renderSystem.GetCopyContext(ctxHandle);
 
 		Vector<ResourceHandle>	updatedTextures		= { &threadLocalAllocator  };
 		ResourceHandle			prevResource		= InvalidHandle;
@@ -1379,8 +1380,6 @@ namespace FlexKit
 				continue;
 			}
 
-			const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
-			
 			const auto blocks = [&]
 			{
 				auto blocks = filter(
@@ -1422,7 +1421,7 @@ namespace FlexKit
 				FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel());
 
 				ctx.CopyTile(
-					deviceResource,
+					resource,
 					block.tileID,
 					block.tileIdx,
 					tile);
@@ -1453,8 +1452,7 @@ namespace FlexKit
 				continue;
 			}
 			
-			const auto deviceResource	= renderSystem.GetDeviceResource(resource);
-			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
+			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(resource);
 			
 			const auto startingLevel	= packedBlockInfo.startingLevel;
 			const auto endingLevel		= packedBlockInfo.endingLevel;
@@ -1483,7 +1481,7 @@ namespace FlexKit
 				const TileID_t tileID	= CreateTileID( 0, 0, level );
 				const auto tile			= streamContext.Read(MIPLevelInfo.WH, ctx);
 
-				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
+				ctx.CopyTextureRegion(resource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH);
 			}
 
 			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
@@ -1634,7 +1632,7 @@ namespace FlexKit
 				FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel());
 
 				ctx.CopyTile(
-					deviceResource,
+					resource,
 					block.tileID,
 					block.tileIdx,
 					tile);
@@ -1665,8 +1663,7 @@ namespace FlexKit
 				continue;
 			}
 
-			const auto deviceResource	= renderSystem.GetDeviceResource(resource);
-			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
+			const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(resource);
 
 			const auto startingLevel	= packedBlockInfo.startingLevel;
 			const auto endingLevel		= packedBlockInfo.endingLevel;
@@ -1692,7 +1689,7 @@ namespace FlexKit
 				const TileID_t tileID	= CreateTileID( 0, 0, level );
 				const auto tile			= streamContext.Read(MIPLevelInfo.WH, ctx);
 
-				ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
+				ctx.CopyTextureRegion(resource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH);
 			}
 
 			renderSystem.UpdateTextureTileMappings(resource, mappings, threadLocalAllocator);
@@ -1731,7 +1728,8 @@ namespace FlexKit
 		taskInProgress	= true;
 		taskStarted		= false;
 		auto& task		= allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
-		renderSystem.threads.AddBackgroundWork(task);
+
+		threads.AddBackgroundWork(task);
 	}
 
 
@@ -1996,9 +1994,8 @@ namespace FlexKit
 
 	void TextureStreamingEngine::LoadLowestLevel(ResourceHandle textureResource, CopyContextHandle copyQueue)
 	{
-		auto& copyCtx				= renderSystem.copyEngine.copyContexts[copyQueue];
-		const auto deviceResource	= renderSystem.GetDeviceResource(textureResource);
-		const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(deviceResource);
+		auto& copyCtx				= renderSystem.GetCopyContext(copyQueue);
+		const auto packedBlockInfo	= renderSystem.GetPackedTileInfo(textureResource);
 		const auto mipCount			= renderSystem.GetTextureMipCount(textureResource);
 
 		auto tileID					= CreatePackedID();
@@ -2027,7 +2024,7 @@ namespace FlexKit
 			const TileID_t tileID	= CreateTileID( 0, 0, level );
 			const auto tile			= streamContext.Read(MIPLevelInfo.WH, copyCtx);
 
-			copyCtx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, streamContext.Format());
+			copyCtx.CopyTextureRegion(textureResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH);
 		}
 
 		const TileMapping mapping[] = { {
@@ -2078,4 +2075,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#endif

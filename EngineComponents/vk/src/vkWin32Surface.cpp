@@ -4,13 +4,12 @@
 #include "Events.hpp"
 #include "timeapi.h"
 #include <vulkan/vulkan.hpp>
+#include <vkRenderSystem.hpp>
 
 #pragma comment(lib, "Winmm.lib")
 
-namespace VK_internal
+namespace FlexKit
 {
-	using namespace FlexKit;
-
     // Globals
 	inline HWND			gWindowHandle = 0;
 	inline HINSTANCE	gInstance = 0;
@@ -362,8 +361,38 @@ namespace VK_internal
 		FK_ASSERT(RegisterClassExW( &wcex ));
 	}
 
-	
-	IRenderWindow* CreateWin32Surface(VkInstance instance, VkDevice device, uint2 WH, DeviceFormat format)
+
+	struct vkRenderWindow : IRenderWindow
+	{
+	    virtual ~vkRenderWindow() {};
+
+		virtual ResourceHandle      GetBackBuffer() const
+		{
+		    
+		}
+
+		virtual uint2               GetWH() const
+		{
+		    
+		}
+
+		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0)
+		{
+		    
+		}
+
+		virtual void                Resize(const uint2 WH) = 0;
+
+		virtual void				Release() = 0;
+
+		operator ResourceHandle () { return GetBackBuffer(); }
+
+		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
+		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
+	};
+
+
+	IRenderWindow* CreateWin32VKSurface(IRenderSystem& renderSystem, uint2 WH, DeviceFormat format)
 	{
 		static bool _TEMP =
 			[]
@@ -374,6 +403,11 @@ namespace VK_internal
 				SetProcessDPIAware();
 				return true;
 			}();
+
+		auto& vkRS = static_cast<VK_internal::vkRenderSystem&>(renderSystem);
+
+		VkInstance	instance	= vkRS.instance;
+		VkDevice	device		= vkRS.device;
 
 		auto windowHWND = CreateWindowW(L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
 								0,
@@ -402,24 +436,24 @@ namespace VK_internal
 		}
 
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
-		    .sType = VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-            .pNext = 0,
-            .flags = 0,
-            .surface = surface,
-            .minImageCount = 3,
-            .imageFormat = VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
-            .imageColorSpace = VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .imageExtent = { .width = WH[0], .height = WH[1] },
-            .imageArrayLayers	= 1,
-            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount = 0,
-            .pQueueFamilyIndices = nullptr,
-            .preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode = VK_PRESENT_MODE_FIFO_LATEST_READY_EXT,
-            .clipped = false,
-            .oldSwapchain = nullptr
+		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .pNext					= 0,
+            .flags					= 0,
+            .surface				= surface,
+            .minImageCount			= 3,
+            .imageFormat			= VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
+            .imageColorSpace		= VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+            .imageExtent			= { .width = WH[0], .height = WH[1] },
+            .imageArrayLayers		= 1,
+            .imageUsage				= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount	= 0,
+            .pQueueFamilyIndices	= nullptr,
+            .preTransform			= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
+            .compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .presentMode			= VK_PRESENT_MODE_FIFO_LATEST_READY_EXT,
+            .clipped				= false,
+            .oldSwapchain			= nullptr
 		};
 
 		VkSwapchainKHR swapchain = nullptr;

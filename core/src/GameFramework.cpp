@@ -25,10 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DebugPanel.hpp"
 #include "DebugUI.hpp"
 #include "GameFramework.hpp"
-#include "Fonts.hpp"
 #include "Level.hpp"
-#include "TextRendering.hpp"
-#include "TextureUtilities.hpp"
+#include "Transforms.hpp"
 #include "Logging.hpp"
 #include <fmt/printf.h>
 #include <imgui.h>

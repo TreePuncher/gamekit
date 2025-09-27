@@ -185,7 +185,8 @@ namespace dx_Internal
 			ResourceHandle		dest,
 			size_t				subResourceIdx,
 			uint3				XYZ,
-			UploadReservation	source) final;
+			UploadReservation	source,
+			uint2				wh) final;
 
 		void CopyTile(
 			ID3D12Resource*			dest,

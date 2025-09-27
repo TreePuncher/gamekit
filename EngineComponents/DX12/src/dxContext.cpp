@@ -1429,12 +1429,12 @@ namespace dx_Internal
 		ResourceHandle		dest,
 		size_t				subResourceIdx,
 		uint3				XYZ,
-		UploadReservation	source)
+		UploadReservation	source,
+		uint2				WH)
 	{
 		FlushBarriers();
 
 		auto destination				= renderSystem->GetDeviceResource(dest);
-		const auto		WH				= renderSystem->GetTextureWH(dest);
 		const auto		deviceFormat	= renderSystem->GetTextureDeviceFormat(dest);
 		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
 		const bool		BCformat		= IsDDS(renderSystem->GetTextureFormat(dest));

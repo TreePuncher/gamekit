@@ -3,10 +3,11 @@
 
 #include "Assets.hpp"
 #include "Components.hpp"
-#include "ComponentBlobs.hpp"
 #include "MathUtilities.hpp"
 #include "ResourceHandles.hpp"
 #include "RuntimeComponentIDs.hpp"
+#include "TextureManager.hpp"
+
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -71,8 +72,8 @@ namespace FlexKit
 
 	struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
 	{
-		MaterialComponent(IRenderSystem& IN_renderSystem, TextureStreamingEngine& IN_TSE, iAllocator* IN_allocator) :
-			streamEngine	{ IN_TSE },
+		MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE = &NullTextureManager) :
+			textureManager	{ IN_TSE },
 			renderSystem	{ IN_renderSystem },
 			materials		{ IN_allocator },
 			textures		{ IN_allocator },
@@ -125,7 +126,7 @@ namespace FlexKit
 
 
 			template<MaterialValue TY>
-			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty(handle, ID); }
+			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty<TY>(handle, ID); }
 
 
 			void						PushTexture(GUID_t textureAsset, uint32_t tag = 0xffffffff, bool LoadLowest = false);
@@ -242,8 +243,8 @@ namespace FlexKit
 		}
 
 
-		IRenderSystem&					renderSystem;
-		TextureStreamingEngine&			streamEngine;
+		IRenderSystem&		renderSystem;
+		ITextureManager*	textureManager;
 
 		Vector<MaterialComponentData>					materials;
 		Vector<MaterialTextureEntry>					textures;

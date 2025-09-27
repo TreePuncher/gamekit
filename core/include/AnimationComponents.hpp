@@ -1,5 +1,4 @@
-#ifndef ANIMATIONCOMPONENTS_H_INCLUDED
-#define ANIMATIONCOMPONENTS_H_INCLUDED
+#pragma once
 
 #include "AnimationUtilities.hpp"
 #include "AnimationRuntimeUtilities.hpp"
@@ -630,7 +629,6 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
-#endif
 
 
 /**********************************************************************

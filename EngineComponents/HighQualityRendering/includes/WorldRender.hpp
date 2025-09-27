@@ -8,12 +8,12 @@
 #include "ClusteredRendering.hpp"
 #include "DepthBuffer.hpp"
 #include "FrameGraph.hpp"
-#include "GILightingUtilities.hpp"
+//#include "GILightingUtilities.hpp"
 #include "OcclusionCulling.hpp"
 #include "RenderSystemInterface.hpp"
 #include "Scene.hpp"
 #include "ShadowMapping.hpp"
-#include "SVOGI.hpp"
+//#include "SVOGI.hpp"
 
 
 namespace FlexKit
@@ -319,7 +319,7 @@ namespace FlexKit
 
 	struct WorldRenderOptions
 	{
-		EGITECHNIQUE GI = EGITECHNIQUE::DISABLE;
+		//EGITECHNIQUE GI = EGITECHNIQUE::DISABLE;
 	};
 
 
@@ -426,7 +426,7 @@ namespace FlexKit
 			GatherPassesTask&				passes,
 			iAllocator&						allocator)
 		{
-			lightingEngine.BuildScene(frameGraph, scene, passes, allocator);
+			//lightingEngine.BuildScene(frameGraph, scene, passes, allocator);
 		}
 
 		LoadPipelineStateRes CreateAverageLumanceLocal	(IRenderSystem& rs, iAllocator&);
@@ -449,8 +449,8 @@ namespace FlexKit
 
 		ClusteredRender				clusteredRender;
 		ShadowMapper				shadowMapping;
-		Transparency				transparency;
-		GlobalIlluminationEngine	lightingEngine;
+		//Transparency				transparency;
+		//GlobalIlluminationEngine	lightingEngine;
 
 		PassHistoryTable			passHistories;
 

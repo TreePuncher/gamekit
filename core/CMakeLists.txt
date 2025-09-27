@@ -8,7 +8,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Angelscript CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(range-v3 CONFIG REQUIRED)
-find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(implot CONFIG REQUIRED)
@@ -26,6 +25,7 @@ add_library(flex
     "src/AnimationComponents.cpp"
     "src/AnimationRuntimeUtilities.cpp"
     "src/AnimationUtilities.cpp"
+    "src/AnimationRendering.cpp"
     "src/Application.cpp"
     "src/Assets.cpp"
     "src/CameraComponent.cpp"
@@ -74,6 +74,7 @@ target_sources(
     "include/AnimationComponents.hpp"
     "include/AnimationRuntimeUtilities.hpp"
     "include/AnimationUtilities.hpp"
+    "include/AnimationRendering.hpp"
     "include/Application.hpp"
     "include/Assets.hpp"
     "include/BuildSettings.hpp"
@@ -166,8 +167,6 @@ if(WIN32)
 
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
     target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
-
-    target_link_libraries(flex PRIVATE unofficial::omniverse-physx-sdk::sdk)
 
 
     #target_link_libraries(flex PRIVATE WINPIX) 

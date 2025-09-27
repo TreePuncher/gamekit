@@ -1,3 +1,4 @@
+#include "ComponentBlobs.hpp"
 #include "Materials.hpp"
 #include "Scene.hpp"
 #include <ranges>
@@ -74,7 +75,6 @@ namespace FlexKit
 
 	MaterialTextureEntry* MaterialComponent::_AddTextureAsset(GUID_t textureAsset, ReadContext& readContext, const bool loadLowest)
 	{
-#if 0
 		const auto [MIPCount, DDSTextureWH, format] = GetDDSInfo(textureAsset, readContext);
 		const auto resourceStrID					= GetResourceStringID(textureAsset);
 
@@ -91,16 +91,16 @@ namespace FlexKit
 
 		renderSystem.SetDebugName(textureResource, "Virtual Texture");
 
-		streamEngine.BindAsset(textureAsset, textureResource);
+		textureManager->BindAsset(textureAsset, textureResource);
 
 		if(loadLowest)
-			streamEngine.LoadLowestLevel(textureResource, renderSystem.GetImmediateCopyQueue());
+			textureManager->LoadLowestLevel(textureResource, renderSystem.GetImmediateCopyQueue());
 
 		const auto idx = textures.push_back({ 1, textureResource, textureAsset });
 
 		return textures.begin() + idx;
-#endif
-		FK_ASSERT(0);
+
+	    FK_ASSERT(0);
 		return 0;
 	}
 

@@ -401,5 +401,55 @@ namespace FlexKit
 		}
 	}
 
+	constexpr size_t BlockSize(DeviceFormat format)
+	{
+		switch (format)
+		{
+		case DeviceFormat::BC1_TYPELESS:
+		case DeviceFormat::BC1_UNORM:
+		case DeviceFormat::BC1_UNORM_SRGB:
+		case DeviceFormat::BC2_TYPELESS:
+		case DeviceFormat::BC2_UNORM:
+		case DeviceFormat::BC2_UNORM_SRGB:
+		case DeviceFormat::BC3_TYPELESS:
+		case DeviceFormat::BC3_UNORM:
+		case DeviceFormat::BC3_UNORM_SRGB:
+		case DeviceFormat::BC4_TYPELESS:
+		case DeviceFormat::BC4_UNORM:
+		case DeviceFormat::BC4_SNORM:
+		case DeviceFormat::BC5_TYPELESS:
+		case DeviceFormat::BC5_UNORM:
+		case DeviceFormat::BC5_SNORM:
+		case DeviceFormat::BC7_UNORM:
+		case DeviceFormat::BC7_SNORM:
+			return 16;
+		default:
+			FK_ASSERT(false, "INVALID INPUT!");
+			return -1;
+			break;
+		}
+	}
+
+
+	DDSInfo GetDDSInfo(AssetHandle assetID, ReadContext& ctx)
+	{
+		TextureResourceBlob resource;
+
+		if (ReadAsset(ctx, assetID, &resource, sizeof(resource), 0) != RAC_OK)
+			return {};
+
+		return { (uint8_t)resource.mipLevels, resource.WH, resource.format };
+	}
+
+
+	DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
+	{
+		const uint32_t levelHeight = Max(WH[0] >> Level, 4u);
+		const uint32_t levelWidth = Max(WH[1] >> Level, 4u);
+		return { 0xff, { levelWidth, levelHeight }, levelWidth > GetFormatTileSize(format)[0] };
+	}
+
+
+
 
 }	/************************************************************************************************/

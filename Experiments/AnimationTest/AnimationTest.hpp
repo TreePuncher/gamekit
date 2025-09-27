@@ -1,18 +1,22 @@
 #pragma once
 
-#if 0
 #include "Player.hpp"
 #include <Application.hpp>
 #include <DebugUI.hpp>
+#include <AnimationComponents.hpp>
 #include <GameplayComponents.hpp>
 #include <physicsutilities.hpp>
 #include <TriggerComponent.hpp>
+//#include <TextureStreamingUtilities.hpp>
 #include <Scene.hpp>
 //#include <Win32Graphics.hpp>
 #include <Signals.hpp>
 
+#include <DepthBuffer.hpp>
+#include <WorldRender.hpp>
 
 /************************************************************************************************/
+
 
 class AnimationTest : public FlexKit::FrameworkState
 {
@@ -51,8 +55,8 @@ public:
 	FlexKit::ConstantBufferHandle			constantBuffer;
 	FlexKit::VertexBufferHandle				vertexBuffer;
 
-	FlexKit::WorldRender					renderer;
-	FlexKit::TextureStreamingEngine			textureStreamingEngine;
+	//FlexKit::WorldRender					renderer;
+	//FlexKit::TextureStreamingEngine			textureStreamingEngine;
 
 	FlexKit::CameraHandle					activeCamera = FlexKit::InvalidHandle;
 
@@ -77,8 +81,6 @@ public:
 	PlayerComponent	playerComponent;
 };
 
-
-#endif
 
 /**********************************************************************
 
