@@ -77,7 +77,7 @@ namespace dx_Internal
 	class VertexBufferDataSet;
     */
 	class dxDirectContext;
-	class RenderSystem;
+	class dxRenderSystem;
 
     /************************************************************************************************/
 
@@ -674,7 +674,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		~DescriptorHeapAllocator();
 
 
-		void							Initialize	(RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator);
+		void							Initialize	(dxRenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator);
 
 		std::optional<DescriptorRange>	Alloc_ST	(const size_t size, uint64_t completedIdx) noexcept;
 		auto							Alloc		(const size_t size, uint64_t completedIdx) noexcept;
@@ -713,7 +713,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		Node						root;
 		Vector<Node*>				freeList;
 		iAllocator*					allocator;
-		RenderSystem*				renderSystem;
+		dxRenderSystem*				renderSystem;
 		size_t						descriptorSize;
 		D3D12_GPU_DESCRIPTOR_HANDLE	gpuHeap;
 		D3D12_CPU_DESCRIPTOR_HANDLE	cpuHeap;
@@ -730,7 +730,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct UAVBuffer
 	{
-		UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t stride = -1, const size_t offset = 0); // auto Fills the struct
+		UAVBuffer(const dxRenderSystem& rs, const ResourceHandle handle, const size_t stride = -1, const size_t offset = 0); // auto Fills the struct
 
 		ID3D12Resource* resource;
 		uint32_t		elementCount;
@@ -950,9 +950,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Clear();
 
-		[[nodiscard]]	RootSignature* Build(RenderSystem* RS, iAllocator& TempMemory);
-		[[nodiscard]]	RootSignature* LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp);
-		[[nodiscard]]	RootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, RenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	RootSignature* Build(dxRenderSystem* RS, iAllocator& TempMemory);
+		[[nodiscard]]	RootSignature* LoadSignatureFromFile(const char* dir, const char* entry, dxRenderSystem& renderSystem, iAllocator& temp);
+		[[nodiscard]]	RootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, dxRenderSystem& renderSystem, iAllocator& temp);
 
 		bool AllowIA	= true;
 		bool AllowSO	= false;
@@ -1063,7 +1063,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Release();
 		}
 
-		VertexBufferHandle	CreateVertexBuffer	(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
+		VertexBufferHandle	CreateVertexBuffer	(size_t BufferSize, bool GPUResident, dxRenderSystem* RS); // Creates Using Placed Resource
 		bool				PushVertex			(VertexBufferHandle Handle, void* _ptr, size_t ElementSize);
 
 		void				LockUntil	(size_t Frame);// Locks all in use Buffers until given Frame
@@ -1083,7 +1083,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	private:
 		typedef size_t VBufferHandle;
 
-		VBufferHandle	CreateVertexBufferResource(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
+		VBufferHandle	CreateVertexBufferResource(size_t BufferSize, bool GPUResident, dxRenderSystem* RS); // Creates Using Placed Resource
 
 		bool    CurrentlyAvailable(VertexBufferHandle Handle, size_t CurrentFrame) const;
 
@@ -1145,7 +1145,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct ConstantBufferTable
 	{
-		ConstantBufferTable(iAllocator* allocator, RenderSystem* IN_renderSystem) :
+		ConstantBufferTable(iAllocator* allocator, dxRenderSystem* IN_renderSystem) :
 			handles			{ allocator			},
 			renderSystem	{ IN_renderSystem	},
 			buffers			{ allocator			}
@@ -1207,7 +1207,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		SubAllocation			Reserve					(ConstantBufferHandle, size_t size);
 
 	private:
-		RenderSystem*				renderSystem;
+		dxRenderSystem*				renderSystem;
 		Vector<UserConstantBuffer>	buffers;
 		std::mutex					criticalSection;
 
@@ -1220,7 +1220,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	// WARNING, NOT IMPLEMENTED FULLY!
 	struct QueryTable
 	{
-		QueryTable(iAllocator* persistent, RenderSystem* RS_in) :
+		QueryTable(iAllocator* persistent, dxRenderSystem* RS_in) :
 			users			{ persistent },
 			resources		{ persistent },
 			pendingFrees	{ persistent },
@@ -1310,7 +1310,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			D3D12_QUERY_TYPE		type;
 		};
 
-		RenderSystem*			RS;
+		dxRenderSystem*			RS;
 		Vector<UserEntry>		users;
 		Vector<ResourceEntry>	resources;
 
@@ -1604,7 +1604,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void FreeDelayedResources(ThreadManager& thread, const uint64_t currentIdx);
 		bool FreeDelayedResourcesIncrementally(const uint64_t currentIdx);
-		void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
+		void SubmitTileUpdates(ID3D12CommandQueue* queue, dxRenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
 
@@ -2060,14 +2060,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	constexpr PSOHandle CLEARBUFFERPSO = PSOHandle(GetTypeGUID(CLEARBUFFERPSO));
 
 
-	class RenderSystem : public IRenderSystem
+	class dxRenderSystem : public IRenderSystem
 	{
 	public:
-		RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads);
-		~RenderSystem();
+		dxRenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads);
+		~dxRenderSystem();
 
-		RenderSystem(const RenderSystem&) = delete;
-		RenderSystem& operator =	(const RenderSystem&) = delete;
+		dxRenderSystem(const dxRenderSystem&) = delete;
+		dxRenderSystem& operator =	(const dxRenderSystem&) = delete;
 
 		bool Initiate(Graphics_Desc* desc_in);
 		void Release();
@@ -2089,7 +2089,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual void LoadPSOIfRequired(PSOHandle State) final;
 		virtual void QueuePSOLoad(PSOHandle State) final;
 
-		virtual size_t		GetCurrentCounter();
+		virtual uint64_t	GetCurrentCounter();
 		virtual void		SyncUploadTo(SyncPoint);
 		virtual SyncPoint	SyncUploadPoint();
 		virtual SyncPoint	SyncUploadTicket();
@@ -2252,9 +2252,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual IDirectContext& GetDirectCommandList(std::optional<SyncPoint> ticket = {}) final;
 
 		// Internal
-		static RenderSystem&	_GetInstance() { return *globalInstance; }
+		static dxRenderSystem&	_GetInstance() { return *globalInstance; }
 
-		static ConstantBuffer	_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc);
+		static ConstantBuffer	_CreateConstantBufferResource(dxRenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
 		ResourceHandle			_CreateDefaultTexture();
 
@@ -2322,7 +2322,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12DeviceRemovedExtendedData1* dred;
 #endif
 
-		operator RenderSystem* () { return this; }
+		operator dxRenderSystem* () { return this; }
 
 		ID3D12Device1*		pDevice			= nullptr;
 		ID3D12Device14*		pDevice14		= nullptr;
@@ -2355,7 +2355,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		struct RootSigLibrary
 		{
-			void Initiate(RenderSystem* RS, iAllocator& allocator, iAllocator& temp);
+			void Initiate(dxRenderSystem* RS, iAllocator& allocator, iAllocator& temp);
 
 			const RootSignature* RS2UAVs4SRVs4CBs	= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
 			const RootSignature* RS6CBVs4SRVs		= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
@@ -2440,7 +2440,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		std::mutex				barrierLock;
 		std::shared_mutex		rootSignatureLock;
 
-		inline static RenderSystem*	globalInstance = nullptr;
+		inline static dxRenderSystem*	globalInstance = nullptr;
 	};
 
 	
@@ -2504,8 +2504,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
 		PipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
 
-		FlexKit::LoadPipelineStateRes Build(RenderSystem& renderSystem);
-		FlexKit::LoadPipelineStateRes BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size);
+		FlexKit::LoadPipelineStateRes Build(dxRenderSystem& renderSystem);
+		FlexKit::LoadPipelineStateRes BuildStream(dxRenderSystem& renderSystem, void* buffer, const size_t size);
 
 
 		class PipelineBlob
@@ -2648,7 +2648,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	class MemoryPoolAllocator : public PoolAllocatorInterface
 	{
 	public:
-		MemoryPoolAllocator(RenderSystem&, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
+		MemoryPoolAllocator(dxRenderSystem&, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
 		MemoryPoolAllocator(const MemoryPoolAllocator& rhs)             = delete;
 		MemoryPoolAllocator& operator =(const MemoryPoolAllocator& rhs) = delete;
 
@@ -2680,7 +2680,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t              blockSize;
 
 		DeviceHeapHandle    heap;
-		RenderSystem&       renderSystem;
+		dxRenderSystem&       renderSystem;
 
 		struct MemoryRange
 		{
@@ -2723,39 +2723,39 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 	// INTERNAL USE ONLY!
-	FLEXKITAPI DescHeapPOS PushRenderTarget				(RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
+	FLEXKITAPI DescHeapPOS PushRenderTarget				(dxRenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 
 
-	FLEXKITAPI DescHeapPOS PushDepthStencil				(RenderSystem* RS, ResourceHandle Target, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushDepthStencilArray		(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t arraySize = -1);
-	FLEXKITAPI DescHeapPOS PushCBToDescHeap				(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
-	FLEXKITAPI DescHeapPOS PushSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE, size_t offset = 0);
-	FLEXKITAPI DescHeapPOS PushSRVNULLDescHeap			(RenderSystem* RS, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE, const DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);
+	FLEXKITAPI DescHeapPOS PushDepthStencil				(dxRenderSystem* RS, ResourceHandle Target, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushDepthStencilArray		(dxRenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t arraySize = -1);
+	FLEXKITAPI DescHeapPOS PushCBToDescHeap				(dxRenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
+	FLEXKITAPI DescHeapPOS PushSRVToDescHeap			(dxRenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE, size_t offset = 0);
+	FLEXKITAPI DescHeapPOS PushSRVNULLDescHeap			(dxRenderSystem* RS, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap			(dxRenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE, const DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN);
 
 	[[deprecated]]
-	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushTexture3DToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushTexture3DToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap	(RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap	(RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
+	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap	(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap	(dxRenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
 
-	FLEXKITAPI DescHeapPOS PushUAV1DToDescHeap			(RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap			(RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap			(RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAV3DToDescHeap			(RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAV1DToDescHeap			(dxRenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap			(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap			(dxRenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAV3DToDescHeap			(dxRenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap		(RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2		(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAVCubeMapToDescHeap		(RenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap		(dxRenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap2		(dxRenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAVCubeMapToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS);
 
 
 
-	void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc);
+	void _UpdateSubResourceByUploadQueue(dxRenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc);
 
 
 	/************************************************************************************************/
@@ -2780,7 +2780,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	inline ID3D12PipelineState* LoadComputeShader(const Shader& computeShader, const RootSignature& rootSignature, RenderSystem& renderSystem)
+	inline ID3D12PipelineState* LoadComputeShader(const Shader& computeShader, const RootSignature& rootSignature, dxRenderSystem& renderSystem)
 	{
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
 			rootSignature,
@@ -2883,7 +2883,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	};
 
 
-	FLEXKITAPI void UploadTextureSet	( RenderSystem* RS, TextureSet* TS, iAllocator* Memory );
+	FLEXKITAPI void UploadTextureSet	( dxRenderSystem* RS, TextureSet* TS, iAllocator* Memory );
 	FLEXKITAPI void ReleaseTextureSet	( TextureSet* TS, iAllocator* Memory );
 
 
@@ -2891,14 +2891,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	
 
-	void Release						(RenderSystem* System);
-	void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
-	void Push_DelayedReleaseCopy		(RenderSystem* RS, ID3D12Resource* Res);
-	void Free_DelayedReleaseResources	(RenderSystem* RS);
+	void Release						(dxRenderSystem* System);
+	void Push_DelayedRelease			(dxRenderSystem* RS, ID3D12Resource* Res);
+	void Push_DelayedReleaseCopy		(dxRenderSystem* RS, ID3D12Resource* Res);
+	void Free_DelayedReleaseResources	(dxRenderSystem* RS);
 
 
-	void AddTempBuffer	(ID3D12Resource* _ptr, RenderSystem* RS);
-	void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS);
+	void AddTempBuffer	(ID3D12Resource* _ptr, dxRenderSystem* RS);
+	void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, dxRenderSystem* RS);
 
 
 	inline DescHeapPOS IncrementHeapPOS(const DescHeapPOS POS, const size_t size, const size_t increment) {
@@ -2910,7 +2910,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 
 	void Close					( static_vector<ID3D12GraphicsCommandList*> CLs );
-	void ClearBackBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, IRenderWindow* RW, float4 ClearColor );
+	void ClearBackBuffer		( dxRenderSystem* RS, ID3D12GraphicsCommandList* CL, IRenderWindow* RW, float4 ClearColor );
 
 
 	const float DefaultClearDepthValues_1[]	= { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, };
@@ -2921,7 +2921,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 	// Depreciated API
 
-	void CreateVertexBuffer			( RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
+	void CreateVertexBuffer			( dxRenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
 
 
 	/************************************************************************************************/
@@ -2936,8 +2936,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile	(char* file, RenderSystem* RS, CopyContextHandle, iAllocator* Memout);
-	FLEXKITAPI ResourceHandle   LoadTexture				(TextureBuffer* Buffer, CopyContextHandle handle, RenderSystem* RS, iAllocator* Memout, DeviceFormat format = DeviceFormat::R8G8B8A8_UNORM);
+	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile	(char* file, dxRenderSystem* RS, CopyContextHandle, iAllocator* Memout);
+	FLEXKITAPI ResourceHandle   LoadTexture				(TextureBuffer* Buffer, CopyContextHandle handle, dxRenderSystem* RS, iAllocator* Memout, DeviceFormat format = DeviceFormat::R8G8B8A8_UNORM);
 
 
 	//FLEXKITAPI Shader           LoadShader_OLD                  (const char* Entry, const char* ShaderVersion, const char* File);

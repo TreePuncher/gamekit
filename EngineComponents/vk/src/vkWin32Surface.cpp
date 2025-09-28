@@ -372,15 +372,14 @@ namespace FlexKit
 		{
 			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
-			uint32_t imageIdx;
-			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 0, nullptr, nullptr, &imageIdx); res != VK_SUCCESS)
+			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, presentSemaphore, nullptr, &const_cast<uint32_t&>(imageIndex)); res != VK_SUCCESS)
 				throw std::exception("Failed to get next image!");
 
 			renderSystem.resources.Set<ResourceFieldID::APIHandle>(
 				resource,
 				vkResourceEntry{
 				    .type	= vkResourceEntry::Type::RenderTarget,
-					.image	= images[imageIdx]
+					.image	= images[imageIndex]
 				});
 
 			return resource;
@@ -393,7 +392,36 @@ namespace FlexKit
 
 		bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) final
 		{
-			return false;
+			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
+
+			auto test0 = renderSystem.GetCurrentCounter();
+			auto test1 = renderSystem.GetCurrentProgress();
+
+			VkSemaphoreSignalInfo signalInfo{
+				.sType		= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+				.pNext		= nullptr,
+				.semaphore	= presentSemaphore,
+				.value		= renderSystem.GetCurrentCounter()
+			};
+
+			vkSignalSemaphore(renderSystem.device, &signalInfo);
+
+
+			VkPresentInfoKHR presentInfo = {
+				.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+				.pNext				= nullptr,
+
+				.waitSemaphoreCount	= 1,
+				.pWaitSemaphores	= &renderSystem.vkDirectQueueCounter,
+
+				.swapchainCount		= 1,
+				.pSwapchains		= &swapchain,
+
+				.pImageIndices		= &imageIndex,
+				.pResults			= nullptr
+			};
+
+			return vkQueuePresentKHR(renderSystem.device.get_queue(vkb::QueueType::graphics).value(), &presentInfo) == VK_SUCCESS;
 		}
 
 		void Resize(const uint2 WH) final
@@ -406,16 +434,14 @@ namespace FlexKit
 			vkRenderSystem::GetInstance().ReleaseResource(resource);
 		}
 
-
-		operator ResourceHandle () { return GetBackBuffer(); }
-
-		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
-		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
-
 		VkSurfaceKHR	surface		= nullptr;
 		VkSwapchainKHR	swapchain	= nullptr;
+		VkFence			windowFence;
+		VkSemaphore		presentSemaphore;
+
 	    ResourceHandle	resource	= InvalidHandle;
 		VkImage			images[3];
+		uint32_t		imageIndex;
 	};
 
 
@@ -498,6 +524,23 @@ namespace FlexKit
 
 		uint imageCount;
 		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
+
+
+        VkSemaphoreTypeCreateInfo semaphoreType{
+		    .sType			= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+	        .pNext			= 0,
+	        .semaphoreType	= VK_SEMAPHORE_TYPE_TIMELINE,
+	        .initialValue	= 0u
+		};
+
+		VkSemaphoreCreateInfo createTimelineSemaphoreInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+		};
+
+		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphore); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
 
 		newRenderWindow.resource	= renderTarget;
 		newRenderWindow.swapchain	= swapchain;

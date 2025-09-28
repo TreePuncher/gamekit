@@ -13,6 +13,13 @@ struct TestState : FlexKit::FrameworkState
 		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, FlexKit::DeviceFormat::R8G8B8A8_UNORM);
 	}
 
+	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT)
+	{
+		FlexKit::vkWin32UpdateInput();
+	    return nullptr;
+	}
+
+
 	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph)
 	{
 		FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
@@ -21,7 +28,7 @@ struct TestState : FlexKit::FrameworkState
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) override
 	{
-		renderWindow->Present();
+		bool res = renderWindow->Present();
 	}
 
 

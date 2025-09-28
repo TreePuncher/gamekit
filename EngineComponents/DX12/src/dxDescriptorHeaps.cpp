@@ -839,7 +839,7 @@ namespace dx_Internal
 		return {
 			.begin		= descriptorHeap,
 			.size		= static_cast<uint32_t>(FillState.size()),
-			.stride		= static_cast<uint32_t>(RenderSystem::_GetInstance().DescriptorCBVSRVUAVSize)
+			.stride		= static_cast<uint32_t>(dxRenderSystem::_GetInstance().DescriptorCBVSRVUAVSize)
 		};
 	}
 

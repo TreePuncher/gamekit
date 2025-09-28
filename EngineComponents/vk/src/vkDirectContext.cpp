@@ -1,8 +1,37 @@
 #include "vkDirectContext.hpp"
+#include "vkRenderSystem.hpp"
 
 namespace VK_internal
 {
 	using namespace FlexKit;
+
+
+	vkDirectContext::vkDirectContext()
+	{
+		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		VkCommandPoolCreateInfo createPoolDesc{
+				.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+				.pNext				= nullptr,
+				.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+				.queueFamilyIndex	= 0
+		};
+
+		if (auto res = vkCreateCommandPool(renderSystem.device, &createPoolDesc, nullptr, &commandPool); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to create command pool!"};
+
+        VkCommandBufferAllocateInfo createCommandBuffer{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.pNext					= nullptr,
+			.commandPool			= commandPool,
+			.level					= VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount		= 1,
+		};
+
+		if (auto res = vkAllocateCommandBuffers(renderSystem.device, &createCommandBuffer, &commandBuffer); res != VK_SUCCESS)
+			throw std::runtime_error{ "Failed to create command buffer" };
+	}
+
 
 	void vkDirectContext::SetDebugName(const char* debugStr) noexcept
 	{
@@ -330,7 +359,35 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::Close()
-    {}
+	{
+	    VkCommandBufferSubmitInfo clInfo{
+			.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+	        .pNext			= nullptr,
+	        .commandBuffer	= commandBuffer
+		};
+
+		if (auto res = vkEndCommandBuffer(commandBuffer); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to close command buffer!" };
+	}
+
+	void vkDirectContext::Begin(uint64_t submissionValue)
+	{
+		dispatchValue = submissionValue;
+
+		VkCommandBufferBeginInfo beginInfo{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .pNext				= nullptr,
+			.flags				= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+			.pInheritanceInfo	= nullptr
+		};
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+	}
+
+	void vkDirectContext::Reset()
+	{
+		if (auto res = vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to reset commandbuffer!" };
+	}
 
 	void vkDirectContext::SetViewports(std::span<const Viewport> VPs)
     {}

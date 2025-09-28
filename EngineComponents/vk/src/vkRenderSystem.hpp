@@ -22,7 +22,9 @@ namespace VK_internal
 		std::tuple<IPipelineState*, const IRootSignature*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const final;
 
 		// Sync functions
-		size_t		GetCurrentCounter()						final;
+		uint64_t	GetCurrentProgress() const;
+
+		uint64_t	GetCurrentCounter()						final;
 		SyncPoint	GetSubmissionTicket(uint32_t count)		final; 
 		void		SyncUploadTo(SyncPoint)					final;
 		SyncPoint	SyncUploadPoint()						final;
@@ -173,17 +175,23 @@ namespace VK_internal
 		void ReleaseDescriptorRange(DescriptorRange, uint64_t) final;
 		void Release() final;
 
+		// API objects
 		vkb::Instance			instance;
 		vkb::Device				device;
+
 		iAllocator*				allocator = nullptr;
 		VkAllocationCallbacks	vkAllocator;
 		VkDescriptorPool		descriptorPool = nullptr;
-		vkResourceTable			resources;
 
-		VkFence		directQueueFence = nullptr;
-		VkSemaphore	vkDirectQueueCounter;
+		// Synchronization
+		VkFence					directQueueFence = nullptr;
+		VkSemaphore				vkDirectQueueCounter;
 
-		uint64_t directSubmissionCounter	= 0;
-		uint64_t copySubmissionCounter		= 0;
+		std::atomic_uint64_t	directSubmissionCounter		= 0;
+		std::atomic_uint64_t	copySubmissionCounter		= 0;
+
+		// Bookkeeping 
+		vkResourceTable					resources;
+		Vector<struct vkDirectContext*>	pendingDirectContexts;
     };
 }

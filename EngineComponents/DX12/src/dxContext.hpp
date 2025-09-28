@@ -9,12 +9,12 @@ namespace dx_Internal
 	using namespace FlexKit;
 	using FlexKit::ConstantBufferDataSet;
 
-	class RenderSystem;
+	class dxRenderSystem;
 
 	class dxDirectContext : public IDirectContext
 	{
 	public:
-		dxDirectContext(RenderSystem*	renderSystem_IN	= nullptr, 
+		dxDirectContext(dxRenderSystem*	renderSystem_IN	= nullptr, 
 				iAllocator*		allocator		= nullptr);
 			
 		dxDirectContext(dxDirectContext&& RHS);
@@ -297,7 +297,7 @@ namespace dx_Internal
 		uint64_t	_GetCounter() { return dispatchIdx; }
 		struct ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
 
-		RenderSystem* renderSystem = nullptr;
+		dxRenderSystem* renderSystem = nullptr;
 
 		void BeginMarker(const char* str);
 		void EndMarker(const char* str);
