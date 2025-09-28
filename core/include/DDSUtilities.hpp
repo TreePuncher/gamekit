@@ -121,7 +121,7 @@ namespace FlexKit
 
 	/*
 	bool CreateDDSTextureFromFile12(
-		RenderSystem*		RS,
+		dxRenderSystem*		RS,
 		CopyContextHandle	handle,
 		const wchar_t*		szFileName,
 		ID3D12Resource**	texture,

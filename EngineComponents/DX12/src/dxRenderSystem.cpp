@@ -77,7 +77,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 	
-	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
+	UAVBuffer::UAVBuffer(const dxRenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
 		FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
 
@@ -189,7 +189,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void DescriptorHeapAllocator::Initialize(RenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator)
+	void DescriptorHeapAllocator::Initialize(dxRenderSystem& IN_renderSystem, const size_t numDescCount, FlexKit::iAllocator* IN_allocator)
 	{
 		descHeap		= IN_renderSystem._CreateShaderVisibleHeap(numDescCount);
 		renderSystem	= &IN_renderSystem;
@@ -762,9 +762,9 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RootSignatureBuilder::Build(RenderSystem* RS, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::Build(dxRenderSystem* RS, iAllocator& temp)
 	{
-		auto result = RenderSystem::_GetInstance()._CreateRootSignature(*this, temp);
+		auto result = dxRenderSystem::_GetInstance()._CreateRootSignature(*this, temp);
 
 		if (result)
 		{
@@ -780,7 +780,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, RenderSystem& renderSystem, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, dxRenderSystem& renderSystem, iAllocator& temp)
 	{
 		auto result = renderSystem.LoadRootSignature(dir, entry);
 		
@@ -900,7 +900,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* buffer, const size_t bufferSize, RenderSystem& renderSystem, iAllocator& temp)
+	RootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* buffer, const size_t bufferSize, dxRenderSystem& renderSystem, iAllocator& temp)
 	{
 		ID3D12VersionedRootSignatureDeserializer* deserializer;
 		auto HR  = D3D12CreateVersionedRootSignatureDeserializer(buffer, bufferSize, IID_PPV_ARGS(&deserializer));
@@ -1014,7 +1014,7 @@ namespace dx_Internal
 
 			auto t = (uint64_t)Signature;
 			mutable_this->Signature = nullptr;
-			RenderSystem::_GetInstance()._ReleaseRootSignature(t);
+			dxRenderSystem::_GetInstance()._ReleaseRootSignature(t);
 			allocator->free(mutable_this);
 		}
 	}
@@ -1070,7 +1070,7 @@ namespace dx_Internal
 	PipelineBuilderImpl& PipelineBuilderImpl::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		/*
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		struct
@@ -1092,7 +1092,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1132,7 +1132,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1147,7 +1147,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1162,7 +1162,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1177,7 +1177,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1192,7 +1192,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1207,7 +1207,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1222,7 +1222,7 @@ namespace dx_Internal
 
 	PipelineBuilderImpl& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
-		shaders.emplace_back(RenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
+		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
 
 		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
@@ -1397,7 +1397,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::Build(RenderSystem& renderSystem)
+	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::Build(dxRenderSystem& renderSystem)
 	{
 		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
 			.SizeInBytes					= blob.size(),
@@ -1457,7 +1457,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::BuildStream(RenderSystem& renderSystem, void* buffer, const size_t size)
+	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::BuildStream(dxRenderSystem& renderSystem, void* buffer, const size_t size)
 	{
 		const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
 			.SizeInBytes					= size,
@@ -1474,7 +1474,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS, iAllocator& allocator, iAllocator& temp)
+	void dxRenderSystem::RootSigLibrary::Initiate(dxRenderSystem* RS, iAllocator& allocator, iAllocator& temp)
 	{
 		ID3D12Device* Device = RS->pDevice;
 
@@ -1859,7 +1859,7 @@ namespace dx_Internal
 
 	LoadPipelineStateRes CreateClearBufferPSO(IRenderSystem& irs, iAllocator&)
 	{
-		auto& RS = static_cast<RenderSystem&>(irs);
+		auto& RS = static_cast<dxRenderSystem&>(irs);
 		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
@@ -2029,7 +2029,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RenderSystem::RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
+	dxRenderSystem::dxRenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
 			Memory			{ IN_allocator },
 			Queries			{ IN_allocator, this },
 			Textures		{ IN_allocator },
@@ -2051,13 +2051,13 @@ namespace dx_Internal
 	}
 
 
-	RenderSystem::~RenderSystem() { Release(); }
+	dxRenderSystem::~dxRenderSystem() { Release(); }
 
 
 	/************************************************************************************************/
 
 
-	bool RenderSystem::Initiate(Graphics_Desc* in)
+	bool dxRenderSystem::Initiate(Graphics_Desc* in)
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
 
@@ -2396,7 +2396,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::Release()
+	void dxRenderSystem::Release()
 	{
 		if (!Memory)
 			return;
@@ -2406,7 +2406,7 @@ namespace dx_Internal
 		SyncDirectTo(SyncUploadTicket());
 		WaitFor(SyncDirectTicket());
 
-		FK_LOG_9("Releasing RenderSystem");
+		FK_LOG_9("Releasing dxRenderSystem");
 
 		for (auto& ctx : Contexts)
 			ctx.Release();
@@ -2457,7 +2457,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IPipelineState* RenderSystem::GetPSO(PSOHandle StateID, iAllocator& temp)
+	const IPipelineState* dxRenderSystem::GetPSO(PSOHandle StateID, iAllocator& temp)
 	{
 		return PipelineStates.GetPSO(StateID, temp);
 	}
@@ -2466,7 +2466,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IRootSignature * const RenderSystem::GetPSORootSignature(PSOHandle handle) const
+	const IRootSignature * const dxRenderSystem::GetPSORootSignature(PSOHandle handle) const
 	{
 		return PipelineStates.GetPSORootSig(handle);
 	}
@@ -2474,7 +2474,7 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	std::tuple<IPipelineState*, const IRootSignature*> RenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
+	std::tuple<IPipelineState*, const IRootSignature*> dxRenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
 	{
 		auto object_ptr = PipelineStates.GetPSOObject(handle);
 		object_ptr->WaitForLoad(temp);
@@ -2483,7 +2483,7 @@ namespace dx_Internal
 	}
 
 
-	void RenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
+	void dxRenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc desc)
 	{
 
 		FK_ASSERT(0);
@@ -2494,7 +2494,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN fn)
+	void dxRenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN fn)
 	{
 		PipelineStates.RegisterPSOLoader(State, std::move(fn));
 	}
@@ -2503,7 +2503,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::LoadPSOIfRequired(PSOHandle state)
+	void dxRenderSystem::LoadPSOIfRequired(PSOHandle state)
 	{
 		auto obj = PipelineStates.GetPSOObject(state);
 
@@ -2515,7 +2515,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::QueuePSOLoad(PSOHandle State)
+	void dxRenderSystem::QueuePSOLoad(PSOHandle State)
 	{
 		FK_LOG_2("Reloading PSO!");
 
@@ -2526,7 +2526,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetCurrentCounter()
+	uint64_t dxRenderSystem::GetCurrentCounter()
 	{
 		return directSubmissionCounter.load(std::memory_order_relaxed);
 	}
@@ -2535,7 +2535,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
+	void dxRenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
 	{
 		Textures.ReplaceResources(handle, resources, size);
 	}
@@ -2544,7 +2544,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::WaitForGPU()
+	void dxRenderSystem::WaitForGPU()
 	{
 		const size_t completedValue	= directFence->GetCompletedValue();
 
@@ -2573,7 +2573,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::WaitFor(const SyncPoint& sp)
+	void dxRenderSystem::WaitFor(const SyncPoint& sp)
 	{
 		WaitFor(sp.syncCounter);
 	}
@@ -2582,7 +2582,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::WaitFor(const uint64_t counter)
+	void dxRenderSystem::WaitFor(const uint64_t counter)
 	{
 		uint32_t stallCounter = 0;
 		while (true)
@@ -2624,7 +2624,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetDebugName(ResourceHandle handle, const char* str)
+	void dxRenderSystem::SetDebugName(ResourceHandle handle, const char* str)
 	{
 		Textures.SetDebugName(handle, str);
 	}
@@ -2633,7 +2633,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetDebugName(DeviceHeapHandle heap, const char* str)
+	void dxRenderSystem::SetDebugName(DeviceHeapHandle heap, const char* str)
 	{
 		SETDEBUGNAME(heaps.GetDeviceResource(heap), str);
 	}
@@ -2642,7 +2642,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetVertexBufferAddress(const VertexBufferHandle VB)
+	D3D12_GPU_VIRTUAL_ADDRESS dxRenderSystem::GetVertexBufferAddress(const VertexBufferHandle VB)
 	{
 		return VertexBuffers.GetAsset(VB)->GetGPUVirtualAddress();
 	}
@@ -2651,7 +2651,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetVertexBufferSize(const VertexBufferHandle VB) const noexcept
+	size_t dxRenderSystem::GetVertexBufferSize(const VertexBufferHandle VB) const noexcept
 	{
 		return VertexBuffers.GetBufferSize(VB);
 	}
@@ -2660,7 +2660,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::MarkTextureUsed(ResourceHandle Handle)
+	void dxRenderSystem::MarkTextureUsed(ResourceHandle Handle)
 	{
 		Textures.MarkRTUsed(Handle);
 	}
@@ -2668,14 +2668,14 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	DevicePointer RenderSystem::GetDevicePointer(const ResourceHandle resourceHandle) const noexcept
+	DevicePointer dxRenderSystem::GetDevicePointer(const ResourceHandle resourceHandle) const noexcept
 	{
 		auto deviceResource = GetDeviceResource(resourceHandle).As<ID3D12Resource>();
 		return deviceResource->GetGPUVirtualAddress();
 	}
 
 
-	DeviceAddressRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const noexcept
+	DeviceAddressRange	dxRenderSystem::GetDeviceRange(const ResourceHandle resource) const noexcept
 	{
 		auto deviceResource = GetDeviceResource(resource).As<ID3D12Resource>();
 		auto resourceSize	= GetResourceSize(resource);
@@ -2688,7 +2688,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceAddressRange	RenderSystem::GetDeviceRange(const ConstantBufferHandle handle) const noexcept
+	DeviceAddressRange	dxRenderSystem::GetDeviceRange(const ConstantBufferHandle handle) const noexcept
 	{
 		auto				resource		= GetDeviceResource(handle).As<ID3D12Resource>();
 		const size_t		resourceSize	= ConstantBuffers.GetBufferSize(handle);
@@ -2704,13 +2704,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
+	size_t dxRenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
 	{
 		return ConstantBuffers.GetBufferOffset(handle);
 	}
 
 
-	size_t RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+	size_t dxRenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
 	{
 		return Textures.GetResourceSize(handle);
 	}
@@ -2719,7 +2719,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
+	size_t    dxRenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
 	{
 		auto resource				= GetDeviceResource(handle).As<ID3D12Resource>();
 		D3D12_RESOURCE_DESC desc	= resource->GetDesc();
@@ -2729,7 +2729,7 @@ namespace dx_Internal
 	}
 
 
-	size_t    RenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
+	size_t    dxRenderSystem::GetAllocationSize(GPUResourceDesc desc) const noexcept
 	{
 		const D3D12_RESOURCE_DESC Resource_DESC = GetD3D12ResourceDesc(desc);
 		auto res = pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC);
@@ -2741,7 +2741,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t	RenderSystem::GetTextureElementSize(ResourceHandle handle) const
+	size_t	dxRenderSystem::GetTextureElementSize(ResourceHandle handle) const
 	{
 		auto Format = Textures.GetFormat(handle);
 		return GetFormatElementSize(Format);
@@ -2751,7 +2751,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
+	uint2	dxRenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
 		if (handle == InvalidHandle)
 			return { 0, 0 };
@@ -2764,7 +2764,7 @@ namespace dx_Internal
 
 
 	/*
-	const uint2	RenderSystem::GetTextureWH(ResourceHandle Handle) const
+	const uint2	dxRenderSystem::GetTextureWH(ResourceHandle Handle) const
 	{
 		return Texture2DUAVs.GetExtra(Handle).WH;
 	}
@@ -2773,7 +2773,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceFormat RenderSystem::GetTextureFormat(ResourceHandle handle) const
+	DeviceFormat dxRenderSystem::GetTextureFormat(ResourceHandle handle) const
 	{
 		return DXGIFormat2TextureFormat(Textures.GetFormat(handle));
 	}
@@ -2782,7 +2782,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DXGI_FORMAT RenderSystem::GetTextureDeviceFormat(ResourceHandle handle) const
+	DXGI_FORMAT dxRenderSystem::GetTextureDeviceFormat(ResourceHandle handle) const
 	{
 		return Textures.GetFormat(handle);
 	}
@@ -2791,7 +2791,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	TextureDimension RenderSystem::GetTextureDimension(ResourceHandle handle) const
+	TextureDimension dxRenderSystem::GetTextureDimension(ResourceHandle handle) const
 	{
 		return Textures.GetDimension(handle);
 	}
@@ -2800,7 +2800,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetTextureArraySize(ResourceHandle handle) const
+	size_t dxRenderSystem::GetTextureArraySize(ResourceHandle handle) const
 	{
 		return Textures.GetArraySize(handle);
 	}
@@ -2809,7 +2809,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint8_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
+	uint8_t dxRenderSystem::GetTextureMipCount(ResourceHandle handle) const
 	{
 		return Textures.GetMIPCount(handle);
 	}
@@ -2818,7 +2818,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint2 RenderSystem::GetTextureTilingWH(ResourceHandle handle, const uint mipLevel) const
+	uint2 dxRenderSystem::GetTextureTilingWH(ResourceHandle handle, const uint mipLevel) const
 	{
 		auto WH = Textures.GetWH(handle);
 		WH[0]   = WH[0] >> mipLevel;
@@ -2833,7 +2833,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint2 RenderSystem::GetHeapOffset(ResourceHandle handle, uint subResourceID) const
+	uint2 dxRenderSystem::GetHeapOffset(ResourceHandle handle, uint subResourceID) const
 	{
 		return Textures.GetHeapOffset(handle, subResourceID);
 	}
@@ -2842,7 +2842,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
+	void dxRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
 	{
 		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
 		auto wh			= GetTextureWH(handle);
@@ -2869,7 +2869,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, TextureBuffer* buffers, size_t resourceCount) // Uses Upload Queue
+	void dxRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, TextureBuffer* buffers, size_t resourceCount) // Uses Upload Queue
 	{
 		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
 		auto format		= GetTextureFormat(handle);
@@ -2886,7 +2886,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetConstantBufferAddress(const ConstantBufferHandle CB)
+	D3D12_GPU_VIRTUAL_ADDRESS dxRenderSystem::GetConstantBufferAddress(const ConstantBufferHandle CB)
 	{
 		// TODO: deal with Push Buffer Offsets
 		return ConstantBuffers.GetDeviceResource(CB)->GetGPUVirtualAddress();
@@ -2896,7 +2896,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	BLAS_PreBuildInfo RenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet& vertexBufferSet) const noexcept
+	BLAS_PreBuildInfo dxRenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet& vertexBufferSet) const noexcept
 	{
 		uint8_t	indexBufferIdx	= vertexBufferSet.GetIndexBufferIndex();
 		auto indexBuffer		= vertexBufferSet[indexBufferIdx];
@@ -2941,7 +2941,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetTextureFrameGraphIndex(ResourceHandle Texture) noexcept
+	size_t dxRenderSystem::GetTextureFrameGraphIndex(ResourceHandle Texture) noexcept
 	{
 		return Textures.GetFrameGraphIndex(Texture, directSubmissionCounter);
 	}
@@ -2950,7 +2950,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index) noexcept
+	void dxRenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index) noexcept
 	{
 		Textures.SetFrameGraphIndex(Texture, directSubmissionCounter, Index);
 	}
@@ -2959,7 +2959,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceHeapHandle  RenderSystem::CreateHeap(const size_t heapSize, const uint32_t flags)
+	DeviceHeapHandle  dxRenderSystem::CreateHeap(const size_t heapSize, const uint32_t flags)
 	{
 		return heaps.CreateHeap(heapSize, flags);
 	}
@@ -2968,7 +2968,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ConstantBufferHandle RenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
+	ConstantBufferHandle dxRenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return ConstantBuffers.CreateConstantBuffer((uint32_t)BufferSize, GPUResident);
 	}
@@ -2977,7 +2977,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	VertexBufferHandle RenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
+	VertexBufferHandle dxRenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return VertexBuffers.CreateVertexBuffer(BufferSize, GPUResident, this);
 	}
@@ -2986,7 +2986,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
+	ResourceHandle dxRenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
 	{
 		auto resourceDesc			= GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
 		resourceDesc.bufferCount	= (uint8_t)bufferCount;
@@ -3001,7 +3001,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateDepthBufferArray(
+	ResourceHandle dxRenderSystem::CreateDepthBufferArray(
 		const uint2						WH,
 		const bool						UseFloat,
 		const size_t					arraySize,
@@ -3022,7 +3022,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
+	ResourceHandle dxRenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
 	{
 		ProfileFunction();
 
@@ -3147,7 +3147,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept
+	void dxRenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept
 	{
 		ProfileFunction();
 
@@ -3248,7 +3248,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateGPUResourceHandle()
+	ResourceHandle dxRenderSystem::CreateGPUResourceHandle()
 	{
 		return Textures.GetFreeHandle();
 	}
@@ -3257,7 +3257,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	QueryHandle	RenderSystem::CreateOcclusionBuffer(size_t Counts)
+	QueryHandle	dxRenderSystem::CreateOcclusionBuffer(size_t Counts)
 	{
 		return Queries.CreateQueryBuffer(Counts, QueryType::BinaryOcclusionQuery);
 	}
@@ -3266,7 +3266,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
+	ResourceHandle dxRenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
 	{
 		auto desc = GPUResourceDesc::UAVResource(resourceSize);
 		desc.bufferCount = tripleBuffer ? 3 : 1;
@@ -3287,7 +3287,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool renderTarget)
+	ResourceHandle dxRenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat format, const bool renderTarget)
 	{
 		auto desc			= GPUResourceDesc::UAVTexture(WH, format, renderTarget);
 		desc.bufferCount	= 3;
@@ -3302,7 +3302,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	SOResourceHandle RenderSystem::CreateStreamOutResource(size_t resourceSize, bool tripleBuffered)
+	SOResourceHandle dxRenderSystem::CreateStreamOutResource(size_t resourceSize, bool tripleBuffered)
 	{
 		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
 		Resource_DESC.Width		= resourceSize;
@@ -3355,7 +3355,7 @@ namespace dx_Internal
 
 
 
-	QueryHandle RenderSystem::CreateSOQuery(size_t SOIndex, size_t count)
+	QueryHandle dxRenderSystem::CreateSOQuery(size_t SOIndex, size_t count)
 	{
 		return Queries.CreateSOQueryBuffer(count, SOIndex);
 	}
@@ -3364,7 +3364,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	QueryHandle	RenderSystem::CreateTimeStampQuery(size_t count)
+	QueryHandle	dxRenderSystem::CreateTimeStampQuery(size_t count)
 	{
 		return Queries.CreateQueryBuffer(count, QueryType::TimeStats);
 	}
@@ -3385,7 +3385,7 @@ namespace dx_Internal
 	} D3D12_DISPATCH_RAYS_DESC;
 
 
-	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* irootSignatureID)
+	IndirectLayout dxRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* irootSignatureID)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
@@ -3484,7 +3484,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator)
+	void dxRenderSystem::SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator)
 	{
 		FK_LOG_9("Updating tile mappings for frame: %u", directSubmissionCounter.load(std::memory_order_relaxed));
 
@@ -3653,7 +3653,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, std::span<const TileMapping> tileMaps, iAllocator& temp)
+	void dxRenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, std::span<const TileMapping> tileMaps, iAllocator& temp)
 	{
 		Textures.UpdateTileMappings(handle, tileMaps.data(), tileMaps.data() + tileMaps.size(), temp);
 	}
@@ -3662,7 +3662,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const TileMapList& RenderSystem::GetTileMappings(const ResourceHandle handle)
+	const TileMapList& dxRenderSystem::GetTileMappings(const ResourceHandle handle)
 	{
 		return Textures.GetTileMappings(handle);
 	}
@@ -3671,7 +3671,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ReadBackResourceHandle  RenderSystem::CreateReadBackBuffer(const size_t bufferSize)
+	ReadBackResourceHandle  dxRenderSystem::CreateReadBackBuffer(const size_t bufferSize)
 	{
 		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
 		Resource_DESC.Width     = bufferSize;
@@ -3702,13 +3702,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	SubAllocation RenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept
+	SubAllocation dxRenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept
 	{
 		return ConstantBuffers.Reserve(CB, reserveSize);
 	}
 
 
-	SubAllocation RenderSystem::ReserveVertexBuffer(VertexBufferHandle VB, size_t reserveSize)		noexcept
+	SubAllocation dxRenderSystem::ReserveVertexBuffer(VertexBufferHandle VB, size_t reserveSize)		noexcept
 	{
 		return VertexBuffers.Reserve(VB, reserveSize);
 	}
@@ -3717,7 +3717,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler)
+	void dxRenderSystem::SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler)
 	{
 		ReadBackTable.SetCallback(readbackBuffer, std::move(handler));
 	}
@@ -3726,7 +3726,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	std::pair<void*, size_t> RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
+	std::pair<void*, size_t> dxRenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
 	{
 		auto temp = ReadBackTable.OpenBufferData(readbackBuffer, readSize);
 		return { temp.buffer, temp.bufferSize };
@@ -3736,7 +3736,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer)
+	void dxRenderSystem::CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer)
 	{
 		ReadBackTable.CloseBufferData(readbackBuffer);
 	}
@@ -3745,7 +3745,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::FlushPendingReadBacks()
+	void dxRenderSystem::FlushPendingReadBacks()
 	{
 		ReadBackTable.Update();
 	}
@@ -3754,7 +3754,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout layout) noexcept
+	void dxRenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout layout) noexcept
 	{
 		StreamOutTable.SetLayout(handle, layout);
 	}
@@ -3763,7 +3763,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetObjectLayout(ResourceHandle handle, DeviceLayout layout) noexcept
+	void dxRenderSystem::SetObjectLayout(ResourceHandle handle, DeviceLayout layout) noexcept
 	{
 		Textures.SetLayout(handle, layout);
 	}
@@ -3772,7 +3772,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const QueryHandle handle) const noexcept
+	DeviceLayout dxRenderSystem::GetObjectLayout(const QueryHandle handle) const noexcept
 	{
 		return Queries.GetLayout(handle);
 	}
@@ -3781,7 +3781,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const SOResourceHandle handle) const noexcept
+	DeviceLayout dxRenderSystem::GetObjectLayout(const SOResourceHandle handle) const noexcept
 	{
 		return StreamOutTable.GetLayout(handle);
 	}
@@ -3790,7 +3790,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceLayout RenderSystem::GetObjectLayout(const ResourceHandle handle) const noexcept
+	DeviceLayout dxRenderSystem::GetObjectLayout(const ResourceHandle handle) const noexcept
 	{
 		return Textures.GetLayout(handle);
 	}
@@ -3799,7 +3799,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ID3D12Resource* resource) const noexcept
+	PackedResourceTileInfo dxRenderSystem::GetPackedTileInfo(ID3D12Resource* resource) const noexcept
 	{
 		UINT						TileCount = 0;
 		D3D12_PACKED_MIP_INFO		packedMipInfo;
@@ -3819,7 +3819,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	PackedResourceTileInfo RenderSystem::GetPackedTileInfo(ResourceHandle resource)	const noexcept
+	PackedResourceTileInfo dxRenderSystem::GetPackedTileInfo(ResourceHandle resource)	const noexcept
 	{
 		UINT						tileCount = 0;
 		D3D12_PACKED_MIP_INFO		packedMipInfo;
@@ -3841,13 +3841,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceHeap_ptr RenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
+	DeviceHeap_ptr dxRenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
 	{
 		return heaps.GetDeviceResource(handle);
 	}
 
 
-	DeviceResource_ptr RenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
+	DeviceResource_ptr dxRenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
 	{
 		return ReadBackTable.GetDeviceResource(handle);
 	}
@@ -3856,7 +3856,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceResource_ptr RenderSystem::GetDeviceResource(const ConstantBufferHandle handle) const
+	DeviceResource_ptr dxRenderSystem::GetDeviceResource(const ConstantBufferHandle handle) const
 	{
 		return ConstantBuffers.GetDeviceResource(handle);
 	}
@@ -3865,7 +3865,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceResource_ptr RenderSystem::GetDeviceResource(const ResourceHandle handle) const
+	DeviceResource_ptr dxRenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
 		if (handle != InvalidHandle)
 			return Textures.GetResource(handle, pDevice);
@@ -3877,7 +3877,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceResource_ptr	RenderSystem::GetDeviceResource(const SOResourceHandle handle) const
+	DeviceResource_ptr	dxRenderSystem::GetDeviceResource(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAsset(handle);
 	}
@@ -3886,7 +3886,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DeviceResource_ptr	RenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
+	DeviceResource_ptr	dxRenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetCounter(handle);
 	}
@@ -3896,7 +3896,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
+	size_t dxRenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetSize(handle);
 	}
@@ -3905,7 +3905,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t	RenderSystem::GetVertexBufferOffset(const VertexBufferHandle handle) const
+	size_t	dxRenderSystem::GetVertexBufferOffset(const VertexBufferHandle handle) const
 	{
 		return VertexBuffers.GetCurrentVertexBufferOffset(handle);
 	}
@@ -3914,7 +3914,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RenderSystem::VertexBufferPush(VertexBufferHandle buffer, void* _ptr, size_t elementSize)
+	bool dxRenderSystem::VertexBufferPush(VertexBufferHandle buffer, void* _ptr, size_t elementSize)
 	{
 		return VertexBuffers.PushVertex(buffer, _ptr, elementSize);
 	}
@@ -3923,7 +3923,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::ConstantBufferAlign(ConstantBufferHandle cb) noexcept
+	size_t dxRenderSystem::ConstantBufferAlign(ConstantBufferHandle cb) noexcept
 	{
 		return ConstantBuffers.AlignNext(cb);
 	}
@@ -3932,7 +3932,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	UAVResourceLayout RenderSystem::GetUAVBufferLayout(const ResourceHandle handle) const noexcept
+	UAVResourceLayout dxRenderSystem::GetUAVBufferLayout(const ResourceHandle handle) const noexcept
 	{
 		auto extra  = Textures.GetExtra(handle);
 		auto temp   = std::get_if<UAVResourceLayout>(&extra);
@@ -3944,7 +3944,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SetUAVBufferLayout(const ResourceHandle handle, const UAVResourceLayout newConfig) noexcept
+	void dxRenderSystem::SetUAVBufferLayout(const ResourceHandle handle, const UAVResourceLayout newConfig) noexcept
 	{
 		Textures.SetExtra(handle, newConfig);
 	}
@@ -3953,7 +3953,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetUAVBufferSize(const ResourceHandle handle) const noexcept
+	size_t dxRenderSystem::GetUAVBufferSize(const ResourceHandle handle) const noexcept
 	{
 		return Textures.GetResourceSize(handle);
 	}
@@ -3962,7 +3962,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RenderSystem::GetHeapSize(const DeviceHeapHandle heap) const
+	size_t dxRenderSystem::GetHeapSize(const DeviceHeapHandle heap) const
 	{
 		return heaps.GetHeapSize(heap);
 	}
@@ -3971,7 +3971,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	AvailableFeatures::Raytracing RenderSystem::GetRTFeatureLevel() const noexcept
+	AvailableFeatures::Raytracing dxRenderSystem::GetRTFeatureLevel() const noexcept
 	{
 		return features.RT_Level;
 	}
@@ -3980,7 +3980,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RenderSystem::RTAvailable() const noexcept
+	bool dxRenderSystem::RTAvailable() const noexcept
 	{
 		return (features.RT_Level != AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE);
 	}
@@ -3989,7 +3989,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ResetConstantBuffer(ConstantBufferHandle constantBuffer)
+	void dxRenderSystem::ResetConstantBuffer(ConstantBufferHandle constantBuffer)
 	{
 		ConstantBuffers.Reset(constantBuffer);
 	}
@@ -3998,7 +3998,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ResetVertexBuffer(VertexBufferHandle constant)
+	void dxRenderSystem::ResetVertexBuffer(VertexBufferHandle constant)
 	{
 		VertexBuffers.Reset(constant);
 	}
@@ -4007,7 +4007,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ResetQuery(QueryHandle handle)
+	void dxRenderSystem::ResetQuery(QueryHandle handle)
 	{
 		Queries.LockUntil(handle, directSubmissionCounter);
 	}
@@ -4016,7 +4016,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseCB(ConstantBufferHandle Handle)
+	void dxRenderSystem::ReleaseCB(ConstantBufferHandle Handle)
 	{
 		ConstantBuffers.ReleaseBuffer(Handle);
 	}
@@ -4025,7 +4025,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseVB(VertexBufferHandle Handle)
+	void dxRenderSystem::ReleaseVB(VertexBufferHandle Handle)
 	{
 		VertexBuffers.ReleaseVertexBuffer(Handle, directSubmissionCounter);
 	}
@@ -4034,7 +4034,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseResource(ResourceHandle Handle)
+	void dxRenderSystem::ReleaseResource(ResourceHandle Handle)
 	{
 		Textures.ReleaseTexture(Handle, directSubmissionCounter);
 	}
@@ -4043,7 +4043,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseReadBack(ReadBackResourceHandle handle)
+	void dxRenderSystem::ReleaseReadBack(ReadBackResourceHandle handle)
 	{
 		ReadBackTable.ReleaseResource(handle);
 	}
@@ -4052,7 +4052,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseHeap(DeviceHeapHandle heap)
+	void dxRenderSystem::ReleaseHeap(DeviceHeapHandle heap)
 	{
 		heaps.ReleaseHeap(heap);
 	}
@@ -4061,7 +4061,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::ReleaseQuery(QueryHandle q)
+	void dxRenderSystem::ReleaseQuery(QueryHandle q)
 	{
 		Queries.Release(q, directSubmissionCounter.load(std::memory_order_acquire));
 	}
@@ -4070,7 +4070,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
+	void Push_DelayedRelease(dxRenderSystem* RS, ID3D12Resource* Res)
 	{
 		RS->FreeList_GraphicsQueue.push_back({ Res, RS->directSubmissionCounter });
 	}
@@ -4079,7 +4079,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void Push_DelayedReleaseCopy(RenderSystem* RS, ID3D12Resource* Res)
+	void Push_DelayedReleaseCopy(dxRenderSystem* RS, ID3D12Resource* Res)
 	{
 		RS->FreeList_CopyQueue.push_back({ Res, RS->copyEngine.counter });
 	}
@@ -4088,7 +4088,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void Free_DelayedReleaseResources(RenderSystem* RS)
+	void Free_DelayedReleaseResources(dxRenderSystem* RS)
 	{
 		{
 			auto completed = RS->directFence->GetCompletedValue();
@@ -4283,7 +4283,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void _UpdateSubResourceByUploadQueue(RenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc)
+	void _UpdateSubResourceByUploadQueue(dxRenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc)
 	{
 		auto& copyCtx = RS->_GetCopyContext(uploadHandle);
 
@@ -4310,7 +4310,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceAccessState endState)
+	void dxRenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceAccessState endState)
 	{
 		if (nullptr == data || nullptr == dest) [[unlikely]]
 			return;
@@ -4360,7 +4360,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	Shader  RenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
+	Shader  dxRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
 	{
 		std::filesystem::path filePath{ file };
 		auto parentPath = filePath.parent_path();
@@ -4495,7 +4495,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	std::expected<Shader, std::string> RenderSystem::LoadRootSignature(const char* file, const char* entry)
+	std::expected<Shader, std::string> dxRenderSystem::LoadRootSignature(const char* file, const char* entry)
 	{
 		std::filesystem::path filePath{ file };
 		auto parentPath = filePath.parent_path();
@@ -4599,7 +4599,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void CreateVertexBuffer(RenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out)
+	void CreateVertexBuffer(dxRenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out)
 	{
 		// TODO: Add Buffer Layout Structure for more complex Buffer Layouts
 		// TODO: ATM only is able to make Buffers of a single Value
@@ -4729,7 +4729,7 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	VertexBufferHandle VertexBufferStateTable::CreateVertexBuffer(size_t BufferSize, bool GPUResident, RenderSystem* RS) // Creates Using Placed Resource
+	VertexBufferHandle VertexBufferStateTable::CreateVertexBuffer(size_t BufferSize, bool GPUResident, dxRenderSystem* RS) // Creates Using Placed Resource
 	{
 		VBufferHandle Buffer[3];
 
@@ -4756,7 +4756,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	VertexBufferStateTable::VBufferHandle VertexBufferStateTable::CreateVertexBufferResource(size_t BufferSize, bool GPUResident, RenderSystem* RS)
+	VertexBufferStateTable::VBufferHandle VertexBufferStateTable::CreateVertexBufferResource(size_t BufferSize, bool GPUResident, dxRenderSystem* RS)
 	{
 		ID3D12Resource*	NewResource = RS->_CreateVertexBufferDeviceResource(BufferSize, GPUResident);
 		void* _ptr = nullptr;
@@ -5631,7 +5631,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void ResourceStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
+	void ResourceStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, dxRenderSystem& renderSystem, iAllocator* allocator_temp)
 	{
 		Vector<D3D12_TILED_RESOURCE_COORDINATE>	coordinates	{ allocator_temp };
 		Vector<D3D12_TILE_REGION_SIZE>			regionSize	{ allocator_temp };
@@ -5974,7 +5974,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	VertexResourceBuffer RenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
+	VertexResourceBuffer dxRenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
 		Resource_DESC.Alignment          = 0;
@@ -6015,7 +6015,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ConstantBuffer RenderSystem::_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc)
+	ConstantBuffer dxRenderSystem::_CreateConstantBufferResource(dxRenderSystem* RS, ConstantBuffer_desc* desc)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(desc->InitialSize);
 		Resource_DESC.Alignment				= 0;
@@ -6061,7 +6061,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RenderSystem::AllocationResult	RenderSystem::_AllocateDescriptorRange(const size_t size)
+	dxRenderSystem::AllocationResult	dxRenderSystem::_AllocateDescriptorRange(const size_t size)
 	{
 		uint64_t completed = directFence->GetCompletedValue();
 
@@ -6070,14 +6070,14 @@ namespace dx_Internal
 		if (res)
 			return res.value();
 		else
-			return std::unexpected{ RenderSystem::DescriptorRangeAllocationError::OutOfSpace };
+			return std::unexpected{ dxRenderSystem::DescriptorRangeAllocationError::OutOfSpace };
 	}
 
 
 	/************************************************************************************************/
 
 
-	void RenderSystem::_ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
+	void dxRenderSystem::_ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
 	{
 		descriptorHeapAllocator.Release(range, lock, directFence->GetCompletedValue());
 	}
@@ -6086,7 +6086,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
+	void dxRenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
 	{
 		if (uploadQueue != InvalidHandle)
 			copyEngine.Push_Temporary(resource, uploadQueue);
@@ -6098,13 +6098,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::_ForceReleaseTexture(ResourceHandle handle)
+	void dxRenderSystem::_ForceReleaseTexture(ResourceHandle handle)
 	{
 		Textures._ReleaseTextureForceRelease(handle);
 	}
 
 
-	void RenderSystem::_ReleaseDelayedResources()
+	void dxRenderSystem::_ReleaseDelayedResources()
 	{
 		//while (Textures.FreeDelayedResourcesIncrementally(directFence->GetCompletedValue()));
 		Textures.FreeDelayedResources(threads, directFence->GetCompletedValue());
@@ -6114,7 +6114,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RenderSystem::VidMemoryStates RenderSystem::_GetVidMemStats()
+	dxRenderSystem::VidMemoryStates dxRenderSystem::_GetVidMemStats()
 	{
 		DXGI_QUERY_VIDEO_MEMORY_INFO VideoMemInfo = {0};
 		if(pDXGIAdapter)
@@ -6127,7 +6127,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	[[nodiscard]] ID3D12DescriptorHeap* RenderSystem::_CreateShaderVisibleHeap(const size_t numDescriptors)
+	[[nodiscard]] ID3D12DescriptorHeap* dxRenderSystem::_CreateShaderVisibleHeap(const size_t numDescriptors)
 	{
 		ID3D12DescriptorHeap* heap;
 
@@ -6147,7 +6147,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12QueryHeap* RenderSystem::_GetQueryResource(QueryHandle Handle)
+	ID3D12QueryHeap* dxRenderSystem::_GetQueryResource(QueryHandle Handle)
 	{
 		return Queries.GetDeviceObject(Handle);
 	}
@@ -6157,7 +6157,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	CopyContext& RenderSystem::_GetCopyContext(CopyContextHandle handle)
+	CopyContext& dxRenderSystem::_GetCopyContext(CopyContextHandle handle)
 	{
 		if (handle == InvalidHandle)
 		{
@@ -6174,7 +6174,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::_OnCrash()
+	void dxRenderSystem::_OnCrash()
 	{
 		static std::mutex m;
 
@@ -6214,10 +6214,10 @@ namespace dx_Internal
 				decoder,
 				GFSDK_Aftermath_GpuCrashDumpDecoderFlags_ALL_INFO,
 				GFSDK_Aftermath_GpuCrashDumpFormatterFlags_NONE,
-				RenderSystem::OnShaderDebugInfoLookup,
-				RenderSystem::OnShaderLookup,
-				RenderSystem::OnShaderInstructionsLookup,
-				RenderSystem::OnShaderSourceDebugInfoLookup,
+				dxRenderSystem::OnShaderDebugInfoLookup,
+				dxRenderSystem::OnShaderLookup,
+				dxRenderSystem::OnShaderInstructionsLookup,
+				dxRenderSystem::OnShaderSourceDebugInfoLookup,
 				this,
 				&jsonSize);
 
@@ -6470,13 +6470,13 @@ namespace dx_Internal
 
 	void RenderSystem::WriteGpuCrashDumpToFile(const void* pGpuCrashDump, const uint32_t gpuCrashDumpSize)
 	{
-		FK_LOG_ERROR("RenderSystem::WriteGpuCrashDumpToFile");
+		FK_LOG_ERROR("dxRenderSystem::WriteGpuCrashDumpToFile");
 	}
 
 
 	void RenderSystem::GpuCrashDumpCallback(const void* gpuCrashDump, const uint32_t gpuCrashDumpSize, void* pUserData)
 	{
-		FK_LOG_ERROR("RenderSystem::GpuCrashDumpCallback");
+		FK_LOG_ERROR("dxRenderSystem::GpuCrashDumpCallback");
 
 		RenderSystem*   renderSystem = reinterpret_cast<RenderSystem*>(pUserData);
 
@@ -6581,7 +6581,7 @@ namespace dx_Internal
 #endif
 
 
-	bool RenderSystem::DEBUG_AttachPIX()
+	bool dxRenderSystem::DEBUG_AttachPIX()
 	{
 #if USING(PIX)
 		if (pix)
@@ -6597,7 +6597,7 @@ namespace dx_Internal
 	}
 
 
-	bool RenderSystem::DEBUG_BeginPixCapture()
+	bool dxRenderSystem::DEBUG_BeginPixCapture()
 	{
 #if USING(PIX)
 		if (pix)
@@ -6613,7 +6613,7 @@ namespace dx_Internal
 	}
 
 
-	bool RenderSystem::DEBUG_EndPixCapture()
+	bool dxRenderSystem::DEBUG_EndPixCapture()
 	{
 #if USING(PIX)
 		if (pix)
@@ -6632,7 +6632,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle RenderSystem::_CreateDefaultTexture()
+	ResourceHandle dxRenderSystem::_CreateDefaultTexture()
 	{
 		char tempBuffer[256];
 		memset(tempBuffer, 0xffff, 256);
@@ -6661,7 +6661,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	UploadReservation RenderSystem::ReserveDirectUploadSpace(size_t size, size_t alignment) noexcept
+	UploadReservation dxRenderSystem::ReserveDirectUploadSpace(size_t size, size_t alignment) noexcept
 	{
 		std::scoped_lock lock{ directUploadBufferMutex };
 		auto res = directUploadBuffer.Reserve(size, alignment);
@@ -6689,7 +6689,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IRootSignature* RenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
+	const IRootSignature* dxRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		switch (ID)
 		{
@@ -6708,7 +6708,7 @@ namespace dx_Internal
 		case ROOTLIBRARYSIG::ClearBuffer:
 			return rootLibrary.ClearBuffer;
 		default:
-			FK_ASSERT(0, "Invalid ROOTLIBRARYSIG ID passed to RenderSystem::Library(ROOTLIBRARYSIG)");
+			FK_ASSERT(0, "Invalid ROOTLIBRARYSIG ID passed to dxRenderSystem::Library(ROOTLIBRARYSIG)");
 		}
 
 		std::unreachable();
@@ -6718,7 +6718,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
+	RootSignature* dxRenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
 	{
 		{
 			std::shared_lock lock{ rootSignatureLock };
@@ -6741,7 +6741,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
+	RootSignature* dxRenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> DesciptorHeaps{ temp };
 
@@ -6888,7 +6888,7 @@ namespace dx_Internal
 
 		if (FAILED(CreateHR))
 		{
-			FK_LOG_ERROR("RenderSystem: Failed to create root signature!");
+			FK_LOG_ERROR("dxRenderSystem: Failed to create root signature!");
 			return nullptr;
 		}
 
@@ -6916,7 +6916,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	RootSignature* RenderSystem::_GetRootSignature(uint64_t hashID) const
+	RootSignature* dxRenderSystem::_GetRootSignature(uint64_t hashID) const
 	{
 		std::shared_lock lock{ const_cast<std::shared_mutex&>(rootSignatureLock) };
 		auto sig = rootSignatures[hashID];
@@ -6928,7 +6928,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::_ReleaseRootSignature(uint64_t hashID)
+	void dxRenderSystem::_ReleaseRootSignature(uint64_t hashID)
 	{
 		std::unique_lock lock{ rootSignatureLock };
 
@@ -6939,7 +6939,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IDirectContext& RenderSystem::GetDirectCommandList(std::optional<SyncPoint> ticket)
+	IDirectContext& dxRenderSystem::GetDirectCommandList(std::optional<SyncPoint> ticket)
 	{
 		const uint64_t submissionId		= ticket ? ticket.value().syncCounter : ++directSubmissionCounter;
 
@@ -6980,19 +6980,19 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SyncUploadTo(SyncPoint sp)
+	void dxRenderSystem::SyncUploadTo(SyncPoint sp)
 	{
 		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
 
 		copyEngine.copyQueue->Wait(sp.fence.As<ID3D12Fence>(), sp.syncCounter);
 	}
 
-	SyncPoint RenderSystem::SyncUploadPoint()
+	SyncPoint dxRenderSystem::SyncUploadPoint()
 	{
 		return { copyEngine.counter, copyEngine.fence };
 	}
 
-	SyncPoint RenderSystem::SyncUploadTicket()
+	SyncPoint dxRenderSystem::SyncUploadTicket()
 	{
 
 		const uint64_t counter = ++copyEngine.counter;
@@ -7003,24 +7003,24 @@ namespace dx_Internal
 		return { counter, copyEngine.fence };
 	}
 
-	void RenderSystem::SyncDirectTo(SyncPoint sp)
+	void dxRenderSystem::SyncDirectTo(SyncPoint sp)
 	{
 		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
 
 		GraphicsQueue->Wait(sp.fence.As<ID3D12Fence>(), sp.syncCounter);
 	}
 
-	SyncPoint RenderSystem::SyncDirectPoint()
+	SyncPoint dxRenderSystem::SyncDirectPoint()
 	{
 		return { directSubmissionCounter, directFence };
 	}
 
-	SyncPoint RenderSystem::SyncSubmittedDirectPoint()
+	SyncPoint dxRenderSystem::SyncSubmittedDirectPoint()
 	{
 		return { directSubmittedCounter, directFence };
 	}
 
-	SyncPoint RenderSystem::SyncDirectTicket()
+	SyncPoint dxRenderSystem::SyncDirectTicket()
 	{
 		auto counter = ++directSubmissionCounter;
 		GraphicsQueue->Signal(directFence, counter);
@@ -7030,7 +7030,7 @@ namespace dx_Internal
 		return { counter, directFence };
 	}
 
-	void RenderSystem::SignalDirect(uint64_t value)
+	void dxRenderSystem::SignalDirect(uint64_t value)
 	{
 		if (value > directSubmissionCounter)
 			DebugBreak();
@@ -7044,7 +7044,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::GetSubmissionTicket(uint32_t count)
+	SyncPoint dxRenderSystem::GetSubmissionTicket(uint32_t count)
 	{
 		auto value = directSubmissionCounter.fetch_add(count) + count;
 
@@ -7055,7 +7055,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	SyncPoint RenderSystem::Submit(std::span<IDirectContext*> contexts, std::optional<SyncPoint> syncOptional)
+	SyncPoint dxRenderSystem::Submit(std::span<IDirectContext*> contexts, std::optional<SyncPoint> syncOptional)
 	{
 		ProfileFunction();
 
@@ -7109,7 +7109,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::EndFrame()
+	void dxRenderSystem::EndFrame()
 	{
 		static auto dispatchIdx = directSubmissionCounter.load(std::memory_order_relaxed);
 
@@ -7123,7 +7123,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::Signal(SyncPoint syncPoint)
+	void dxRenderSystem::Signal(SyncPoint syncPoint)
 	{
 		if (auto HR = GraphicsQueue->Signal(syncPoint.fence.As<ID3D12Fence>(), syncPoint.syncCounter); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
@@ -7133,7 +7133,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
+	void dxRenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
 	{
 		if(syncBefore)
 			copyEngine.Wait(syncBefore.value());
@@ -7149,7 +7149,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	CopyContextHandle RenderSystem::OpenUploadQueue()
+	CopyContextHandle dxRenderSystem::OpenUploadQueue()
 	{
 		return copyEngine.Open();
 	}
@@ -7158,7 +7158,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	CopyContextHandle RenderSystem::GetImmediateCopyQueue()
+	CopyContextHandle dxRenderSystem::GetImmediateCopyQueue()
 	{
 		if (ImmediateUpload == InvalidHandle)
 			ImmediateUpload = copyEngine.Open();
@@ -7170,7 +7170,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 	
 
-	bool CreateInputLayout(RenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBufferSet* DVB_Out)
+	bool CreateInputLayout(dxRenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBufferSet* DVB_Out)
 	{
 		InputDescription Input_Desc;
 
@@ -7455,7 +7455,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushRenderTarget(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS, const size_t MIPOffset)
+	DescHeapPOS PushRenderTarget(dxRenderSystem* RS, ResourceHandle target, DescHeapPOS POS, const size_t MIPOffset)
 	{
 		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
 		const auto dimension            = RS->GetTextureDimension(target);
@@ -7489,7 +7489,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushDepthStencil(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
+	DescHeapPOS PushDepthStencil(dxRenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
 		DSVDesc.Format				= RS->GetTextureDeviceFormat(target);
@@ -7504,7 +7504,7 @@ namespace dx_Internal
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
 
-	DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t IN_arraySize)
+	DescHeapPOS PushDepthStencilArray(dxRenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS, size_t IN_arraySize)
 	{
 		const size_t arraySize = IN_arraySize == -1 ? RS->GetTextureArraySize(Target) : IN_arraySize;
 
@@ -7527,7 +7527,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushCBToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t Offset)
+	DescHeapPOS PushCBToDescHeap(dxRenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t Offset)
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC CBV_DESC = {};
 		CBV_DESC.BufferLocation = Buffer ? Buffer->GetGPUVirtualAddress() + Offset : 0;
@@ -7541,7 +7541,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushSRVToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags, size_t offset)
+	DescHeapPOS PushSRVToDescHeap(dxRenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags, size_t offset)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc; {
 			desc.Format						= DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
@@ -7565,7 +7565,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushSRVNULLDescHeap(RenderSystem* RS, DescHeapPOS POS)
+	DescHeapPOS PushSRVNULLDescHeap(dxRenderSystem* RS, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc; {
 			desc.Format						= DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
@@ -7589,7 +7589,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS Push2DSRVToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS Flags, const DXGI_FORMAT format)
+	DescHeapPOS Push2DSRVToDescHeap(dxRenderSystem* RS, ID3D12Resource* Buffer, const DescHeapPOS POS, const D3D12_BUFFER_SRV_FLAGS Flags, const DXGI_FORMAT format)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC desc; {
 			desc.Format                         = format;
@@ -7609,7 +7609,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc   = {}; {
 			ViewDesc.Format                        = tex.Format;
@@ -7630,7 +7630,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
@@ -7656,7 +7656,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
@@ -7682,7 +7682,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTexture3DToDescHeap(RenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTexture3DToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
@@ -7706,7 +7706,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushCubeMapTextureToDescHeap(RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format)
+	DescHeapPOS PushCubeMapTextureToDescHeap(dxRenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			ViewDesc.Format                          = TextureFormat2DXGIFormat(format);
@@ -7728,7 +7728,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushUAV2DToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+	DescHeapPOS PushUAV2DToDescHeap(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format               = tex.Format;
@@ -7745,7 +7745,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushUAV2DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS)
+	DescHeapPOS PushUAV2DToDescHeap(dxRenderSystem* RS, Texture2D tex, uint32_t mipLevel, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format               = tex.Format;
@@ -7759,7 +7759,7 @@ namespace dx_Internal
 	}
 
 
-	DescHeapPOS PushUAV3DToDescHeap(RenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS)
+	DescHeapPOS PushUAV3DToDescHeap(dxRenderSystem* RS, Texture2D tex, uint32_t width, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format                  = tex.Format;
@@ -7777,7 +7777,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAV1DToDescHeap(RenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS)
+	inline DescHeapPOS PushUAV1DToDescHeap(dxRenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= format;
@@ -7793,7 +7793,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAVBufferToDescHeap(RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS)
+	inline DescHeapPOS PushUAVBufferToDescHeap(dxRenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= buffer.format;
@@ -7816,7 +7816,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAVBufferToDescHeap2(RenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
+	inline DescHeapPOS PushUAVBufferToDescHeap2(dxRenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= buffer.format;
@@ -7840,7 +7840,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushUAVCubeMapToDescHeap(RenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS)
+	DescHeapPOS PushUAVCubeMapToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ID3D12Resource* resource, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format							= format;
@@ -7868,7 +7868,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 	// assumes File str should be at most 256 bytes
-	ResourceHandle LoadDDSTextureFromFile(char* file, RenderSystem* RS, CopyContextHandle handle, iAllocator* MemoryOut)
+	ResourceHandle LoadDDSTextureFromFile(char* file, dxRenderSystem* RS, CopyContextHandle handle, iAllocator* MemoryOut)
 	{
 		Texture2D tex = {};
 		wchar_t	wfile[256];
@@ -7886,7 +7886,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBufferToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, DeviceFormat format)
+	ResourceHandle MoveTextureBufferToVRAM(dxRenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, DeviceFormat format)
 	{
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
 		RS->UploadTexture(textureHandle, handle, buffer->Buffer, buffer->Size);
@@ -7899,7 +7899,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
+	ResourceHandle MoveTextureBuffersToVRAM(dxRenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
 	{
 		FK_ASSERT(resourceCount < std::numeric_limits<uint8_t>::max());
 
@@ -7917,7 +7917,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format)
+	ResourceHandle MoveTextureBuffersToVRAM(dxRenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format)
 	{
 		FK_ASSERT(MIPCount < std::numeric_limits<uint8_t>::max());
 
@@ -7935,7 +7935,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
+	MemoryPoolAllocator::MemoryPoolAllocator(dxRenderSystem& IN_renderSystem, size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
 		renderSystem	{ IN_renderSystem },
 		blockCount		{ IN_heapSize / IN_blockSize },
 		blockSize		{ IN_blockSize },

@@ -201,11 +201,9 @@ namespace VK_internal
 	}
 
 	vkRenderSystem::vkRenderSystem(iAllocator& IN_allocator) :
-	    resources	{ IN_allocator },
-	    allocator	{ IN_allocator }
-	{
-	    
-	}
+	    resources				{ IN_allocator },
+	    allocator				{ IN_allocator },
+		pendingDirectContexts	{ IN_allocator } {}
 
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
@@ -234,9 +232,10 @@ namespace VK_internal
 
 		auto physRequest = selector.set_minimum_version(1, 3)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-			.add_required_extension("VK_EXT_mutable_descriptor_type")
 		    .add_required_extension("VK_KHR_dynamic_rendering")
+			.add_required_extension("VK_EXT_mutable_descriptor_type")
             .add_required_extension("VK_KHR_swapchain")
+		    .add_required_extension("VK_KHR_timeline_semaphore")
 			.select_devices();
 
 		if (!physRequest)
@@ -254,30 +253,8 @@ namespace VK_internal
 		}
 
 		auto queue = queueRequest.value();
-		VkCommandPoolCreateInfo createPoolDesc{
-				.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-	            .pNext = nullptr,
-	            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-	            .queueFamilyIndex = 0
-		};
 
-		VkCommandPool commandPool;
-		if (auto res = vkCreateCommandPool(device, &createPoolDesc, nullptr, &commandPool); res != VK_SUCCESS)
-			return false;
-
-		VkCommandBufferAllocateInfo createCommandBuffer{
-			.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .pNext				= nullptr,
-            .commandPool		= commandPool,
-			.level				= VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 32,
-		};
-
-		VkCommandBuffer commandBuffer[32];
-		vkAllocateCommandBuffers(device, &createCommandBuffer, commandBuffer);
-
-		
-		VkDescriptorPool descriptorPool = CreateDescriptorHeap(device, 1000);
+		descriptorPool = CreateDescriptorHeap(device, 1000);
 
 		// Create Heap Layout
 		DesciptorHeapLayout layout{};
@@ -290,6 +267,32 @@ namespace VK_internal
 
 		auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
 		CreateCBV(device, descriptorSet, constantBuffer);
+
+		VkFenceCreateInfo createFenceInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VK_FENCE_CREATE_SIGNALED_BIT
+		};
+
+		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &directQueueFence); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create fence for direct queue!");
+
+		VkSemaphoreTypeCreateInfo semaphoreType{
+		    .sType			= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+	        .pNext			= 0,
+	        .semaphoreType	= VK_SEMAPHORE_TYPE_TIMELINE,
+	        .initialValue	= 0u
+		};
+
+		VkSemaphoreCreateInfo createTimelineSemaphoreInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0
+		};
+
+		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkDirectQueueCounter); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+
 
 		return true;
 	}
@@ -325,54 +328,72 @@ namespace VK_internal
 		return {};
 	}
 
+	uint64_t vkRenderSystem::GetCurrentProgress() const
+	{
+		uint64_t currentProgress;
+		vkGetSemaphoreCounterValue(device, vkDirectQueueCounter, &currentProgress);
+		return currentProgress;
+	}
+
 	size_t vkRenderSystem::GetCurrentCounter()
 	{
-		return 0;
+		return directSubmissionCounter;
 	}
 
 	SyncPoint vkRenderSystem::GetSubmissionTicket(uint32_t count)
 	{
-		return {};
+		auto value = directSubmissionCounter.fetch_add(count) + count;
+
+		return SyncPoint{
+		    .syncCounter	= value,
+		    .fence			= directQueueFence };
 	}
 
 	void vkRenderSystem::SyncUploadTo(SyncPoint)
 	{
-
+		DebugBreak();
 	}
 
 	SyncPoint vkRenderSystem::SyncUploadPoint()
 	{
+		DebugBreak();
+
 		return {};
 	}
 
 	SyncPoint vkRenderSystem::SyncUploadTicket()
 	{
+		DebugBreak();
+
 		return {};
 	}
 
 	void vkRenderSystem::SyncDirectTo(SyncPoint)
 	{
-
+		DebugBreak();
 	}
 
 	SyncPoint vkRenderSystem::SyncDirectPoint()
 	{
+		DebugBreak();
 		return {};
 	}
 
 	SyncPoint vkRenderSystem::SyncSubmittedDirectPoint()
 	{
+		DebugBreak();
 		return {};
 	}
 
 	SyncPoint vkRenderSystem::SyncDirectTicket()
 	{
+		DebugBreak();
 		return {};
 	}
 
 	void vkRenderSystem::SignalDirect(uint64_t)
 	{
-
+		DebugBreak();
 	}
 
 	void vkRenderSystem::SubmitUploadQueues(CopyContextHandle* handle, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
@@ -384,6 +405,7 @@ namespace VK_internal
 	{
 		return FlexKit::InvalidHandle;
 	}
+
 	CopyContextHandle vkRenderSystem::GetImmediateCopyQueue()
 	{
 		return FlexKit::InvalidHandle;
@@ -391,8 +413,27 @@ namespace VK_internal
 
 	IDirectContext& vkRenderSystem::GetDirectCommandList(std::optional<SyncPoint> ticket)
 	{
-		static vkDirectContext ctx;
-		return ctx;
+		uint64_t current;
+		vkGetSemaphoreCounterValue(device, vkDirectQueueCounter, &current);
+
+		vkDirectContext* ctx = nullptr;
+		for (auto& pendingCtx : pendingDirectContexts)
+		{
+		    if (pendingCtx->dispatchValue < current)
+		    {
+				ctx = pendingCtx;
+				pendingCtx->Reset();
+				pendingDirectContexts.remove_unstable(&ctx);
+				break;
+		    }
+		}
+
+		if (ctx == nullptr)
+		    ctx = &allocator->allocate<vkDirectContext>();
+
+		ctx->Begin(ticket.has_value() ? ticket.value().syncCounter : 0);
+
+		return *ctx;
 	}
 
 	ICopyContext& vkRenderSystem::GetCopyContext(CopyContextHandle handle)
@@ -403,31 +444,80 @@ namespace VK_internal
 
 	SyncPoint vkRenderSystem::Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync)
 	{
-		return {};
+		uint64_t submissionValue = 0;
+
+		Vector<VkCommandBufferSubmitInfo, 8> cmdBufferSubmit{ allocator };
+		for (auto& cl : CLs)
+		{
+			auto vkCL = static_cast<vkDirectContext*>(cl);
+			vkCL->Close();
+
+			submissionValue = Max(submissionValue, vkCL->dispatchValue);
+		}
+
+		VkSemaphoreSubmitInfo waitInfo{
+			.sType		= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
+	        .pNext		= nullptr,
+	        .semaphore	= vkDirectQueueCounter, 
+	        .value		= directSubmissionCounter,
+		    .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+		};
+
+		VkSemaphoreSubmitInfo signalInfo{
+			.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+	        .pNext		= nullptr,
+	        .semaphore	= vkDirectQueueCounter,
+	        .value		= submissionValue,
+		    .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+		};
+
+		const VkSubmitInfo2 submit{
+			.sType						= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+			.pNext						= nullptr,
+			.flags						= 0x0,
+            .waitSemaphoreInfoCount		= sync.has_value() ? 1u : 0u,
+            .pWaitSemaphoreInfos		= sync.has_value() ? &waitInfo : nullptr,
+            .commandBufferInfoCount		= (uint32_t)cmdBufferSubmit.size(),
+            .pCommandBufferInfos		= cmdBufferSubmit.data(),
+            .signalSemaphoreInfoCount	= 1,
+            .pSignalSemaphoreInfos		= &signalInfo
+		};
+
+		if (auto res = vkQueueSubmit2(device.get_queue(vkb::QueueType::graphics).value(), 1, &submit, directQueueFence); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to submit to Direct Command Queue!" };
+
+		for (auto cl : CLs)
+			pendingDirectContexts.push_back(static_cast<vkDirectContext*>(cl));
+
+		return {
+			submissionValue,
+			directQueueFence
+		};
 	}
 
 	void vkRenderSystem::EndFrame()
 	{
-
+		int x = 0;
 	}
 
 	void vkRenderSystem::Signal(SyncPoint)
 	{
-
+		int x = 0;
 	}
 
 	void vkRenderSystem::WaitForGPU()
 	{
-
+		int x = 0;
 	}
 
 	void vkRenderSystem::WaitFor(const uint64_t)
 	{
-
+		int x = 0;
 	}
 
 	void vkRenderSystem::WaitFor(const SyncPoint&)
 	{
+		int x = 0;
 	}
 
 	void vkRenderSystem::SetDebugName(ResourceHandle, const char*)
@@ -653,11 +743,13 @@ namespace VK_internal
 
 	}
 
+
 	const TileMapList& vkRenderSystem::GetTileMappings(const ResourceHandle Handle)
 	{
 		static TileMapList out;
 		return out;
 	}
+
 
 	SubAllocation vkRenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize) noexcept
 	{
@@ -669,60 +761,72 @@ namespace VK_internal
 		return {};
 	}
 
+
 	UploadReservation vkRenderSystem::ReserveDirectUploadSpace(size_t size, size_t alignment)	noexcept
 	{
 		return {};
 	}
+
 
 	UploadReservation vkRenderSystem::ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)	noexcept
 	{
 		return {};
 	}
 
+
 	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options)
 	{
 		return {};
 	}
+
 
 	Shader vkRenderSystem::LoadShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		return {};
 	}
 
+
 	std::expected<Shader, std::string>	vkRenderSystem::LoadRootSignature(const char* file, const char* entry)
 	{
 		return {};
 	}
+
 
 	std::optional<DescriptorRange> vkRenderSystem::CreateDescriptorRange(const uint32_t descriptorCount)
 	{
 		return {};
 	}
 
+
 	DeviceHeapHandle vkRenderSystem::CreateHeap(const size_t heapSize, const uint32_t flags)
 	{
 		return InvalidHandle;
 	}
+
 
 	ConstantBufferHandle vkRenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return InvalidHandle;
 	}
 
+
 	VertexBufferHandle vkRenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return InvalidHandle;
 	}
+
 
 	ResourceHandle vkRenderSystem::CreateDepthBuffer(const uint2 WH, const bool UseFloat, size_t bufferCount)
 	{
 		return InvalidHandle;
 	}
 
+
 	ResourceHandle vkRenderSystem::CreateDepthBufferArray(const uint2 WH, const bool UseFloat, const size_t arraySize, const bool buffered, const ResourceAllocationType)
 	{
 		return InvalidHandle;
 	}
+
 
 	ResourceHandle vkRenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
 	{
@@ -768,100 +872,124 @@ namespace VK_internal
 	    return resourceHandle;
 	}
 
+
 	ResourceHandle vkRenderSystem::CreateGPUResourceHandle()
 	{
 		return resources.AddResource();
 	}
+
 
 	QueryHandle	vkRenderSystem::CreateOcclusionBuffer(size_t Size)
 	{
 		return InvalidHandle;
 	}
 
+
 	ResourceHandle vkRenderSystem::CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer)
 	{
 		return InvalidHandle;
 	}
+
 
 	ResourceHandle vkRenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget)
 	{
 		return InvalidHandle;
 	}
 
+
 	SOResourceHandle vkRenderSystem::CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer)
 	{
 		return InvalidHandle;
 	}
+
 
 	QueryHandle	vkRenderSystem::CreateSOQuery(size_t SOIndex, size_t count)
 	{
 		return InvalidHandle;
 	}
 
+
 	QueryHandle	vkRenderSystem::CreateTimeStampQuery(size_t count)
 	{
 		return InvalidHandle;
 	}
+
 
 	IndirectLayout vkRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature)
 	{
 	    return {};
 	}
 
+
 	ReadBackResourceHandle vkRenderSystem::CreateReadBackBuffer(const size_t bufferSize)
 	{
 		return InvalidHandle;
 	}
+
 
 	bool vkRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize)
 	{
 		return false;
 	}
 
+
 	void vkRenderSystem::CreateTextureView(ResourceHandle, DescHeapPOS)
 	{
 	    
 	}
+
 
 	const IRootSignature* vkRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		return nullptr;
 	}
 
+
 	ResourceHandle vkRenderSystem::DefaultTexture() const noexcept
 	{
 	    return InvalidHandle;
 	}
 
+
 	void vkRenderSystem::ResetConstantBuffer(ConstantBufferHandle constant)
     {}
+
 
     void vkRenderSystem::ResetVertexBuffer(VertexBufferHandle constant)
     {}
 
+
     void vkRenderSystem::ResetQuery(QueryHandle handle)
     {}
+
 
 	void vkRenderSystem::ReleaseCB(ConstantBufferHandle)
     {}
 
+
     void vkRenderSystem::ReleaseVB(VertexBufferHandle)
     {}
+
 
     void vkRenderSystem::ReleaseResource(ResourceHandle)
     {}
 
+
 	void vkRenderSystem::ReleaseReadBack(ReadBackResourceHandle)
     {}
+
 
     void vkRenderSystem::ReleaseHeap(DeviceHeapHandle)
     {}
 
+
     void vkRenderSystem::ReleaseQuery(QueryHandle)
     {}
 
+
     void vkRenderSystem::ReleaseDescriptorRange(DescriptorRange, uint64_t)
     {}
+
 
 	void vkRenderSystem::Release()
 	{

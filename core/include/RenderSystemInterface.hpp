@@ -2423,7 +2423,7 @@ namespace FlexKit
 		virtual std::tuple<IPipelineState*, const IRootSignature*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
 
 		// Sync functions
-		virtual size_t		GetCurrentCounter()						= 0;
+		virtual uint64_t	GetCurrentCounter()						= 0;
 		virtual SyncPoint	GetSubmissionTicket(uint32_t count = 1)	= 0; 
 		virtual void		SyncUploadTo(SyncPoint)					= 0;
 		virtual SyncPoint	SyncUploadPoint()						= 0;

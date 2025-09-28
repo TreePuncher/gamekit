@@ -7,7 +7,9 @@ namespace VK_internal
 
 	struct vkDirectContext : public IDirectContext
 	{
-		void SetDebugName(const char* debugStr) noexcept final;
+		vkDirectContext();
+
+	    void SetDebugName(const char* debugStr) noexcept final;
 		void FlushBarriers() noexcept final;
 
 		void CreateAS(const AccelerationStructureDesc&, const TriMesh&) final;
@@ -177,15 +179,17 @@ namespace VK_internal
 		void SetRTFree(ResourceHandle Handle) final;
 
 		void Close() final;
+		void Begin(uint64_t submissionValue);
+		void Reset();
 
-		void SetViewports(std::span<const Viewport>	VPs)	final;
+		void SetViewports(std::span<const Viewport>		VPs)	final;
 		void SetScissorRects(std::span<const Rect>		rects)	final;
 
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment) final;
 		IRenderSystem&		GetRenderSystem() noexcept final;
 
-		VkCommandBuffer commandBuffer = nullptr;
+		VkCommandPool		commandPool		= nullptr;
+		VkCommandBuffer		commandBuffer	= nullptr;
+		uint64_t			dispatchValue	= 0;
 	};
-
-
 }

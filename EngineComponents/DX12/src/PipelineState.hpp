@@ -49,7 +49,7 @@ namespace dx_Internal
 {
 	using namespace FlexKit;
 
-	class RenderSystem;
+	class dxRenderSystem;
 	class RootSignature;
 	class PipelineStateTable;
 

@@ -47,7 +47,7 @@ namespace dx_Internal
 
 
 	dxDirectContext::dxDirectContext(
-				RenderSystem*	renderSystem_IN,
+				dxRenderSystem*	renderSystem_IN,
 				iAllocator*		allocator) :
 			CurrentRootSignature	{ nullptr			},
 			pendingBarriers			{ },
@@ -2581,7 +2581,7 @@ namespace dx_Internal
 
 	IRenderSystem& dxDirectContext::GetRenderSystem() noexcept
 	{
-		return RenderSystem::_GetInstance();
+		return dxRenderSystem::_GetInstance();
 	}
 
 
@@ -2891,7 +2891,7 @@ namespace dx_Internal
 
 	IRenderSystem& CopyContext::GetRenderSystem() noexcept
 	{
-		return RenderSystem::_GetInstance();
+		return dxRenderSystem::_GetInstance();
 	}
 
 
@@ -2966,7 +2966,7 @@ namespace dx_Internal
 	{
 		auto uploadSize		= Min(destRange.size, size);
 		auto uploadSpace	= Reserve(uploadSize);
-		auto dest			= RenderSystem::globalInstance->GetDeviceResource(destRange.resource);
+		auto dest			= dxRenderSystem::globalInstance->GetDeviceResource(destRange.resource);
 
 		commandList->CopyBufferRegion(
 			dest.As<ID3D12Resource>(),
@@ -2984,7 +2984,7 @@ namespace dx_Internal
 	{
 		flushPendingBarriers();
 
-		auto dest = RenderSystem::globalInstance->GetDeviceResource(handle);
+		auto dest = dxRenderSystem::globalInstance->GetDeviceResource(handle);
 
 		commandList->CopyBufferRegion(
 			dest.As<ID3D12Resource>(),
