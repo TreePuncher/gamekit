@@ -55,7 +55,7 @@ public:
 	FlexKit::ConstantBufferHandle			constantBuffer;
 	FlexKit::VertexBufferHandle				vertexBuffer;
 
-	//FlexKit::WorldRender					renderer;
+	FlexKit::WorldRender					renderer;
 	//FlexKit::TextureStreamingEngine			textureStreamingEngine;
 
 	FlexKit::CameraHandle					activeCamera = FlexKit::InvalidHandle;

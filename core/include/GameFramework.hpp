@@ -207,7 +207,7 @@ namespace FlexKit
 
 		FrameworkState(GameFramework& in_framework) : framework(in_framework) {}
 
-		IRenderSystem*	GetRenderSystem() { return &framework.GetRenderSystem(); }
+		IRenderSystem&	GetRenderSystem() { return framework.GetRenderSystem(); }
 	};
 
 

@@ -157,6 +157,27 @@ namespace FlexKit
 
 			return std::get<fieldIdx>(fields)[idx];
 		}
+
+		template<size_t ... fieldIDs>
+		void Set(size_t idx, auto&& ... args) noexcept requires(sizeof ... (args) > 0)
+		{
+			auto forwardingTuple = std::forward_as_tuple(args...);
+
+			auto assignField = [&]<size_t fieldID>(auto&& arg)
+			    {
+			        auto* field = std::get<fieldID>(fields);
+                    field[idx]	= arg;
+			    };
+
+			((assignField.operator()<fieldIDs>(args)), ...);
+		}
+
+
+		template<size_t fieldIdx>
+		decltype(auto) at(size_t idx) noexcept requires(fieldIdx < sizeof...(TY_Fields))
+		{
+			return Get<fieldIdx>(idx);
+		}
 	
 
 		uint64_t push_back(TY_Fields&& ... args)
@@ -592,7 +613,7 @@ namespace FlexKit
 		template<size_t ... fieldIDs>
 		auto Slice() const noexcept
 		{
-			return SliceFields<fieldIDs...>(0, used);
+			return Slice<fieldIDs...>(0, used);
 		}
 
 		size_t size() const noexcept { return used; }

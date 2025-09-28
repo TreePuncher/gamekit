@@ -4,6 +4,8 @@
 #include "dxDescriptorHeaps.hpp"
 #include "TriMeshResource.hpp"
 
+#include <directx/d3d12.h>
+
 namespace dx_Internal
 {
     static bool AddVertexBuffer(VERTEXBUFFER_TYPE type, TriMesh* Mesh, size_t lod, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out)
@@ -30,7 +32,7 @@ namespace dx_Internal
 		auto&& VB = res.value();
 		out.emplace_back(
 			D3D12_VERTEX_BUFFER_VIEW{
-				.BufferLocation = VB.resource->GetGPUVirtualAddress(),
+				.BufferLocation = VB.resource.As<ID3D12Resource>()->GetGPUVirtualAddress(),
 				.SizeInBytes	= VB.byteSize,
 				.StrideInBytes	= VB.byteStride,
 			});
@@ -313,7 +315,7 @@ namespace dx_Internal
 		desc.Triangles.VertexCount                  = (UINT)positionBuffer->Size();
 
 		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC build_desc {
-							.DestAccelerationStructureData = renderSystem->GetDeviceResource(destination)->GetGPUVirtualAddress(),
+							.DestAccelerationStructureData = renderSystem->GetDeviceResource(destination).As<ID3D12Resource>()->GetGPUVirtualAddress(),
 							.Inputs = {
 								.Type           = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL,
 								.Flags          = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE,
@@ -321,7 +323,7 @@ namespace dx_Internal
 								.DescsLayout    = D3D12_ELEMENTS_LAYOUT::D3D12_ELEMENTS_LAYOUT_ARRAY,
 								.pGeometryDescs = &desc,
 							},
-							.ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace)->GetGPUVirtualAddress(),
+							.ScratchAccelerationStructureData = renderSystem->GetDeviceResource(scratchSpace).As<ID3D12Resource>()->GetGPUVirtualAddress(),
 		};
 
 		UpdateResourceStates();
@@ -336,7 +338,7 @@ namespace dx_Internal
 	{
 		UpdateResourceStates();
 
-		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource), nullptr);
+		DeviceContext->DiscardResource(renderSystem->GetDeviceResource(resource).As<ID3D12Resource>(), nullptr);
 	}
 
 
@@ -704,10 +706,10 @@ namespace dx_Internal
 			CurrentComputeRootSignature = implRootSignature;
 		}
 
-		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
+		if (auto implPSO = PSO->GetDevicePipeState(); implPSO != CurrentPipelineState)
 		{
-			CurrentPipelineState = implPSO;
-			DeviceContext->SetPipelineState(implPSO);
+			CurrentPipelineState = implPSO.As<ID3D12PipelineState>();
+			DeviceContext->SetPipelineState(implPSO.As<ID3D12PipelineState>());
 		}
 	}
 
@@ -735,10 +737,10 @@ namespace dx_Internal
 			CurrentRootSignature = implRootSignature;
 		}
 
-		if (auto implPSO = PSO->GetDevicePipeState(); CurrentPipelineState != implPSO)
+		if (auto implPSO = PSO->GetDevicePipeState(); implPSO != CurrentPipelineState)
 		{
-			CurrentPipelineState = implPSO;
-			DeviceContext->SetPipelineState(implPSO);
+			CurrentPipelineState = implPSO.As<ID3D12PipelineState>();
+			DeviceContext->SetPipelineState(implPSO.As<ID3D12PipelineState>());
 		}
 	}
 
@@ -1133,13 +1135,14 @@ namespace dx_Internal
 
 	void dxDirectContext::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
 	{
+		auto resource_ptr = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 #if USING(DEBUGGRAPHICS)
 		if (resource != InvalidHandle && debugCommandList)
-			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
+			debugCommandList->AssertResourceState(resource_ptr, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
 		if(resource != InvalidHandle)
-			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress());
+			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, resource_ptr->GetGPUVirtualAddress());
 		else
 			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, { 0 });
 	}
@@ -1150,7 +1153,7 @@ namespace dx_Internal
 
 	void dxDirectContext::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
 	{
-		auto resource = renderSystem->GetDeviceResource(UAVresource);
+		auto resource = renderSystem->GetDeviceResource(UAVresource).As<ID3D12Resource>();
 
 #if USING(DEBUGGRAPHICS)
 		if(debugCommandList)
@@ -1189,7 +1192,7 @@ namespace dx_Internal
 	void dxDirectContext::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
 	{
 #if USING(DEBUGGRAPHICS)
-		auto resource = renderSystem->GetDeviceResource(CB);
+		auto resource = renderSystem->GetDeviceResource(CB).As<ID3D12Resource>();
 
 		if (debugCommandList)
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -1205,7 +1208,7 @@ namespace dx_Internal
 	void dxDirectContext::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
 #if USING(DEBUGGRAPHICS)
-		auto resource = renderSystem->GetDeviceResource(CB.Handle());
+		auto resource = renderSystem->GetDeviceResource(CB.Handle()).As<ID3D12Resource>();
 
 		if(debugCommandList)
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
@@ -1220,7 +1223,7 @@ namespace dx_Internal
 
 	void dxDirectContext::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
 	{
-		auto deviceResource     = renderSystem->GetDeviceResource(resource);
+		auto deviceResource     = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
 #if USING(DEBUGGRAPHICS)
@@ -1260,12 +1263,14 @@ namespace dx_Internal
 
 	void dxDirectContext::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
 	{
+		auto deviceResource = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
+
 #if USING(DEBUGGRAPHICS)
 		if (debugCommandList)
-			debugCommandList->AssertResourceState(renderSystem->GetDeviceResource(resource), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 #endif
 		if(resource != InvalidHandle)
-			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress() + offset);
+			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, deviceResource->GetGPUVirtualAddress() + offset);
 		else
 			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, 0);
 	}
@@ -1276,7 +1281,7 @@ namespace dx_Internal
 
 	void dxDirectContext::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
 	{
-		auto resource = renderSystem->GetDeviceResource(UAVresource);
+		auto resource = renderSystem->GetDeviceResource(UAVresource).As<ID3D12Resource>();
 
 #if USING(DEBUGGRAPHICS)
 		if(debugCommandList)
@@ -1382,8 +1387,8 @@ namespace dx_Internal
 		FlushBarriers();
 
 		DeviceContext->CopyResource(
-			renderSystem->GetDeviceResource(dest),
-			renderSystem->GetDeviceResource(src));
+			renderSystem->GetDeviceResource(dest).As<ID3D12Resource>(),
+			renderSystem->GetDeviceResource(src).As<ID3D12Resource>());
 	}
 
 
@@ -1391,7 +1396,7 @@ namespace dx_Internal
 
 
 	void dxDirectContext::CopyTextureRegion(
-		ID3D12Resource*		destination,
+		DeviceResource_ptr	destination,
 		size_t				subResourceIdx,
 		uint3				XYZ,
 		UploadReservation	source,
@@ -1413,8 +1418,8 @@ namespace dx_Internal
 		SubRegion.Footprint.Height		= WH[1];
 		SubRegion.Offset				= source.offset;
 
-		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
+		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination.As<ID3D12Resource>(), (UINT)subResourceIdx);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource.As<ID3D12Resource>(), SubRegion);
 
 		DeviceContext->CopyTextureRegion(
 			&destinationLocation,
@@ -1434,7 +1439,7 @@ namespace dx_Internal
 	{
 		FlushBarriers();
 
-		auto destination				= renderSystem->GetDeviceResource(dest);
+		auto destination				= renderSystem->GetDeviceResource(dest).As<ID3D12Resource>();
 		const auto		deviceFormat	= renderSystem->GetTextureDeviceFormat(dest);
 		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
 		const bool		BCformat		= IsDDS(renderSystem->GetTextureFormat(dest));
@@ -1449,7 +1454,7 @@ namespace dx_Internal
 		SubRegion.Offset				= source.offset;
 
 		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource.As<ID3D12Resource>(), SubRegion);
 
 		DeviceContext->CopyTextureRegion(
 			&destinationLocation,
@@ -1462,7 +1467,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
+	void dxDirectContext::CopyTile(DeviceResource_ptr dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
 	{
 		FlushBarriers();
 
@@ -1480,10 +1485,10 @@ namespace dx_Internal
 		regionSize.Depth		= 1;
 
 		DeviceContext->CopyTiles(
-			dest,
+			dest.As<ID3D12Resource>(),
 			&coordinate,
 			&regionSize,
-			src.resource,
+			src.resource.As<ID3D12Resource>(),
 			src.offset,
 			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
 	}
@@ -1516,10 +1521,10 @@ namespace dx_Internal
 		regionSize.Depth		= 1;
 
 		DeviceContext->CopyTiles(
-			resource_ptr,
+			resource_ptr.As<ID3D12Resource>(),
 			&coordinate,
 			&regionSize,
-			src.resource,
+			src.resource.As<ID3D12Resource>(),
 			src.offset,
 			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
 	}
@@ -1538,61 +1543,61 @@ namespace dx_Internal
 		FlushBarriers();
 
 		DeviceContext->CopyBufferRegion(
-			renderSystem->GetDeviceResource(destination),
+			renderSystem->GetDeviceResource(destination).As<ID3D12Resource>(),
 			destinationOffset,
-			renderSystem->GetDeviceResource(source),
+			renderSystem->GetDeviceResource(source).As<ID3D12Resource>(),
 			sourceOffset,
 			size);
 	}
 
 	void dxDirectContext::CopyBufferRegion(
-		ResourceHandle	destination,
-		ID3D12Resource* source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset
+		ResourceHandle		destination,
+		DeviceResource_ptr	source,
+		size_t				size,
+		size_t				destinationOffset,
+		size_t				sourceOffset
 	)
 	{
 		FlushBarriers();
 
 		DeviceContext->CopyBufferRegion(
-			renderSystem->GetDeviceResource(destination),
+			renderSystem->GetDeviceResource(destination).As<ID3D12Resource>(),
 			destinationOffset,
-			source,
+			source.As<ID3D12Resource>(),
 			sourceOffset,
 			size);
 	}
 
 	void dxDirectContext::CopyBufferRegion(
-		ID3D12Resource* destination,
-		ResourceHandle	source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset)
+		DeviceResource_ptr	destination,
+		ResourceHandle		source,
+		size_t				size,
+		size_t				destinationOffset,
+		size_t				sourceOffset)
 	{
 		FlushBarriers();
 
 		DeviceContext->CopyBufferRegion(
-			destination,
+			destination.As<ID3D12Resource>(),
 			destinationOffset,
-			renderSystem->GetDeviceResource(source),
+			renderSystem->GetDeviceResource(source).As<ID3D12Resource>(),
 			sourceOffset,
 			size);
 	}
 
 	void dxDirectContext::CopyBufferRegion(
-		ID3D12Resource*	destination,
-		ID3D12Resource* source,
-		size_t			size,
-		size_t			destinationOffset,
-		size_t			sourceOffset)
+		DeviceResource_ptr	destination,
+		DeviceResource_ptr	source,
+		size_t				size,
+		size_t				destinationOffset,
+		size_t				sourceOffset)
 	{
 		FlushBarriers();
 
 		DeviceContext->CopyBufferRegion(
-			destination,
+			destination.As<ID3D12Resource>(),
 			destinationOffset,
-			source,
+			source.As<ID3D12Resource>(),
 			sourceOffset,
 			size);
 	}
@@ -1809,7 +1814,7 @@ namespace dx_Internal
 		const size_t	IndexCount	= Mesh->lods[lod].GetIndexCount();
 
 		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation	= GetBuffer(Mesh, lod, IBIndex)->GetGPUVirtualAddress();
+		IndexView.BufferLocation	= GetBuffer(Mesh, lod, IBIndex).As<ID3D12Resource>()->GetGPUVirtualAddress();
 		IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 		IndexView.SizeInBytes		= (UINT)IndexCount * 4;
 
@@ -1837,7 +1842,7 @@ namespace dx_Internal
 	void dxDirectContext::SetIndexBuffer(ResourceHandle resource, DeviceFormat format)
 	{
 		D3D12_INDEX_BUFFER_VIEW		IndexView;
-		IndexView.BufferLocation    = renderSystem->GetDeviceResource(resource)->GetGPUVirtualAddress();
+		IndexView.BufferLocation    = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>()->GetGPUVirtualAddress();
 		IndexView.Format            = TextureFormat2DXGIFormat(format);
 		IndexView.SizeInBytes       = (UINT)(renderSystem->GetResourceSize(resource));
 
@@ -1942,7 +1947,7 @@ namespace dx_Internal
 			*/
 
 			VBViews.push_back({
-				renderSystem->GetDeviceResource(VB.resource)->GetGPUVirtualAddress() + VB.offset,
+				renderSystem->GetDeviceResource(VB.resource).As<ID3D12Resource>()->GetGPUVirtualAddress() + VB.offset,
 				(UINT)renderSystem->GetResourceSize(VB.resource) - VB.offset,
 				VB.stride});
 		}
@@ -2060,7 +2065,7 @@ namespace dx_Internal
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
 		Texture2D tex{
-			renderSystem->GetDeviceResource(UAV),
+			renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>(),
 			renderSystem->GetTextureWH(UAV),
 			renderSystem->GetTextureMipCount(UAV),
 			renderSystem->GetTextureDeviceFormat(UAV),
@@ -2081,7 +2086,7 @@ namespace dx_Internal
 		DeviceContext->ClearUnorderedAccessViewFloat(
 			D3D12_GPU_DESCRIPTOR_HANDLE{ viewGPU.V2 },
 			D3D12_CPU_DESCRIPTOR_HANDLE{ viewCPU.V1 },
-			resource, clearColor, 0, nullptr);
+			resource.As<ID3D12Resource>(), clearColor, 0, nullptr);
 	}
 
 	/************************************************************************************************/
@@ -2096,7 +2101,7 @@ namespace dx_Internal
 		FK_ASSERT(GPUview.has_value() != false, "Failed to allocated descriptor");
 
 		Texture2D tex{
-			renderSystem->GetDeviceResource(UAV),
+			renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>(),
 			renderSystem->GetTextureWH(UAV),
 			renderSystem->GetTextureMipCount(UAV),
 			renderSystem->GetTextureDeviceFormat(UAV),
@@ -2117,7 +2122,10 @@ namespace dx_Internal
 
 		FlushBarriers();
 
-		DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, (UINT*)&clearColor, 0, nullptr);
+		DeviceContext->ClearUnorderedAccessViewUint(
+			            GPUHandle, CPUHandle,
+			            resource.As<ID3D12Resource>(),
+			            (UINT*)&clearColor, 0, nullptr);
 	}
 
 
@@ -2127,7 +2135,7 @@ namespace dx_Internal
 	void dxDirectContext::ClearUAV(ResourceHandle resource, uint4 clearColor)
 	{
 		const auto view				= _ReserveSRVLocal(1);
-		const auto deviceResource	= renderSystem->GetDeviceResource(resource);
+		const auto deviceResource	= renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 		const auto deviceFormat		= renderSystem->GetTextureDeviceFormat(resource);
 
 		PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
@@ -2151,10 +2159,10 @@ namespace dx_Internal
 		UpdateResourceStates();
 
 		static auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
+		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
-		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>()->GetGPUVirtualAddress());
 
 		auto resourceSize = renderSystem->GetResourceSize(UAV);
 
@@ -2189,11 +2197,11 @@ namespace dx_Internal
 		uint2 range{ begin / 16, end / 16};
 
 		auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject());
+		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);
-		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV)->GetGPUVirtualAddress());
+		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>()->GetGPUVirtualAddress());
 
 		auto resourceSize = renderSystem->GetResourceSize(UAV);
 		DeviceContext->Dispatch(UINT(ceil(Min(resourceSize, end - begin) / 1024.0f)), 1, 1);
@@ -2216,7 +2224,7 @@ namespace dx_Internal
 		if (query == InvalidHandle)
 			return;
 
-		auto res			= renderSystem->GetDeviceResource(destination);
+		auto res			= renderSystem->GetDeviceResource(destination).As<ID3D12Resource>();
 		auto type			= renderSystem->Queries.GetType(query);
 		auto queryResource	= renderSystem->Queries.GetDeviceObject(query);
 
@@ -2229,7 +2237,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset)
+	void dxDirectContext::ResolveQuery(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset)
 	{
 		if (query == InvalidHandle)
 			return;
@@ -2239,7 +2247,7 @@ namespace dx_Internal
 
 		UpdateResourceStates();
 
-		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), destination, (UINT)destOffset);
+		DeviceContext->ResolveQueryData(queryResource, type, (UINT)begin, (UINT)(end - begin), destination.As<ID3D12Resource>(), (UINT)destOffset);
 	}
 
 
@@ -2254,7 +2262,7 @@ namespace dx_Internal
 		DeviceContext->ExecuteIndirect(
 			impl.signature,
 			(UINT)Min(impl.entries.size(), executionCount),
-			renderSystem->GetDeviceResource(args),
+			renderSystem->GetDeviceResource(args).As<ID3D12Resource>(),
 			(UINT)argumentBufferOffset,
 			nullptr, 
 			0);
@@ -2351,7 +2359,7 @@ namespace dx_Internal
 	{
 		if (Enabled)
 			DeviceContext->SetPredication(
-				renderSystem->GetDeviceResource(handle),
+				renderSystem->GetDeviceResource(handle).As<ID3D12Resource>(),
 				Offset * 8, 
 				op == PredicateOp::NotEqualZero ? D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 		else
@@ -2364,8 +2372,8 @@ namespace dx_Internal
 
 	void dxDirectContext::CopyBuffer(const UploadReservation src, const ResourceHandle destination, const size_t destOffset)
 	{
-		const auto destinationResource	= renderSystem->GetDeviceResource(destination);
-		const auto sourceResource       = src.resource;
+		const auto destinationResource	= renderSystem->GetDeviceResource(destination).As<ID3D12Resource>();
+		const auto sourceResource       = src.resource.As<ID3D12Resource>();
 
 		UpdateResourceStates();
 
@@ -2378,7 +2386,7 @@ namespace dx_Internal
 
 	void dxDirectContext::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
 	{
-		const auto destinationResource		= renderSystem->GetDeviceResource(destination);
+		const auto destinationResource		= renderSystem->GetDeviceResource(destination).As<ID3D12Resource>();
 		const auto WH						= renderSystem->GetTextureWH(destination);
 		const auto format					= renderSystem->GetTextureDeviceFormat(destination);
 		const auto texelSize				= renderSystem->GetTextureElementSize(destination);
@@ -2390,7 +2398,7 @@ namespace dx_Internal
 
 
 		D3D12_TEXTURE_COPY_LOCATION srcLocation{};
-		srcLocation.pResource							= src.resource;
+		srcLocation.pResource							= src.resource.As<ID3D12Resource>();
 		srcLocation.Type								= D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		srcLocation.PlacedFootprint.Offset				= src.offset;
 		srcLocation.PlacedFootprint.Footprint.Depth		= 1;
@@ -2658,7 +2666,7 @@ namespace dx_Internal
 #endif
 
 				D3D12_BUFFER_BARRIER bufferBarrier;
-				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
+				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource).As<ID3D12Resource>();
 				bufferBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
 				bufferBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
 				bufferBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
@@ -2686,7 +2694,7 @@ namespace dx_Internal
 				textureBarrier.LayoutBefore		= DeviceLayout2DX(barrier.texture.layoutBefore);
 				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
 				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
-				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource);
+				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource).As<ID3D12Resource>();
 				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
 				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.src);
 
@@ -2853,7 +2861,7 @@ namespace dx_Internal
 	void CopyContext::Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after)
 	{
 		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-			GetRenderSystem().GetDeviceResource(destination),
+			GetRenderSystem().GetDeviceResource(destination).As<ID3D12Resource>(),
 			DRS2D3DState(before),
 			DRS2D3DState(after));
 
@@ -2961,9 +2969,9 @@ namespace dx_Internal
 		auto dest			= RenderSystem::globalInstance->GetDeviceResource(destRange.resource);
 
 		commandList->CopyBufferRegion(
-			dest,
+			dest.As<ID3D12Resource>(),
 			destRange.offset,
-			uploadSpace.resource,
+			uploadSpace.resource.As<ID3D12Resource>(),
 			uploadSpace.offset,
 			uploadSize);
 	}
@@ -2979,9 +2987,9 @@ namespace dx_Internal
 		auto dest = RenderSystem::globalInstance->GetDeviceResource(handle);
 
 		commandList->CopyBufferRegion(
-			dest,
+			dest.As<ID3D12Resource>(),
 			destOffset,
-			source.resource,
+			source.resource.As<ID3D12Resource>(),
 			source.offset,
 			source.size);
 	}
@@ -2997,7 +3005,7 @@ namespace dx_Internal
 		commandList->CopyBufferRegion(
 			destination,
 			destinationOffset,
-			source.resource,
+			source.resource.As<ID3D12Resource>(),
 			source.offset,
 			source.size);
 	}
@@ -3047,7 +3055,7 @@ namespace dx_Internal
 		SubRegion.Offset				= source.offset;
 
 		auto destinationLocation	= CD3DX12_TEXTURE_COPY_LOCATION(destination, (UINT)subResourceIdx);
-		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource, SubRegion);
+		auto sourceLocation			= CD3DX12_TEXTURE_COPY_LOCATION(source.resource.As<ID3D12Resource>(), SubRegion);
 
 		commandList->CopyTextureRegion(
 			&destinationLocation,
@@ -3083,7 +3091,7 @@ namespace dx_Internal
 			dest,
 			&coordinate,
 			&regionSize,
-			src.resource,
+			src.resource.As<ID3D12Resource>(),
 			src.offset,
 			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
 	}

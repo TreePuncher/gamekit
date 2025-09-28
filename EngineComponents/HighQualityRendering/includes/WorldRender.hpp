@@ -326,7 +326,7 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(IRenderSystem&, TextureStreamingEngine&, iAllocator* persistent, const WorldRenderOptions& options = {}, const PoolSizes& poolSizes = PoolSizes{});
+		WorldRender(IRenderSystem&, iAllocator* persistent, const WorldRenderOptions& options = {}, const PoolSizes& poolSizes = PoolSizes{});
 		~WorldRender();
 
 		void HandleTextures();
@@ -457,8 +457,6 @@ namespace FlexKit
 		static_vector<RenderTask>	pendingGPUTasks; // Tasks must be completed prior to rendering
 
 		CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
-
-		TextureStreamingEngine&		streamingEngine;
 
 		const IRootSignature*		rootSignatureToneMapping;
 

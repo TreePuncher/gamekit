@@ -153,28 +153,28 @@ namespace dx_Internal
 			size_t			sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
-			ResourceHandle	destination,
-			ID3D12Resource*	source,
-			size_t			size,
-			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0) final;
+			ResourceHandle		destination,
+			DeviceResource_ptr	source,
+			size_t				size,
+			size_t				destinationOffset	= 0,
+			size_t				sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
-			ID3D12Resource*	destination,
-			ResourceHandle	source,
-			size_t			size,
-			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0) final;
+			DeviceResource_ptr	destination,
+			ResourceHandle		source,
+			size_t				size,
+			size_t				destinationOffset	= 0,
+			size_t				sourceOffset		= 0) final;
 
 		void CopyBufferRegion(
-			ID3D12Resource*	destination,
-			ID3D12Resource* source,
-			size_t			size,
-			size_t			destinationOffset	= 0,
-			size_t			sourceOffset		= 0) final;
+			DeviceResource_ptr	destination,
+			DeviceResource_ptr	source,
+			size_t				size,
+			size_t				destinationOffset	= 0,
+			size_t				sourceOffset		= 0) final;
 
 		void CopyTextureRegion(
-			ID3D12Resource*		destination,
+			DeviceResource_ptr	destination,
 			size_t				subResourceIdx,
 			uint3				XYZ,
 			UploadReservation	source,
@@ -189,7 +189,7 @@ namespace dx_Internal
 			uint2				wh) final;
 
 		void CopyTile(
-			ID3D12Resource*			dest,
+			DeviceResource_ptr		dest,
 			const uint3				destTile,
 			const size_t			tileOffset,
 			const UploadReservation src);
@@ -241,7 +241,7 @@ namespace dx_Internal
 		void Clear					() final;
 
 		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) final;
-		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset) final;
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset) final;
 
 		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(const uint3) final;

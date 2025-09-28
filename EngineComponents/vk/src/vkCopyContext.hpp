@@ -1,4 +1,5 @@
 #include <RenderSystemInterface.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace VK_internal
 {
@@ -19,6 +20,8 @@ namespace VK_internal
 		bool				IsSubResourceTiled(ResourceHandle Resource, const size_t level) const final;
 
 		IRenderSystem&		GetRenderSystem() noexcept final;
+
+		VkCommandBuffer	cmdBuffer = nullptr;
 	};
 
     

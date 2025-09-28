@@ -17,7 +17,7 @@ namespace VK_internal
             Buffer,
             Image,
             RenderTarget
-        };
+        }   type;
 
         union
         {
@@ -30,33 +30,53 @@ namespace VK_internal
     {
         APIHandle   = 0,
         Format      = 1,
-        Dimension   = 2
+        Dimension   = 2,
+        Layout      = 3
     };
 
     struct vkResourceTable
     {
-        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension>;
+        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout>;
 
         vkResourceTable(iAllocator& IN_allocator) :
-            fields{ IN_allocator }{}
+            fields  { IN_allocator },
+            handles { IN_allocator } {}
 
         [[nodiscard]]
         ResourceHandle AddResource()
         {
-            auto ul         = std::unique_lock{ m };
+            auto ul = std::unique_lock{ m };
 
-            auto idx        = fields.push_back({}, {}, {});
+            auto idx = fields.push_back({}, {}, {}, DeviceLayout::Common);
             return handles.GetNewHandle(idx);;
         }
 
-        template<uint32_t fieldID>
+        template<uint32_t ... ids>
         auto Get(ResourceHandle handle) 
         {
             FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
             std::shared_lock sl{ m };
 
-            return fields.Get<fieldID>(handles[handle]);
+            return fields.Slice<ids...>(handles[handle]);
         }
+
+        template<uint32_t ... ids>
+        auto Get(ResourceHandle handle, auto ... fields)
+        {
+            FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
+            std::shared_lock sl{ m };
+
+            return fields.Slice<ids...>(handles[handle]);
+        }
+
+        template<uint32_t ... ids>
+        auto Set(ResourceHandle handle, auto&& ... IN_fields) requires (sizeof ... (ids) == sizeof ... (IN_fields))
+        {
+            FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
+
+            fields.Set<ids...>(handles[handle], IN_fields...);
+        }
+
 
         std::mutex                                      m;
         HandleUtilities::HandleTable<ResourceHandle>    handles;
