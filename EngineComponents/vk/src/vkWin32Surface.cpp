@@ -10,6 +10,8 @@
 
 namespace FlexKit
 {
+	using namespace VK_internal;
+
     // Globals
 	inline HWND			gWindowHandle = 0;
 	inline HINSTANCE	gInstance = 0;
@@ -364,31 +366,56 @@ namespace FlexKit
 
 	struct vkRenderWindow : IRenderWindow
 	{
-	    virtual ~vkRenderWindow() {};
+		~vkRenderWindow() final { Release(); }
 
-		virtual ResourceHandle      GetBackBuffer() const
+		virtual ResourceHandle GetBackBuffer() const
+		{
+			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
+
+			uint32_t imageIdx;
+			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 0, nullptr, nullptr, &imageIdx); res != VK_SUCCESS)
+				throw std::exception("Failed to get next image!");
+
+			renderSystem.resources.Set<ResourceFieldID::APIHandle>(
+				resource,
+				vkResourceEntry{
+				    .type	= vkResourceEntry::Type::RenderTarget,
+					.image	= images[imageIdx]
+				});
+
+			return resource;
+		}
+
+		uint2 GetWH() const final
+		{
+			return vkRenderSystem::GetInstance().GetTextureTilingWH(resource, 0);
+		}
+
+		bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) final
+		{
+			return false;
+		}
+
+		void Resize(const uint2 WH) final
 		{
 		    
 		}
 
-		virtual uint2               GetWH() const
+		void Release() final
 		{
-		    
+			vkRenderSystem::GetInstance().ReleaseResource(resource);
 		}
 
-		virtual bool                Present(const uint32_t syncInternal = 0, const uint32_t flags = 0)
-		{
-		    
-		}
-
-		virtual void                Resize(const uint2 WH) = 0;
-
-		virtual void				Release() = 0;
 
 		operator ResourceHandle () { return GetBackBuffer(); }
 
 		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
 		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
+
+		VkSurfaceKHR	surface		= nullptr;
+		VkSwapchainKHR	swapchain	= nullptr;
+	    ResourceHandle	resource	= InvalidHandle;
+		VkImage			images[3];
 	};
 
 
@@ -463,7 +490,20 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		return nullptr;
+		auto desc = GPUResourceDesc::RenderTarget(WH, format);
+		desc._ptr = swapchain;
+
+		auto renderTarget = renderSystem.CreateGPUResource(desc);
+		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
+
+		uint imageCount;
+		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
+
+		newRenderWindow.resource	= renderTarget;
+		newRenderWindow.swapchain	= swapchain;
+		newRenderWindow.surface		= surface;
+
+		return &newRenderWindow;
 	}
 
 	void vkWin32UpdateInput()

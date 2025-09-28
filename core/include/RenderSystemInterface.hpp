@@ -6,28 +6,49 @@
 
 #include <expected>
 
-#if USING(ENABLEDX12)
-struct ID3D12Resource;
-struct ID3D12Fence;
-struct ID3D12Heap;
-struct ID3D12PipelineState;
-struct ID3D12RootSignature;
-#endif
-
-
 namespace FlexKit
 {
 	struct iAllocator;
 	struct IRootSignature;
 	struct TriMesh;
 
-#if USING(ENABLEDX12)
-	using DeviceResource_ptr		= ID3D12Resource*;
-	using DeviceFence_ptr			= ID3D12Fence*;
-	using DeviceHeap_ptr			= ID3D12Heap*;
-	using DevicePipelineState_ptr	= ID3D12PipelineState*;
-	using DeviceRootSignature_ptr	= ID3D12RootSignature*;
-#endif
+	template<size_t ID>
+	struct TaggedVoidPtr
+	{
+		TaggedVoidPtr() = default;
+		TaggedVoidPtr(auto IN_ptr) : _ptr{ IN_ptr } {}
+		TaggedVoidPtr(nullptr_t) : _ptr{ nullptr } {}
+		TaggedVoidPtr(const TaggedVoidPtr&) = default;
+
+		TaggedVoidPtr& operator = (auto IN_ptr) { _ptr = IN_ptr; }
+		TaggedVoidPtr& operator = (TaggedVoidPtr&) = default;
+
+		bool operator == (auto rhs) const noexcept { return rhs == _ptr; }
+		bool operator != (auto rhs) const noexcept { return rhs != _ptr; }
+
+		operator bool() { return _ptr != nullptr; }
+
+		template<typename TY>
+		TY* As() noexcept
+		{
+		    return reinterpret_cast<TY*>(_ptr);
+		}
+
+		template<typename TY>
+		TY* As() const noexcept
+		{
+			return reinterpret_cast<TY*>(_ptr);
+		}
+
+		void* _ptr;
+	};
+
+
+	using DeviceResource_ptr		= TaggedVoidPtr<GetCRCGUID(Resource)>; 
+	using DeviceFence_ptr			= TaggedVoidPtr<GetCRCGUID(Fence)>; 
+	using DeviceHeap_ptr			= TaggedVoidPtr<GetCRCGUID(Heap)>;
+	using DevicePipelineState_ptr	= TaggedVoidPtr<GetCRCGUID(PipelineState)>;
+	using DeviceRootSignature_ptr	= TaggedVoidPtr<GetCRCGUID(RootSignature)>;
 
 
 	enum class ELineAliasMode
@@ -877,7 +898,7 @@ namespace FlexKit
 		ResourceHandle			handle;
 
 		union {
-			struct ::ID3D12Resource*	_ptr;
+			DeviceResource_ptr	_ptr;
 		};
 
 		enum class ResourceType
@@ -1343,7 +1364,9 @@ namespace FlexKit
 		{
 			struct
 			{
-				ID3D12Resource**	resources;
+				void*				_ptr;
+				void**				array_ptr;
+				DeviceResource_ptr*	resources;
 				std::byte*			initial;
 			};
 		};
@@ -1533,7 +1556,7 @@ namespace FlexKit
 			};
 		}
 
-		static GPUResourceDesc BackBuffered(uint2 WH, DeviceFormat format, ID3D12Resource** sources, const uint8_t resourceCount)
+		static GPUResourceDesc BackBuffered(uint2 WH, DeviceFormat format, DeviceResource_ptr* sources, const uint8_t resourceCount)
 		{
 			GPUResourceDesc desc = {
 				.type			= ResourceType::UnorderedAccess,
@@ -1571,7 +1594,7 @@ namespace FlexKit
 		}
 
 
-		static GPUResourceDesc BuildFromMemory(const GPUResourceDesc& format, ID3D12Resource** sources, const uint32_t resourceCount)
+		static GPUResourceDesc BuildFromMemory(const GPUResourceDesc& format, DeviceResource_ptr* sources, const uint32_t resourceCount)
 		{
 			GPUResourceDesc desc	= format;
 			desc.PreCreated			= true;
@@ -2157,7 +2180,7 @@ namespace FlexKit
 		virtual void Clear					() IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) IDIRECTCONTEXTDEBUGBODY;
-		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset) IDIRECTCONTEXTDEBUGBODY;
+		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1) IDIRECTCONTEXTDEBUGBODY;
 		virtual void Dispatch				(const uint3) IDIRECTCONTEXTDEBUGBODY;
@@ -2496,7 +2519,7 @@ namespace FlexKit
 		// Resource upload
 		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) = 0; // Uses Upload Queue
 		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount) = 0; // Uses Upload Queue
-		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) = 0;
+		virtual void				UpdateResourceByUploadQueue(DeviceResource_ptr Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) = 0;
 
 		virtual ResourceHandle		LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator) = 0;
 

@@ -647,7 +647,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	WorldRender::WorldRender(IRenderSystem& IN_renderSystem, TextureStreamingEngine& IN_streamingEngine, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
+	WorldRender::WorldRender(IRenderSystem& IN_renderSystem, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
 			renderSystem				{ IN_renderSystem },
 
 			UAVPool						{ nullptr }, //{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
@@ -659,8 +659,6 @@ namespace FlexKit
 
 			timeStats					{ renderSystem.CreateTimeStampQuery(256) },
 			timingReadBack				{ renderSystem.CreateReadBackBuffer(512) }, 
-
-			streamingEngine				{ IN_streamingEngine },
 
 			//lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },

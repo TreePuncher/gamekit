@@ -793,10 +793,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	inline DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept
-	{
-		return vb_ref.resource->GetGPUVirtualAddress();
-	}
+	DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept;
 
 
 	typedef static_vector<D3D12_INPUT_ELEMENT_DESC, 16> InputDescription;
@@ -904,7 +901,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void Signal(ID3D12Fence* fence, const size_t counter);
 		void Signal(SyncPoint);
 
-		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
+		void Push_Temporary(struct ID3D12Resource* resource, CopyContextHandle handle);
 
 		void Release();
 

@@ -11,8 +11,12 @@
 #include <fmt/format.h>
 #include <RenderSystemInterface.hpp>
 
+#include "vkWin32Surface.hpp"
+
 
 using namespace FlexKit;
+
+#define USEVULKAN 1
 
 /************************************************************************************************/
 
@@ -58,7 +62,6 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	animators				{ framework.core.GetBlockMemory() },
 	brushes					{ framework.core.GetBlockMemory() },
 	cameras					{ framework.core.GetBlockMemory() },
-	sceneNodes				{ },
 	materials				{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 	visibilityComponent		{ framework.core.GetBlockMemory() },
 	pointLights				{ framework.core.GetBlockMemory() },
@@ -74,8 +77,7 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 	staticBodies			{ physx },
 	characterController		{ physx, framework.core.GetBlockMemory() },
 
-	//renderer				{ framework.GetRenderSystem(), textureStreamingEngine, framework.core.GetBlockMemory() },
-	//textureStreamingEngine	{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
+    renderer				{ framework.GetRenderSystem(), framework.core.GetBlockMemory() },
 
 	gbuffer			{ { 1920, 1080 }, framework.GetRenderSystem() },
 	depthBuffer		{ framework.GetRenderSystem(), { 1920, 1080 } },
@@ -93,7 +95,30 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 
 	debugRays		{ framework.core.GetTempMemoryMT() }
 {
-	auto& rs		= IN_framework.GetRenderSystem();
+	auto& rs = IN_framework.GetRenderSystem();
+
+#if USEVULKAN 
+	if (auto res = CreateWin32VKSurface(rs, {1920, 1080}, DeviceFormat::R8G8B8A8_UNORM); res != nullptr)
+	{
+		renderWindow = res;
+	}
+	else
+		throw std::runtime_error{ "Failed to create vulkan surface" };
+#else
+	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
+		renderWindow = res;
+	else
+		throw std::runtime_error{ "Failed to create render window" };
+#endif
+
+	EventNotifier<>::Subscriber sub;
+	sub.Notify		= &FlexKit::EventsWrapper;
+	sub._ptr		= &framework;
+
+
+	//Subscribe(renderWindow, sub);
+	//SetWindowTitle("Physics Test", renderWindow);
+
 	auto& allocator = framework.core.GetBlockMemory();
 	rs.RegisterPSOLoader(DRAW_LINE_PSO,		CreateDrawLineStatePSO);
 	rs.RegisterPSOLoader(DRAW_LINE3D_PSO,	CreateDraw2StatePSO);
@@ -106,19 +131,6 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 
 	RegisterMathTypes(GetScriptEngine(), framework.core.GetBlockMemory());
 	RegisterRuntimeAPI(GetScriptEngine());
-
-	/*
-	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
-		renderWindow = res;
-	else
-		throw std::runtime_error{ "Failed to create render window" };
-        */
-	EventNotifier<>::Subscriber sub;
-	sub.Notify		= &FlexKit::EventsWrapper;
-	sub._ptr		= &framework;
-
-	//Subscribe(renderWindow, sub);
-	//SetWindowTitle("Physics Test", renderWindow);
 
 	if (!LoadLevel(21654, framework.core))
 		throw std::runtime_error("Failed to load Level!");
@@ -209,9 +221,12 @@ AnimationTest::~AnimationTest()
 
 FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-	//Win32UpdateInput();
-	//auto mouseState = UpdateCapturedMouseInput(dT, renderWindow);
-	
+#if USEVULKAN
+	vkWin32UpdateInput();
+#else
+	Win32UpdateInput();
+	auto mouseState = UpdateCapturedMouseInput(dT, renderWindow);
+#endif
 	auto& playerUpdate				= QueuePlayerUpdate(playerObject, dispatcher, dT);
 	auto& thirdPersonCameraUpdate = QueueThirdPersonCameraControllers(dispatcher, {} /* mouseState.Normalized_dPos */, dT);
 

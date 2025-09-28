@@ -124,7 +124,7 @@ namespace dx_Internal
 				FK_LOG_2("Finished PSO Load");
 
 				state			= PipelineStateObject::PSO_States::Loaded;
-				PSO.state		= res.pipelineState;
+				PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
 				rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 				CV.notify_all();
 				return;
@@ -281,7 +281,7 @@ namespace dx_Internal
 					FK_LOG_2("Finished PSO Load");
 
 					PSO->state			= PipelineStateObject::PSO_States::Loaded;
-					PSO->PSO.state		= res.pipelineState;
+					PSO->PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
 					PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 					PSO->CV.notify_all();
 
@@ -510,7 +510,7 @@ namespace dx_Internal
 				return;
 			}
 
-			PSO->PSO.state		= res.pipelineState;
+			PSO->PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
 			PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
 
 			if (PSO->stale && loader != PSO->loader)

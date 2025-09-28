@@ -159,7 +159,7 @@ namespace VK_internal
 		void Clear() final;
 
 		void ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) final;
-		void ResolveQuery(QueryHandle query, size_t begin, size_t end, ID3D12Resource* destination, size_t destOffset) final;
+		void ResolveQuery(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset) final;
 
 		void ExecuteIndirect(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount) final;
 		void Dispatch(const uint3) final;

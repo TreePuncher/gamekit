@@ -5,6 +5,29 @@
 #include <vkWin32Surface.hpp>
 
 
+
+struct TestState : FlexKit::FrameworkState
+{
+	TestState(FlexKit::GameFramework& IN_framework) : FrameworkState(IN_framework)
+	{
+		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, FlexKit::DeviceFormat::R8G8B8A8_UNORM);
+	}
+
+	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph)
+	{
+		FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
+	    return nullptr;
+	}
+
+	void PostDrawUpdate(FlexKit::EngineCore&, double dT) override
+	{
+		renderWindow->Present();
+	}
+
+
+	FlexKit::IRenderWindow* renderWindow = nullptr;
+};
+
 int main()
 {
 	try
@@ -14,9 +37,7 @@ int main()
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{ .CreateRenderSystem = FlexKit::CreateVK });
 
-		auto window = CreateWin32VKSurface(app.get()->GetRenderSystem(), { 800, 600 }, FlexKit::DeviceFormat::R8G8B8A8_UNORM);
-
-		//app->PushState<AnimationTest>();
+		app->PushState<TestState>();
 		app->GetCore().FPSLimit		= 144;
 		app->GetCore().FrameLock	= true;
 		app->GetCore().vSync		= true;

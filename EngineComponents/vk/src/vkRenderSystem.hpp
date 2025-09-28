@@ -6,8 +6,10 @@ namespace VK_internal
 {
     using namespace FlexKit;
 
-    struct vkRenderSystem : IRenderSystem	
+    struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
     {
+        vkRenderSystem(iAllocator& allocator);
+
         bool													Initiate(Graphics_Desc& desc) final;
 
 		void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) final;
@@ -114,7 +116,7 @@ namespace VK_internal
 		// Resource upload
 		void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) final; // Uses Upload Queue
 		void				UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount) final; // Uses Upload Queue
-		void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) final;
+		void				UpdateResourceByUploadQueue(DeviceResource_ptr Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) final;
 
 		ResourceHandle		LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator) final;
 
@@ -176,6 +178,10 @@ namespace VK_internal
 		iAllocator*				allocator = nullptr;
 		VkAllocationCallbacks	vkAllocator;
 		VkDescriptorPool		descriptorPool = nullptr;
+		vkResourceTable			resources;
+
+		VkFence		directQueueFence = nullptr;
+		VkSemaphore	vkDirectQueueCounter;
 
 		uint64_t directSubmissionCounter	= 0;
 		uint64_t copySubmissionCounter		= 0;

@@ -417,7 +417,7 @@ namespace dx_Internal
 
 		PushCBToDescHeap(
 			ctx.renderSystem,
-			resource,
+			resource.As<ID3D12Resource>(),
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -447,7 +447,7 @@ namespace dx_Internal
 		auto resource = ctx.renderSystem->GetDeviceResource(handle);
 		PushCBToDescHeap(
 			ctx.renderSystem,
-			resource,
+			resource.As<ID3D12Resource>(),
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -477,7 +477,7 @@ namespace dx_Internal
 		auto resource = ctx.renderSystem->GetDeviceResource(handle);
 		PushCBToDescHeap(
 			ctx.renderSystem,
-			resource,
+			resource.As<ID3D12Resource>(),
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -543,7 +543,7 @@ namespace dx_Internal
 
 		Texture2D tex;
 		tex.WH			= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture		= ctx.renderSystem->GetDeviceResource(handle);
+		tex.Texture		= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format		= ctx.renderSystem->GetTextureDeviceFormat(handle);
 
 		PushUAV2DToDescHeap(
@@ -575,7 +575,7 @@ namespace dx_Internal
 
 		Texture2D tex;
 		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
+		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 
 		PushUAV2DToDescHeap(
@@ -610,7 +610,7 @@ namespace dx_Internal
 
 		Texture2D tex;
 		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
+		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 
 		PushUAV2DToDescHeap(
@@ -644,7 +644,7 @@ namespace dx_Internal
 		PushUAVCubeMapToDescHeap(
 			ctx.renderSystem,
 			ctx.renderSystem->GetTextureDeviceFormat(handle),
-			ctx.renderSystem->GetDeviceResource(handle),
+			ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>(),
 			IncrementHeapPOS(
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
@@ -671,7 +671,7 @@ namespace dx_Internal
 
 		Texture2D tex;
 		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
-		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle);
+		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 
 		PushUAV3DToDescHeap(
@@ -749,7 +749,7 @@ namespace dx_Internal
 		PushUAVBufferToDescHeap2(
 			ctx.renderSystem,
 			uavDesc,
-			ctx.renderSystem->GetDeviceResource(counter),
+			ctx.renderSystem->GetDeviceResource(counter).As<ID3D12Resource>(),
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,

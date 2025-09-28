@@ -49,11 +49,11 @@ namespace FlexKit
 		DescriptorRange						textureDescriptors;
 		uint64_t							lastUsed = -1;
 
-		Vector<PassHandle, 8, uint8_t>			passes;
-		Vector<MaterialProperty, 8, uint8_t>	properties;
-		Vector<ResourceHandle, 8, uint8_t>		textures;
-		Vector<uint32_t, 8, uint32_t>			textureTags;
-		Vector<MaterialHandle, 4, uint8_t>		subMaterials;
+		Vector<PassHandle, 4, uint8_t>			passes;
+		Vector<MaterialProperty, 0, uint8_t>	properties;
+		Vector<ResourceHandle, 0, uint8_t>		textures;
+		Vector<uint32_t, 0, uint32_t>			textureTags;
+		Vector<MaterialHandle, 0, uint8_t>		subMaterials;
 
 		bool HasTexture(uint32_t tag) const noexcept;
 	};

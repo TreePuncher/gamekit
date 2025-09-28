@@ -23,14 +23,14 @@ namespace dx_Internal
 
 		std::expected<UploadReservation, ReserveErrors> Reserve(const size_t size, const size_t reserveAlignement);
 
-		ID3D12Resource* Resize(const size_t size); // Returns old resource
+		struct ID3D12Resource* Resize(const size_t size); // Returns old resource
 
-		ID3D12Resource* deviceBuffer = nullptr;
-		size_t			position = 0;
-		size_t			last = 0;
-		size_t			size = 0;
-		char*			buffer = nullptr;
-		ID3D12Device*	parentDevice = nullptr;
+		struct ID3D12Resource*	deviceBuffer = nullptr;
+		size_t					position = 0;
+		size_t					last = 0;
+		size_t					size = 0;
+		char*					buffer = nullptr;
+		struct ID3D12Device*	parentDevice = nullptr;
 	};
 
 }

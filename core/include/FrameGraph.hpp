@@ -469,12 +469,12 @@ namespace FlexKit
 
 
 		template<typename TY>
-		ID3D12Resource* GetDeviceResource(TY handle) const
+		auto GetDeviceResource(TY handle) const
 		{
 			return renderSystem->GetDeviceResource(handle);
 		}
 
-		ID3D12Resource* GetDeviceResource(FrameResourceHandle handle) const
+		DeviceResource_ptr GetDeviceResource(FrameResourceHandle handle) const
 		{
 			return renderSystem->GetDeviceResource(GetResource(handle));
 		}
@@ -926,7 +926,7 @@ namespace FlexKit
 			return Transition(resource, DASVERTEXBUFFER, DeviceLayout::ResolveSrc, ctx, before, after);
 		}
 
-		ID3D12Resource* ResolveDst(const ReadBackResourceHandle resource, IDirectContext& ctx) const
+		DeviceResource_ptr ResolveDst(const ReadBackResourceHandle resource, IDirectContext& ctx) const
 		{
 			return renderSystem().GetDeviceResource(resource);
 			//return Transition(resource, DASVERTEXBUFFER, DeviceLayout::ResolveDst, ctx, before, after);

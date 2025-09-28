@@ -200,6 +200,14 @@ namespace VK_internal
 		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 	}
 
+	vkRenderSystem::vkRenderSystem(iAllocator& IN_allocator) :
+	    resources	{ IN_allocator },
+	    allocator	{ IN_allocator }
+	{
+	    
+	}
+
+
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
 		allocator = desc.Memory;
@@ -227,6 +235,7 @@ namespace VK_internal
 		auto physRequest = selector.set_minimum_version(1, 3)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
 			.add_required_extension("VK_EXT_mutable_descriptor_type")
+		    .add_required_extension("VK_KHR_dynamic_rendering")
             .add_required_extension("VK_KHR_swapchain")
 			.select_devices();
 
@@ -612,7 +621,6 @@ namespace VK_internal
 
 	}
 
-	// Resource upload
 	void vkRenderSystem::UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize)
 	{
 
@@ -623,7 +631,7 @@ namespace VK_internal
 
 	}
 
-	void vkRenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState)
+	void vkRenderSystem::UpdateResourceByUploadQueue(DeviceResource_ptr Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState)
 	{
 
 	}
@@ -686,7 +694,6 @@ namespace VK_internal
 		return {};
 	}
 
-	// Creation
 	std::optional<DescriptorRange> vkRenderSystem::CreateDescriptorRange(const uint32_t descriptorCount)
 	{
 		return {};
@@ -719,12 +726,51 @@ namespace VK_internal
 
 	ResourceHandle vkRenderSystem::CreateGPUResource(const GPUResourceDesc& desc)
 	{
-		return InvalidHandle;
+		auto resourceHandle = CreateGPUResourceHandle();
+
+
+		switch (desc.type)
+		{
+		case ResourceType::RenderTarget:
+		    {
+			    resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout>(
+				    resourceHandle,
+				    vkResourceEntry{
+					    .type	= vkResourceEntry::Type::RenderTarget,
+					    .image	= (VkImage)desc._ptr
+				    },
+					DeviceLayout::Common);
+		    }	break;
+		case ResourceType::DepthTarget:
+		    {
+		        
+		    }	break;
+		case ResourceType::UnorderedAccess:
+		    {
+		        
+		    }	break;
+		case ResourceType::UnorderedAccessRenderTarget:
+		    {
+
+		    }	break;
+		case ResourceType::ShaderResource:
+		    {
+
+		    }	break;
+		case ResourceType::RayTracingStructure:
+		    {
+
+		    }	break;
+		default:
+			throw std::runtime_error("Invalid arguments");
+		}
+
+	    return resourceHandle;
 	}
 
 	ResourceHandle vkRenderSystem::CreateGPUResourceHandle()
 	{
-		return InvalidHandle;
+		return resources.AddResource();
 	}
 
 	QueryHandle	vkRenderSystem::CreateOcclusionBuffer(size_t Size)

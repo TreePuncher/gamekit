@@ -67,6 +67,15 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
+
+    DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept
+	{
+		return vb_ref.resource.As<ID3D12Resource>()->GetGPUVirtualAddress();
+	}
+
+
+	/************************************************************************************************/
+
 	
 	UAVBuffer::UAVBuffer(const RenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
@@ -75,7 +84,7 @@ namespace dx_Internal
 		auto uavLayout	= rs.GetUAVBufferLayout(handle);
 		auto bufferSize = rs.GetUAVBufferSize(handle);
 
-		resource		= rs.GetDeviceResource(handle);
+		resource		= rs.GetDeviceResource(handle).As<ID3D12Resource>();
 		stride			= (uint32_t)(IN_stride == -1 ? uavLayout.stride : IN_stride);
 		elementCount	= (uint32_t)bufferSize / stride;
 		counterOffset	= 0;
@@ -1635,7 +1644,7 @@ namespace dx_Internal
 
 	void CopyEngine::Wait(SyncPoint syncTo)
 	{
-		copyQueue->Wait(syncTo.fence, syncTo.syncCounter);
+		copyQueue->Wait(syncTo.fence.As<ID3D12Fence>(), syncTo.syncCounter);
 	}
 
 
@@ -1690,7 +1699,7 @@ namespace dx_Internal
 		}
 
 		if (auto syncPoint = syncOpt.value_or(SyncPoint{}); syncOpt.has_value())
-			copyQueue->Wait(syncPoint.fence, syncPoint.syncCounter);
+			copyQueue->Wait(syncPoint.fence.As<ID3D12Fence>(), syncPoint.syncCounter);
 
 		copyQueue->ExecuteCommandLists((UINT)cmdLists.size(), cmdLists);
 
@@ -1710,7 +1719,7 @@ namespace dx_Internal
 
 	void CopyEngine::Signal(SyncPoint sync)
 	{
-		if (auto HR = copyQueue->Signal(sync.fence, sync.syncCounter); FAILED(HR))
+		if (auto HR = copyQueue->Signal(sync.fence.As<ID3D12Fence>(), sync.syncCounter); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
 	}
 
@@ -1854,7 +1863,7 @@ namespace dx_Internal
 		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS.Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject(),
+			RS.Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>(),
 			Shader2ByteCode(computeShader)
 		};
 
@@ -2661,14 +2670,14 @@ namespace dx_Internal
 
 	DevicePointer RenderSystem::GetDevicePointer(const ResourceHandle resourceHandle) const noexcept
 	{
-		auto deviceResource = GetDeviceResource(resourceHandle);
+		auto deviceResource = GetDeviceResource(resourceHandle).As<ID3D12Resource>();
 		return deviceResource->GetGPUVirtualAddress();
 	}
 
 
 	DeviceAddressRange	RenderSystem::GetDeviceRange(const ResourceHandle resource) const noexcept
 	{
-		auto deviceResource = GetDeviceResource(resource);
+		auto deviceResource = GetDeviceResource(resource).As<ID3D12Resource>();
 		auto resourceSize	= GetResourceSize(resource);
 		auto gpuAddress		= deviceResource->GetGPUVirtualAddress();
 
@@ -2681,7 +2690,7 @@ namespace dx_Internal
 
 	DeviceAddressRange	RenderSystem::GetDeviceRange(const ConstantBufferHandle handle) const noexcept
 	{
-		DeviceResource_ptr	resource		= GetDeviceResource(handle);
+		auto				resource		= GetDeviceResource(handle).As<ID3D12Resource>();
 		const size_t		resourceSize	= ConstantBuffers.GetBufferSize(handle);
 		D3D12_GPU_VIRTUAL_ADDRESS ptr		= resource->GetGPUVirtualAddress();
 
@@ -2712,7 +2721,7 @@ namespace dx_Internal
 
 	size_t    RenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
 	{
-		auto resource				= GetDeviceResource(handle);
+		auto resource				= GetDeviceResource(handle).As<ID3D12Resource>();
 		D3D12_RESOURCE_DESC desc	= resource->GetDesc();
 		auto resourceInfo			= pDevice->GetResourceAllocationInfo(0, 1, &desc);
 
@@ -2835,7 +2844,7 @@ namespace dx_Internal
 
 	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
 	{
-		auto resource	= GetDeviceResource(handle);
+		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
 		auto wh			= GetTextureWH(handle);
 		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
 		auto format     = GetTextureFormat(handle);
@@ -2862,7 +2871,7 @@ namespace dx_Internal
 
 	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, TextureBuffer* buffers, size_t resourceCount) // Uses Upload Queue
 	{
-		auto resource	= GetDeviceResource(handle);
+		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
 		auto format		= GetTextureFormat(handle);
 
 		SubResourceUpload_Desc desc;
@@ -2902,11 +2911,11 @@ namespace dx_Internal
 		desc.Type   = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		desc.Flags  = D3D12_RAYTRACING_GEOMETRY_FLAGS::D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
 		desc.Triangles.IndexFormat  = DXGI_FORMAT_R32_UINT;
-		desc.Triangles.IndexBuffer  = indexBuffer.resource->GetGPUVirtualAddress();
+		desc.Triangles.IndexBuffer  = indexBuffer.resource.As<ID3D12Resource>()->GetGPUVirtualAddress();
 		desc.Triangles.IndexCount   = (UINT)indexBuffer.Size();
 
 		desc.Triangles.VertexFormat					= DXGI_FORMAT_R32G32B32_FLOAT;
-		desc.Triangles.VertexBuffer.StartAddress	= positionBuffer.resource->GetGPUVirtualAddress();
+		desc.Triangles.VertexBuffer.StartAddress	= positionBuffer.resource.As<ID3D12Resource>()->GetGPUVirtualAddress();
 		desc.Triangles.VertexBuffer.StrideInBytes	= positionBuffer.byteStride;
 		desc.Triangles.VertexCount					= (UINT)positionBuffer.byteSize;
 
@@ -3103,7 +3112,7 @@ namespace dx_Internal
 					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
 
 					HRESULT HR = pDevice14->CreatePlacedResource2(
-						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : desc.placed.customHeap.As<ID3D12Heap>(),
 						desc.placed.offset,
 						&Resource_DESC,
 						initialLayout,
@@ -3125,7 +3134,7 @@ namespace dx_Internal
 
 			auto filledDesc = desc;
 
-			filledDesc.resources	= NewResource;
+			filledDesc.resources	= (DeviceResource_ptr*)NewResource;
 			filledDesc.byteSize		= byteSize;
 
 			return Textures.AddResource(filledDesc, filledDesc.initialLayout);
@@ -3208,7 +3217,7 @@ namespace dx_Internal
 				ProfileFunctionLabeled(Placed);
 
 				HRESULT HR = pDevice14->CreatePlacedResource2(
-					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
+					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : desc.placed.customHeap.As<ID3D12Heap>(),
 					desc.placed.offset,
 					&Resource_DESC,
 					initialLayout,
@@ -3229,7 +3238,7 @@ namespace dx_Internal
 
 		auto filledDesc     = desc;
 
-		filledDesc.resources    = NewResource;
+		filledDesc.resources    = (DeviceResource_ptr*)NewResource;
 		filledDesc.byteSize     = byteSize;
 
 		Textures.SetResource(handle, filledDesc, filledDesc.initialLayout);
@@ -3526,7 +3535,7 @@ namespace dx_Internal
 			if (coordinates.size())
 			{
 				copyEngine.copyQueue->UpdateTileMappings(
-					deviceResource,
+					deviceResource.As<ID3D12Resource>(),
 					(UINT)coordinates.size(),
 					coordinates.data(),
 					nullptr,
@@ -3606,11 +3615,11 @@ namespace dx_Internal
 					else
 					{
 						copyEngine.copyQueue->UpdateTileMappings(
-							deviceResource,
+							deviceResource.As<ID3D12Resource>(),
 							(UINT)coordinates.size(),
 							coordinates.data(),
 							regionSizes.data(),
-							GetDeviceResource(heap),
+							GetDeviceResource(heap).As<ID3D12Heap>(),
 							(UINT)coordinates.size(),
 							flags.data(),
 							offsets.data(),
@@ -3818,11 +3827,13 @@ namespace dx_Internal
 		UINT						subResourceTilingCount = 1;
 		D3D12_SUBRESOURCE_TILING	subResourceTiling_Packed;
 
-		pDevice->GetResourceTiling(GetDeviceResource(resource), &tileCount, &packedMipInfo, &tileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
+		pDevice->GetResourceTiling(GetDeviceResource(resource).As<ID3D12Resource>(),
+			                        &tileCount, &packedMipInfo, &tileShape,
+			                        &subResourceTilingCount, 0, &subResourceTiling_Packed);
 
 		return {
-			size_t(packedMipInfo.NumStandardMips),
-			size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
+			uint32_t(packedMipInfo.NumStandardMips),
+			uint32_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
 			packedMipInfo.StartTileIndexInOverallResource };
 	}
 
@@ -3830,13 +3841,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Heap* RenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
+	DeviceHeap_ptr RenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
 	{
 		return heaps.GetDeviceResource(handle);
 	}
 
 
-	ID3D12Resource* RenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
+	DeviceResource_ptr RenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
 	{
 		return ReadBackTable.GetDeviceResource(handle);
 	}
@@ -3845,7 +3856,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource* RenderSystem::GetDeviceResource(const ConstantBufferHandle handle) const
+	DeviceResource_ptr RenderSystem::GetDeviceResource(const ConstantBufferHandle handle) const
 	{
 		return ConstantBuffers.GetDeviceResource(handle);
 	}
@@ -3854,7 +3865,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource* RenderSystem::GetDeviceResource(const ResourceHandle handle) const
+	DeviceResource_ptr RenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
 		if (handle != InvalidHandle)
 			return Textures.GetResource(handle, pDevice);
@@ -3866,7 +3877,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource*	RenderSystem::GetDeviceResource(const SOResourceHandle handle) const
+	DeviceResource_ptr	RenderSystem::GetDeviceResource(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAsset(handle);
 	}
@@ -3875,7 +3886,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource*	RenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
+	DeviceResource_ptr	RenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetAssetCounter(handle);
 	}
@@ -5163,7 +5174,7 @@ namespace dx_Internal
 		};
 
 		for (size_t I = 0; I < desc.bufferCount; ++I) {
-			newEntry.Resources[I] = desc.resources[I];
+			newEntry.Resources[I] = desc.resources[I].As<ID3D12Resource>();
 
 #if USING(AFTERMATH)
 			GFSDK_Aftermath_ResourceHandle  aftermathResource;
@@ -5224,7 +5235,7 @@ namespace dx_Internal
 		};
 
 		for (size_t I = 0; I < desc.bufferCount; ++I) {
-			newEntry.Resources[I] = desc.resources[I];
+			newEntry.Resources[I] = desc.resources[I].As<ID3D12Resource>();
 
 #if USING(AFTERMATH)
 			GFSDK_Aftermath_ResourceHandle  aftermathResource;
@@ -5640,7 +5651,7 @@ namespace dx_Internal
 			{
 				auto desc = resource->GetDesc();
 				
-				if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
+				if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap).As<ID3D12Heap>(); heap != mappingHeap)
 				{
 					if (!coordinates.size())
 						__debugbreak();
@@ -6973,7 +6984,7 @@ namespace dx_Internal
 	{
 		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
 
-		copyEngine.copyQueue->Wait(sp.fence, sp.syncCounter);
+		copyEngine.copyQueue->Wait(sp.fence.As<ID3D12Fence>(), sp.syncCounter);
 	}
 
 	SyncPoint RenderSystem::SyncUploadPoint()
@@ -6996,7 +7007,7 @@ namespace dx_Internal
 	{
 		FK_LOG_9("QUEUE:DIRECT signaling: %I64 : %I64\n", sp.fence, sp.syncCounter);
 
-		GraphicsQueue->Wait(sp.fence, sp.syncCounter);
+		GraphicsQueue->Wait(sp.fence.As<ID3D12Fence>(), sp.syncCounter);
 	}
 
 	SyncPoint RenderSystem::SyncDirectPoint()
@@ -7070,7 +7081,7 @@ namespace dx_Internal
 		}
 
 		if (auto sync = syncOptional.value_or(SyncPoint{}); syncOptional.has_value())
-			GraphicsQueue->Wait(sync.fence, sync.syncCounter);
+			GraphicsQueue->Wait(sync.fence.As<ID3D12Fence>(), sync.syncCounter);
 
 		try
 		{
@@ -7114,7 +7125,7 @@ namespace dx_Internal
 
 	void RenderSystem::Signal(SyncPoint syncPoint)
 	{
-		if (auto HR = GraphicsQueue->Signal(syncPoint.fence, syncPoint.syncCounter); FAILED(HR))
+		if (auto HR = GraphicsQueue->Signal(syncPoint.fence.As<ID3D12Fence>(), syncPoint.syncCounter); FAILED(HR))
 			FK_LOG_ERROR("Failed to Signal");
 	}
 
@@ -7469,7 +7480,7 @@ namespace dx_Internal
 			
 
 		auto resource = RS->GetDeviceResource(target);
-		RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateRenderTargetView(resource.As<ID3D12Resource>(), &TargetDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
 	}
@@ -7478,14 +7489,17 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushDepthStencil(RenderSystem* RS, ResourceHandle Target, DescHeapPOS POS)
+	DescHeapPOS PushDepthStencil(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-		DSVDesc.Format				= RS->GetTextureDeviceFormat(Target);
+		DSVDesc.Format				= RS->GetTextureDeviceFormat(target);
 		DSVDesc.Texture2D.MipSlice	= 0;
 		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateDepthStencilView(
+			            RS->GetDeviceResource(target).As<ID3D12Resource>(),
+			            &DSVDesc,
+			            D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
@@ -7501,7 +7515,10 @@ namespace dx_Internal
 		DSVDesc.Texture2DArray.MipSlice         = (UINT)MipSlice;
 		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
-		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateDepthStencilView(
+			            RS->GetDeviceResource(Target).As<ID3D12Resource>(),
+			            &DSVDesc,
+			            D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
@@ -7630,7 +7647,7 @@ namespace dx_Internal
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -7656,7 +7673,7 @@ namespace dx_Internal
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 } );
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 } );
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -7680,7 +7697,7 @@ namespace dx_Internal
 		}
 
 		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -7700,7 +7717,9 @@ namespace dx_Internal
 			ViewDesc.TextureCube.ResourceMinLODClamp = 0;
 		}
 
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(resource), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateShaderResourceView(
+			            RS->GetDeviceResource(resource).As<ID3D12Resource>(),
+			            &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
