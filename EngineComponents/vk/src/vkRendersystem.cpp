@@ -300,7 +300,7 @@ namespace VK_internal
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 			.pNext = nullptr,
-			.flags = VK_FENCE_CREATE_SIGNALED_BIT
+			.flags = 0
 		};
 
 		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &directQueueFence); res != VK_SUCCESS)
@@ -321,7 +321,6 @@ namespace VK_internal
 
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkDirectQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
-
 
 		return true;
 	}
@@ -481,6 +480,13 @@ namespace VK_internal
 			auto vkCL = static_cast<vkDirectContext*>(cl);
 			vkCL->Close();
 
+			VkCommandBufferSubmitInfo info{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+				.pNext			= nullptr,
+				.commandBuffer	= vkCL->commandBuffer,
+				.deviceMask		= 0
+			};
+			cmdBufferSubmit.push_back(info);
 			submissionValue = Max(submissionValue, vkCL->dispatchValue);
 		}
 
@@ -493,7 +499,7 @@ namespace VK_internal
 		};
 
 		VkSemaphoreSubmitInfo signalInfo{
-			.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+			.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 	        .pNext		= nullptr,
 	        .semaphore	= vkDirectQueueCounter,
 	        .value		= submissionValue,
@@ -512,6 +518,7 @@ namespace VK_internal
             .pSignalSemaphoreInfos		= &signalInfo
 		};
 
+		vkResetFences(device, 1, &directQueueFence);
 		if (auto res = vkQueueSubmit2(device.get_queue(vkb::QueueType::graphics).value(), 1, &submit, directQueueFence); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to submit to Direct Command Queue!" };
 

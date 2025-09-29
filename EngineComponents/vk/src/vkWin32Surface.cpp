@@ -373,19 +373,22 @@ namespace FlexKit
 			return resource;
 		}
 
-		void UpdateBufferIdx() const
+		void UpdateBufferIdx()
 		{
 			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
+
+			layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);
 
 			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, presentSemaphore, nullptr, &const_cast<uint32_t&>(imageIndex)); res != VK_SUCCESS)
 				throw std::exception("Failed to get next image!");
 
-			renderSystem.resources.Set<ResourceFieldID::APIHandle>(
+			renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout>(
 				resource,
 				vkResourceEntry{
 				    .type	= vkResourceEntry::Type::RenderTarget,
 					.image	= images[imageIndex]
-				});
+				},
+				layout[imageIndex]);
 		}
 
 
@@ -401,22 +404,23 @@ namespace FlexKit
 			auto test0 = renderSystem.GetCurrentCounter();
 			auto test1 = renderSystem.GetCurrentProgress();
 
-			VkSemaphoreSignalInfo signalInfo{
-				.sType		= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
-				.pNext		= nullptr,
-				.semaphore	= presentSemaphore,
-				.value		= renderSystem.GetCurrentCounter()
+
+			VkSemaphoreSignalInfo signal{
+			    .sType		= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
+                .pNext		= 0,
+                .semaphore	= presentSemaphore,
+                .value		= 1,
 			};
 
-			vkSignalSemaphore(renderSystem.device, &signalInfo);
 
+			vkWaitForFences(renderSystem.device, 1, &renderSystem.directQueueFence, true, 100000000);
 
 			VkPresentInfoKHR presentInfo = {
 				.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 				.pNext				= nullptr,
 
-				.waitSemaphoreCount	= 1,
-				.pWaitSemaphores	= &renderSystem.vkDirectQueueCounter,
+				.waitSemaphoreCount	= 0,
+				.pWaitSemaphores	= &presentSemaphore,
 
 				.swapchainCount		= 1,
 				.pSwapchains		= &swapchain,
@@ -426,6 +430,7 @@ namespace FlexKit
 			};
 
 			auto res = vkQueuePresentKHR(renderSystem.device.get_queue(vkb::QueueType::graphics).value(), &presentInfo) == VK_SUCCESS;
+
 			UpdateBufferIdx();
 
 			return res;
@@ -448,6 +453,7 @@ namespace FlexKit
 
 	    ResourceHandle	resource	= InvalidHandle;
 		VkImage			images[3];
+		DeviceLayout	layout[3]	= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
 		uint32_t		imageIndex;
 	};
 
@@ -525,7 +531,7 @@ namespace FlexKit
 
 		auto desc = GPUResourceDesc::RenderTarget(WH, format);
 		desc._ptr = swapchain;
-		desc.initialLayout = DeviceLayout::Present;
+		desc.initialLayout = DeviceLayout::Undefined;
 
 		auto renderTarget = renderSystem.CreateGPUResource(desc);
 		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
@@ -533,14 +539,24 @@ namespace FlexKit
 		uint imageCount;
 		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
 
-		VkSemaphoreCreateInfo createTimelineSemaphoreInfo{
+		VkSemaphoreCreateInfo createSemaphoreInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0
 		};
 
-		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphore); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphore); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
+
+
+		VkFenceCreateInfo createFenceInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0
+		};
+
+		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &newRenderWindow.windowFence); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create fence for direct queue!");
 
 		newRenderWindow.resource	= renderTarget;
 		newRenderWindow.swapchain	= swapchain;
