@@ -5,28 +5,29 @@
 #include <vkWin32Surface.hpp>
 
 
+using namespace FlexKit;
 
-struct TestState : FlexKit::FrameworkState
+struct TestState : FrameworkState
 {
-	TestState(FlexKit::GameFramework& IN_framework) : FrameworkState(IN_framework)
+	TestState(GameFramework& IN_framework) : FrameworkState(IN_framework)
 	{
-		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, FlexKit::DeviceFormat::R8G8B8A8_UNORM);
+		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 	}
 
 
-	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT)
+	UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT)
 	{
-		FlexKit::vkWin32UpdateInput();
+		vkWin32UpdateInput();
 	    return nullptr;
 	}
 
 
-	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph& frameGraph)
+	UpdateTask* Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
 	{
 		auto renderTarget = renderWindow->GetBackBuffer();
 		frameGraph.AddOutput(renderTarget);
-		FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 0 });
-		FlexKit::PresentBackBuffer(frameGraph, *renderWindow);
+		ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
+		PresentBackBuffer(frameGraph, *renderWindow);
 	    return nullptr;
 	}
 
