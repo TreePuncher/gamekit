@@ -1150,12 +1150,12 @@ namespace FlexKit
 		DescriptorHeapSRV2.SetParameterAsSRV(0, 0, -1, 1);
 
 		builder.AllowIA = true;
-		builder.SetParameterAsCBV(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		builder.SetParameterAsCBV(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		builder.SetParameterAsCBV(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		builder.SetParameterAsCBV(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		builder.SetParameterAsDescriptorTable(4, DescriptorHeapSRV1, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-		builder.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(0, 0, 0, PIPELINE::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(1, 1, 0, PIPELINE::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(2, 2, 0, PIPELINE::PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(3, 3, 0, PIPELINE::PIPELINE_DEST_PS);
+		builder.SetParameterAsDescriptorTable(4, DescriptorHeapSRV1, -1, PIPELINE::PIPELINE_DEST_PS);
+		builder.SetParameterAsDescriptorTable(5, DescriptorHeapSRV2, -1, PIPELINE::PIPELINE_DEST_PS);
 		rootSignature = builder.Build(renderSystem, persistent);
 		FK_ASSERT(rootSignature != nullptr, "Failed to create feedbackPassRootSignature");
 		rootSignature->SetDebugName("ClusteredShading");

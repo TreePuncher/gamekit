@@ -370,6 +370,11 @@ namespace FlexKit
 
 		virtual ResourceHandle GetBackBuffer() const
 		{
+			return resource;
+		}
+
+		void UpdateBufferIdx() const
+		{
 			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
 			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, presentSemaphore, nullptr, &const_cast<uint32_t&>(imageIndex)); res != VK_SUCCESS)
@@ -381,9 +386,8 @@ namespace FlexKit
 				    .type	= vkResourceEntry::Type::RenderTarget,
 					.image	= images[imageIndex]
 				});
-
-			return resource;
 		}
+
 
 		uint2 GetWH() const final
 		{
@@ -421,7 +425,10 @@ namespace FlexKit
 				.pResults			= nullptr
 			};
 
-			return vkQueuePresentKHR(renderSystem.device.get_queue(vkb::QueueType::graphics).value(), &presentInfo) == VK_SUCCESS;
+			auto res = vkQueuePresentKHR(renderSystem.device.get_queue(vkb::QueueType::graphics).value(), &presentInfo) == VK_SUCCESS;
+			UpdateBufferIdx();
+
+			return res;
 		}
 
 		void Resize(const uint2 WH) final
@@ -450,8 +457,8 @@ namespace FlexKit
 		static bool _TEMP =
 			[]
 			{
-				gWindowHandle = GetConsoleWindow();
-				gInstance = GetModuleHandle(0);
+				gWindowHandle	= GetConsoleWindow();
+				gInstance		= GetModuleHandle(0);
 				RegisterWindowClass(gInstance);
 				SetProcessDPIAware();
 				return true;
@@ -496,15 +503,15 @@ namespace FlexKit
             .minImageCount			= 3,
             .imageFormat			= VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
             .imageColorSpace		= VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .imageExtent			= { .width = WH[0], .height = WH[1] },
+            .imageExtent			= { .width = 782, .height = 553 },
             .imageArrayLayers		= 1,
-            .imageUsage				= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageUsage				= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount	= 0,
             .pQueueFamilyIndices	= nullptr,
             .preTransform			= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
             .compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode			= VK_PRESENT_MODE_FIFO_LATEST_READY_EXT,
+            .presentMode			= VK_PRESENT_MODE_FIFO_KHR,
             .clipped				= false,
             .oldSwapchain			= nullptr
 		};
@@ -518,20 +525,13 @@ namespace FlexKit
 
 		auto desc = GPUResourceDesc::RenderTarget(WH, format);
 		desc._ptr = swapchain;
+		desc.initialLayout = DeviceLayout::Present;
 
 		auto renderTarget = renderSystem.CreateGPUResource(desc);
 		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
 
 		uint imageCount;
 		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
-
-
-        VkSemaphoreTypeCreateInfo semaphoreType{
-		    .sType			= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-	        .pNext			= 0,
-	        .semaphoreType	= VK_SEMAPHORE_TYPE_TIMELINE,
-	        .initialValue	= 0u
-		};
 
 		VkSemaphoreCreateInfo createTimelineSemaphoreInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -545,6 +545,8 @@ namespace FlexKit
 		newRenderWindow.resource	= renderTarget;
 		newRenderWindow.swapchain	= swapchain;
 		newRenderWindow.surface		= surface;
+
+		newRenderWindow.UpdateBufferIdx();
 
 		return &newRenderWindow;
 	}

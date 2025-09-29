@@ -158,6 +158,14 @@ namespace FlexKit
 			return std::get<fieldIdx>(fields)[idx];
 		}
 
+		template<size_t fieldIdx>
+		const auto& Get(size_t idx) const noexcept requires(fieldIdx < sizeof...(TY_Fields))
+		{
+			FK_ASSERT(idx < used);
+
+			return std::get<fieldIdx>(fields)[idx];
+		}
+
 		template<size_t ... fieldIDs>
 		void Set(size_t idx, auto&& ... args) noexcept requires(sizeof ... (args) > 0)
 		{

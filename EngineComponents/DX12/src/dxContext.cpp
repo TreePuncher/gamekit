@@ -2654,8 +2654,8 @@ namespace dx_Internal
 				D3D12_GLOBAL_BARRIER globalBarrier;
 				globalBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
 				globalBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
-				globalBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
-				globalBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
+				globalBarrier.SyncBefore	= SyncPoint2DX_Forward(barrier.src);
+				globalBarrier.SyncAfter		= SyncPoint2DX_Backward(barrier.dst);
 
 				globalBarriers.push_back(globalBarrier);
 			}	break;
@@ -2669,8 +2669,8 @@ namespace dx_Internal
 				bufferBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource).As<ID3D12Resource>();
 				bufferBarrier.AccessBefore	= DAS2AccessState(barrier.accessBefore);
 				bufferBarrier.AccessAfter	= DAS2AccessState(barrier.accessAfter);
-				bufferBarrier.SyncBefore	= SyncPoint2DX(barrier.src);
-				bufferBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
+				bufferBarrier.SyncBefore	= SyncPoint2DX_Forward(barrier.src);
+				bufferBarrier.SyncAfter		= SyncPoint2DX_Backward(barrier.dst);
 				bufferBarrier.Offset		= 0;// barrier.buffer.rangeBegin;
 				bufferBarrier.Size			= UINT64_MAX;//barrier.buffer.rangeEnd - barrier.buffer.rangeBegin;
 
@@ -2695,8 +2695,8 @@ namespace dx_Internal
 				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
 				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
 				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource).As<ID3D12Resource>();
-				textureBarrier.SyncAfter		= SyncPoint2DX(barrier.dst);
-				textureBarrier.SyncBefore		= SyncPoint2DX(barrier.src);
+				textureBarrier.SyncAfter		= SyncPoint2DX_Forward(barrier.dst);
+				textureBarrier.SyncBefore		= SyncPoint2DX_Backward(barrier.src);
 
 				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
 					.IndexOrFirstMipLevel	= 0,

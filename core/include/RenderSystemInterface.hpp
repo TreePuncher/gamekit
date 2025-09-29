@@ -176,11 +176,17 @@ namespace FlexKit
 		R8_UINT,
 		R16_FLOAT,
 		R16_UINT,
+		R16_SINT,
+		R16_UNORM,
+		R16_SNORM,
 		R16G16_UINT,
 		R32_UINT,
+		R32_INT,
 		R32G32_UINT,
+		R32G32_INT,
 		R8G8B8A_UINT,
 		R8G8B8A8_UINT,
+		R8G8B8A8_SINT,
 		R8G8B8A8_UNORM,
 		R8G8B8A8_UNORM_SRGB,
 		R16G16B16A16_UNORM,
@@ -217,6 +223,7 @@ namespace FlexKit
 		BC7_SNORM,
 
 
+		R32G32B32_INT,
 		R32G32B32_UINT,
 		R32G32B32A32_UINT,
 
@@ -272,19 +279,21 @@ namespace FlexKit
 	};
 
 
-	enum PIPELINE_DESTINATION : unsigned char
+	enum PIPELINE : unsigned char
 	{
-		PIPELINE_DEST_NONE = 0x00,
-		PIPELINE_DEST_IA = 0x01,
-		PIPELINE_DEST_HS = 0x02,
-		PIPELINE_DEST_GS = 0x04,
-		PIPELINE_DEST_VS = 0x08,
-		PIPELINE_DEST_PS = 0x10,
-		PIPELINE_DEST_CS = 0x20,
-		PIPELINE_DEST_OM = 0x30,
-		PIPELINE_DEST_DS = 0x40,
-		PIPELINE_DEST_AS = 0x40,
-		PIPELINE_DEST_MS = 0x50,
+		PIPELINE_DEST_NONE		= 0x00,
+		PIPELINE_DEST_IA		= 0x01,
+		PIPELINE_DEST_HS		= 0x02,
+		PIPELINE_DEST_GS		= 0x04,
+		PIPELINE_DEST_VS		= 0x08,
+		PIPELINE_DEST_PS		= 0x10,
+		PIPELINE_DEST_CS		= 0x20,
+		PIPELINE_DEST_OM		= 0x30,
+		PIPELINE_DEST_DS		= 0x40,
+		PIPELINE_DEST_AS		= 0x50,
+		PIPELINE_DEST_MS		= 0x60,
+		PIPELINE_DEST_RT		= 0x70,
+		PIPELINE_DEST_AS_BUILD	= 0x80,
 
 		PIPELINE_DEST_ALL = 0xFF
 	};
@@ -404,39 +413,51 @@ namespace FlexKit
 		DASResolveWrite				= 0x0200 | DASWriteFlag,
 
 		DASNOACCESS					= 0xF000,
-		DASERROR					= 0xFFFF ,
-		DASUNKNOWN					= 0x0040,
+		DASUNKNOWN					= 0x0300,
+		DASERROR					= 0xFFFF,
 	};
 
 
-	enum DeviceSyncPoint : uint8_t
+
+	enum DeviceSyncPoint : uint32_t
 	{
 		Sync_None,
-		Sync_Auto,
-		Sync_All,
-		Sync_Draw,
-		Sync_Compute,
 
-		Sync_VertexShader,
-		Sync_PixelShader,
-		Sync_DepthStencil,
-		Sync_RenderTarget,
-		Sync_Raytracing,
-		Sync_Copy,
-		Sync_Resolve,
-		Sync_ExecuteIndirect,
-		Sync_Predication,
-		Sync_All_Shading,
-		Sync_NonPixelShading,
-		Sync_EmitRaytracingAccellerationStructurePostBuildInfo,
-		Sync_VideoDecode,
-		Sync_VideoProcess,
-		Sync_VideoEncode,
-		Sync_BuildRaytracingAccellerationStructure,
-		Sync_CopyRaytracingAccellerationStructure,
-		Sync_Split,
+		Sync_IA					= 0x01 << 0,
+		Sync_VertexShader		= 0x01 << 1,
+		Sync_HullShader			= 0x01 << 2,
+		Sync_DomainShader		= 0x01 << 3,
+		Sync_GeometryShader		= 0x01 << 4,
+		Sync_PixelShader		= 0x01 << 5,
+		Sync_DepthStencil		= 0x01 << 6,
+		Sync_RenderTarget		= 0x01 << 7,
+		Sync_Raytracing			= 0x01 << 8,
+		Sync_Copy				= 0x01 << 9,
+		Sync_Resolve			= 0x01 << 10,
+		Sync_ExecuteIndirect	= 0x01 << 11,
+		Sync_Predication		= 0x01 << 12,
+		Sync_Compute			= 0x01 << 13,
 
-		Sync_Unknown
+		Sync_EmitRaytracingAccelerationStructurePostBuildInfo	= 0x01 << 14,
+		Sync_BuildRaytracingAccelerationStructure				= 0x01 << 15,
+		Sync_CopyRaytracingAccelerationStructure				= 0x01 << 16,
+
+	    Sync_VideoDecode										= 0x01 << 17,
+		Sync_VideoProcess										= 0x01 << 18,
+		Sync_VideoEncode										= 0x01 << 19,
+
+		Sync_ClearUAV											= 0x01 << 20,
+
+		Sync_Mesh			= 0x01 << 21,
+		Sync_Amplification	= 0x01 << 22,
+
+		Sync_Draw				= Sync_IA | Sync_VertexShader | Sync_HullShader  | Sync_DomainShader | Sync_PixelShader | Sync_DepthStencil | Sync_RenderTarget,
+	    Sync_All_Shading		= Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_PixelShader | Sync_Compute,
+		Sync_NonPixelShading	= Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_Compute,
+
+		Sync_Unknown,
+		Sync_All	= 0xffffffff,
+
 	};
 
 	
@@ -1890,22 +1911,22 @@ namespace FlexKit
 
 		void Release();
 
-		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorTable(
-			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE_DESTINATION accessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsUAV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsSRV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		void Clear();
 

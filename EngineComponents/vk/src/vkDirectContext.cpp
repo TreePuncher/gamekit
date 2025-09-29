@@ -1,5 +1,7 @@
 #include "vkDirectContext.hpp"
 #include "vkRenderSystem.hpp"
+#include <VkBootstrapDispatch.h>
+#include <VkBootstrap.h>
 
 namespace VK_internal
 {
@@ -9,6 +11,7 @@ namespace VK_internal
 	vkDirectContext::vkDirectContext()
 	{
 		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
+		pendingBarriers = Vector<Barrier>{ renderSystem.allocator };
 
 		VkCommandPoolCreateInfo createPoolDesc{
 				.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -37,8 +40,86 @@ namespace VK_internal
 	{
 	}
 
+
 	void vkDirectContext::FlushBarriers() noexcept
-	{}
+	{
+		auto& RS = RenderSystem();
+
+		Vector<VkMemoryBarrier2, 16, uint8_t>		memoryBarriers	{ pendingBarriers.Allocator };
+		Vector<VkBufferMemoryBarrier2, 16, uint8_t>	bufferBarriers	{ pendingBarriers.Allocator };
+		Vector<VkImageMemoryBarrier2, 16, uint8_t>	imageBarriers	{ pendingBarriers.Allocator };
+
+		for (const auto& barrier : pendingBarriers)
+		{
+			switch (barrier.type)
+			{
+			case BarrierType::Global:
+			{
+				VkMemoryBarrier2 memoryBarrier{
+					.sType			= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+					.pNext			= nullptr,
+					.srcStageMask	= SyncPointToVK(barrier.src),
+					.srcAccessMask	= AccessToVK(barrier.accessBefore),
+					.dstStageMask	= SyncPointToVK(barrier.dst),
+					.dstAccessMask	= AccessToVK(barrier.accessAfter)
+				};
+
+				memoryBarriers.push_back(memoryBarrier);
+			}	break;
+			case BarrierType::Texture:
+			{
+				VkImageMemoryBarrier2 textureBarrier{
+					.sType			= VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                    .pNext			= nullptr,
+                    .srcStageMask	= SyncPointToVK(barrier.src),
+                    .srcAccessMask	= AccessToVK(barrier.accessBefore),
+                    .dstStageMask	= SyncPointToVK(barrier.dst),
+                    .dstAccessMask	= AccessToVK(barrier.accessAfter),
+                    .oldLayout		= (VkImageLayout)LayoutToVK(barrier.texture.layoutBefore),
+                    .newLayout		= (VkImageLayout)LayoutToVK(barrier.texture.layoutAfter),
+                    .srcQueueFamilyIndex	= RS.device.get_queue_index(vkb::QueueType::graphics).value(),
+                    .dstQueueFamilyIndex	= RS.device.get_queue_index(vkb::QueueType::graphics).value(),
+                    .image					= RS.GetDeviceResource(barrier.resource).As<VkImage_T>(),
+                    .subresourceRange		= VkImageSubresourceRange {
+						    .aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT,
+							.baseMipLevel	= 0,
+							.levelCount		= 1,
+							.baseArrayLayer	= 0,
+							.layerCount		= 1,
+                    }
+				};
+
+				imageBarriers.push_back(textureBarrier);
+			}	break;
+			case BarrierType::Buffer:
+			{
+				DebugBreak();
+				FK_ASSERT(false);
+				VkBufferMemoryBarrier2 bufferBarrier{};
+
+				bufferBarriers.push_back(bufferBarrier);
+			}	break;
+			}
+		}
+		
+		VkDependencyInfo dependencyInfo{
+		    .sType						= VkStructureType::VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+			.pNext						= nullptr,
+			.dependencyFlags			= 0,
+			.memoryBarrierCount			= (uint32_t)memoryBarriers.size(),
+			.pMemoryBarriers			= memoryBarriers.data(),
+			.bufferMemoryBarrierCount	= (uint32_t)bufferBarriers.size(),
+		    .pBufferMemoryBarriers		= bufferBarriers.data(),
+			.imageMemoryBarrierCount	= (uint32_t)imageBarriers.size(),
+			.pImageMemoryBarriers		= imageBarriers.data(),
+		};
+
+		pendingBarriers.clear();
+
+		vkCmdPipelineBarrier2(
+			commandBuffer,
+			&dependencyInfo);
+	}
 
 	void vkDirectContext::CreateAS(const AccelerationStructureDesc&, const TriMesh&)
     {}
@@ -47,40 +128,78 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::DiscardResource(ResourceHandle resource)
-	{}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddAliasingBarrier(ResourceHandle before, ResourceHandle after)
-    {}
+	{
+		DebugBreak();
+	}
 
     void vkDirectContext::AddUAVBarrier(ResourceHandle Handle, uint32_t subresource, DeviceLayout layout, DeviceSyncPoint src, DeviceSyncPoint dst)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddStreamOutBarrier(SOResourceHandle, DeviceAccessState Before, DeviceAccessState State)
-	{}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddCopyResourceBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddGlobalBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddTextureBarrier(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceLayout, DeviceLayout, DeviceSyncPoint, DeviceSyncPoint, BarrierSubResourceRange range)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddBufferBarrier(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint)
-    {}
+	{
+		DebugBreak();
+	}
 
 	void vkDirectContext::AddBarriers(std::span<const Barrier> barriers)
-    {}
+	{
+		for (auto& b : barriers)
+			pendingBarriers.push_back(b);
+	}
 
 	void vkDirectContext::ClearDepthBuffer(ResourceHandle Texture, float ClearDepth)
     {}
 
-	void vkDirectContext::ClearRenderTarget(ResourceHandle Texture, float4 ClearColor)
-    {}
+	void vkDirectContext::ClearRenderTarget(ResourceHandle Texture, float4 rgba)
+	{
+		auto apiResource = RenderSystem().GetDeviceResource(Texture);
+		FlushBarriers();
+
+		VkImageSubresourceRange subresource{
+            .aspectMask		= VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT,
+	        .baseMipLevel	= 0,
+	        .levelCount		= 1,
+	        .baseArrayLayer	= 0,
+	        .layerCount		= 1
+		};
+
+		vkCmdClearColorImage(
+			commandBuffer,
+			apiResource.As<VkImage_T>(),
+			VK_IMAGE_LAYOUT_GENERAL,
+			(VkClearColorValue*)&rgba, 1, &subresource);
+	}
 
 	void vkDirectContext::ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor)
     {}
@@ -394,6 +513,11 @@ namespace VK_internal
 
 	void vkDirectContext::SetScissorRects(std::span<const Rect>	rects)
 	{}
+
+	vkRenderSystem& vkDirectContext::RenderSystem() noexcept
+	{
+		return static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
+	}
 
 	UploadReservation vkDirectContext::ReserveDirectUploadSpace(size_t size, size_t alignment)
 	{

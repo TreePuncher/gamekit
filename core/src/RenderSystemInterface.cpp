@@ -20,34 +20,34 @@ namespace FlexKit
 	    
 	}
 
-	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages)
+	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
 	bool RootSignatureBuilder::SetParameterAsDescriptorTable(
-		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE_DESTINATION accessableStages)
+		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
 		return false;
 	}
 
 	bool RootSignatureBuilder::SetParameterAsCBV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
 	bool RootSignatureBuilder::SetParameterAsUAV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
 	bool RootSignatureBuilder::SetParameterAsSRV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		return false;
 	}

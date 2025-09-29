@@ -6,6 +6,13 @@ namespace VK_internal
 {
     using namespace FlexKit;
 
+	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept;
+	uint32_t AccessToVK(DeviceAccessState access) noexcept;
+	uint32_t LayoutToVK(DeviceLayout layout) noexcept;
+	uint32_t GetFormatElementSize(VkFormat format);
+	VkFormat FormatToVK(DeviceFormat format);
+
+
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
     {
         vkRenderSystem(iAllocator& allocator);

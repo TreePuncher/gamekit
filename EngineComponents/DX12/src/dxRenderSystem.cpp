@@ -614,7 +614,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages)
+	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type							= RootSignatureEntryType::UINT;
@@ -641,7 +641,7 @@ namespace dx_Internal
 
 
     bool RootSignatureBuilder::SetParameterAsDescriptorTable(
-		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE_DESTINATION accessableStages)
+		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type							= RootSignatureEntryType::DescriptorHeap;
@@ -668,7 +668,7 @@ namespace dx_Internal
 
 	bool RootSignatureBuilder::SetParameterAsCBV(
 		size_t Index, size_t Register, size_t RegisterSpace, 
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::ConstantBuffer;
@@ -696,7 +696,7 @@ namespace dx_Internal
 
 	bool RootSignatureBuilder::SetParameterAsUAV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::UnorderedAcess;
@@ -724,7 +724,7 @@ namespace dx_Internal
 
 	bool RootSignatureBuilder::SetParameterAsSRV(
 		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE_DESTINATION AccessableStages)
+		PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::StructuredBuffer;
@@ -1549,7 +1549,7 @@ namespace dx_Internal
 			FK_ASSERT(DescriptorHeap.Check());
 
 			builder.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			builder.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV(1, 0, 3, PIPELINE::PIPELINE_DEST_ALL);
 			RS2UAVs4SRVs4CBs = builder.Build(RS, temp);
 
 			SETDEBUGNAME(*RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
@@ -1578,12 +1578,12 @@ namespace dx_Internal
 			FK_ASSERT(DescriptorHeapUAV.Check());
 
 			builder.AllowIA = true;
-			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(3, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			builder.SetParameterAsDescriptorTable	(4, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			builder.SetParameterAsDescriptorTable	(5, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE::PIPELINE_DEST_ALL);
+			builder.SetParameterAsCBV				(3, 3, 0, PIPELINE::PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable	(4, DescriptorHeapSRV, -1, PIPELINE::PIPELINE_DEST_ALL);
+			builder.SetParameterAsDescriptorTable	(5, DescriptorHeapUAV, -1, PIPELINE::PIPELINE_DEST_ALL);
 			RSDefault = builder.Build(RS, temp);
 
 			SETDEBUGNAME(*RSDefault, "RSDefault");

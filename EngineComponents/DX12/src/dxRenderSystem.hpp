@@ -380,6 +380,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
+	
 	inline D3D12_BARRIER_SYNC SyncPoint2DX(const DeviceSyncPoint syncPoint)
 	{
 		switch (syncPoint)
@@ -414,7 +415,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_BARRIER_SYNC_ALL_SHADING;
 		case Sync_NonPixelShading:
 			return D3D12_BARRIER_SYNC_NON_PIXEL_SHADING;
-		case Sync_EmitRaytracingAccellerationStructurePostBuildInfo:
+		case Sync_EmitRaytracingAccelerationStructurePostBuildInfo:
 			return D3D12_BARRIER_SYNC_EMIT_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO;
 		case Sync_VideoDecode:
 			return D3D12_BARRIER_SYNC_VIDEO_DECODE;
@@ -422,17 +423,56 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_BARRIER_SYNC_VIDEO_PROCESS;
 		case Sync_VideoEncode:
 			return D3D12_BARRIER_SYNC_VIDEO_ENCODE;
-		case Sync_BuildRaytracingAccellerationStructure:
+		case Sync_BuildRaytracingAccelerationStructure:
 			return D3D12_BARRIER_SYNC_BUILD_RAYTRACING_ACCELERATION_STRUCTURE;
-		case Sync_CopyRaytracingAccellerationStructure:
+		case Sync_CopyRaytracingAccelerationStructure:
 			return D3D12_BARRIER_SYNC_COPY_RAYTRACING_ACCELERATION_STRUCTURE;
-		case Sync_Split:
-			return D3D12_BARRIER_SYNC_SPLIT;
+		case Sync_Mesh:
+			return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
+		case Sync_Amplification:
+		    return D3D12_BARRIER_SYNC_COMPUTE_SHADING;
 		case Sync_Unknown:
 			return D3D12_BARRIER_SYNC_NONE;
 		}
 
 		std::unreachable();
+	}
+
+	inline D3D12_BARRIER_SYNC SyncPoint2DX_Forward(const DeviceSyncPoint syncPoint)
+	{
+		D3D12_BARRIER_SYNC out = SyncPoint2DX(syncPoint);
+
+		out = (syncPoint & DeviceSyncPoint::Sync_RenderTarget != 0) ? D3D12_BARRIER_SYNC_RENDER_TARGET : out;
+		out = (syncPoint & DeviceSyncPoint::Sync_DepthStencil != 0) ? D3D12_BARRIER_SYNC_RENDER_TARGET : out;
+		out = (syncPoint & DeviceSyncPoint::Sync_PixelShader != 0) ? D3D12_BARRIER_SYNC_PIXEL_SHADING : out;
+		out = ((syncPoint & DeviceSyncPoint::Sync_VertexShader!= 0) |
+		       (syncPoint & DeviceSyncPoint::Sync_HullShader != 0) | 
+		       (syncPoint & DeviceSyncPoint::Sync_DomainShader != 0) | 
+		       (syncPoint & DeviceSyncPoint::Sync_Mesh != 0) |
+		       (syncPoint & DeviceSyncPoint::Sync_GeometryShader!= 0)) ? D3D12_BARRIER_SYNC_VERTEX_SHADING : out;
+
+		out = (syncPoint & DeviceSyncPoint::Sync_IA != 0) ? D3D12_BARRIER_SYNC_INDEX_INPUT : out;
+
+		return out;
+	}
+
+	inline D3D12_BARRIER_SYNC SyncPoint2DX_Backward(const DeviceSyncPoint syncPoint)
+	{
+		D3D12_BARRIER_SYNC out = SyncPoint2DX(syncPoint);
+
+		out = (syncPoint & DeviceSyncPoint::Sync_IA != 0) ? D3D12_BARRIER_SYNC_INDEX_INPUT : out;
+		out = (syncPoint & DeviceSyncPoint::Sync_Mesh != 0) ? D3D12_BARRIER_SYNC_COMPUTE_SHADING : out;
+		out = ((syncPoint & DeviceSyncPoint::Sync_VertexShader!= 0) |
+		       (syncPoint & DeviceSyncPoint::Sync_HullShader != 0) | 
+		       (syncPoint & DeviceSyncPoint::Sync_DomainShader!= 0) |
+		       (syncPoint & DeviceSyncPoint::Sync_Mesh != 0) |
+		       (syncPoint & DeviceSyncPoint::Sync_GeometryShader!= 0)) ? D3D12_BARRIER_SYNC_VERTEX_SHADING : out;
+
+	    out = (syncPoint & DeviceSyncPoint::Sync_PixelShader != 0) ? D3D12_BARRIER_SYNC_PIXEL_SHADING : out;
+		out = (syncPoint & DeviceSyncPoint::Sync_DepthStencil != 0) ? D3D12_BARRIER_SYNC_RENDER_TARGET : out;
+		out = (syncPoint & DeviceSyncPoint::Sync_RenderTarget != 0) ? D3D12_BARRIER_SYNC_RENDER_TARGET : out;
+
+		return out;
 	}
 
 
@@ -594,7 +634,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	inline D3D12_SHADER_VISIBILITY PipelineDest2ShaderVis(PIPELINE_DESTINATION PD)
+	inline D3D12_SHADER_VISIBILITY PipelineDest2ShaderVis(PIPELINE PD)
 	{
 		switch (PD)
 		{
@@ -626,7 +666,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	}
 
 
-	inline PIPELINE_DESTINATION ShaderVis2PipelineDest(D3D12_SHADER_VISIBILITY visibility)
+	inline PIPELINE ShaderVis2PipelineDest(D3D12_SHADER_VISIBILITY visibility)
 	{
 		switch (visibility)
 		{
@@ -931,22 +971,22 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		RootSignatureBuilder(iAllocator* Memory) :
 			Heaps		{ Memory } {}
 
-		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorTable(
-			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE_DESTINATION accessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsUAV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsSRV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		void Clear();
 
@@ -969,20 +1009,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 					uint32_t				size;
 					uint32_t				Register;
 					uint32_t				RegisterSpace;
-					PIPELINE_DESTINATION	Accessibility;
+					PIPELINE	Accessibility;
 				}UINTConstant;
 
 				struct
 				{
 					size_t					HeapIdx;
-					PIPELINE_DESTINATION	Accessibility;
+					PIPELINE	Accessibility;
 				}DescriptorHeap;
 
 				struct
 				{
 					uint32_t				Register;
 					uint32_t				RegisterSpace;
-					PIPELINE_DESTINATION	Accessibility;
+					PIPELINE	Accessibility;
 				}Direct;
 			};
 		};
