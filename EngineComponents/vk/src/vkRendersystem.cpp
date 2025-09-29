@@ -35,16 +35,17 @@ namespace VK_internal
 			VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
 			VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		    VK_DESCRIPTOR_TYPE_MUTABLE_EXT
 		};
 
 		VkMutableDescriptorTypeListEXT availableTypesList[] {
             {
-				.descriptorTypeCount	= 6,
+				.descriptorTypeCount	= 7,
 				.pDescriptorTypes		= typesAvailable
             },
             {
-				.descriptorTypeCount	= 6,
+				.descriptorTypeCount	= 7,
 				.pDescriptorTypes		= typesAvailable
 			},
 		};
@@ -56,13 +57,19 @@ namespace VK_internal
 	        .pMutableDescriptorTypeLists	= availableTypesList
 		};
 
+
+		VkDescriptorPoolSize sizes[] =
+		{
+			{ VkDescriptorType::VK_DESCRIPTOR_TYPE_MUTABLE_EXT, 10000 },
+		};
+
 		VkDescriptorPoolCreateInfo descriptorPoolCreateDesc{
 			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 			.pNext				= &ext0,
 			.flags				= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV | VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV,
             .maxSets			= 10000,
-            .poolSizeCount		= 0,
-            .pPoolSizes			= nullptr
+            .poolSizeCount		= 1,
+            .pPoolSizes			= sizes
 		};
 
 		// Allocate Descriptor pool
@@ -135,11 +142,11 @@ namespace VK_internal
 		};
 
 		VkDescriptorSetLayoutCreateInfo createLayoutDesc{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = &ext0,
-			.flags = VkDescriptorSetLayoutCreateFlagBits::VK_DESCRIPTOR_SET_LAYOUT_CREATE_PER_STAGE_BIT_NV,
-			.bindingCount = (uint32_t)bindings.size(),
-			.pBindings = bindings.data()
+			.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+			.pNext			= &ext0,
+			.flags			= 0,
+			.bindingCount	= (uint32_t)bindings.size(),
+			.pBindings		= bindings.data()
 		};
 
 		VkDescriptorSetLayout vkLayout = nullptr;
@@ -213,12 +220,11 @@ namespace VK_internal
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
+		    .require_api_version(1, 4, 0)
 			.request_validation_layers()
 			.set_headless()
 		    .enable_extensions(2, extensions)
-			//.enable_extension("VK_KHR_win32_surface")
-			//.use_default_debug_messenger()
-			.set_debug_callback(VKErrorCallback)
+			.use_default_debug_messenger()
 			.build();
 
 		if (!instReq)
@@ -230,12 +236,35 @@ namespace VK_internal
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
 
-		auto physRequest = selector.set_minimum_version(1, 3)
+
+		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptors{
+			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+			.pNext = nullptr,
+			.mutableDescriptorType = true
+		};
+
+		auto physRequest = selector
+	        .set_minimum_version(1, 4)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+			.add_required_extension("VK_NV_descriptor_pool_overallocation")
+			.add_required_extension("VK_KHR_depth_stencil_resolve")
 		    .add_required_extension("VK_KHR_dynamic_rendering")
+			.add_required_extension("VK_KHR_maintenance3")
 			.add_required_extension("VK_EXT_mutable_descriptor_type")
             .add_required_extension("VK_KHR_swapchain")
-		    .add_required_extension("VK_KHR_timeline_semaphore")
+			.add_required_extension("VK_KHR_timeline_semaphore")
+			.add_required_extension("VK_KHR_spirv_1_4")
+		    .add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
+            .set_required_features_12({
+					.sType				= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+                    .timelineSemaphore	= true
+            })
+	        .set_required_features_13({
+                    .sType				= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+			        .pNext				= &mutableDescriptors,
+				    .synchronization2	= true,
+                    .dynamicRendering	= true,
+	        })
 			.select_devices();
 
 		if (!physRequest)
@@ -265,8 +294,8 @@ namespace VK_internal
 
 		auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
 
-		auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
-		CreateCBV(device, descriptorSet, constantBuffer);
+		//auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
+		//CreateCBV(device, descriptorSet, constantBuffer);
 
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -286,7 +315,7 @@ namespace VK_internal
 
 		VkSemaphoreCreateInfo createTimelineSemaphoreInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
+            .pNext = &semaphoreType,
             .flags = 0
 		};
 
@@ -530,14 +559,14 @@ namespace VK_internal
 
 	}
 
-	void vkRenderSystem::SetObjectLayout(SOResourceHandle	handle, DeviceLayout state) noexcept
+	void vkRenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout state) noexcept
 	{
 
 	}
 
-	void vkRenderSystem::SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept
+	void vkRenderSystem::SetObjectLayout(ResourceHandle	handle, DeviceLayout state) noexcept
 	{
-
+		resources.Set<ResourceFieldID::Layout>(handle, state);
 	}
 
 	size_t vkRenderSystem::GetVertexBufferSize(const VertexBufferHandle) const noexcept
@@ -570,7 +599,7 @@ namespace VK_internal
 		return {};
 	}
 
-	DeviceAddressRange vkRenderSystem::GetDeviceRange(const ResourceHandle) const noexcept
+	DeviceAddressRange vkRenderSystem::GetDeviceRange(const ResourceHandle handle) const noexcept
 	{
 		return {};
 	}
@@ -592,7 +621,9 @@ namespace VK_internal
 
 	DeviceLayout vkRenderSystem::GetObjectLayout(const ResourceHandle handle) const noexcept
 	{
-		return DeviceLayout::Unknown;
+		DeviceLayout layout = resources.Get<ResourceFieldID::Layout>(handle);
+
+		return layout;
 	}
 
 	size_t vkRenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
@@ -615,75 +646,98 @@ namespace VK_internal
 		return 0;
 	}
 
-	size_t vkRenderSystem::GetTextureElementSize(ResourceHandle   Handle) const
+	size_t vkRenderSystem::GetTextureElementSize(ResourceHandle handle) const
 	{
+		auto format = resources.Get<ResourceFieldID::Format>(handle);
+
+		auto vkFormat = FormatToVK(format);
+		GetFormatElementSize(vkFormat);
+
 		return 0;
 	}
 
-	uint2 vkRenderSystem::GetTextureWH(ResourceHandle Handle) const
+	uint2 vkRenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
-		return {};
+		uint4 xyzw = resources.Get<ResourceFieldID::XYZW>(handle);
+
+		return xyzw.Slice<0, 2>();
 	}
 
-	DeviceFormat vkRenderSystem::GetTextureFormat(ResourceHandle Handle) const
+
+	DeviceFormat vkRenderSystem::GetTextureFormat(ResourceHandle handle) const
 	{
-		return DeviceFormat::UNKNOWN;
+		auto format = resources.Get<ResourceFieldID::Format>(handle);
+
+		return format;
 	}
+
 
 	uint8_t	vkRenderSystem::GetTextureMipCount(ResourceHandle Handle) const
 	{
 		return 0;
 	}
 
+
 	uint2 vkRenderSystem::GetTextureTilingWH(ResourceHandle Handle, const uint mipLevel) const
 	{
 		return {};
 	}
+
 
 	uint2 vkRenderSystem::GetHeapOffset(ResourceHandle Handle, uint subResourceID) const
 	{
 		return {};
 	}
 
+
 	TextureDimension vkRenderSystem::GetTextureDimension(ResourceHandle handle) const
 	{
 		return TextureDimension::Unknown;
 	}
+
 
 	size_t vkRenderSystem::GetTextureArraySize(ResourceHandle handle) const
 	{
 		return 0;
 	}
 
+
 	DeviceHeap_ptr vkRenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
 	{
 		return nullptr;
 	}
+
 
 	DeviceResource_ptr vkRenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
 	{
 		return nullptr;
 	}
 
+
 	DeviceResource_ptr vkRenderSystem::GetDeviceResource(const ConstantBufferHandle	handle) const
 	{
 		return nullptr;
 	}
 
+
 	DeviceResource_ptr vkRenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
-		return nullptr;
+		auto res = resources.Get<APIHandle>(handle);
+		return res._ptr;
 	}
+
 
 	DeviceResource_ptr vkRenderSystem::GetDeviceResource(const SOResourceHandle	handle) const
 	{
 		return nullptr;
 	}
 
+
 	DeviceResource_ptr	vkRenderSystem::GetSOCounterResource(const SOResourceHandle handle)	const
 	{
 		return nullptr;
 	}
+
 
 	size_t vkRenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
 	{
@@ -696,35 +750,42 @@ namespace VK_internal
 		return 0;
 	}
 
+
 	bool vkRenderSystem::VertexBufferPush(VertexBufferHandle, void* _ptr, size_t elementSize)
 	{
 		return false;
 	}
+
 
 	size_t vkRenderSystem::ConstantBufferAlign(ConstantBufferHandle)
 	{
 		return 0;
 	}
 
+
 	void vkRenderSystem::BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept
 	{
 
 	}
+
 
 	void vkRenderSystem::UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize)
 	{
 
 	}
 
+
 	void vkRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle, struct TextureBuffer* buffer, size_t resourceCount)
 	{
 
 	}
 
+
 	void vkRenderSystem::UpdateResourceByUploadQueue(DeviceResource_ptr Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState)
 	{
 
 	}
+
 
 	ResourceHandle vkRenderSystem::LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator)
 	{
@@ -843,27 +904,27 @@ namespace VK_internal
 					    .type	= vkResourceEntry::Type::RenderTarget,
 					    .image	= (VkImage)desc._ptr
 				    },
-					DeviceLayout::Common);
+					desc.initialLayout);
 		    }	break;
 		case ResourceType::DepthTarget:
 		    {
-		        
+			    FK_ASSERT(false);
 		    }	break;
 		case ResourceType::UnorderedAccess:
 		    {
-		        
+			    FK_ASSERT(false);
 		    }	break;
 		case ResourceType::UnorderedAccessRenderTarget:
 		    {
-
+			    FK_ASSERT(false);
 		    }	break;
 		case ResourceType::ShaderResource:
 		    {
-
+			    //FK_ASSERT(false);
 		    }	break;
 		case ResourceType::RayTracingStructure:
 		    {
-
+			    FK_ASSERT(false);
 		    }	break;
 		default:
 			throw std::runtime_error("Invalid arguments");
@@ -997,6 +1058,305 @@ namespace VK_internal
 		vkb::destroy_instance(instance);
 	}
 
+	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept
+	{
+		VkPipelineStageFlags out = 0;
+
+		out |= (pipeline | DeviceSyncPoint::Sync_VertexShader	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_VERTEX_INPUT_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_HullShader		!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_DomainShader	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_GeometryShader	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Mesh			!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_MESH_SHADER_BIT_EXT: 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Amplification	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT : 0;
+		out |= (pipeline | DeviceSyncPoint::Sync_PixelShader	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT : 0;
+		out |= (pipeline | DeviceSyncPoint::Sync_RenderTarget	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Raytracing		!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR: 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Copy			!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Compute		!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Raytracing		!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR : 0;
+		//out |= (pipeline | DeviceSyncPoint::Sync_Predication	!= 0 ) ? VkPipelineStageFlagBits::VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT : 0;
+
+		return out;
+	}
+
+
+	uint32_t AccessToVK(DeviceAccessState access) noexcept
+	{
+        switch (access)
+        {
+		case DASReadFlag:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+        case DASWriteFlag:
+			return VK_ACCESS_2_MEMORY_WRITE_BIT;
+        case DASRetired:
+			return VK_ACCESS_2_NONE;
+		case DASPresent:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+		case DASRenderTarget:
+			return VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		case DASPixelShaderResource:
+			return VK_ACCESS_2_SHADER_READ_BIT;
+		case DASUAV:
+			return VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT;
+		case DASSTREAMOUT:
+			return VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+		case DASVERTEXBUFFER:
+			return VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+		case DASDEPTHBUFFER:
+			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+		case DASDEPTHBUFFERREAD:
+			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+		case DASDEPTHBUFFERWRITE:
+			return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		case DASACCELERATIONSTRUCTURE_WRITE:
+			return VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+		case DASACCELERATIONSTRUCTURE_READ:
+			return VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+		case DASPREDICATE:
+			return VK_ACCESS_2_CONDITIONAL_RENDERING_READ_BIT_EXT;
+		case DASINDIRECTARGS:
+			return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+		case DASNonPixelShaderResource:
+			return VK_ACCESS_2_SHADER_READ_BIT;
+		case DASCopyDest:
+			return VK_ACCESS_2_MEMORY_WRITE_BIT;
+		case DASCopySrc:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+		case DASINDEXBUFFER:
+			return VK_ACCESS_2_INDEX_READ_BIT;
+		case DASGenericRead:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+		case DASCommon:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+		case DASShadingRateSrc:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+		case DASShadingRateDst:
+			return VK_ACCESS_2_MEMORY_WRITE_BIT;
+		case DASDecodeWrite:
+			return VK_ACCESS_2_VIDEO_DECODE_WRITE_BIT_KHR;
+		case DASProcessRead:
+			return VK_ACCESS_2_MEMORY_READ_BIT_KHR;
+		case DASProcessWrite:
+			return VK_ACCESS_2_MEMORY_WRITE_BIT_KHR;
+		case DASEncodeRead:
+			return VK_ACCESS_2_VIDEO_ENCODE_READ_BIT_KHR;
+		case DASEncodeWrite:
+			return VK_ACCESS_2_VIDEO_ENCODE_WRITE_BIT_KHR;
+		case DASResolveRead:
+			return VK_ACCESS_2_MEMORY_READ_BIT;
+        case DASResolveWrite:
+			return VK_ACCESS_2_MEMORY_WRITE_BIT;
+		case DASNOACCESS:
+		case DASERROR:
+        case DASUNKNOWN:
+			return VK_ACCESS_2_NONE;
+        }
+
+		std::unreachable();
+		return VK_ACCESS_2_NONE;
+	}
+
+	uint32_t LayoutToVK(DeviceLayout layout) noexcept
+    {
+		switch (layout)
+	    {
+		case DeviceLayout::Common:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::Present:
+			return VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		case DeviceLayout::GenericRead:
+			return VkImageLayout::VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+		case DeviceLayout::RenderTarget:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::UnorderedAccess:
+			return VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		case DeviceLayout::DepthStencilWrite:
+			return VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		case DeviceLayout::DepthStencilRead:
+			return VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+		case DeviceLayout::ShaderResource:
+			return VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case DeviceLayout::CopySrc:
+		case DeviceLayout::CopyDst:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::ResolveSrc:
+		case DeviceLayout::ResolveDst:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::ShadingRateSrc:
+			return VkImageLayout::VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
+		case DeviceLayout::VideoDecodeRead:
+			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR;
+		case DeviceLayout::DecodeWrite:
+			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_DECODE_DST_KHR;
+		case DeviceLayout::ProcessRead:
+		case DeviceLayout::ProcessWrite:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::EncodeRead:
+			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_ENCODE_SRC_KHR;
+		case DeviceLayout::EncodeWrite:
+			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_ENCODE_DST_KHR;
+		case DeviceLayout::DirectQueueCommon:
+		case DeviceLayout::DirectQueueGenericRead:
+			return VkImageLayout::VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+		case DeviceLayout::DirectQueueUnorderedAccess:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::DirectQueueShaderResource:
+			return VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		case DeviceLayout::DirectQueueCopySrc:
+		case DeviceLayout::DirectQueueCopyDst:
+		case DeviceLayout::ComputeQueueCommon:
+		case DeviceLayout::ComputeQueueGenericRead:
+		case DeviceLayout::ComputeQueueUnorderedAccess:
+		case DeviceLayout::ComputeQueueShaderResource:
+		case DeviceLayout::ComputeQueueCopySrc:
+		case DeviceLayout::ComputeQueueCopyDst:
+			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
+		case DeviceLayout::VideoQueueCommon:
+			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR;
+		case DeviceLayout::Undefined:
+		case DeviceLayout::Unknown:
+			return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+	    };
+
+		std::unreachable();
+    }
+
+
+    uint32_t GetFormatElementSize(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_R32G32B32A32_UINT:
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+		case VK_FORMAT_R32G32B32A32_SINT:
+			return sizeof(int32_t) * 4;
+		case VK_FORMAT_R32G32B32_SFLOAT:
+		case VK_FORMAT_R32G32B32_SINT:
+		case VK_FORMAT_R32G32B32_UINT:
+			return sizeof(int32_t) * 3;
+		case VK_FORMAT_R32G32_SFLOAT:
+		case VK_FORMAT_R32G32_SINT:
+		case VK_FORMAT_R32G32_UINT:
+			return sizeof(int32_t) * 2;
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+		case VK_FORMAT_R16G16B16A16_SINT:
+		case VK_FORMAT_R16G16B16A16_SNORM:
+		case VK_FORMAT_R16G16B16A16_SSCALED:
+		case VK_FORMAT_R16G16B16A16_UINT:
+		case VK_FORMAT_R16G16B16A16_UNORM:
+		case VK_FORMAT_R16G16B16A16_USCALED:
+			return sizeof(uint16_t[4]);
+		case VK_FORMAT_R16G16B16_SFLOAT:
+		case VK_FORMAT_R16G16B16_SINT:
+		case VK_FORMAT_R16G16B16_SNORM:
+		case VK_FORMAT_R16G16B16_SSCALED:
+		case VK_FORMAT_R16G16B16_UINT:
+		case VK_FORMAT_R16G16B16_UNORM:
+		case VK_FORMAT_R16G16B16_USCALED:
+			return sizeof(uint16_t[2]);
+		case VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16:
+			return 64;
+		case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+		case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+		case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+		case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+			return 4;
+		case VK_FORMAT_R16G16_SFLOAT:
+		case VK_FORMAT_R16G16_SINT:
+		case VK_FORMAT_R16G16_SNORM:
+		case VK_FORMAT_R16G16_UINT:
+		case VK_FORMAT_R16G16_USCALED:
+			return 4;
+		case VK_FORMAT_R8G8B8A8_UNORM:
+		case VK_FORMAT_R8G8B8A8_SINT:
+		case VK_FORMAT_R8G8B8A8_SNORM:
+		case VK_FORMAT_R8G8B8A8_SRGB:
+		case VK_FORMAT_R8G8B8A8_SSCALED:
+		case VK_FORMAT_R8G8B8A8_UINT:
+		case VK_FORMAT_R8G8B8A8_USCALED:
+			return 4;
+		case VK_FORMAT_BC3_SRGB_BLOCK:
+		case VK_FORMAT_BC3_UNORM_BLOCK:
+			return 16;
+		case VK_FORMAT_R32_SFLOAT:
+		case VK_FORMAT_R32_SINT:
+		case VK_FORMAT_R32_UINT:
+			return 4;
+		case VK_FORMAT_UNDEFINED:
+			return 1;
+		default:
+			FK_LOG_ERROR("UN-IMPLEMENTED FORMAT!");
+			throw std::runtime_error{ "UN-IMPLEMENTED FORMAT!" };
+			return -1;
+		}
+
+		std::unreachable();
+	}
+
+	VkFormat FormatToVK(DeviceFormat format)
+		{
+		switch (format)
+		{
+		case DeviceFormat::R32G32B32A32_UINT:
+			return VK_FORMAT_R32G32B32A32_UINT;
+		case DeviceFormat::R32G32B32A32_FLOAT:
+			return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case DeviceFormat::R32G32B32_FLOAT:
+			return VK_FORMAT_R32G32B32_SFLOAT;
+		case DeviceFormat::R32G32B32_UINT:
+			return VK_FORMAT_R32G32B32_UINT;
+		case DeviceFormat::R32G32B32_INT:
+			return VK_FORMAT_R32G32B32_SINT;
+		case DeviceFormat::R32G32_FLOAT:
+			return VK_FORMAT_R32G32_SFLOAT;
+		case DeviceFormat::R32G32_UINT:
+			return VK_FORMAT_R32G32_UINT;
+		case DeviceFormat::R32G32_INT:
+			return VK_FORMAT_R32G32_SINT;
+		case DeviceFormat::R32_FLOAT:
+			return VK_FORMAT_R32_SFLOAT;
+		case DeviceFormat::R32_UINT:
+			return VK_FORMAT_R32_UINT;
+		case DeviceFormat::R32_INT:
+			return VK_FORMAT_R32_SINT;
+		case DeviceFormat::R16G16B16A16_FLOAT:
+			return VK_FORMAT_R16G16B16A16_SFLOAT;
+		case DeviceFormat::R16G16B16A16_UINT:
+			return VK_FORMAT_R16G16B16A16_UINT;
+		case DeviceFormat::R16G16B16A16_UNORM:
+			return VK_FORMAT_R16G16B16A16_SNORM;
+		case DeviceFormat::R16G16_FLOAT:
+			return VK_FORMAT_R16G16_SFLOAT;
+		case DeviceFormat::R16G16_UINT:
+			return VK_FORMAT_R16G16_UINT;
+		case DeviceFormat::R16_FLOAT:
+			return VK_FORMAT_R16_SFLOAT;
+		case DeviceFormat::R16_UINT:
+			return VK_FORMAT_R16_UINT;
+		case DeviceFormat::R16_SINT:
+			return VK_FORMAT_R16_SINT;
+		case DeviceFormat::R16_SNORM:
+			return VK_FORMAT_R16_SNORM;
+		case DeviceFormat::R16_UNORM:
+			return VK_FORMAT_R16_UNORM;
+		case DeviceFormat::R8G8B8A8_UNORM:
+			return VK_FORMAT_R8G8B8A8_UNORM;
+		case DeviceFormat::R8G8B8A8_UNORM_SRGB:
+			return VK_FORMAT_R8G8B8A8_SRGB;
+		case DeviceFormat::R8G8B8A8_UINT:
+			return VK_FORMAT_R8G8B8A8_UINT;
+		case DeviceFormat::R8G8B8A8_SINT:
+			return VK_FORMAT_R8G8B8A8_SINT;
+		default:
+			FK_LOG_ERROR("UN-IMPLEMENTED FORMAT!");
+			throw std::runtime_error{ "UN-IMPLEMENTED FORMAT!" };
+			return VkFormat::VK_FORMAT_UNDEFINED;
+		}
+
+		std::unreachable();
+	}
 }
 
 

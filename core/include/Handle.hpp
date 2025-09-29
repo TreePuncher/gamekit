@@ -320,7 +320,7 @@ namespace FlexKit
 				return InvalidHandle;
 			}
 
-			bool IsValid(HANDLE handle)
+			bool IsValid(HANDLE handle) const
 			{
 				return ((handle.INDEX < -1) && (Indexes[handle.INDEX] != (index_t)0xffffffffffffffff));
 			}

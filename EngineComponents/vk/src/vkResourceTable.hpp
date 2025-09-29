@@ -21,6 +21,7 @@ namespace VK_internal
 
         union
         {
+            void*       _ptr;
             VkBuffer    buffer;
             VkImage     image;
         };
@@ -31,12 +32,13 @@ namespace VK_internal
         APIHandle   = 0,
         Format      = 1,
         Dimension   = 2,
-        Layout      = 3
+        Layout      = 3,
+        XYZW        = 4,
     };
 
     struct vkResourceTable
     {
-        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout>;
+        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout, uint4>;
 
         vkResourceTable(iAllocator& IN_allocator) :
             fields  { IN_allocator },
@@ -47,26 +49,26 @@ namespace VK_internal
         {
             auto ul = std::unique_lock{ m };
 
-            auto idx = fields.push_back({}, {}, {}, DeviceLayout::Common);
+            auto idx = fields.push_back({}, {}, {}, DeviceLayout::Common, { 0, 0, 0, 0 });
             return handles.GetNewHandle(idx);;
         }
 
         template<uint32_t ... ids>
-        auto Get(ResourceHandle handle) 
+        auto Get(ResourceHandle handle) const
         {
             FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
-            std::shared_lock sl{ m };
+            std::shared_lock sl{ const_cast<std::shared_mutex&>(m) };
 
-            return fields.Slice<ids...>(handles[handle]);
+            return fields.Get<ids...>(handles[handle]);
         }
 
         template<uint32_t ... ids>
-        auto Get(ResourceHandle handle, auto ... fields)
+        auto Get(ResourceHandle handle, auto ... fields) const
         {
             FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
-            std::shared_lock sl{ m };
+            std::shared_lock sl{ const_cast<std::shared_mutex&>(m) };
 
-            return fields.Slice<ids...>(handles[handle]);
+            return fields.Get<ids...>(handles[handle]);
         }
 
         template<uint32_t ... ids>
@@ -78,7 +80,7 @@ namespace VK_internal
         }
 
 
-        std::mutex                                      m;
+        std::shared_mutex                               m;
         HandleUtilities::HandleTable<ResourceHandle>    handles;
         MultiFieldType                                  fields;
     };

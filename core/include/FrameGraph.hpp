@@ -2378,7 +2378,7 @@ namespace FlexKit
 								{
 									ctx.BuildBLAS(*lod->bufferSet, resource, scratchPad);
 									ctx.AddUAVBarrier(scratchPad);
-									ctx.AddBufferBarrier(resource, DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, Sync_BuildRaytracingAccellerationStructure, Sync_All_Shading);
+									ctx.AddBufferBarrier(resource, DASACCELERATIONSTRUCTURE_WRITE, nodeData->access, Sync_BuildRaytracingAccelerationStructure, Sync_All_Shading);
 								}
 							}
 

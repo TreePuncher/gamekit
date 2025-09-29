@@ -185,9 +185,12 @@ namespace VK_internal
 		void SetViewports(std::span<const Viewport>		VPs)	final;
 		void SetScissorRects(std::span<const Rect>		rects)	final;
 
+		struct vkRenderSystem& RenderSystem() noexcept;
+
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment) final;
 		IRenderSystem&		GetRenderSystem() noexcept final;
 
+		Vector<Barrier>		pendingBarriers;
 		VkCommandPool		commandPool		= nullptr;
 		VkCommandBuffer		commandBuffer	= nullptr;
 		uint64_t			dispatchValue	= 0;
