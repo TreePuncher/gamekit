@@ -556,15 +556,17 @@ namespace FlexKit
 	};
 
 
-	enum TextureFlags
+	namespace ResourceFlags
 	{
-		TF_NONE			= 0x00,
-		TF_INUSE		= 0x01,
-		TF_RenderTarget = 0x02,
-		TF_BackBuffer	= 0x04,
-		TF_DepthBuffer	= 0x08,
-	};
-
+		enum ResourceFlags
+		{
+			NONE			= 0x00,
+			INUSE			= 0x01,
+			RenderTarget	= 0x02,
+			SwapChain		= 0x04,
+			DepthBuffer		= 0x08,
+		};
+	}
 
 	enum class TextureDimension : uint8_t
 	{
@@ -1162,21 +1164,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct TextureObject
-	{
-		TextureObject(ResourceHandle IN_texture) :
-			Texture     { IN_texture    },
-			UAV         { false         } {}
-
-		ResourceHandle Texture;
-
-		const bool UAV = false;
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct VBView
 	{
 		DevicePointer	buffer;
@@ -1373,9 +1360,9 @@ namespace FlexKit
 		uint2					WH;
 		uint8_t					arraySize		= 1;
 		uint8_t					bufferCount		= 1;
-		uint8_t					MipLevels		= 1;
+		uint8_t					mipLevels		= 1;
 
-		bool					backBuffer		= false;
+		bool					swapChain		= false;
 		bool					PreCreated		= false;
 		bool					denyShaderUsage = false;
 
@@ -1414,7 +1401,7 @@ namespace FlexKit
 				.format			= IN_format,
 				.WH				= IN_WH,
 				.bufferCount	= 3,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 
 				.clearValue		= { ClearValue{
 										.format = IN_format,
@@ -1435,7 +1422,7 @@ namespace FlexKit
 				.WH				= IN_WH,
 				.arraySize		= arraySize,
 				.bufferCount	= 3,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 
 				.clearValue		= { ClearValue{
 										.format		= IN_format,
@@ -1455,7 +1442,7 @@ namespace FlexKit
 				.WH				= IN_WH,
 				.arraySize		= (uint8_t)arraySize,
 				.bufferCount	= 1,
-				.MipLevels		= mipCount,
+				.mipLevels		= mipCount,
 			};
 		}
 
@@ -1470,7 +1457,7 @@ namespace FlexKit
 				.WH				= { IN_XYZ[0], IN_XYZ[1] },
 				.arraySize		= (uint8_t)IN_XYZ[2], 
 				.bufferCount	= 1,
-				.MipLevels		= mipCount,
+				.mipLevels		= mipCount,
 			};
 		}
 
@@ -1487,7 +1474,7 @@ namespace FlexKit
 				.WH				= { bufferSize, 1 },
 				.arraySize		= 1,
 				.bufferCount	= 1,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 			};	
 		}
 
@@ -1503,7 +1490,7 @@ namespace FlexKit
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= 1,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 			};
 
 			desc.rayTraceStructure = true;
@@ -1523,7 +1510,7 @@ namespace FlexKit
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 			};	
 		}
 
@@ -1537,7 +1524,7 @@ namespace FlexKit
 
 				.WH				= uint2{ (uint32_t)bufferSize, 1 },
 				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 			};
 		}
 
@@ -1552,7 +1539,7 @@ namespace FlexKit
 
 				.WH				= IN_WH,
 				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= (uint8_t)mipCount,
+				.mipLevels		= (uint8_t)mipCount,
 
 				.clearValue		= renderTarget ? std::optional<ClearValue>{ ClearValue{
 									.format = IN_format,
@@ -1573,11 +1560,11 @@ namespace FlexKit
 				.WH				= { IN_XYZ[0], IN_XYZ[1] },
 				.arraySize		= (uint8_t)IN_XYZ[2],
 				.bufferCount	= (uint8_t)bufferCount,
-				.MipLevels		= (uint8_t)mipCount,
+				.mipLevels		= (uint8_t)mipCount,
 			};
 		}
 
-		static GPUResourceDesc BackBuffered(uint2 WH, DeviceFormat format, DeviceResource_ptr* sources, const uint8_t resourceCount)
+		static GPUResourceDesc SwapChain(uint2 WH, DeviceFormat format, DeviceResource_ptr* sources, const uint8_t resourceCount)
 		{
 			GPUResourceDesc desc = {
 				.type			= ResourceType::UnorderedAccess,
@@ -1589,9 +1576,9 @@ namespace FlexKit
 
 				.WH				= WH,
 				.bufferCount	= resourceCount,
-				.MipLevels		= 1,
+				.mipLevels		= 1,
 
-				.backBuffer		= true,
+				.swapChain		= true,
 				.PreCreated		= true,
 			};
 
@@ -1610,7 +1597,7 @@ namespace FlexKit
 				.format			= format,
 
 				.WH				= WH,
-				.MipLevels		= mipCount,
+				.mipLevels		= mipCount,
 			};
 		}
 
@@ -1636,7 +1623,7 @@ namespace FlexKit
 
 				.WH				= WH,
 				.arraySize		= 6,
-				.MipLevels		= mipCount,
+				.mipLevels		= mipCount,
 			};
 		}
 
@@ -1650,7 +1637,7 @@ namespace FlexKit
 
 				.WH				= WH,
 				.arraySize		= 6,
-				.MipLevels		= mipCount,
+				.mipLevels		= mipCount,
 				.clearValue		= ClearValue{
 									.format = format,
 									.color = { 0.0f, 0.0f, 0.0f, 0.0f } }

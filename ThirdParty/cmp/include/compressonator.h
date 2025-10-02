@@ -619,7 +619,7 @@ typedef struct
 
 // A MipLevel is the fundamental unit for containing texture data.
 // \remarks
-// One logical mip level can be composed of many MipLevels, see the documentation of MipSet for explanation.
+// One logical mip level can be composed of many mipLevels, see the documentation of MipSet for explanation.
 // \sa \link TC_AppAllocateMipLevelData() TC_AppAllocateMipLevelData \endlink,
 // \link TC_AppAllocateCompressedMipLevelData() TC_AppAllocateCompressedMipLevelData \endlink,
 // \link MipSet \endlink
@@ -643,21 +643,21 @@ typedef struct
 
 typedef CMP_MipLevel MipLevel;
 
-typedef CMP_MipLevel* CMP_MipLevelTable;  // A pointer to a set of MipLevels.
+typedef CMP_MipLevel* CMP_MipLevelTable;  // A pointer to a set of mipLevels.
 
 // Each texture and all its mip-map levels are encapsulated in a MipSet.
 // Do not depend on m_pMipLevelTable being there, it is an implementation detail that you see only because there is no easy cross-complier
 // way of passing data around in internal classes.
 //
-// For 2D textures there are m_nMipLevels MipLevels.
-// Cube maps have multiple faces or sides for each mip-map level . Instead of making a totally new data type, we just made each one of these faces be represented by a MipLevel, even though the terminology can be a bit confusing at first. So if your cube map consists of 6 faces for each mip-map level, then your first mip-map level will consist of 6 MipLevels, each having the same m_nWidth, m_nHeight. The next mip-map level will have half the m_nWidth & m_nHeight as the previous, but will be composed of 6 MipLevels still.
-// A volume texture is a 3D texture. Again, instead of creating a new data type, we chose to make use of multiple MipLevels to create a single mip-map level of a volume texture. So a single mip-map level of a volume texture will consist of many MipLevels, all having the same m_nWidth and m_nHeight. The next mip-map level will have m_nWidth and m_nHeight half of the previous mip-map level's (to a minimum of 1) and will be composed of half as many MipLevels as the previous mip-map level (the first mip-map level takes this number from the MipSet it's part of), to a minimum of one.
+// For 2D textures there are m_nMipLevels mipLevels.
+// Cube maps have multiple faces or sides for each mip-map level . Instead of making a totally new data type, we just made each one of these faces be represented by a MipLevel, even though the terminology can be a bit confusing at first. So if your cube map consists of 6 faces for each mip-map level, then your first mip-map level will consist of 6 mipLevels, each having the same m_nWidth, m_nHeight. The next mip-map level will have half the m_nWidth & m_nHeight as the previous, but will be composed of 6 mipLevels still.
+// A volume texture is a 3D texture. Again, instead of creating a new data type, we chose to make use of multiple mipLevels to create a single mip-map level of a volume texture. So a single mip-map level of a volume texture will consist of many mipLevels, all having the same m_nWidth and m_nHeight. The next mip-map level will have m_nWidth and m_nHeight half of the previous mip-map level's (to a minimum of 1) and will be composed of half as many mipLevels as the previous mip-map level (the first mip-map level takes this number from the MipSet it's part of), to a minimum of one.
 
 typedef struct
 {
     CMP_INT    m_nWidth;   // User Setting: Width in pixels of the topmost mip-map level of the mip-map set. Initialized by TC_AppAllocateMipSet.
     CMP_INT    m_nHeight;  // User Setting: Height in pixels of the topmost mip-map level of the mip-map set. Initialized by TC_AppAllocateMipSet.
-    CMP_INT    m_nDepth;  // User Setting: Depth in MipLevels of the topmost mip-map level of the mip-map set. Initialized by TC_AppAllocateMipSet. See Remarks.
+    CMP_INT    m_nDepth;  // User Setting: Depth in mipLevels of the topmost mip-map level of the mip-map set. Initialized by TC_AppAllocateMipSet. See Remarks.
     CMP_FORMAT m_format;  // User Setting: Format for this MipSet
 
     // set by various API for internal use and user ref
@@ -667,7 +667,7 @@ typedef struct
     TextureDataType m_TextureDataType;  // An indication of the type of data that the texture contains. A texture with just
                                         // RGB values would use TDT_XRGB, while a texture that also uses the alpha channel would use TDT_ARGB.
     TextureType m_TextureType;          // Indicates whether the texture is 2D, a cube map, or a volume texture. Used to determine how to
-                                        // treat MipLevels, among other things.
+                                        // treat mipLevels, among other things.
     CMP_UINT  m_Flags;                  // Flags that mip-map set.
     CMP_BYTE  m_CubeFaceMask;           // A mask of MS_CubeFace values indicating which cube-map faces are present.
     CMP_DWORD m_dwFourCC;               // The FourCC for this mip-map set. 0 if the mip-map set is uncompressed. Generated using
@@ -695,15 +695,15 @@ typedef struct
     CMP_BYTE   m_nChannels;        // Number of channels used min is 1 max is 4, 0 defaults to 1
     CMP_BYTE   m_isSigned;         // channel data is signed (has + and - data values)
 
-    // set by various API for internal use. These values change when processing MipLevels
+    // set by various API for internal use. These values change when processing mipLevels
     CMP_DWORD dwWidth;     // set by various API for ref,Width of the current active miplevel. if toplevel mipmap then value is same as m_nWidth
     CMP_DWORD dwHeight;    // set by various API for ref,Height of the current active miplevel. if toplevel mipmap then value is same as m_nHeight
     CMP_DWORD dwDataSize;  // set by various API for ref,Size of the current active miplevel allocated texture data.
     CMP_BYTE* pData;       // set by various API for ref,Pointer to the current active miplevel texture data: used in MipLevelTable
 
     // Structure to hold all mip levels buffers
-    CMP_MipLevelTable* m_pMipLevelTable;  // set by various API for ref, This is an implementation dependent way of storing the MipLevels
-                                          // that this mip-map set contains. Do not depend on it, use TC_AppGetMipLevel to access a mip-map set's MipLevels.
+    CMP_MipLevelTable* m_pMipLevelTable;  // set by various API for ref, This is an implementation dependent way of storing the mipLevels
+                                          // that this mip-map set contains. Do not depend on it, use TC_AppGetMipLevel to access a mip-map set's mipLevels.
     void* m_pReservedData;                // Reserved for binary data loading
 
     // Reserved for internal data tracking
