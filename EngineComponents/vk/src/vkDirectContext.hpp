@@ -194,5 +194,9 @@ namespace VK_internal
 		VkCommandPool		commandPool		= nullptr;
 		VkCommandBuffer		commandBuffer	= nullptr;
 		uint64_t			dispatchValue	= 0;
+
+		Vector<ResourceHandle>	resourcesUsed;
+		Vector<VkSemaphore>		waits;
+		Vector<VkSemaphore>		signals;
 	};
 }

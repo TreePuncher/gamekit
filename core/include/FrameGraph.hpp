@@ -2563,7 +2563,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer	(FrameGraph& Graph, ResourceHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
+	void ClearBackBuffer	(FrameGraph& Graph, ResourceHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears SwapChain to Black
 	void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
 	void PresentBackBuffer	(FrameGraph& Graph, IRenderWindow& Window);
 

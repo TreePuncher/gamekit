@@ -1,5 +1,4 @@
 #include <RenderSystemInterface.hpp>
-#include <vulkan/vulkan.hpp>
 
 namespace FlexKit
 {

@@ -395,7 +395,7 @@ namespace FlexKit
 		Tex2D_Desc.Width			= OcclusionBufferSize[0];
 		Tex2D_Desc.Height			= OcclusionBufferSize[1];
 		Tex2D_Desc.Read				= false;
-		Tex2D_Desc.MipLevels		= 1;
+		Tex2D_Desc.mipLevels		= 1;
 		Tex2D_Desc.initialData		= nullptr;
 		Tex2D_Desc.RenderTarget		= true;
 		Tex2D_Desc.UAV				= false;

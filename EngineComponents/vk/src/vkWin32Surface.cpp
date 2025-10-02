@@ -377,10 +377,14 @@ namespace FlexKit
 		{
 			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
-			layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);
+			layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);;
 
-			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, presentSemaphore, nullptr, &const_cast<uint32_t&>(imageIndex)); res != VK_SUCCESS)
+			auto wait = semaphores[imageIndex];
+
+			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, wait, nullptr, &imageIndex); res != VK_SUCCESS)
 				throw std::exception("Failed to get next image!");
+
+			auto signal = presentSemaphores[imageIndex];
 
 			renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout>(
 				resource,
@@ -389,6 +393,9 @@ namespace FlexKit
 					.image	= images[imageIndex]
 				},
 				layout[imageIndex]);
+
+			current[0] = wait;
+			current[1] = signal;
 		}
 
 
@@ -405,22 +412,14 @@ namespace FlexKit
 			auto test1 = renderSystem.GetCurrentProgress();
 
 
-			VkSemaphoreSignalInfo signal{
-			    .sType		= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO,
-                .pNext		= 0,
-                .semaphore	= presentSemaphore,
-                .value		= 1,
-			};
-
-
 			vkWaitForFences(renderSystem.device, 1, &renderSystem.directQueueFence, true, 100000000);
 
 			VkPresentInfoKHR presentInfo = {
 				.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 				.pNext				= nullptr,
 
-				.waitSemaphoreCount	= 0,
-				.pWaitSemaphores	= &presentSemaphore,
+				.waitSemaphoreCount	= 1,
+				.pWaitSemaphores	= &GetNextSemaphore(),
 
 				.swapchainCount		= 1,
 				.pSwapchains		= &swapchain,
@@ -429,7 +428,7 @@ namespace FlexKit
 				.pResults			= nullptr
 			};
 
-			auto res = vkQueuePresentKHR(renderSystem.device.get_queue(vkb::QueueType::graphics).value(), &presentInfo) == VK_SUCCESS;
+			auto res = vkQueuePresentKHR(renderSystem.GetQueue(), &presentInfo) == VK_SUCCESS;
 
 			UpdateBufferIdx();
 
@@ -446,15 +445,28 @@ namespace FlexKit
 			vkRenderSystem::GetInstance().ReleaseResource(resource);
 		}
 
+		VkSemaphore& GetSemaphore() 
+		{
+			return current[0];
+		}
+
+		VkSemaphore& GetNextSemaphore() 
+		{
+			return current[1];
+		}
+
 		VkSurfaceKHR	surface		= nullptr;
 		VkSwapchainKHR	swapchain	= nullptr;
 		VkFence			windowFence;
-		VkSemaphore		presentSemaphore;
+		VkSemaphore		semaphores[3];
+		VkSemaphore		presentSemaphores[3];
 
 	    ResourceHandle	resource	= InvalidHandle;
 		VkImage			images[3];
 		DeviceLayout	layout[3]	= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
 		uint32_t		imageIndex;
+
+		VkSemaphore		current[2];
 	};
 
 
@@ -529,9 +541,9 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		auto desc = GPUResourceDesc::RenderTarget(WH, format);
-		desc._ptr = swapchain;
-		desc.initialLayout = DeviceLayout::Undefined;
+		auto desc			= GPUResourceDesc::RenderTarget(WH, format);
+		desc._ptr			= swapchain;
+		desc.initialLayout	= DeviceLayout::Undefined;
 
 		auto renderTarget = renderSystem.CreateGPUResource(desc);
 		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
@@ -545,7 +557,18 @@ namespace FlexKit
             .flags = 0
 		};
 
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphore); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[0]); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[1]); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[2]); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[0]); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[1]); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create timeline semaphore queue!");
+		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[2]); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
 
 
@@ -557,6 +580,8 @@ namespace FlexKit
 
 		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &newRenderWindow.windowFence); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create fence for direct queue!");
+
+		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags>(renderTarget, (void*)newRenderWindow.current, ResourceFlags::SwapChain);
 
 		newRenderWindow.resource	= renderTarget;
 		newRenderWindow.swapchain	= swapchain;
@@ -577,3 +602,28 @@ namespace FlexKit
 		}
 	}
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2025 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

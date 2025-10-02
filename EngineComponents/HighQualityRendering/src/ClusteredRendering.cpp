@@ -259,7 +259,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask				= UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSO_Desc.NumRenderTargets		= 1;
-			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
 			PSO_Desc.SampleDesc.Count		= 1;
 			PSO_Desc.SampleDesc.Quality		= 0;
 			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -408,7 +408,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask				= UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets		= 1;
-			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
 			PSO_Desc.SampleDesc.Count		= 1;
 			PSO_Desc.SampleDesc.Quality		= 0;
 			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -532,7 +532,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask				= UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets		= 1;
-			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
 			PSO_Desc.SampleDesc.Count		= 1;
 			PSO_Desc.SampleDesc.Quality		= 0;
 			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -785,7 +785,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask				= UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets		= 1;
-			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
 			PSO_Desc.SampleDesc.Count		= 1;
 			PSO_Desc.SampleDesc.Quality		= 0;
 			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -853,7 +853,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask            = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Geometry.hpp>
-//#include "directx/d3d12.h"
 
 namespace FlexKit
 {

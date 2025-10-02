@@ -1420,7 +1420,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				dxgiFormat,
 				desc.WH[0],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::Texture2D:
@@ -1429,7 +1429,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::Texture3D:
@@ -1438,7 +1438,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::TextureCubeMap:
@@ -1447,7 +1447,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				6,
-				desc.MipLevels);
+				desc.mipLevels);
 			break;
 		};
 
@@ -1458,7 +1458,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		out.Flags |= desc.type == ResourceType::RayTracingStructure ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_RAYTRACING_ACCELERATION_STRUCTURE : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 		out.Flags |= desc.denyShaderUsage ? D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE : D3D12_RESOURCE_FLAG_NONE;
 
-		out.MipLevels	= Min(Max(desc.MipLevels, 1), 15);
+		out.MipLevels	= Min(Max(desc.mipLevels, 1), 15);
 
 		return out;
 	}
@@ -1483,7 +1483,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				dxgiFormat,
 				desc.WH[0],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::Texture2D:
@@ -1492,7 +1492,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::Texture3D:
@@ -1501,7 +1501,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				desc.arraySize,
-				desc.MipLevels);
+				desc.mipLevels);
 
 			break;
 		case TextureDimension::TextureCubeMap:
@@ -1510,7 +1510,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.WH[0],
 				desc.WH[1],
 				6,
-				desc.MipLevels);
+				desc.mipLevels);
 			break;
 		};
 
@@ -1519,7 +1519,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		out.Flags |= desc.type	== ResourceType::UnorderedAccessRenderTarget	? D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 		out.Flags |= desc.type	== ResourceType::DepthTarget					? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : D3D12_RESOURCE_FLAG_NONE;
 
-		out.MipLevels = Min(Max(desc.MipLevels, 1), 15);
+		out.MipLevels = Min(Max(desc.mipLevels, 1), 15);
 
 		return out;
 	}

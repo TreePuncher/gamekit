@@ -11,7 +11,10 @@ namespace VK_internal
 	vkDirectContext::vkDirectContext()
 	{
 		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
-		pendingBarriers = Vector<Barrier>{ renderSystem.allocator };
+		pendingBarriers	= Vector<Barrier>{ renderSystem.allocator };
+		resourcesUsed	= Vector<ResourceHandle>{ renderSystem.allocator };
+		waits			= Vector<VkSemaphore>{ renderSystem.allocator };
+		signals			= Vector<VkSemaphore>{ renderSystem.allocator };
 
 		VkCommandPoolCreateInfo createPoolDesc{
 				.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -181,9 +184,22 @@ namespace VK_internal
 	void vkDirectContext::ClearDepthBuffer(ResourceHandle Texture, float ClearDepth)
     {}
 
-	void vkDirectContext::ClearRenderTarget(ResourceHandle Texture, float4 rgba)
+	void vkDirectContext::ClearRenderTarget(ResourceHandle texture, float4 rgba)
 	{
-		auto apiResource = RenderSystem().GetDeviceResource(Texture);
+		if (std::find(resourcesUsed.begin(), resourcesUsed.end(), texture) == resourcesUsed.end())
+		{
+			resourcesUsed.push_back(texture);
+			auto flags = RenderSystem().resources.Get<ResourceFieldID::Flags>(texture);
+
+			if ((flags & ResourceFlags::SwapChain) != 0)
+			{
+				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(texture);
+				waits.push_back((VkSemaphore)semaphore[0]);
+				signals.push_back((VkSemaphore)semaphore[1]);
+			}
+		}
+
+		auto apiResource = RenderSystem().GetDeviceResource(texture);
 		FlushBarriers();
 
 		VkImageSubresourceRange subresource{
@@ -491,6 +507,9 @@ namespace VK_internal
 
 	void vkDirectContext::Begin(uint64_t submissionValue)
 	{
+		resourcesUsed.clear();
+		waits.clear();
+		signals.clear();
 		dispatchValue = submissionValue;
 
 		VkCommandBufferBeginInfo beginInfo{

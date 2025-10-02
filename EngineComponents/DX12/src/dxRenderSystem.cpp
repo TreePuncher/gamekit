@@ -5167,7 +5167,7 @@ namespace dx_Internal
 			{ 0, 0, 0 },
 			{ layout, layout, layout },
 			TextureFormat2DXGIFormat(desc.format),
-			desc.MipLevels,
+			desc.mipLevels,
 			desc.WH,
 			Handle,
 			{ { desc.placed.offset, 0 }, {}, {} }
@@ -5190,7 +5190,7 @@ namespace dx_Internal
 		entry.FGI_FrameStamp	= -1;
 		entry.Handle			= Handle;
 		entry.Format			= newEntry.Format;
-		entry.Flags				= desc.backBuffer ? TF_BackBuffer : 0;
+		entry.Flags				= desc.swapChain ? ResourceFlags::SwapChain : 0;
 		entry.dimension			= desc.Dimensions;
 		entry.arraySize			= desc.arraySize;
 		entry.tileMappings		= { allocator };
@@ -5228,7 +5228,7 @@ namespace dx_Internal
 			{ 0, 0, 0 },
 			{ layout, layout , layout },
 			TextureFormat2DXGIFormat(desc.format),
-			desc.MipLevels,
+			desc.mipLevels,
 			desc.WH,
 			handle,
 			{ { desc.placed.offset, 0 }, {}, {} }
@@ -5251,7 +5251,7 @@ namespace dx_Internal
 		entry.FGI_FrameStamp	= -1;
 		entry.Handle			= handle;
 		entry.Format			= newEntry.Format;
-		entry.Flags				= desc.backBuffer ? TF_BackBuffer : 0;
+		entry.Flags				= desc.swapChain ? ResourceFlags::SwapChain : 0;
 		entry.dimension			= desc.Dimensions;
 		entry.arraySize			= desc.arraySize;
 		entry.tileMappings      = { allocator };
@@ -5729,7 +5729,7 @@ namespace dx_Internal
 	void ResourceStateTable::MarkRTUsed(ResourceHandle Handle)
 	{
 		auto UserIdx = Handles[Handle];
-		UserEntries[UserIdx].Flags |= TF_INUSE;
+		UserEntries[UserIdx].Flags |= ResourceFlags::INUSE;
 	}
 
 
@@ -5744,7 +5744,7 @@ namespace dx_Internal
 			auto& UserEntry = UserEntries[idx];
 			auto Flags      = UserEntry.Flags;
 
-			if (Flags & TF_INUSE && !(Flags & TF_BackBuffer))
+			if (Flags & ResourceFlags::INUSE && !(Flags & ResourceFlags::SwapChain))
 			{
 				Resources[UserEntry.ResourceIdx].SetFrameLock(FrameID);
 				Resources[UserEntry.ResourceIdx].IncreaseIdx();

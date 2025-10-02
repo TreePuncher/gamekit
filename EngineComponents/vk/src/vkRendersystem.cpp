@@ -474,7 +474,10 @@ namespace VK_internal
 	{
 		uint64_t submissionValue = 0;
 
-		Vector<VkCommandBufferSubmitInfo, 8> cmdBufferSubmit{ allocator };
+		Vector<VkCommandBufferSubmitInfo, 8>	cmdBufferSubmit{ allocator };
+		Vector<VkSemaphore, 8>					waits{ allocator };
+		Vector<VkSemaphore, 8>					signals{ allocator };
+
 		for (auto& cl : CLs)
 		{
 			auto vkCL = static_cast<vkDirectContext*>(cl);
@@ -488,34 +491,54 @@ namespace VK_internal
 			};
 			cmdBufferSubmit.push_back(info);
 			submissionValue = Max(submissionValue, vkCL->dispatchValue);
+
+			for (auto sp : vkCL->waits)
+				waits.push_back(sp);
+
+			for (auto sp : vkCL->signals)
+				signals.push_back(sp);
 		}
 
-		VkSemaphoreSubmitInfo waitInfo{
-			.sType		= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
-	        .pNext		= nullptr,
-	        .semaphore	= vkDirectQueueCounter, 
-	        .value		= directSubmissionCounter,
-		    .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
-		};
+		auto waitsEnd = std::unique(waits.begin(), waits.end());
+		auto signalsEnd = std::unique(signals.begin(), signals.end());
 
-		VkSemaphoreSubmitInfo signalInfo{
-			.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-	        .pNext		= nullptr,
-	        .semaphore	= vkDirectQueueCounter,
-	        .value		= submissionValue,
-		    .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
-		};
+
+		Vector<VkSemaphoreSubmitInfo, 8> waitInfos{ allocator };
+		for (auto& syncObject : std::span(waits.begin(), waitsEnd))
+		{
+			VkSemaphoreSubmitInfo signalInfo{
+			    .sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+	            .pNext		= nullptr,
+	            .semaphore	= syncObject,
+		        .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+		    };
+
+			waitInfos.push_back(signalInfo);
+		}
+
+		Vector<VkSemaphoreSubmitInfo, 8> signalInfos{ allocator };
+		for (auto& syncObject : std::span(signals.begin(), signalsEnd))
+		{
+			VkSemaphoreSubmitInfo signalInfo{
+				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext = nullptr,
+				.semaphore = syncObject,
+				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+			};
+
+			signalInfos.push_back(signalInfo);
+		}
 
 		const VkSubmitInfo2 submit{
 			.sType						= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
 			.pNext						= nullptr,
 			.flags						= 0x0,
-            .waitSemaphoreInfoCount		= sync.has_value() ? 1u : 0u,
-            .pWaitSemaphoreInfos		= sync.has_value() ? &waitInfo : nullptr,
+            .waitSemaphoreInfoCount		= (uint32_t)waitInfos.size(), 
+            .pWaitSemaphoreInfos		= waitInfos.data(),
             .commandBufferInfoCount		= (uint32_t)cmdBufferSubmit.size(),
             .pCommandBufferInfos		= cmdBufferSubmit.data(),
-            .signalSemaphoreInfoCount	= 1,
-            .pSignalSemaphoreInfos		= &signalInfo
+            .signalSemaphoreInfoCount	= (uint32_t)signalInfos.size(),
+            .pSignalSemaphoreInfos		= signalInfos.data()
 		};
 
 		vkResetFences(device, 1, &directQueueFence);
@@ -905,13 +928,18 @@ namespace VK_internal
 		{
 		case ResourceType::RenderTarget:
 		    {
-			    resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout>(
-				    resourceHandle,
-				    vkResourceEntry{
-					    .type	= vkResourceEntry::Type::RenderTarget,
-					    .image	= (VkImage)desc._ptr
-				    },
-					desc.initialLayout);
+			    resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout> (
+				        resourceHandle,
+				        vkResourceEntry{
+					        .type	= vkResourceEntry::Type::RenderTarget,
+					        .image	= (VkImage)desc._ptr
+				        },
+					    desc.initialLayout);
+
+				if (desc.swapChain)
+				{
+				    
+				}
 		    }	break;
 		case ResourceType::DepthTarget:
 		    {
@@ -1065,6 +1093,17 @@ namespace VK_internal
 		vkb::destroy_instance(instance);
 	}
 
+	VkDevice vkRenderSystem::GetDevice()
+	{
+		return device;
+	}
+
+	VkQueue	vkRenderSystem::GetQueue() const
+	{
+		return device.get_queue(vkb::QueueType::graphics).value();
+	}
+
+
 	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept
 	{
 		VkPipelineStageFlags out = 0;
@@ -1162,6 +1201,7 @@ namespace VK_internal
 		std::unreachable();
 		return VK_ACCESS_2_NONE;
 	}
+
 
 	uint32_t LayoutToVK(DeviceLayout layout) noexcept
     {
@@ -1301,6 +1341,7 @@ namespace VK_internal
 
 		std::unreachable();
 	}
+
 
 	VkFormat FormatToVK(DeviceFormat format)
 		{
