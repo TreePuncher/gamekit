@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(
     HairRendering
-    Main.cpp
+    main.cpp
     HairRendering.cpp
 )
 

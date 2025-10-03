@@ -19,7 +19,7 @@ target_sources(
     "src/vkDescriptorHeap.cpp"
     "src/vkDirectContext.cpp"
     "src/vkPipelineLayout.cpp"
-    "src/vkRenderSystem.cpp"
+    "src/vkRendersystem.cpp"
     "src/vkResourceTable.cpp"
     "src/vkWin32Surface.cpp"
 )
