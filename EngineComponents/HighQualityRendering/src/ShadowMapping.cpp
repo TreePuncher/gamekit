@@ -675,7 +675,7 @@ namespace FlexKit
 						(uint32_t)currentLodIdx,
 						{ VERTEXBUFFER_TYPE::POSITION });
 
-					BS = triMesh->BS;
+					BS = triMesh->bs;
 				}
 
 				const float4x4 WT   = GetWT(draw.brush->Node);
@@ -770,7 +770,7 @@ namespace FlexKit
 							const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
 
 							const float4x4 WT			= nodeView.GetWT();
-							const float4 brushPOS_WT	= WT * float4(triMesh->BS.xyz(), 1);
+							const float4 brushPOS_WT	= WT * float4(triMesh->bs.xyz(), 1);
 
 							ctx.SetGraphicsConstantValue(2, 16, float4x4{ WT });
 							ctx.SetGraphicsConstantBufferView(3, poseConstants);
@@ -790,7 +790,7 @@ namespace FlexKit
 										.maxZ	= light.R
 								};
 
-								if (Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->BS.w }))
+								if (Intersects(fustrum[itr], float4{ brushPOS_WT.xyz(), triMesh->bs.w }))
 								{
 									ctx.SetGraphicsConstantValue(0, 40, &tempConstants);
 									ctx.DrawIndexedInstanced(indexCount);

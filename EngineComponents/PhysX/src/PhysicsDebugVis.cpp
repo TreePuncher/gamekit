@@ -1,8 +1,7 @@
 #include "Brush.hpp"
 #include "PhysicsDebugVis.hpp"
 #include "FrameGraph.hpp"
-#include "physicsutilities.hpp"
-#include "defaultpipelinestates.hpp"
+#include "PhysicsUtilities.hpp"
 
 
 namespace FlexKit

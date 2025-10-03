@@ -142,21 +142,21 @@ target_include_directories(flex
     ${FLEX_ROOT}/ThirdParty/
     )
 
-target_link_libraries(flex PRIVATE fmt::fmt)
-target_link_libraries(flex PRIVATE range-v3::meta range-v3::concepts range-v3::range-v3)
+target_link_libraries(flex PUBLIC fmt::fmt)
+target_link_libraries(flex PUBLIC range-v3::meta range-v3::concepts range-v3::range-v3)
 target_link_libraries(flex PRIVATE AngelScriptComponents)
-target_link_libraries(flex PRIVATE imgui::imgui)
-target_link_libraries(flex PRIVATE imguizmo::imguizmo)
-target_link_libraries(flex PRIVATE Angelscript::angelscript)
-target_link_libraries(flex PRIVATE implot::implot)
+target_link_libraries(flex PUBLIC imgui::imgui)
+target_link_libraries(flex PUBLIC imguizmo::imguizmo)
+target_link_libraries(flex PUBLIC Angelscript::angelscript)
+target_link_libraries(flex PUBLIC implot::implot)
 target_link_libraries(flex PRIVATE loguru::loguru)
-target_link_libraries(flex PRIVATE scn::scn)
-target_link_libraries(flex PRIVATE ZLIB-NG)
-target_link_libraries(flex PRIVATE rmlui RmlDebugger)
+target_link_libraries(flex PUBLIC scn::scn)
+target_link_libraries(flex PUBLIC RmlUi::Core RmlUi::Debugger)
+
+find_path(SIMDE_INCLUDE_DIRS "simde")
+target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
 
 if(WIN32)
-    find_path(SIMDE_INCLUDE_DIRS "simde")
-
     #find_package(directx-headers CONFIG REQUIRED)
     #find_package(directx12-agility CONFIG REQUIRED)
 
@@ -165,14 +165,14 @@ if(WIN32)
     ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
+    target_link_libraries(flex PUBLIC ZLIB-NG)
 
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
-    target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
+
 
 
     #target_link_libraries(flex PRIVATE WINPIX) 
     #target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
-    target_link_libraries(flex PRIVATE RmlUi::Core RmlUi::Debugger)
 
     target_compile_definitions(flex PUBLIC UNICODE)
     target_compile_options(flex PUBLIC /UTF-8)
@@ -183,6 +183,11 @@ if(WIN32)
     file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
 endif(WIN32)
 
+if(UNIX)
+    ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/libz-ng.a)
+    target_link_libraries(flex PUBLIC ZLIB-NG)
+endif(UNIX)
 set_target_properties(flex PROPERTIES UNITY_BUILD ON)
 
 install(TARGETS flex DESTINATION lib)
@@ -197,16 +202,16 @@ function(Flex_LinkAssets TARGET)
         file(TO_NATIVE_PATH ${FLEX_ROOT}/assets SOURCEPATH)
         file(TO_NATIVE_PATH ${PROJECT_BINARY_DIR}/assets TARGETPATH)
 
-        add_custom_command(TARGET ${TARGET} POST_BUILD
-            COMMAND mklink /j ${TARGETPATH} ${SOURCEPATH} || echo ""
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
-            COMMAND_EXPAND_LISTS)
+    #    add_custom_command(TARGET ${TARGET} POST_BUILD
+    #        COMMAND mklink /j ${TARGETPATH} ${SOURCEPATH} || echo ""
+    #        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+    #        COMMAND_EXPAND_LISTS)
     else()
-        add_custom_command(
-            TARGET ${TARGET} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
-            COMMAND_EXPAND_LISTS)
+    #    add_custom_command(
+    #        TARGET ${TARGET} POST_BUILD
+    #        COMMAND ${CMAKE_COMMAND} -E create_symlink ${FLEX_ROOT}/assets $<TARGET_FILE_DIR:${TARGET}>/assets
+    #        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/dxil.dll $<TARGET_FILE_DIR:${TARGET}>
+    #        COMMAND_EXPAND_LISTS)
     endif()
 endfunction()
 

@@ -629,9 +629,11 @@ namespace FlexKit
 		std::string errorMessage = message;
 		errorMessage += "\n";
 
+#ifdef WIN32
 		std::stacktrace trace = std::stacktrace::current();
 		for (auto& stack : std::span{ trace.begin() + 1, trace.end() })
 			errorMessage += std::format("{} : {} : {}\n", stack.description(), stack.source_file(), stack.source_line());
+#endif
 
 		return errorMessage;
 	}

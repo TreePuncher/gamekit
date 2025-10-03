@@ -21,9 +21,14 @@ target_sources(
     "src/vkPipelineLayout.cpp"
     "src/vkRendersystem.cpp"
     "src/vkResourceTable.cpp"
-    "src/vkWin32Surface.cpp"
 )
 
+if(WIN32)
+    target_sources(
+            vkBackend PRIVATE
+            "src/vkWin32Surface.cpp"
+    )
+endif(WIN32)
 target_sources(
     vkBackend PUBLIC
     FILE_SET vkbackend_headers
@@ -40,7 +45,9 @@ target_sources(
     "src/vkResourceTable.hpp"
 )
 
+if(WIN32)
 target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
+endif(WIN32)
 
 target_include_directories(vkBackend
     PUBLIC

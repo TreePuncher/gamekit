@@ -1,3 +1,5 @@
+#ifdef WIN32
+
 #define WINDOWS_LEAN_AND_MEAN
 #include "vkWin32Surface.hpp"
 #include "windows.h"
@@ -627,3 +629,5 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+
+#endif

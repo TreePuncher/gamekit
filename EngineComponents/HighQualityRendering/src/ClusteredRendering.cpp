@@ -1267,7 +1267,7 @@ namespace FlexKit
 		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(GBufferPassID); };
 		
 		
-		PassDescription<MarkClustersPass> staticPass =
+		PassDescription<MarkClustersPass, const BrushEntry> staticPass =
 		{
 			.sharedData = {
 				.entityConstants 	= entityConstants,
@@ -1511,7 +1511,7 @@ namespace FlexKit
 							.KI					= { light.K, light.I },
 							.PositionR			= { WS_position, light.R },
 							.directionSpread	= { WS_orientation * float3{ 0, 0, 1 }, light.outerAngle },
-							.typeExtra			= { light.type, light.GetExtra() }
+							.typeExtra			= { (uint32_t)light.type, light.GetExtra() }
 						});
 				}
 
@@ -1534,7 +1534,7 @@ namespace FlexKit
 
 				DescriptorHeap clearHeap;
 				clearHeap.Init(ctx, resources.renderSystem().Library(ROOTLIBRARYSIG::ComputeSignature)->GetDescHeap(0), &allocator);
-				clearHeap.SetUAVStructured(ctx, 2, resources.GetResource(data.counterObject), sizeof(UINT), 0);
+				clearHeap.SetUAVStructured(ctx, 2, resources.GetResource(data.counterObject), sizeof(uint32_t), 0);
 				clearHeap.NullFill(ctx);
 
 
@@ -1903,8 +1903,6 @@ namespace FlexKit
 
 					for (auto&& [I, brush] : enumerate(pass->drawList))
 					{
-						auto& brush = pass->drawList[I];
-
 						if (!brush->meshes.size())
 							continue;
 
@@ -2114,7 +2112,7 @@ namespace FlexKit
 
 		} shared;
 
-		PassDescription<Shared> pass{
+		PassDescription<Shared, const BrushEntry> pass{
 			.sharedData = shared,
 			.getPVS		= []() -> std::span<const BrushEntry> { return {}; }
 		};
@@ -2151,7 +2149,7 @@ namespace FlexKit
 		auto* history = occlusionTable.GetHistory(frameGraph.GetRenderSystem(), camera);
 		FK_ASSERT(history != nullptr);
 
-		PassDescription<OcclusionCullingResults> pass{
+		PassDescription<OcclusionCullingResults, const BrushEntry> pass{
 			.sharedData =
 				{
 					.passes				= passes,
@@ -2205,7 +2203,7 @@ namespace FlexKit
 					for (TriMeshHandle meshHndl : draw.brush->meshes)
 					{
 						const TriMesh* meshResource = GetMeshResource(meshHndl);
-						aabb += meshResource->AABB;
+						aabb += meshResource->aabb;
 					}
 
 					const uint32_t queryID		= current.GetQueryIdx(draw.brush->brushID);

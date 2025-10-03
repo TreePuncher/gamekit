@@ -730,7 +730,7 @@ namespace FlexKit
 		auto getAnimatedPass	= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferAnimatedPassID); };
 
 
-		PassDescription<TextureFeedbackPass_Data> staticPass =
+		PassDescription<TextureFeedbackPass_Data, const BrushEntry> staticPass =
 		{
 			.sharedData			= {
 				.camera			= camera,
@@ -739,7 +739,7 @@ namespace FlexKit
 			.getPVS				= getStaticPass,
 		};
 
-		PassDescription<TextureFeedbackPass_Data> animatedPass =
+		PassDescription<TextureFeedbackPass_Data, const BrushEntry> animatedPass =
 		{
 			.sharedData			= {
 				.camera			= camera,

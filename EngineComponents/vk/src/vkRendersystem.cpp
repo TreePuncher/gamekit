@@ -1,6 +1,6 @@
 #include "vkCopyContext.hpp"
 #include "vkDirectContext.hpp"
-#include "vkRendersystem.hpp"
+#include "vkRenderSystem.hpp"
 #include <Handle.hpp>
 #include <RenderSystemInterface.hpp>
 
@@ -216,14 +216,19 @@ namespace VK_internal
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
 		allocator = desc.Memory;
-		const char* extensions[] = { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+		const char* extensions[] = {
+			VK_KHR_SURFACE_EXTENSION_NAME,
+#ifdef WIN32
+			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+#endif
+		};
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
 		    .require_api_version(1, 4, 0)
 			.request_validation_layers()
 			.set_headless()
-		    .enable_extensions(2, extensions)
+		    .enable_extensions(std::size(extensions), extensions)
 			.use_default_debug_messenger()
 			.build();
 
@@ -246,7 +251,7 @@ namespace VK_internal
 		auto physRequest = selector
 	        .set_minimum_version(1, 4)
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-			.add_required_extension("VK_NV_descriptor_pool_overallocation")
+			//.add_required_extension("VK_NV_descriptor_pool_overallocation")
 			.add_required_extension("VK_KHR_depth_stencil_resolve")
 		    .add_required_extension("VK_KHR_dynamic_rendering")
 			.add_required_extension("VK_KHR_maintenance3")
@@ -254,7 +259,7 @@ namespace VK_internal
             .add_required_extension("VK_KHR_swapchain")
 			.add_required_extension("VK_KHR_timeline_semaphore")
 			.add_required_extension("VK_KHR_spirv_1_4")
-		    .add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
+		    //.add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
             .set_required_features_12({
 					.sType				= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
                     .timelineSemaphore	= true
@@ -283,16 +288,16 @@ namespace VK_internal
 
 		auto queue = queueRequest.value();
 
-		descriptorPool = CreateDescriptorHeap(device, 1000);
+		//descriptorPool = CreateDescriptorHeap(device, 1000);
 
 		// Create Heap Layout
 		DesciptorHeapLayout layout{};
 		layout.SetParameterAsCBV(0, 0, 1);
 		layout.SetParameterAsSRV(1, 1, 1);
 
-		auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
+		//auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
 
-		auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
+		//auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
 
 		//auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
 		//CreateCBV(device, descriptorSet, constantBuffer);

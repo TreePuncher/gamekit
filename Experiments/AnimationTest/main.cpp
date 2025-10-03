@@ -11,30 +11,34 @@ struct TestState : FrameworkState
 {
 	TestState(GameFramework& IN_framework) : FrameworkState(IN_framework)
 	{
+#if WIN32
 		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+#endif
 	}
 
 
 	UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT)
 	{
+#ifdef WIN32
 		vkWin32UpdateInput();
+#endif
 	    return nullptr;
 	}
 
 
 	UpdateTask* Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
 	{
-		auto renderTarget = renderWindow->GetBackBuffer();
-		frameGraph.AddOutput(renderTarget);
-		ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
-		PresentBackBuffer(frameGraph, *renderWindow);
+		//auto renderTarget = renderWindow->GetBackBuffer();
+		//frameGraph.AddOutput(renderTarget);
+		//ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
+		//PresentBackBuffer(frameGraph, *renderWindow);
 	    return nullptr;
 	}
 
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) override
 	{
-		bool res = renderWindow->Present();
+		//bool res = renderWindow->Present();
 	}
 
 	FlexKit::IRenderWindow* renderWindow = nullptr;
