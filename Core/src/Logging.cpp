@@ -125,6 +125,7 @@ namespace FlexKit
 	std::string GetCallStackString()
 	{
 		std::string traceMessage;
+#ifdef WIN32
 		auto stackTrace = std::stacktrace::current();
 
 		for (const auto& frame : std::ranges::subrange(stackTrace.begin() + 1, stackTrace.end()))
@@ -143,6 +144,7 @@ namespace FlexKit
 			else if (description.size() <= strackDescriptionMaxLength)
 				traceMessage += " \t..." + description.substr(description.size() - strackDescriptionMaxLength, strackDescriptionMaxLength) + "\n ";
 		}
+#endif
 
 		return traceMessage;
 	}

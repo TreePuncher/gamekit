@@ -69,7 +69,7 @@ namespace FlexKit
 		GBuffer&                        gbuffer;
 
 		DebugVisMode            debugDisplay    = DebugVisMode::Disabled;
-		BVHVisMode              BVHVisMode      = BVHVisMode::Both;
+		BVHVisMode              bvhMode			= BVHVisMode::Both;
 		ClusterDebugDrawMode    debugDrawMode   = ClusterDebugDrawMode::BVH;
 
 		// Inputs

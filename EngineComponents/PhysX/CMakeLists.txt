@@ -5,13 +5,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(unofficial-omniverse-physx-sdk CONFIG REQUIRED)
 
-add_library(PhysxComponet
+add_library(PhysxComponent
     "src/PhysicsDebugVis.cpp"
     "src/physicsutilities.cpp"
 )
 
 target_sources(
-    PhysxComponet
+    PhysxComponent
     PUBLIC
     FILE_SET physxcomponent_headers
     TYPE HEADERS
@@ -20,14 +20,14 @@ target_sources(
     "include/PhysicsDebugVis.hpp"
 )
 
-target_include_directories(PhysxComponet
+target_include_directories(PhysxComponent
     PUBLIC
     "include"
     PRIVATE
     "src"
 )
 
-target_link_libraries(PhysxComponet PRIVATE unofficial::omniverse-physx-sdk::sdk flex)
+target_link_libraries(PhysxComponent PUBLIC unofficial::omniverse-physx-sdk::sdk flex)
 
-install(TARGETS PhysxComponet FILE_SET physxcomponent_headers)
-install(TARGETS PhysxComponet DESTINATION lib)
+install(TARGETS PhysxComponent FILE_SET physxcomponent_headers)
+install(TARGETS PhysxComponent DESTINATION lib)

@@ -2013,7 +2013,7 @@ namespace FlexKit
 	};
 
 
-#ifdef _DEBUG
+#if _DEBUG & WIN32
 #define IDIRECTCONTEXTDEBUGBODY { FK_ASSERT(false, "NOT IMPLEMENTED: " __FUNCSIG__); };
 #else
 #define IDIRECTCONTEXTDEBUGBODY = 0;
@@ -2212,7 +2212,12 @@ namespace FlexKit
 
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment = 256)
 		{
+#ifdef WIN32
 			FK_ASSERT(false, "NOT IMPLEMENTED: " __FUNCSIG__);
+#else
+			FK_ASSERT(false);
+#endif
+
 		    return {};
 		}
 	};

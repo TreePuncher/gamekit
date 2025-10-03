@@ -1,7 +1,7 @@
 #pragma once
 #include <Components.hpp>
 #include <Events.hpp>
-#include <type.hpp>
+#include <Type.hpp>
 #include <TriggerComponent.hpp>
 
 struct Player

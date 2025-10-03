@@ -101,13 +101,13 @@ namespace FlexKit
 				{
 					auto* field = std::get<fieldID>(fields);
 
-					FN.operator()<
+					FN.template operator()<
 						fieldID, 
-						std::remove_pointer_t<decltype(field)>
+						std::decay_t<decltype(field[0])>
 					>(field);
 				};
 
-				(action.operator()<indexes>(), ...);
+				(action.template operator()<indexes>(), ...);
 			};
 
 			constexpr size_t end = sizeof ... (TY_Fields);
@@ -124,13 +124,13 @@ namespace FlexKit
 					auto* field = std::get<fieldID>(fields);
 
 					return 
-						FN.operator()<
+						FN.template operator()<
 							fieldID, 
 							std::remove_pointer_t<decltype(field)>
 						>(field);
 				};
 
-				auto ret = std::make_tuple(action.operator()<indexes>()...);
+				auto ret = std::make_tuple(action.template operator()<indexes>()...);
 				return ret;
 			};
 
@@ -155,7 +155,7 @@ namespace FlexKit
 		{
 			FK_ASSERT(idx < used);
 
-			return std::get<fieldIdx>(fields)[idx];
+			return (std::get<fieldIdx>(fields)[idx], ...);
 		}
 
 		template<size_t ... FieldIdx>
@@ -185,7 +185,7 @@ namespace FlexKit
                     field[idx]	= arg;
 			    };
 
-			((assignField.operator()<fieldIDs>(args)), ...);
+			((assignField.template operator()<fieldIDs>(args)), ...);
 		}
 
 
@@ -347,13 +347,13 @@ namespace FlexKit
 					{
 						auto* field = std::get<fieldID>(_ptrs);
 
-						FN.operator()<
+						FN.template operator()<
 							fieldID, 
 							std::remove_pointer_t<decltype(field)>
 						>(field);
 					};
 
-					(action.operator()<indexes>(), ...);
+					(action.template operator()<indexes>(), ...);
 				};
 
 				constexpr size_t end = std::tuple_size_v<TY>;
@@ -370,13 +370,13 @@ namespace FlexKit
 						auto* field = std::get<fieldID>(_ptrs);
 
 						return 
-							FN.operator()<
+							FN.template operator()<
 								fieldID, 
 								std::remove_pointer_t<decltype(field)>
 							>(field);
 					};
 
-					auto ret = std::make_tuple(action.operator()<indexes>()...);
+					auto ret = std::make_tuple(action.template operator()<indexes>()...);
 					return ret;
 				};
 
@@ -394,13 +394,13 @@ namespace FlexKit
 						auto field = std::get<fieldID>(_ptrs);
 
 						return
-							FN.operator()<
+							FN.template operator()<
 								fieldID,
 								std::remove_pointer_t<decltype(field)>
 							>(field);
 					};
 
-					return std::tie(action.operator()<indexes>()...);
+					return std::tie(action.template operator()<indexes>()...);
 				};
 
 				constexpr size_t end = std::tuple_size_v<TY>;

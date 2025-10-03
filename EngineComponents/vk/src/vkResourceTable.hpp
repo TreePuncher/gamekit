@@ -67,7 +67,7 @@ namespace VK_internal
         }
 
         template<uint32_t ... ids>
-        auto Get(ResourceHandle handle, auto ... fields) const
+        auto Get(ResourceHandle handle, auto ... IN_fields) const
         {
             FK_ASSERT(handles.IsValid(handle), "Invalid Handle!");
             std::shared_lock sl{ const_cast<std::shared_mutex&>(m) };

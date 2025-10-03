@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "level.hpp"
+#include "Level.hpp"
 #include "AnimationTest.hpp"
 #include "AnimationComponents.hpp"
 #include <KeyValueIDs.hpp>
@@ -97,13 +97,15 @@ AnimationTest::AnimationTest(FlexKit::GameFramework& IN_framework) :
 {
 	auto& rs = IN_framework.GetRenderSystem();
 
-#if USEVULKAN 
+#if USEVULKAN
+#if WIN32
 	if (auto res = CreateWin32VKSurface(rs, {1920, 1080}, DeviceFormat::R8G8B8A8_UNORM); res != nullptr)
 	{
 		renderWindow = res;
 	}
 	else
 		throw std::runtime_error{ "Failed to create vulkan surface" };
+#endif
 #else
 	if (auto res = CreateWin32RenderWindow(framework.GetRenderSystem(), { .height = 1080, .width = 1920 }); res)
 		renderWindow = res;
@@ -222,7 +224,9 @@ AnimationTest::~AnimationTest()
 FlexKit::UpdateTask* AnimationTest::Update(FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
 #if USEVULKAN
+#if WIN32
 	vkWin32UpdateInput();
+#endif
 #else
 	Win32UpdateInput();
 	auto mouseState = UpdateCapturedMouseInput(dT, renderWindow);

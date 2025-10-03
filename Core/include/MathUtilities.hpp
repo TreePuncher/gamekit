@@ -10,7 +10,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <limits>
-#include <math.h>
+#include <cmath>
 #include <ostream>
 #include <ranges>
 #include <tuple>
@@ -504,20 +504,21 @@ namespace FlexKit
 		}
 
 		template<typename T>
-		constexpr static auto BuildTuple(const T& value) noexcept
+		constexpr static auto BuildTuple(const T& vectorValue) noexcept requires(Vector_t<T>)
 		{
-			if constexpr (Vector_t<T>)
-			{
-				auto extractElements =
-					[&]<size_t ... indices>(std::index_sequence<indices...>)
-					{
-						return std::forward_as_tuple(value[indices]...);
-					};
+			auto extractElements =
+				[&]<size_t ... indices>(std::index_sequence<indices...>)
+				{
+					return std::forward_as_tuple(vectorValue[indices]...);
+				};
 
-				return extractElements(std::make_index_sequence<TY::size()>());
-			}
-			if constexpr (Scaler_t<TY>)
-				return std::forward_as_tuple(value);
+			return extractElements(std::make_index_sequence<T::size()>());
+		}
+
+		template<typename T>
+		constexpr static auto BuildTuple(const T& value) noexcept requires(Scaler_t<T>)
+		{
+			return std::forward_as_tuple(value);
 		}
 
 		constexpr static auto BuildTuple(const float2& f2) noexcept

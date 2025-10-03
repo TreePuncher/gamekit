@@ -130,6 +130,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include <cstdint>
+#include <cassert>
 
 #ifdef _DEBUG
 
@@ -242,6 +243,9 @@ inline void strncpy_s(auto...) {}
 inline size_t strnlen_s(auto...) { return 0u; }
 inline void* _aligned_malloc(size_t size, size_t alignement) {return malloc(size); }
 inline void _aligned_free(void* ptr) { free(ptr); }
+
+inline void __debugbreak(){}
+inline void DebugBreak(){}
 
 #endif
 
