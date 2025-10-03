@@ -2,7 +2,6 @@
   "name": "flexkit",
   "version-string": "0.0.1",
   "supports": "!x86 & windows",
-  "builtin-baseline": "d5ec528843d29e3a52d745a64b469f810b2cedbf",
   "dependencies": [
     {
       "name": "angelscript",
@@ -12,10 +11,15 @@
     },
     "boost-interprocess",
     "boost-process",
-    "cppcoro",
-    "cpptoml",
     "directx-dxc",
-    "directx12-agility",
+    {
+    "name": "directxtk12",
+    "platform": "windows"
+    },
+    {
+    "name": "directx12-agility",
+    "platform": "windows"
+    },
     "directxmesh",
     {
       "name": "directxtex",
@@ -24,7 +28,6 @@
         "openexr"
       ]
     },
-    "directxtk12",
     "fmt",
     "fp16",
     "imgui",
@@ -33,16 +36,21 @@
     "loguru",
     "ois",
     "physx",
-    "qtbase",
+    {
+        "name": "qtbase",
+        "platform": "windows"
+    },
     "range-v3",
     "recastnavigation",
     "rmlui",
     "scnlib",
     "simde",
-    "slikenet",
     "stb",
     "tinygltf",
-    "usd",
+    {
+        "name": "usd",
+        "platform": "windows"
+    },
     "zlib-ng",
     "vulkan", 
     "vk-bootstrap",

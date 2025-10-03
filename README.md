@@ -20,6 +20,12 @@ Install fmod sdk, fbx sdk, and vcpkg.
 clone and open TestGame.sln
 Hit F7 to build. Vcpkg will grab all other dependencies. 
 
+### Linux:
+install bison, flex, autoconf, autoconf-archive, automake, libtool,
+libxcb, libx11-xcb-dev, libglu1-mesa-dev, libxrender-dev, libxi-dev, 
+libxkbcommon-dev, libxkbcommon-x11-dev, libegl1-mesa-dev
+
+
 ## Screenshots:
 ### PBR shading
 ![PBR Shading](/screenshots/sponza.jpg)
