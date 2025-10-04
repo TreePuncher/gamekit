@@ -66,6 +66,9 @@ if(UNIX)
     target_link_libraries(vkBackend PRIVATE ${dxil_lib_dir})
     target_link_libraries(vkBackend PRIVATE libwayland-client.so)
     target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WAYLAND_KHR=1)
+    target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_XCB_KHR=1)
+    target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_XLIB_KHR=1)
+
 endif(UNIX)
 
 target_include_directories(vkBackend

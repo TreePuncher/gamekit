@@ -164,7 +164,6 @@ namespace FlexKit
 
     static void xdg_wm_base_ping(void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial)
     {
-    	fmt::print("Pong\n");
         xdg_wm_base_pong(xdg_wm_base, serial);
     }
 
@@ -282,8 +281,6 @@ namespace FlexKit
     void global_registry_handler(void* wlWindow, struct wl_registry *registry, uint32_t id, const char *interface, uint32_t version)
     {
         auto* window = (waylandWindow*)wlWindow;
-        fmt::print("interface: {}\n", interface);
-        fmt::print("version: {}\n", version);
 
         if (strcmp(interface, "wl_compositor") == 0) {
             window->compositor = (wl_compositor*)wl_registry_bind(registry,

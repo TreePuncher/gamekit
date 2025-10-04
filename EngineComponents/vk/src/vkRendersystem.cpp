@@ -18,6 +18,7 @@ namespace VK_internal
 {
 	using namespace FlexKit;
 
+
 	VkBool32 VKErrorCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT          messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT                 messageTypes,
@@ -85,6 +86,7 @@ namespace VK_internal
 		return descriptorPool;
 	}
 
+
 	VkBuffer CreateConstantBuffer(VkDevice device, size_t bufferSize)
 	{
 	    // Create Buffer
@@ -103,6 +105,7 @@ namespace VK_internal
 		vkCreateBuffer(device, &createBufferInfo, nullptr, &buffer);
 		return buffer;
 	}
+
 
 	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
 	{
@@ -161,6 +164,7 @@ namespace VK_internal
 			return vkLayout;
 	}
 
+
 	VkDescriptorSet AllocateDescriptorSet(VkDevice device, VkDescriptorSetLayout vkLayout, VkDescriptorPool pool)
 	{
 	    // Allocate descriptor set
@@ -181,6 +185,7 @@ namespace VK_internal
 		else
             return descriptorSet;
 	}
+
 
 	struct DescriptorLocation
 	{
@@ -220,17 +225,20 @@ namespace VK_internal
 		allocator = desc.Memory;
 		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
+			VK_KHR_DISPLAY_EXTENSION_NAME,
 #ifdef WIN32
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 #endif
 #ifdef __linux__
-			VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
+			//VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+			//VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+			//VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
 #endif
 		};
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
-		    .require_api_version(1, 4, 0)
+		    .require_api_version(1, 4, 304)
 			.request_validation_layers()
 			.set_headless()
 		    .enable_extensions(std::size(extensions), extensions)
@@ -238,9 +246,7 @@ namespace VK_internal
 			.build();
 
 		if (!instReq)
-		{
 			return false;
-		}
 
 
 		instance = instReq.value();
@@ -335,36 +341,44 @@ namespace VK_internal
 		return true;
 	}
 
+
 	void vkRenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc)
 	{
 	}
+
 
 	void vkRenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN)
 	{
 	}
 
+
 	void vkRenderSystem::LoadPSOIfRequired(PSOHandle State)
 	{
 	}
 
+
 	void vkRenderSystem::QueuePSOLoad(PSOHandle State)
 	{
 	}
+
 
 	const IPipelineState* vkRenderSystem::GetPSO(PSOHandle State, iAllocator& temp)
 	{
 		return nullptr;
 	}
 
+
 	const IRootSignature* const vkRenderSystem::GetPSORootSignature(PSOHandle state) const
 	{
 		return nullptr;
 	}
 
+
 	std::tuple<IPipelineState*, const IRootSignature*> vkRenderSystem::GetPSOAndRootSignature(PSOHandle stateID, iAllocator& temp) const
 	{
 		return {};
 	}
+
 
 	uint64_t vkRenderSystem::GetCurrentProgress() const
 	{
@@ -373,10 +387,12 @@ namespace VK_internal
 		return currentProgress;
 	}
 
+
 	size_t vkRenderSystem::GetCurrentCounter()
 	{
 		return directSubmissionCounter;
 	}
+
 
 	SyncPoint vkRenderSystem::GetSubmissionTicket(uint32_t count)
 	{
@@ -387,10 +403,12 @@ namespace VK_internal
 		    .fence			= directQueueFence };
 	}
 
+
 	void vkRenderSystem::SyncUploadTo(SyncPoint)
 	{
 		DebugBreak();
 	}
+
 
 	SyncPoint vkRenderSystem::SyncUploadPoint()
 	{
@@ -399,6 +417,7 @@ namespace VK_internal
 		return {};
 	}
 
+
 	SyncPoint vkRenderSystem::SyncUploadTicket()
 	{
 		DebugBreak();
@@ -406,10 +425,12 @@ namespace VK_internal
 		return {};
 	}
 
+
 	void vkRenderSystem::SyncDirectTo(SyncPoint)
 	{
 		DebugBreak();
 	}
+
 
 	SyncPoint vkRenderSystem::SyncDirectPoint()
 	{
@@ -417,11 +438,13 @@ namespace VK_internal
 		return {};
 	}
 
+
 	SyncPoint vkRenderSystem::SyncSubmittedDirectPoint()
 	{
 		DebugBreak();
 		return {};
 	}
+
 
 	SyncPoint vkRenderSystem::SyncDirectTicket()
 	{
@@ -429,25 +452,30 @@ namespace VK_internal
 		return {};
 	}
 
+
 	void vkRenderSystem::SignalDirect(uint64_t)
 	{
 		DebugBreak();
 	}
+
 
 	void vkRenderSystem::SubmitUploadQueues(CopyContextHandle* handle, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
 	{
 
 	}
 
+
 	CopyContextHandle vkRenderSystem::OpenUploadQueue()
 	{
 		return FlexKit::InvalidHandle;
 	}
 
+
 	CopyContextHandle vkRenderSystem::GetImmediateCopyQueue()
 	{
 		return FlexKit::InvalidHandle;
 	}
+
 
 	IDirectContext& vkRenderSystem::GetDirectCommandList(std::optional<SyncPoint> ticket)
 	{
@@ -474,11 +502,13 @@ namespace VK_internal
 		return *ctx;
 	}
 
+
 	ICopyContext& vkRenderSystem::GetCopyContext(CopyContextHandle handle)
 	{
 		static vkCopyContext ctx;
 		return ctx;
 	}
+
 
 	SyncPoint vkRenderSystem::Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync)
 	{
@@ -564,100 +594,120 @@ namespace VK_internal
 		};
 	}
 
+
 	void vkRenderSystem::EndFrame()
 	{
 		int x = 0;
 	}
+
 
 	void vkRenderSystem::Signal(SyncPoint)
 	{
 		int x = 0;
 	}
 
+
 	void vkRenderSystem::WaitForGPU()
 	{
 		int x = 0;
 	}
+
 
 	void vkRenderSystem::WaitFor(const uint64_t)
 	{
 		int x = 0;
 	}
 
+
 	void vkRenderSystem::WaitFor(const SyncPoint&)
 	{
 		int x = 0;
 	}
+
 
 	void vkRenderSystem::SetDebugName(ResourceHandle, const char*)
 	{
 
 	}
 
+
 	void vkRenderSystem::SetDebugName(DeviceHeapHandle, const char*)
 	{
 
 	}
+
 
 	void vkRenderSystem::SetObjectLayout(SOResourceHandle handle, DeviceLayout state) noexcept
 	{
 
 	}
 
+
 	void vkRenderSystem::SetObjectLayout(ResourceHandle	handle, DeviceLayout state) noexcept
 	{
 		resources.Set<ResourceFieldID::Layout>(handle, state);
 	}
+
 
 	size_t vkRenderSystem::GetVertexBufferSize(const VertexBufferHandle) const noexcept
 	{
 		return 0;
 	}
 
+
 	BLAS_PreBuildInfo vkRenderSystem::GetBLASPreBuildInfo(const IVertexBufferSet&)	const noexcept
 	{
 		return {};
 	}
+
 
 	size_t vkRenderSystem::GetTextureFrameGraphIndex(ResourceHandle) noexcept
 	{
 		return 0;
 	}
 
+
 	void vkRenderSystem::SetTextureFrameGraphIndex(ResourceHandle, size_t)	noexcept
 	{
 
 	}
+
 
 	void vkRenderSystem::MarkTextureUsed(ResourceHandle Handle)
 	{
 
 	}
 
+
 	DevicePointer vkRenderSystem::GetDevicePointer(const ResourceHandle) const noexcept
 	{
 		return {};
 	}
+
 
 	DeviceAddressRange vkRenderSystem::GetDeviceRange(const ResourceHandle handle) const noexcept
 	{
 		return {};
 	}
 
+
 	DeviceAddressRange vkRenderSystem::GetDeviceRange(const ConstantBufferHandle) const noexcept
 	{
 		return {};
 	}
+
 
 	DeviceLayout vkRenderSystem::GetObjectLayout(const QueryHandle handle) const noexcept
 	{
 		return DeviceLayout::Unknown;
 	}
 
+
 	DeviceLayout vkRenderSystem::GetObjectLayout(const SOResourceHandle	handle) const noexcept
 	{
 		return DeviceLayout::Unknown;
 	}
+
 
 	DeviceLayout vkRenderSystem::GetObjectLayout(const ResourceHandle handle) const noexcept
 	{
@@ -666,25 +716,30 @@ namespace VK_internal
 		return layout;
 	}
 
+
 	size_t vkRenderSystem::GetResourceSize(ConstantBufferHandle handle) const noexcept
 	{
 		return 0;
 	}
+
 
 	size_t vkRenderSystem::GetResourceSize(ResourceHandle desc) const noexcept
 	{
 		return 0;
 	}
 
+
 	size_t vkRenderSystem::GetAllocationSize(ResourceHandle handle) const noexcept
 	{
 		return 0;
 	}
 
+
 	size_t vkRenderSystem::GetAllocationSize(GPUResourceDesc desc)	const noexcept
 	{
 		return 0;
 	}
+
 
 	size_t vkRenderSystem::GetTextureElementSize(ResourceHandle handle) const
 	{
@@ -695,6 +750,7 @@ namespace VK_internal
 
 		return 0;
 	}
+
 
 	uint2 vkRenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
