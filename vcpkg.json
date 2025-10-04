@@ -59,6 +59,9 @@
     "vulkan-validationlayers",
     "vulkan-utility-libraries",
     "vulkan-extensionlayer",
-    "vulkan-sdk-components"
+    "vulkan-sdk-components",
+    {
+      "name": "wayland"
+    }
   ]
 }

@@ -2,7 +2,7 @@
 #include <Application.hpp>
 #include "AnimationTest.hpp"
 #include <vkBackend.hpp>
-#include <vkWin32Surface.hpp>
+#include <vkSurface.hpp>
 
 
 using namespace FlexKit;
@@ -13,7 +13,11 @@ struct TestState : FrameworkState
 	{
 #if WIN32
 		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+#else
+		renderWindow = CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
+
+
 	}
 
 
@@ -22,6 +26,7 @@ struct TestState : FrameworkState
 #ifdef WIN32
 		vkWin32UpdateInput();
 #endif
+		ProcessEvents(*renderWindow);
 	    return nullptr;
 	}
 

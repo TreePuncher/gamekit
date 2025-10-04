@@ -1487,7 +1487,7 @@ namespace FlexKit
 
 		float3 abs() const noexcept
 		{
-			return { fabs(x), fabs(y), fabs(z) };
+			return { (float)fabs(x), (float)fabs(y), (float)fabs(z) };
 		}
 
 
