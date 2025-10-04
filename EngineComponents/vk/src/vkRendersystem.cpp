@@ -12,6 +12,8 @@
 #include "vkWin32Surface.hpp"
 #endif
 
+#include <directx-dxc/dxcapi.h>
+
 namespace VK_internal
 {
 	using namespace FlexKit;
@@ -220,6 +222,9 @@ namespace VK_internal
 			VK_KHR_SURFACE_EXTENSION_NAME,
 #ifdef WIN32
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+#endif
+#ifdef __linux__
+			VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME
 #endif
 		};
 
@@ -872,6 +877,10 @@ namespace VK_internal
 
 	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options)
 	{
+		IDxcCompiler3* compiler;
+		auto res = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
+
+
 		return {};
 	}
 

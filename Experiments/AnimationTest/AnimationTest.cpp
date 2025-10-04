@@ -11,7 +11,7 @@
 #include <fmt/format.h>
 #include <RenderSystemInterface.hpp>
 
-#include "vkWin32Surface.hpp"
+#include "vkSurface.hpp"
 
 
 using namespace FlexKit;
