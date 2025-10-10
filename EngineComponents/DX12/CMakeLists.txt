@@ -32,7 +32,7 @@ target_sources(
     "src/PipelineState.hpp"
 )
 
-target_link_libraries(dxBackend PRIVATE flex)
+target_link_libraries(dxBackend PRIVATE flex BackendShared)
 
 target_include_directories(dxBackend
     PUBLIC

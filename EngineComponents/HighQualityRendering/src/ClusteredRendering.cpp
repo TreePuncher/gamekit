@@ -110,7 +110,7 @@ namespace FlexKit
 						}
 					}).
 			    SetDebugName("GBufferPassPSO").
-	            Build(renderSystem);
+	            Build(renderSystem, allocator);
 	}
 
 
@@ -226,7 +226,7 @@ namespace FlexKit
 						}
 			    }).
 			    SetDebugName("GBufferSkinnedPassPSO").
-	            Build(renderSystem);
+	            Build(renderSystem, allocator);
 	}
 
 
@@ -314,7 +314,7 @@ namespace FlexKit
 						}
 			    }).
 			    SetDebugName("DeferredShadingPSO").
-	            Build(renderSystem);
+	            Build(renderSystem, allocator);
 	}
 
 
@@ -344,7 +344,7 @@ namespace FlexKit
 			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
 			    AddComputeShader("ClusteredShading", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl").
 		        SetDebugName("DeferredShadingComputePSO").
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -376,7 +376,7 @@ namespace FlexKit
 			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 			    AddComputeShader("ClearCounters", "assets\\shaders\\ClusteredShading\\ClusteredShading.hlsl").
 		        SetDebugName("ClearClusteredCounters").
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -437,7 +437,7 @@ namespace FlexKit
 					.targetFormats = {
 					DeviceFormat::R16G16B16A16_FLOAT} }).
 			    SetDebugName("CreateLightBuffers_DEBUGVIS").
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -469,7 +469,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateLightBVH_PHASE1", "assets\\shaders\\ClusteredShading\\LightBVH.hlsl").
 				SetDebugName("CreateLightBVH_PHASE1").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 	/************************************************************************************************/
@@ -500,7 +500,7 @@ namespace FlexKit
 			    AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 			    AddComputeShader("CreateLightBVH_PHASE1", R"(assets\shaders\ClusteredShading\LightBVH.hlsl)").
 			    SetDebugName("CreateLightBVH_PHASE2").
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -563,7 +563,7 @@ namespace FlexKit
 					DeviceFormat::R16G16B16A16_FLOAT} }).
 					SetDebugName("CreateLightBVH_DEBUGVIS").
             AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-			Build(renderSystem);
+			Build(renderSystem, allocator);
 	}
 
 
@@ -595,7 +595,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault)).
 				AddComputeShader("CreateArguments", R"(assets\shaders\ClusteredShading\ClusterArgsDebugVis.hlsl)").
 				SetDebugName("CreateClusterArguments").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -627,7 +627,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateLightListArguents", R"(assets\shaders\ClusteredShading\LightListArguementIndirect.hlsl)").
 				SetDebugName("CreateLightListArgs").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -659,7 +659,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateClustersLightLists", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)").
 				SetDebugName("CreateLightLists").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -691,7 +691,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateClustersLightLists", R"(assets\shaders\ClusteredShading\lightListConstruction.hlsl)").
 				SetDebugName("CreateLightLists").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 	/************************************************************************************************/
@@ -722,7 +722,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("Clear", R"(assets\shaders\ResolutionMatch.hlsl)").
 				SetDebugName("ResolutionMatchClear_UNUSED").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -754,7 +754,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateClusters", R"(assets\shaders\ClusteredShading\ClusteredRendering.hlsl)").
 				SetDebugName("CreateClusters").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 	/************************************************************************************************/
@@ -816,7 +816,7 @@ namespace FlexKit
 					        DeviceFormat::R16G16B16A16_FLOAT} }).
 	            SetDebugName("CreateClusters").
 			    AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -884,7 +884,7 @@ namespace FlexKit
 						    DeviceFormat::R16G16B16A16_FLOAT} }).
 	            SetDebugName("CreateClusters").
 			    AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-			    Build(renderSystem);
+			    Build(renderSystem, allocator);
 	}
 
 
@@ -916,7 +916,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("CreateClusterBuffer", R"(assets\shaders\ClusteredShading\ClusterBuffer.hlsl)").
 				SetDebugName("CreateClusterBuffer").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -948,7 +948,7 @@ namespace FlexKit
 				AddRootSignature(renderSystem.Library(ROOTLIBRARYSIG::ComputeSignature)).
 				AddComputeShader("csmain", R"(assets\shaders\ClusteredShading\computedeferredtiledshading.hlsl)").
 				SetDebugName("CreateComputeTiledDeferred").
-				Build(renderSystem);
+				Build(renderSystem, allocator);
 	}
 
 
@@ -969,7 +969,7 @@ namespace FlexKit
 				    .stencilEnable	= false
 			    }).
 		        AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-	            Build(renderSystem);
+	            Build(renderSystem, allocator);
 	}
 
 
@@ -982,7 +982,7 @@ namespace FlexKit
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
 		builder.AddInputLayout({
 			.inputs = {
-				EInputElement{
+				InputElement{
 					.name				= "POSITION",
 					.index				= 0,
 					.format				= DeviceFormat::R32G32B32_FLOAT,
@@ -991,7 +991,7 @@ namespace FlexKit
 					.inputSlotClass		= EInputClassification::PerInstance,
 					.instanceStepRate	= 16
 				},
-				EInputElement{
+				InputElement{
 					.name				= "TARGET",
 					.index				= 0,
 					.format				= DeviceFormat::R32_UINT,
@@ -1014,7 +1014,7 @@ namespace FlexKit
 
 		builder.AddPixelShader("PMain",			R"(assets\shaders\OcclusionCulling\QueryDepth.hlsl)");
 
-		return builder.Build(renderSystem);
+		return builder.Build(renderSystem, allocator);
 	}
 
 

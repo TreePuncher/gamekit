@@ -37,9 +37,9 @@ namespace VK_internal
 		void ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor);
 
 		void SetRootSignature(RootSigHandle) final;
-		void SetRootSignature(const IRootSignature*) final;
+		void SetRootSignature(const IPipelineInterface*) final;
 		void SetComputeRootSignature(RootSigHandle) final;
-		void SetComputeRootSignature(const IRootSignature*) final;
+		void SetComputeRootSignature(const IPipelineInterface*) final;
 		void SetPipelineState(const struct IPipelineState* const PSO) final;
 		void SetComputePipelineState(const PSOHandle, iAllocator& temp) final;
 		void SetGraphicsPipelineState(const PSOHandle, iAllocator& temp) final;

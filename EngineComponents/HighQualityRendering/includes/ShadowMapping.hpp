@@ -135,7 +135,7 @@ namespace FlexKit
 		LoadPipelineStateRes CreateRowSums					(IRenderSystem& RS, iAllocator&);
 		LoadPipelineStateRes CreateColumnSums				(IRenderSystem& RS, iAllocator&);
 
-		const IRootSignature* rootSignature;
+		const IPipelineInterface* rootSignature;
 	};
 
 

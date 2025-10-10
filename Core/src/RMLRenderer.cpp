@@ -143,17 +143,17 @@ namespace FlexKit
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(
 						{	.inputs		= {
-								EInputElement{
+								InputElement{
 									.name				= "POSITION",
 									.format				= DeviceFormat::R16G16_FLOAT,
 									.alignedByteOffset	= 0,
 								},
-								EInputElement{
+								InputElement{
 									.name				= "TEXCOORD",
 									.format				= DeviceFormat::R16G16_FLOAT,
 									.alignedByteOffset	= 4,
 								},
-								EInputElement{
+								InputElement{
 									.name				= "COLOR",
 									.format				= DeviceFormat::R8G8B8A8_UNORM,
 									.alignedByteOffset	= 8,
@@ -169,7 +169,7 @@ namespace FlexKit
 						.targetCount	= 1,
 						.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT }})
 					.SetDebugName("RML_State_0")
-					.Build(*renderSystem);
+					.Build(*renderSystem, allocator);
 			});
 
 		renderSystem->RegisterPSOLoader(RMLDraw2PSO,
@@ -179,17 +179,17 @@ namespace FlexKit
 					.AddInputTopology(ETopology::EIT_TRIANGLE)
 					.AddInputLayout(
 						{	.inputs		= {
-								EInputElement{
+								InputElement{
 									.name				= "POSITION",
 									.format				= DeviceFormat::R16G16_FLOAT,
 									.alignedByteOffset	= 0,
 								},
-								EInputElement{
+								InputElement{
 									.name				= "TEXCOORD",
 									.format				= DeviceFormat::R16G16_FLOAT,
 									.alignedByteOffset	= 4,
 								},
-								EInputElement{
+								InputElement{
 									.name				= "COLOR",
 									.format				= DeviceFormat::R8G8B8A8_UNORM,
 									.alignedByteOffset	= 8,
@@ -205,7 +205,7 @@ namespace FlexKit
 						.targetCount	= 1,
 						.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT }})
 					.SetDebugName("RML_State_1")
-					.Build(*renderSystem);
+					.Build(*renderSystem, allocator);
 			});
 
 		renderSystem->QueuePSOLoad(RMLDrawPSO);

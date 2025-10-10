@@ -13,7 +13,7 @@ namespace FlexKit
 		return PipelineBuilder{ rs, allocator }.
 			AddComputeShader("tiledLightCulling", "assets\\shaders\\lightPass.hlsl").
 			AddRootSignature(rs.Library(ROOTLIBRARYSIG::ComputeSignature)).
-			Build(rs);
+			Build(rs, allocator);
 	}
 
 

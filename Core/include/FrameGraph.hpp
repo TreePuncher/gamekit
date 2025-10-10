@@ -492,7 +492,7 @@ namespace FlexKit
 
 		}
 
-		const IRootSignature* GetPipelineStateRootSig(PSOHandle state) const
+		const IPipelineInterface* GetPipelineStateRootSig(PSOHandle state) const
 		{
 			return renderSystem->GetPSORootSignature(state);
 		}

@@ -974,7 +974,7 @@ namespace FlexKit
 
 		template<size_t index>	auto Get() noexcept requires(index > 2) {}
 
-		template<size_t index> const auto& Get() const noexcept requires(index < 1){ static_assert(index >= 2, "Invalid Index"); }
+		template<size_t index> const auto& Get() const noexcept requires(index > 1){ static_assert(index > 1, "Invalid Index"); }
 		template<size_t index> const auto& Get() const noexcept requires(index == 0) { return V1; }
 		template<size_t index> const auto& Get() const noexcept requires(index == 1) { return V2; }
 

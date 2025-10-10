@@ -621,7 +621,7 @@ namespace dx_Internal
 		DeviceContext->SetGraphicsRootSignature(*rootSig);
 	}
 
-	void dxDirectContext::SetRootSignature(const IRootSignature* rootSig)
+	void dxDirectContext::SetRootSignature(const IPipelineInterface* rootSig)
 	{
 		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
 		CurrentRootSignature	= dxRootSig;
@@ -641,7 +641,7 @@ namespace dx_Internal
 	}
 
 
-	void dxDirectContext::SetComputeRootSignature(const IRootSignature* rootSig)
+	void dxDirectContext::SetComputeRootSignature(const IPipelineInterface* rootSig)
 	{
 		auto dxRootSig = static_cast<const RootSignature*>(rootSig);
 
@@ -1028,8 +1028,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
+	void dxDirectContext::SetGraphicsConstantValue(size_t slot, size_t valueCount, const void* data_ptr, size_t offset)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
 	}
 
@@ -1037,8 +1040,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::NullGraphicsConstantBufferView(size_t idx)
+	void dxDirectContext::NullGraphicsConstantBufferView(size_t slot)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
 	}
 
@@ -1046,10 +1052,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset)
+	void dxDirectContext::SetGraphicsConstantBufferView(size_t slot, const ConstantBufferHandle CB, size_t Offset)
 	{
 		FK_ASSERT(!(Offset % 256), "Incorrect CB Offset!");
 
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + (UINT)Offset);
 	}
 
@@ -1057,8 +1067,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
+	void dxDirectContext::SetGraphicsConstantBufferView(size_t slot, const ConstantBuffer& CB)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, CB.Get()->GetGPUVirtualAddress());
 	}
 
@@ -1066,8 +1080,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
+	void dxDirectContext::SetGraphicsConstantBufferView(size_t slot, const ConstantBufferDataSet& CB)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
@@ -1077,6 +1095,9 @@ namespace dx_Internal
 
 	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& IDH)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+
 		auto& impl = dxDescriptorHeap::GetImpl(IDH);
 		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, impl);
 	}
@@ -1085,8 +1106,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsConstantBufferView(size_t idx, DevicePointer devicePointer)
+	void dxDirectContext::SetGraphicsConstantBufferView(size_t slot, DevicePointer devicePointer)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, devicePointer);
 	}
 
@@ -1094,8 +1119,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
+	void dxDirectContext::SetGraphicsDescriptorTable(size_t slot, const DescriptorRange& range)
 	{
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t  idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
 		DeviceContext->SetGraphicsRootDescriptorTable(
 			(UINT)idx,
 			D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
@@ -1105,13 +1134,16 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource& Resource, size_t Count, size_t ElementSize)
+	void dxDirectContext::SetGraphicsShaderResourceView(size_t slot, FrameBufferedResource& Resource, size_t Count, size_t ElementSize)
 	{
 #if USING(DEBUGGRAPHICS)
 		if(debugCommandList)
 			debugCommandList->AssertResourceState(Resource.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
+		if (!CurrentGraphicsRootSig())
+			return;
 
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::SRV);
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource.Get()->GetGPUVirtualAddress());
 	}
 
@@ -1133,13 +1165,17 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
+	void dxDirectContext::SetGraphicsShaderResourceView(size_t slot, ResourceHandle resource, size_t offset)
 	{
 		auto resource_ptr = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 #if USING(DEBUGGRAPHICS)
 		if (resource != InvalidHandle && debugCommandList)
 			debugCommandList->AssertResourceState(resource_ptr, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
+		if (!CurrentGraphicsRootSig())
+			return;
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::SRV);
 
 		if(resource != InvalidHandle)
 			DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, resource_ptr->GetGPUVirtualAddress());
@@ -1167,21 +1203,34 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t idx)
+	void dxDirectContext::SetComputeDescriptorTable(size_t slot)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ 0 });
 	}
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& IDH)
+	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorHeap& IDH)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
+
 		auto& DH = dxDescriptorHeap::GetImpl(IDH);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
 	}
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)
+	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorRange& range)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, D3D12_GPU_DESCRIPTOR_HANDLE{ range.begin.V2 });
 	}
 
@@ -1189,8 +1238,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
+	void dxDirectContext::SetComputeConstantBufferView(size_t slot, const ConstantBufferHandle CB, size_t offset)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
 #if USING(DEBUGGRAPHICS)
 		auto resource = renderSystem->GetDeviceResource(CB).As<ID3D12Resource>();
 
@@ -1198,6 +1250,7 @@ namespace dx_Internal
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB) + offset);
 	}
 
@@ -1205,8 +1258,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
+	void dxDirectContext::SetComputeConstantBufferView(size_t slot, const ConstantBufferDataSet& CB)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
 #if USING(DEBUGGRAPHICS)
 		auto resource = renderSystem->GetDeviceResource(CB.Handle()).As<ID3D12Resource>();
 
@@ -1214,6 +1270,7 @@ namespace dx_Internal
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
 #endif
 
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
@@ -1221,8 +1278,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeConstantBufferView(size_t idx, ResourceHandle resource, size_t offset, size_t bufferSize)
+	void dxDirectContext::SetComputeConstantBufferView(size_t slot, ResourceHandle resource, size_t offset, size_t bufferSize)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
 		auto deviceResource     = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 		auto gpuAddress         = deviceResource->GetGPUVirtualAddress();
 
@@ -1231,6 +1291,7 @@ namespace dx_Internal
 			debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_COMMON);
 #endif
 
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, gpuAddress + offset);
 	}
 
@@ -1238,8 +1299,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeConstantBufferView(size_t idx, DevicePointer pointer)
+	void dxDirectContext::SetComputeConstantBufferView(size_t slot, DevicePointer pointer)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetComputeRootConstantBufferView((UINT)idx, pointer);
 	}
 
@@ -1261,14 +1326,19 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, const size_t offset)
+	void dxDirectContext::SetComputeShaderResourceView(size_t slot, ResourceHandle resource, const size_t offset)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
 		auto deviceResource = renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 
 #if USING(DEBUGGRAPHICS)
 		if (debugCommandList)
 			debugCommandList->AssertResourceState(deviceResource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 #endif
+
+        const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		if(resource != InvalidHandle)
 			DeviceContext->SetComputeRootShaderResourceView((UINT)idx, deviceResource->GetGPUVirtualAddress() + offset);
 		else
@@ -1279,8 +1349,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
+	void dxDirectContext::SetComputeUnorderedAccessView(size_t slot, ResourceHandle UAVresource, size_t offset)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::UAV);
 		auto resource = renderSystem->GetDeviceResource(UAVresource).As<ID3D12Resource>();
 
 #if USING(DEBUGGRAPHICS)
@@ -1297,8 +1371,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
+	void dxDirectContext::SetComputeConstantValue(size_t slot, size_t valueCount, const void* data_ptr, size_t offset)
 	{
+		if (!CurrentComputeRootSig())
+			return;
+
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
 	}
 

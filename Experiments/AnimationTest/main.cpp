@@ -17,7 +17,27 @@ struct TestState : FrameworkState
 		renderWindow = CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 
+		PipelineBuilder builder(GetRenderSystem(), framework.core.GetTempMemory());
+		//builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
+		builder.AddVertexShader("VMain",	"assets/shaders/TestShader.hlsl");
+		builder.AddRasterizerState();
+		builder.AddRenderTargetState({
+            .targetCount	= 1,
+			.targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
+		});
 
+		auto PSO = builder.Build(GetRenderSystem(), GetTempAllocator());
+
+		//GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Hello),
+		//	[](IRenderSystem& renderSystem, iAllocator& allocator)
+		//	{
+		//
+		//		return builder.Build(renderSystem);
+		//	});
+		//
+		//GetRenderSystem().QueuePSOLoad(GetTypeGUID(Hello));
+
+		int x = 0;
 	}
 
 
@@ -25,25 +45,26 @@ struct TestState : FrameworkState
 	{
 #ifdef WIN32
 		vkWin32UpdateInput();
-#endif
+#else
 		ProcessEvents(*renderWindow);
+#endif
 	    return nullptr;
 	}
 
 
 	UpdateTask* Draw(UpdateTask* update, EngineCore&, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
 	{
-		//auto renderTarget = renderWindow->GetBackBuffer();
-		//frameGraph.AddOutput(renderTarget);
-		//ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
-		//PresentBackBuffer(frameGraph, *renderWindow);
+		auto renderTarget = renderWindow->GetBackBuffer();
+		frameGraph.AddOutput(renderTarget);
+		ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
+		PresentBackBuffer(frameGraph, *renderWindow);
 	    return nullptr;
 	}
 
 
 	void PostDrawUpdate(FlexKit::EngineCore&, double dT) override
 	{
-		//bool res = renderWindow->Present();
+		bool res = renderWindow->Present();
 	}
 
 	FlexKit::IRenderWindow* renderWindow = nullptr;

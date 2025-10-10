@@ -24,8 +24,8 @@ namespace VK_internal
 		void													QueuePSOLoad			(PSOHandle State) final;
 
 		const IPipelineState*									GetPSO					(PSOHandle State, iAllocator& temp) final;
-		const IRootSignature* const 							GetPSORootSignature		(PSOHandle state) const final;
-		std::tuple<IPipelineState*, const IRootSignature*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const final;
+		const IPipelineInterface* const 							GetPSORootSignature		(PSOHandle state) const final;
+		std::tuple<IPipelineState*, const IPipelineInterface*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const final;
 
 		// Sync functions
 		uint64_t	GetCurrentProgress() const;
@@ -157,13 +157,13 @@ namespace VK_internal
 		SOResourceHandle				CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) final;
 		QueryHandle						CreateSOQuery(size_t SOIndex, size_t count) final;
 		QueryHandle						CreateTimeStampQuery(size_t count) final;
-		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
+		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) final;
-		bool							CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize) final;
+		bool							CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) final;
 	    void							CreateTextureView(ResourceHandle, DescHeapPOS) final;
 
 
-		const IRootSignature*	Library(ROOTLIBRARYSIG ID) const noexcept final;
+		const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept final;
 		ResourceHandle			DefaultTexture() const noexcept;
 
 		// Resetable resources

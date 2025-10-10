@@ -87,13 +87,13 @@ namespace FlexKit
 							 f, f, f, 0,
 							 f, f, f, 0 };
 
-		constexpr static simde__m256i fIndex0 = simde_x_mm256_set_epu32
-				(   0, 4, 8, 12,
-					1, 5, 9, 13 z;
+		constexpr static __m256i fIndex0{ .m256i_i32 = {
+					0, 4, 8, 12,
+					1, 5, 9, 13  } };
 
-		constexpr static simde__m256i fIndex1 = simde_x_mm256_set_epu32(
-				(	2, 6, 10, 14,
-					3, 7, 11, 15 );
+		constexpr static __m256i fIndex1{ .m256i_i32 = {
+					2, 6, 10, 14,
+					3, 7, 11, 15 } };
 
 		constexpr static __m128 _x{ -1,  0, 0, 0 };
 		constexpr static __m128 _y{ 0, -1, 0, 0 };
