@@ -458,7 +458,7 @@ namespace FlexKit
 
 		CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
 
-		const IRootSignature*		rootSignatureToneMapping;
+		const IPipelineInterface*		rootSignatureToneMapping;
 
 		DEBUG_WorldRenderTimingValues timingValues;
 	};

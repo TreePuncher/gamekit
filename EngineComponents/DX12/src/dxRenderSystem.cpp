@@ -1023,7 +1023,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t RootSignature::GetDesciptorTableSize(size_t idx) const
+	size_t RootSignature::GetDescriptorTableSize(size_t idx) const
 	{
 		FK_ASSERT(idx < Heaps.size());
 		return Heaps[idx].heap.size();
@@ -2466,7 +2466,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IRootSignature * const dxRenderSystem::GetPSORootSignature(PSOHandle handle) const
+	const IPipelineInterface * const dxRenderSystem::GetPSORootSignature(PSOHandle handle) const
 	{
 		return PipelineStates.GetPSORootSig(handle);
 	}
@@ -2474,12 +2474,12 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	std::tuple<IPipelineState*, const IRootSignature*> dxRenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
+	std::tuple<IPipelineState*, const IPipelineInterface*> dxRenderSystem::GetPSOAndRootSignature(PSOHandle handle, iAllocator& temp) const
 	{
 		auto object_ptr = PipelineStates.GetPSOObject(handle);
 		object_ptr->WaitForLoad(temp);
 
-		return { &object_ptr->PSO, object_ptr->rootSignature };
+		return { &object_ptr->PSO, object_ptr->pipelineInterface };
 	}
 
 
@@ -3385,7 +3385,7 @@ namespace dx_Internal
 	} D3D12_DISPATCH_RAYS_DESC;
 
 
-	IndirectLayout dxRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* irootSignatureID)
+	IndirectLayout dxRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* irootSignatureID)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
@@ -6689,7 +6689,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IRootSignature* dxRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
+	const IPipelineInterface* dxRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		switch (ID)
 		{
@@ -6743,9 +6743,9 @@ namespace dx_Internal
 
 	RootSignature* dxRenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
-		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> DesciptorHeaps{ temp };
-
-		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
+		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> desciptorHeaps{ temp };
+		Vector<RootSignature::SlotType, 32>		slots;
+		static_vector<CD3DX12_ROOT_PARAMETER>	parameters;
 
 		for (const auto& I : builder.RootEntries)
 		{
@@ -6760,13 +6760,16 @@ namespace dx_Internal
 					I.UINTConstant.Register,
 					I.UINTConstant.RegisterSpace,
 					PipelineDest2ShaderVis(I.UINTConstant.Accessibility));
+
+				slots.push_back(RootSignature::SlotType::UINT);
 			}   break;
 			case RootSignatureEntryType::DescriptorHeap:
 			{
 				const auto  HeapIdx		= I.DescriptorHeap.HeapIdx;
 				const auto& HeapEntry	= builder.Heaps[HeapIdx];
 
-				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(temp));
+				desciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(temp));
+				slots.push_back(RootSignature::SlotType::DescriptorSet);
 
 				for (auto& H : HeapEntry.heap.entries)
 				{
@@ -6793,12 +6796,12 @@ namespace dx_Internal
 						RangeType,
 						H.count, H.registerIdx, H.space);
 
-					DesciptorHeaps.back().push_back(Range);
+					desciptorHeaps.back().push_back(Range);
 				}
 
 				Param.InitAsDescriptorTable(
-					(UINT)DesciptorHeaps.back().size(),
-					DesciptorHeaps.back().begin(),
+					(UINT)desciptorHeaps.back().size(),
+					desciptorHeaps.back().begin(),
 					PipelineDest2ShaderVis(I.DescriptorHeap.Accessibility));
 			}	break;
 			case RootSignatureEntryType::ConstantBuffer:
@@ -6807,7 +6810,7 @@ namespace dx_Internal
 				(I.Direct.Register,
 					I.Direct.RegisterSpace,
 					PipelineDest2ShaderVis(I.Direct.Accessibility));
-
+				slots.push_back(RootSignature::SlotType::CBV);
 			}	break;
 			case RootSignatureEntryType::StructuredBuffer:
 			{
@@ -6815,6 +6818,7 @@ namespace dx_Internal
 					I.Direct.Register,
 					I.Direct.RegisterSpace,
 					PipelineDest2ShaderVis(I.Direct.Accessibility));
+				slots.push_back(RootSignature::SlotType::SRV);
 			}	break;
 			case RootSignatureEntryType::UnorderedAcess:
 			{
@@ -6822,19 +6826,20 @@ namespace dx_Internal
 					I.Direct.Register,
 					I.Direct.RegisterSpace,
 					PipelineDest2ShaderVis(I.Direct.Accessibility));
+				slots.push_back(RootSignature::SlotType::UAV);
 			}   break;
 			default:
 				return nullptr;
 				FK_ASSERT(false);
 			}
-			Parameters.push_back(Param);
+			parameters.push_back(Param);
 		}
 
 		ID3DBlob* SignatureBlob		= nullptr;
 		ID3DBlob* ErrorBlob			= nullptr;
 
 		CD3DX12_STATIC_SAMPLER_DESC Default(0);
-		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+		CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
 
 		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
 			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER::D3D12_FILTER_MIN_MAG_MIP_LINEAR,
@@ -6851,24 +6856,24 @@ namespace dx_Internal
 											D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK }
 		};
 
-		RootSignatureDesc.Init((UINT)Parameters.size(), Parameters.begin(), 1, &Default);
-		RootSignatureDesc.pStaticSamplers	= builder.LocalRoot ? nullptr : Samplers;
-		RootSignatureDesc.NumStaticSamplers = builder.LocalRoot ? 0 : 3;
+		rootSignatureDesc.Init((UINT)parameters.size(), parameters.begin(), 1, &Default);
+		rootSignatureDesc.pStaticSamplers	= builder.LocalRoot ? nullptr : Samplers;
+		rootSignatureDesc.NumStaticSamplers = builder.LocalRoot ? 0 : 3;
 
-		RootSignatureDesc.Flags |= builder.AllowIA ?
+		rootSignatureDesc.Flags |= builder.AllowIA ?
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT :
 			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
-		RootSignatureDesc.Flags |= builder.AllowSO ?
+		rootSignatureDesc.Flags |= builder.AllowSO ?
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT :
 			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
-		RootSignatureDesc.Flags |= builder.LocalRoot ?
+		rootSignatureDesc.Flags |= builder.LocalRoot ?
 			D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE :
 			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 
 		HRESULT HR = D3D12SerializeRootSignature(
-			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+			&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,
 			&SignatureBlob, &ErrorBlob);
 
 		if (!SUCCEEDED(HR))
@@ -6884,9 +6889,7 @@ namespace dx_Internal
 		}
 
 		ID3D12RootSignature* rootSignature = nullptr;
-		auto CreateHR = pDevice14->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature));
-
-		if (FAILED(CreateHR))
+		if (auto res = pDevice14->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)); FAILED(res))
 		{
 			FK_LOG_ERROR("dxRenderSystem: Failed to create root signature!");
 			return nullptr;
@@ -6906,8 +6909,9 @@ namespace dx_Internal
 		std::unique_lock unique{ rootSignatureLock };
 
 		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSignature, std::move(object_ptr));
+		rootSignatureEntry->get()->slots = std::move(slots);
 
-		builder.Clear();
+	    builder.Clear();
 
 		return rootSignatureEntry->get();
 	}

@@ -93,7 +93,7 @@ namespace dx_Internal
 		bool								stale			= false;
 		std::atomic<PSO_States>				state			= PSO_States::Unloaded;
 		PipelineStateObject*				next			= nullptr;
-		const IRootSignature*				rootSignature	= nullptr;
+		const IPipelineInterface*				pipelineInterface	= nullptr;
 		LOADSTATE_FN						loader;
 		std::condition_variable				CV;
 	};
@@ -131,7 +131,7 @@ namespace dx_Internal
 		bool							QueuePSOLoad		(PSOHandle, iAllocator*);
 
 		DXPipelineState*				GetPSO			(PSOHandle, iAllocator& temp);
-		IRootSignature const * const 	GetPSORootSig	(PSOHandle) const;
+		IPipelineInterface const * const 	GetPSORootSig	(PSOHandle) const;
 		PipelineStateObject*			GetPSOObject	(PSOHandle) const;
 
 

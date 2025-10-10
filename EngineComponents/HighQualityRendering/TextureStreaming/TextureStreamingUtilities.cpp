@@ -530,7 +530,7 @@ namespace FlexKit
 			pendingResults				{ { *IN_allocator }, 0 },
             threads						{ IN_threads }
 	{
-		RootSignatureBuilder builder{ *IN_allocator };
+		PipelineInterfaceBuilder builder{ *IN_allocator };
 		builder.AllowIA = true;
 
 		DesciptorHeapLayout srvHeap;

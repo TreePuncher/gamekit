@@ -1,4 +1,6 @@
+#ifdef __LINUX__
 #include "vkRenderSystem.hpp"
+
 
 #include <RenderSystemInterface.hpp>
 #include <wayland-client.h>
@@ -367,4 +369,4 @@ namespace FlexKit
     }
 }
 
-
+#endif

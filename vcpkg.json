@@ -61,7 +61,8 @@
     "vulkan-extensionlayer",
     "vulkan-sdk-components",
     {
-      "name": "wayland"
+        "name": "wayland",
+        "platform": "linux"
     }
   ]
 }

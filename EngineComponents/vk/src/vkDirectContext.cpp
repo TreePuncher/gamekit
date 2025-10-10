@@ -235,13 +235,13 @@ namespace VK_internal
 	void vkDirectContext::SetRootSignature(RootSigHandle)
     {}
 
-	void vkDirectContext::SetRootSignature(const IRootSignature*)
+	void vkDirectContext::SetRootSignature(const IPipelineInterface*)
     {}
 
 	void vkDirectContext::SetComputeRootSignature(RootSigHandle)
     {}
 
-	void vkDirectContext::SetComputeRootSignature(const IRootSignature*)
+	void vkDirectContext::SetComputeRootSignature(const IPipelineInterface*)
     {}
 
 	void vkDirectContext::SetPipelineState(const struct IPipelineState* const PSO)

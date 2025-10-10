@@ -9,7 +9,7 @@
 namespace FlexKit
 {
 	struct iAllocator;
-	struct IRootSignature;
+	struct IPipelineInterface;
 	struct TriMesh;
 
 	template<size_t ID>
@@ -62,7 +62,8 @@ namespace FlexKit
 	enum class EFillMode
 	{
 		WIREFRAME = 2,
-		SOLID = 3
+		SOLID = 3,
+		POINT = 4
 	};
 
 
@@ -816,7 +817,7 @@ namespace FlexKit
 	struct LoadPipelineStateRes
 	{
 		DevicePipelineState_ptr		pipelineState;
-		const IRootSignature*		rootSignature;
+		const IPipelineInterface*	pipelineInterface;
 	};
 
 	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes(struct IRenderSystem&, iAllocator&), 32>;
@@ -1076,7 +1077,7 @@ namespace FlexKit
 	};
 
 
-	struct EInputElement
+	struct InputElement
 	{
 		const char*				name				= 0;
 		uint8_t					index				= 0;
@@ -1090,7 +1091,7 @@ namespace FlexKit
 
 	struct InputLayoutState
 	{
-		EInputElement	inputs[16];
+		InputElement	inputs[16];
 		uint8_t			count = 0;
 	};
 
@@ -1891,10 +1892,10 @@ namespace FlexKit
 	};
 
 
-	struct RootSignatureBuilder : NoCopy, NoMove
+	struct PipelineInterfaceBuilder : NoCopy, NoMove
 	{
-		RootSignatureBuilder(iAllocator& allocator);
-		~RootSignatureBuilder();
+		PipelineInterfaceBuilder(iAllocator& allocator);
+		~PipelineInterfaceBuilder();
 
 		void Release();
 
@@ -1919,9 +1920,9 @@ namespace FlexKit
 
 		bool AllowIA = false;
 
-		[[nodiscard]] IRootSignature* Build(iAllocator& TempMemory);
-		[[nodiscard]] IRootSignature* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp);
-		[[nodiscard]] IRootSignature* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp);
+		[[nodiscard]] IPipelineInterface* Build(iAllocator& TempMemory);
+		[[nodiscard]] IPipelineInterface* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp);
+		[[nodiscard]] IPipelineInterface* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp);
 	};
 
 
@@ -1930,10 +1931,10 @@ namespace FlexKit
 
 	struct IPipelineBuilderImpl : NoCopy
 	{
-		virtual ~IPipelineBuilderImpl();
+		virtual ~IPipelineBuilderImpl() {}
 		virtual void Release() = 0;
 
-		virtual IPipelineBuilderImpl& AddRootSignature	(const IRootSignature* rootSig) = 0;
+		virtual IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig) = 0;
 
 		virtual IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
@@ -1948,7 +1949,8 @@ namespace FlexKit
 		virtual IPipelineBuilderImpl& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 
 		virtual IPipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-			
+		virtual IPipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const Shader&) = 0;
+
 		virtual IPipelineBuilderImpl& SetDebugName(const char* name) = 0;
 
 		virtual IPipelineBuilderImpl& AddInputLayout		(const InputLayoutState&	state = {}) = 0;
@@ -1959,7 +1961,7 @@ namespace FlexKit
 		virtual IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT) = 0;
 		virtual IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {}) = 0;
 
-		virtual LoadPipelineStateRes Build(IRenderSystem& renderSystem) = 0;
+		virtual LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator) = 0;
 		virtual LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size) = 0;
 	};
 
@@ -1969,7 +1971,7 @@ namespace FlexKit
 	    PipelineBuilder(IRenderSystem&, iAllocator& allocator);
 		~PipelineBuilder();
 
-		IPipelineBuilderImpl& AddRootSignature	(const IRootSignature* rootSig);
+		IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig);
 
 		IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
 		IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
@@ -1984,6 +1986,7 @@ namespace FlexKit
 		IPipelineBuilderImpl& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 
 		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilderImpl& AddPixelShader		(Shader);
 
 		IPipelineBuilderImpl& SetDebugName			(const char* name) ;
 
@@ -1995,7 +1998,7 @@ namespace FlexKit
 		IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
 		IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
 
-		LoadPipelineStateRes Build(IRenderSystem& renderSystem);
+		LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator);
 		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size);
 
 
@@ -2049,9 +2052,9 @@ namespace FlexKit
 		virtual void ClearUAVBufferRange		(ResourceHandle UAV, uint begin, uint end, uint4 clearColor = uint4{ 0, 0, 0, 0 }) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void SetRootSignature			(RootSigHandle) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetRootSignature			(const IRootSignature*) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetRootSignature			(const IPipelineInterface*) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputeRootSignature	(RootSigHandle) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetComputeRootSignature	(const IRootSignature*) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeRootSignature	(const IPipelineInterface*) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetPipelineState			(const struct IPipelineState* const PSO) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputePipelineState	(const PSOHandle, iAllocator& temp) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp) IDIRECTCONTEXTDEBUGBODY;
@@ -2347,7 +2350,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct IRootSignature
+	struct IPipelineInterface
 	{
 		virtual const DesciptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
 		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
@@ -2424,16 +2427,16 @@ namespace FlexKit
 			return *instance;
 		}
 
-		virtual bool											Initiate(Graphics_Desc& desc) = 0;
+		virtual bool												Initiate(Graphics_Desc& desc) = 0;
 
-		virtual void											BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
-		virtual void											RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
-		virtual void											LoadPSOIfRequired		(PSOHandle State) = 0;
-		virtual void											QueuePSOLoad			(PSOHandle State) = 0;
+		virtual void												BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
+		virtual void												RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
+		virtual void												LoadPSOIfRequired		(PSOHandle State) = 0;
+		virtual void												QueuePSOLoad			(PSOHandle State) = 0;
 
 		virtual const IPipelineState*								GetPSO					(PSOHandle State, iAllocator& temp) = 0;
-		virtual const IRootSignature* const 						GetPSORootSignature		(PSOHandle state) const = 0;
-		virtual std::tuple<IPipelineState*, const IRootSignature*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
+		virtual const IPipelineInterface* const 						GetPSORootSignature		(PSOHandle state) const = 0;
+		virtual std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
 
 		// Sync functions
 		virtual uint64_t	GetCurrentCounter()						= 0;
@@ -2565,9 +2568,9 @@ namespace FlexKit
 		[[nodiscard]] virtual SOResourceHandle					CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
 		[[nodiscard]] virtual QueryHandle						CreateSOQuery(size_t SOIndex, size_t count) = 0;
 		[[nodiscard]] virtual QueryHandle						CreateTimeStampQuery(size_t count) = 0;
-		[[nodiscard]] virtual IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr) { return {}; };
+		[[nodiscard]] virtual IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr) { return {}; };
 		[[nodiscard]] virtual ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) = 0;
-		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize) = 0;
+		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
 	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
 
 					  virtual void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
@@ -2577,7 +2580,7 @@ namespace FlexKit
 	    virtual void FlushPendingReadBacks() {}
 
 
-		virtual const IRootSignature*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
+		virtual const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
 		virtual ResourceHandle			DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
 
 		// Resettable resources

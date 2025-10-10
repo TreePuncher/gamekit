@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2025 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -63,10 +63,10 @@ namespace dx_Internal
 		if (auto _ptr = next; _ptr)
 			_ptr->Release(allocator);
 
-		if (rootSignature)
+		if (pipelineInterface)
 		{
-			rootSignature->Release();
-			rootSignature = nullptr;
+			pipelineInterface->Release();
+			pipelineInterface = nullptr;
 		}
 
 		allocator->free(this);
@@ -123,9 +123,9 @@ namespace dx_Internal
 
 				FK_LOG_2("Finished PSO Load");
 
-				state			= PipelineStateObject::PSO_States::Loaded;
-				PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
-				rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
+				state				= PipelineStateObject::PSO_States::Loaded;
+				PSO.state			= res.pipelineState.As<ID3D12PipelineState>();
+				pipelineInterface	= static_cast<const IPipelineInterface*>(res.pipelineInterface);
 				CV.notify_all();
 				return;
 			}
@@ -282,7 +282,7 @@ namespace dx_Internal
 
 					PSO->state			= PipelineStateObject::PSO_States::Loaded;
 					PSO->PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
-					PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
+					PSO->pipelineInterface	= static_cast<const IPipelineInterface*>(res.pipelineInterface);
 					PSO->CV.notify_all();
 
 					return &PSO->PSO;
@@ -301,10 +301,10 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IRootSignature const * const PipelineStateTable::GetPSORootSig(PSOHandle handle) const
+	IPipelineInterface const * const PipelineStateTable::GetPSORootSig(PSOHandle handle) const
 	{
 		auto PSO = _GetStateObject(handle);
-		return PSO->rootSignature;
+		return PSO->pipelineInterface;
 	}
 
 
@@ -511,7 +511,7 @@ namespace dx_Internal
 			}
 
 			PSO->PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
-			PSO->rootSignature	= static_cast<const IRootSignature*>(res.rootSignature);
+			PSO->pipelineInterface	= static_cast<const IPipelineInterface*>(res.pipelineInterface);
 
 			if (PSO->stale && loader != PSO->loader)
 				continue;

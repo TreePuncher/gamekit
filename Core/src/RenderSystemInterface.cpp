@@ -5,69 +5,69 @@
 
 namespace FlexKit
 {
-	RootSignatureBuilder::RootSignatureBuilder(iAllocator& allocator)
+	PipelineInterfaceBuilder::PipelineInterfaceBuilder(iAllocator& allocator)
 	{
 	    
 	}
 
-    RootSignatureBuilder::~RootSignatureBuilder()
+    PipelineInterfaceBuilder::~PipelineInterfaceBuilder()
 	{
 	    
 	}
 
-	void RootSignatureBuilder::Release()
+	void PipelineInterfaceBuilder::Release()
 	{
 	    
 	}
 
-	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
+	bool PipelineInterfaceBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
-	bool RootSignatureBuilder::SetParameterAsDescriptorTable(
+	bool PipelineInterfaceBuilder::SetParameterAsDescriptorTable(
 		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
 		return false;
 	}
 
-	bool RootSignatureBuilder::SetParameterAsCBV(
+	bool PipelineInterfaceBuilder::SetParameterAsCBV(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
-	bool RootSignatureBuilder::SetParameterAsUAV(
+	bool PipelineInterfaceBuilder::SetParameterAsUAV(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
-	bool RootSignatureBuilder::SetParameterAsSRV(
+	bool PipelineInterfaceBuilder::SetParameterAsSRV(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
 		return false;
 	}
 
-	void RootSignatureBuilder::Clear()
+	void PipelineInterfaceBuilder::Clear()
 	{
 	    
 	}
 
-	IRootSignature* RootSignatureBuilder::Build(iAllocator& TempMemory)
+	IPipelineInterface* PipelineInterfaceBuilder::Build(iAllocator& TempMemory)
 	{
 		return nullptr;
 	}
 
-	IRootSignature* RootSignatureBuilder::LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp)
+	IPipelineInterface* PipelineInterfaceBuilder::LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp)
 	{
 		return nullptr;
 	}
 
-	IRootSignature* RootSignatureBuilder::LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp)
+	IPipelineInterface* PipelineInterfaceBuilder::LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp)
 	{
 		return nullptr;
 	}
@@ -78,7 +78,7 @@ namespace FlexKit
 
 	PipelineBuilder::PipelineBuilder(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		FK_ASSERT(renderSystem.CreatePipelineBuilder(implSpace, 128) == true, "Failed to create implementation of PipelineBuilder!");
+		FK_ASSERT(renderSystem.CreatePipelineBuilder(implSpace, 128, allocator) == true, "Failed to create implementation of PipelineBuilder!");
 	}
 
 	PipelineBuilder::~PipelineBuilder()
@@ -86,7 +86,7 @@ namespace FlexKit
 		GetImpl().Release();
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddRootSignature(const IRootSignature* rootSig)
+	IPipelineBuilderImpl& PipelineBuilder::AddRootSignature(const IPipelineInterface* rootSig)
 	{
 		auto& impl = GetImpl();
 
@@ -241,14 +241,16 @@ namespace FlexKit
 		return impl;
 	}
 
-	LoadPipelineStateRes PipelineBuilder::Build(IRenderSystem& renderSystem)
+	LoadPipelineStateRes PipelineBuilder::Build(IRenderSystem& renderSystem, iAllocator& tempAllocator)
 	{
-		return {};
+		auto& impl = GetImpl();
+		return impl.Build(renderSystem, tempAllocator);
 	}
 
 	LoadPipelineStateRes PipelineBuilder::BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size)
 	{
-		return {};
+		auto& impl = GetImpl();
+		return impl.BuildStream(renderSystem, buffer, size);
 	}
 
 	IPipelineBuilderImpl& PipelineBuilder::GetImpl()

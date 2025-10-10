@@ -1035,13 +1035,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class RootSignature : public IRootSignature
+	class RootSignature : public IPipelineInterface
 	{
 	public:
 		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps, iAllocator* IN_allocator) :
 			allocator	{ IN_allocator	},
 			Signature	{ rootSignature },
-			Heaps		{ std::move(IN_heaps) } {}
+			Heaps		{ std::move(IN_heaps) },
+			slots		{ IN_allocator } {}
 
 
 		~RootSignature()
@@ -1065,7 +1066,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		size_t	GetDesciptorTableSize(size_t idx) const;
+		size_t	GetDescriptorTableSize(size_t idx) const;
 
 		void	SetDebugStr(const char* IN_debugStr) const
 		{
@@ -1074,9 +1075,36 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 #endif
 		}
 
+		enum class SlotType
+		{
+			UINT, 
+		    CBV,
+			UAV,
+			SRV,
+			DescriptorSet
+		};
+
+		uint32_t GetIndex(uint32_t slot, RootSignature::SlotType type) const
+		{
+			uint32_t slotCounter = 0;
+			for (auto [idx, s] : enumerate(slots))
+			{
+				if (s == type)
+				{
+					if (slotCounter == slot)
+						return idx;
+
+					slotCounter++;
+				}
+			}
+
+			return -1u;
+		}
+
 		ID3D12RootSignature*			Signature = nullptr;
 		iAllocator*						allocator = nullptr;
 		Vector<RootSignatureHeapEntry>	Heaps;
+		Vector<SlotType>				slots;
 
 #ifdef _DEBUG
 		mutable const char*				debugStr  = nullptr;
@@ -2121,8 +2149,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 		const IPipelineState*								GetPSO(PSOHandle StateID, iAllocator& temp);
-		const IRootSignature* const							GetPSORootSignature(PSOHandle StateID) const;
-		std::tuple<IPipelineState*, const IRootSignature*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
+		const IPipelineInterface* const							GetPSORootSignature(PSOHandle StateID) const;
+		std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
@@ -2227,14 +2255,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual SOResourceHandle			CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true);
 		[[nodiscard]] virtual QueryHandle				CreateSOQuery(size_t SOIndex, size_t count);
 		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count);
-		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature = nullptr);
+		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t resourceSize, size_t alignment)		noexcept final;
 
-		virtual const IRootSignature* Library(ROOTLIBRARYSIG ID) const noexcept final;
+		virtual const IPipelineInterface* Library(ROOTLIBRARYSIG ID) const noexcept final;
 
 		virtual void BackResource(ResourceHandle, const GPUResourceDesc& desc) noexcept final;
 

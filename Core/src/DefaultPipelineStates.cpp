@@ -30,13 +30,13 @@ namespace FlexKit
 
 		builder.AddInputTopology(ETopology::EIT_TRIANGLE);
 		builder.AddRenderTargetState({
-			.targetCount = 1,
-			.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT }
+			.targetCount	= 1,
+			.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT }
 		});
 		builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
 		builder.SetDebugName("DrawRect");
 
-		return builder.Build(irs);
+		return builder.Build(irs, allocator);
 	}
 
 

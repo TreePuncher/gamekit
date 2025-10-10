@@ -2,6 +2,7 @@
 
 #include <any>
 #include <assert.h>
+#include <Containers.hpp>
 #include <cstdio>
 #include <functional>
 #include <limits>
@@ -28,6 +29,7 @@ namespace FlexKit
 
 		Blob() = default;
 
+		Blob(iAllocator& allocator) : buffer{ allocator }{}
 
 		template<typename TY>
 		Blob(const TY& IN_struct)
@@ -110,7 +112,7 @@ namespace FlexKit
 		}
 
 
-		std::vector<std::byte> buffer;
+		Vector<std::byte> buffer{ SystemAllocator };
 	};
 
 

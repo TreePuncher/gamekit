@@ -188,7 +188,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyForcesPSO(iAllocator
 	builder.AddComputeShader("ApplyForces", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyForces");
 
-	return builder.Build(framework.GetRenderSystem());
+	return builder.Build(framework.GetRenderSystem(), TODO);
 }
 
 
@@ -201,7 +201,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyShapeConstraintsPSO(
 	builder.AddComputeShader("ApplyShapeConstraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyShapeConstraints");
 
-	return builder.Build(framework.GetRenderSystem());
+	return builder.Build(framework.GetRenderSystem(), TODO);
 }
 
 
@@ -214,7 +214,7 @@ FlexKit::LoadPipelineStateRes HairRenderingTest::CreateApplyEdgeLengthConstraint
 	builder.AddComputeShader("ApplyEdgeLengthContraints", R"(assets\shaders\HairRendering\Simulation.hlsl)", { .enable16BitTypes = true });
 	builder.SetDebugName("ApplyEdgeLengthContraints");
 
-	return builder.Build(framework.GetRenderSystem());
+	return builder.Build(framework.GetRenderSystem(), TODO);
 }
 
 

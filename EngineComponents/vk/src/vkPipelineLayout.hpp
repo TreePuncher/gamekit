@@ -7,7 +7,7 @@ namespace VK_internal
 {
     using namespace FlexKit;
 
-    struct vkPipelineLayout : IRootSignature
+    struct vkPipelineLayout : IPipelineInterface
     {
         vkPipelineLayout(iAllocator& allocator);
 

@@ -423,8 +423,8 @@ namespace FlexKit
 
 
 	private:
-		const IRootSignature*	rootSignature;
-		const IRootSignature* 	markClustersSignature;
+		const IPipelineInterface*	rootSignature;
+		const IPipelineInterface* 	markClustersSignature;
 
 
 		ResourceHandle	clusterBuffer = InvalidHandle;

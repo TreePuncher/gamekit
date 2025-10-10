@@ -314,7 +314,7 @@ namespace FlexKit
 		DesciptorHeapLayout heapLayout;
 		heapLayout.SetParameterAsShaderUAV(0, 0, 1);	// output
 
-		RootSignatureBuilder builder{ allocator };
+		PipelineInterfaceBuilder builder{ allocator };
 		builder.AllowIA = true;
 		builder.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
 		builder.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);

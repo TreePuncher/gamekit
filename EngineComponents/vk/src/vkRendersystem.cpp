@@ -4,15 +4,21 @@
 #include <Handle.hpp>
 #include <RenderSystemInterface.hpp>
 
+#include "vkPipelineBuilder.hpp"
 #include "vkDescriptorHeap.hpp"
+
 #include <vulkan/vulkan.hpp>
+
+#include <filesystem>
+#include <fmt/format.h>
 #include <print>
 
 #ifdef WIN32
-#include "vkWin32Surface.hpp"
+#include "Unknwnbase.h"
 #endif
 
 #include <directx-dxc/dxcapi.h>
+#include <iostream>
 
 namespace VK_internal
 {
@@ -271,6 +277,19 @@ namespace VK_internal
 			.add_required_extension("VK_KHR_timeline_semaphore")
 			.add_required_extension("VK_KHR_spirv_1_4")
 		    //.add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
+			.set_required_features({
+                    .fullDrawIndexUint32	= true,
+				    .imageCubeArray			= true,
+                    .independentBlend		= true,
+                    .geometryShader			= true, 
+                    .tessellationShader		= true,
+                    .sampleRateShading		= true,
+                    .dualSrcBlend			= true,		
+			        .depthClamp				= true,
+					.depthBiasClamp			= true,
+                    .fillModeNonSolid		= true,
+                    .depthBounds			= true,
+				})
             .set_required_features_12({
 					.sType				= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
                     .timelineSemaphore	= true
@@ -368,13 +387,13 @@ namespace VK_internal
 	}
 
 
-	const IRootSignature* const vkRenderSystem::GetPSORootSignature(PSOHandle state) const
+	const IPipelineInterface* const vkRenderSystem::GetPSORootSignature(PSOHandle state) const
 	{
 		return nullptr;
 	}
 
 
-	std::tuple<IPipelineState*, const IRootSignature*> vkRenderSystem::GetPSOAndRootSignature(PSOHandle stateID, iAllocator& temp) const
+	std::tuple<IPipelineState*, const IPipelineInterface*> vkRenderSystem::GetPSOAndRootSignature(PSOHandle stateID, iAllocator& temp) const
 	{
 		return {};
 	}
@@ -931,13 +950,213 @@ namespace VK_internal
 	}
 
 
-	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options)
+	struct IncludeHandler : public IDxcIncludeHandler
 	{
-		IDxcCompiler3* compiler;
-		auto res = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler));
+		HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
+		{
+			char fileStr[256];
+			auto fileLength = wcstombs(fileStr, pFilename, 256);
+
+			std::filesystem::path file{ fileStr };
+			auto newFilePath = includePath.string() + R"(\)" + file.string();
+
+			wchar_t fileW[256];
+			mbstowcs(fileW, newFilePath.c_str(), 256);
 
 
-		return {};
+			return handler->LoadSource(fileW, ppIncludeSource);
+		}
+
+		HRESULT IUnknown::QueryInterface(const IID&, void**)
+		{
+			return 0;
+		}
+
+		std::filesystem::path   includePath;
+		IDxcIncludeHandler*     handler;
+
+		ULONG AddRef() { return 0; }
+		ULONG Release() { return 0; }
+	};
+
+
+	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
+	{
+		IDxcLibrary*		hlslLibrary = nullptr;
+		IDxcIncludeHandler* hlslIncludeHandler = nullptr;
+		IDxcCompiler3*		hlslCompiler = nullptr;
+
+		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslLibrary))))
+			throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
+
+		if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&hlslCompiler))))
+			throw(std::runtime_error{ "Unable to create HLSL 6.x Compiler!" });
+
+		if (hlslLibrary) hlslLibrary->CreateIncludeHandler(&hlslIncludeHandler);
+
+		EXITSCOPE({
+			if (hlslLibrary) hlslLibrary->Release();
+		    if (hlslIncludeHandler) hlslIncludeHandler->Release();
+		    if (hlslCompiler) hlslCompiler->Release();
+		});
+
+
+        std::filesystem::path filePath{ file };
+		auto parentPath = filePath.parent_path();
+
+		wchar_t entryPointW[64];
+		wchar_t fileW[256];
+		wchar_t filenameW[256];
+		wchar_t profileW[64];
+
+		size_t fileWLength = 0;
+		if (entryPoint != nullptr)
+			mbstowcs(entryPointW, entryPoint, 64);
+
+		mbstowcs(profileW, profile, 64);
+		mbstowcs(fileW, file, 256);
+		mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
+
+
+		IDxcBlobEncoding* blob;
+		auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
+
+		EXITSCOPE({ blob->Release(); });
+
+		if (FAILED(HR1))
+		{
+			LPSTR string = nullptr;
+
+			const auto msgLen = FormatMessageA(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+				nullptr,
+				HR1,
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPSTR)&string,
+				0,
+				nullptr);
+
+			auto converted = fmt::format("Shader failed to load: {}", string);
+
+			FK_LOG_ERROR(converted.c_str());
+
+			LocalFree(string);
+
+			return {};
+		}
+
+		IncludeHandler includeHandler;
+		includeHandler.includePath      = parentPath;
+		includeHandler.handler          = hlslIncludeHandler;
+
+
+		IDxcCompiler2* debugCompiler = nullptr;
+		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
+
+		static_vector<LPCWSTR> arguments;
+
+#if USING(DEBUGSHADERS)
+		arguments.push_back(L"-Od");
+		arguments.push_back(L"/Zi");
+		arguments.push_back(L"-Qembed_debug");
+		arguments.push_back(L"-T");
+		arguments.push_back(profileW);
+		arguments.push_back(L"-spirv");
+		arguments.push_back(L"-E");
+		arguments.push_back(entryPointW);
+#else
+		arguments.push_back(L"-O3");
+#endif
+
+		if(options.enable16BitTypes)
+			arguments.push_back(L"-enable-16bit-types");
+
+		if (options.hlsl2021)
+			arguments.push_back(L"-HV 2021");
+
+		IDxcOperationResult* result = nullptr;
+
+		DxcBuffer buffer{
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+		};
+
+		int _;
+		blob->GetEncoding(&_, &buffer.Encoding);
+
+		HRESULT HR2;
+		try
+		{
+			HR2 = hlslCompiler->Compile(
+				&buffer,
+				arguments.data(),
+				arguments.size(),
+                &includeHandler,
+				IID_PPV_ARGS(&result));
+		}
+		catch (...)
+		{
+			std::print("t\n");
+		}
+
+		if (FAILED(HR2))
+		{
+			if(result)
+				result->Release();
+
+			return {};
+		}
+		else
+		{
+			IDxcBlob* byteCodeBlob;
+			HRESULT status;
+			result->GetStatus(&status);
+
+			while (FAILED(status))
+			{
+				IDxcBlobEncoding* errors;
+				result->GetErrorBuffer(&errors);
+
+				auto errorString = (const char*)errors->GetBufferPointer();
+
+				std::string traceMessage = GetCallStackString();
+				std::string formattedMessage =
+					std::format("{}\nFailed to Compile Shader\nEntryPoint: {}\nFile : {}\nStack Trace : \n {}\nPress Enter to try again\n",
+						errorString, entryPoint ? entryPoint : "No Entry Point", file, traceMessage);
+
+
+				FK_LOG_ERROR(formattedMessage.c_str());
+
+				size_t size;
+				std::string line;
+				std::getline(std::cin, line);
+
+
+				errors->Release();
+				IDxcResult* compileResult = nullptr;
+
+				HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
+				HR2 = hlslCompiler->Compile(
+					&buffer,
+					arguments.data(),
+					(UINT)arguments.size(),
+					&includeHandler,
+					IID_PPV_ARGS(&result));
+
+				result->GetStatus(&status);
+			}
+
+
+			auto HR = result->GetResult(&byteCodeBlob);
+
+			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
+
+			Shader out{ (char*)byteCodeBlob->GetBufferPointer(), byteCodeBlob->GetBufferSize(), FlexKit::SystemAllocator };
+			byteCodeBlob->Release();
+			result->Release();
+
+			return out;
+		}
 	}
 
 
@@ -1081,7 +1300,7 @@ namespace VK_internal
 	}
 
 
-	IndirectLayout vkRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IRootSignature* signature)
+	IndirectLayout vkRenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature)
 	{
 	    return {};
 	}
@@ -1093,8 +1312,9 @@ namespace VK_internal
 	}
 
 
-	bool vkRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize)
+	bool vkRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator)
 	{
+		std::construct_at((vkPipelineBuilder*)_ptr, *this, tempAllocator);
 		return false;
 	}
 
@@ -1105,7 +1325,7 @@ namespace VK_internal
 	}
 
 
-	const IRootSignature* vkRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
+	const IPipelineInterface* vkRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		return nullptr;
 	}

@@ -1,7 +1,7 @@
 #ifdef WIN32
 
 #define WINDOWS_LEAN_AND_MEAN
-#include "vkWin32Surface.hpp"
+#include "vkSurface.hpp"
 #include "windows.h"
 #include "Events.hpp"
 #include "timeapi.h"
