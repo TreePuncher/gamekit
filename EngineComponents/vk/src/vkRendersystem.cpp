@@ -258,11 +258,10 @@ namespace VK_internal
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
 
-
 		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptors{
-			.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-			.pNext = nullptr,
-			.mutableDescriptorType = true
+			.sType					= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
+			.pNext					= nullptr,
+			.mutableDescriptorType	= true
 		};
 
 		auto physRequest = selector
