@@ -18,7 +18,7 @@ struct TestState : FrameworkState
 #endif
 
 		PipelineBuilder builder(GetRenderSystem(), framework.core.GetTempMemory());
-		//builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
+		builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
 		builder.AddVertexShader("VMain",	"assets/shaders/TestShader.hlsl");
 		builder.AddRasterizerState();
 		builder.AddRenderTargetState({

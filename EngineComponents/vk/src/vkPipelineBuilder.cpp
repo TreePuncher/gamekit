@@ -4,6 +4,35 @@
 
 namespace VK_internal
 {
+	VkPolygonMode PolygonMode_FK2VK(EFillMode mode)
+	{
+		switch (mode)
+		{
+		case EFillMode::SOLID:
+			return VkPolygonMode::VK_POLYGON_MODE_FILL;
+		case EFillMode::WIREFRAME:
+			return VkPolygonMode::VK_POLYGON_MODE_LINE;
+		case EFillMode::POINT:
+			return VkPolygonMode::VK_POLYGON_MODE_POINT;
+		}
+		return VkPolygonMode::VK_POLYGON_MODE_MAX_ENUM;
+	}
+
+
+	VkCullModeFlags CullMode_FK2VK(ECullMode mode)
+	{
+		switch (mode)
+		{
+		case ECullMode::BACK:
+			return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
+		case ECullMode::FRONT:
+			return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
+		case ECullMode::NONE:
+			return VkCullModeFlagBits::VK_CULL_MODE_NONE;
+		}
+	}
+
+
 	vkPipelineBuilder::vkPipelineBuilder(vkRenderSystem& system, iAllocator& IN_allocator) :
         allocator		{ IN_allocator },
 	    stateObjects	{ IN_allocator },
@@ -80,30 +109,36 @@ namespace VK_internal
 		return *this;
 	}
 
+
 	IPipelineBuilderImpl& vkPipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
 
+
 	IPipelineBuilderImpl& vkPipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
 
+
 	IPipelineBuilderImpl& vkPipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
@@ -135,12 +170,20 @@ namespace VK_internal
 		};
 
 		shaderStages.push_back(stage);
+		AddRenderTargetState({});
+		AddRasterizerState({});
+
+		auto rasterizerState = GetRasterizationState();
+		rasterizerState->rasterizerDiscardEnable = false;
 
 		return *this;
 	}
 
+
 	IPipelineBuilderImpl& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const Shader& shader)
     {
+		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
 		const auto idx = shaders.push_back(shader);
 
 	    VkShaderModuleCreateInfo moduleCreateInfo{
@@ -151,7 +194,6 @@ namespace VK_internal
 			.pCode		= (uint32_t*)shaders[idx].buffer
 		};
 
-		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 		VkShaderModule shaderModule;
 		if (auto res = vkCreateShaderModule(vkRS.device, &moduleCreateInfo, nullptr, &shaderModule); res != VK_SUCCESS)
 		{
@@ -159,16 +201,21 @@ namespace VK_internal
 		}
 
 		VkPipelineShaderStageCreateInfo stage{
-			.sType	= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-			.pNext	= nullptr,
-			.flags	= 0,
-			.stage	= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = shaderModule,
-			.pName	= entryPoint,
-			.pSpecializationInfo = nullptr
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,
+			.stage					= VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
+			.module					= shaderModule,
+			.pName					= entryPoint,
+			.pSpecializationInfo	= nullptr
 		};
 
 		shaderStages.push_back(stage);
+		AddRenderTargetState({});
+		AddRasterizerState({});
+
+		auto rasterizerState = GetRasterizationState();
+		rasterizerState->rasterizerDiscardEnable = false;
 
 		return *this;
 	}
@@ -178,6 +225,7 @@ namespace VK_internal
 	{
 		return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
@@ -194,6 +242,11 @@ namespace VK_internal
 					inputLayout->pVertexBindingDescriptions			= nullptr;
 					inputLayout->vertexAttributeDescriptionCount	= 0;
 					inputLayout->vertexBindingDescriptionCount		= 0;
+
+					stateObjects.push_back({
+				        .type = InfoType::VertexInput,
+				        ._ptr = inputLayout
+			        });
 				}
 
 				return *inputLayout;
@@ -236,13 +289,9 @@ namespace VK_internal
 		inputLayout.vertexAttributeDescriptionCount = inputAttributes.size();
 		inputLayout.pVertexAttributeDescriptions	= inputAttributes.data();
 
-		stateObjects.push_back({
-				.type = InfoType::VertexInput,
-				._ptr = &inputLayout
-			});
-
 	    return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddInputTopology(const ETopology topology)
 	{
@@ -257,80 +306,114 @@ namespace VK_internal
 					inputLayout->flags						= 0;
 					inputLayout->topology					= VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 					inputLayout->primitiveRestartEnable		= false;
+
+					stateObjects.push_back({
+						.type = InfoType::InputAssembly,
+						._ptr = inputLayout
+						});
 				}
 
 				return *inputLayout;
 		    }();
 
-		stateObjects.push_back({
-			    .type = InfoType::InputAssembly,
-			    ._ptr = &inputLayout
-		    });
-
 		return *this;
 	}
+
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddDepthStencilState(const DepthStencilState& state)
 	{
 		return *this;
 	}
 
-	VkPolygonMode PolygonMode_FK2VK(EFillMode mode)
-	{
-        switch (mode)
-        {
-        case EFillMode::SOLID:
-			return VkPolygonMode::VK_POLYGON_MODE_FILL;
-		case EFillMode::WIREFRAME:
-			return VkPolygonMode::VK_POLYGON_MODE_LINE;
-        case EFillMode::POINT:
-			return VkPolygonMode::VK_POLYGON_MODE_POINT;
-        }
-		return VkPolygonMode::VK_POLYGON_MODE_MAX_ENUM;
-	}
-
-	VkCullModeFlags CullMode_FK2VK(ECullMode mode)
-	{
-		switch (mode)
-		{
-		case ECullMode::BACK:
-			return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
-		case ECullMode::FRONT:
-			return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
-		case ECullMode::NONE:
-			return VkCullModeFlagBits::VK_CULL_MODE_NONE;
-		}
-	}
-
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddRasterizerState(const RasterizerState& state)
 	{
-		VkPipelineRasterizationStateCreateInfo& info = allocator.allocate<VkPipelineRasterizationStateCreateInfo>();
+		VkPipelineRasterizationStateCreateInfo* info = [this]()
+			{
+				auto info = GetRasterizationState();
+				if (info == nullptr)
+				{
+					info = &allocator.allocate<VkPipelineRasterizationStateCreateInfo>();
+					info->sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+					info->pNext = nullptr;
+					info->flags = 0;
 
-		info.sType						= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		info.pNext						= nullptr;
-		info.flags						= 0;
-		info.depthClampEnable			= state.depthClipEnable;
-		info.rasterizerDiscardEnable	= GetViewportState() == nullptr;
-		info.polygonMode				= PolygonMode_FK2VK(state.fill);
-        info.cullMode					= CullMode_FK2VK(state.CullMode);
-	    info.frontFace					= state.frontCounterClockWise ? VkFrontFace::VK_FRONT_FACE_CLOCKWISE : VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		info.depthBiasEnable			= state.depthBias > 0.0f;
-		info.depthBiasConstantFactor	= state.depthBias;
-		info.depthBiasClamp				= state.depthBiasClamp;
-		info.depthBiasSlopeFactor		= state.slopeScaledDepthBias;
-		info.lineWidth					= 1.0f;
+					stateObjects.push_back({
+						.type = InfoType::RasterizationState,
+						._ptr = info
+						});
+				}
 
-	    stateObjects.push_back({
-			    .type = InfoType::RasterizationState,
-			    ._ptr = &info
-		    });
+				return info;
+	         }();
+
+		VkPipelineMultisampleStateCreateInfo* multiSampleStateInfo = [this]()
+			{
+				auto info = GetMultiSampleState();
+				if (info == nullptr)
+				{
+					info = &allocator.allocate<VkPipelineMultisampleStateCreateInfo>();
+					info->sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+					info->pNext = nullptr;
+					info->flags = 0;
+
+					stateObjects.push_back({
+						    .type = InfoType::MultiSample,
+						    ._ptr = info
+						});
+				}
+
+				return info;
+	         }();
+
+		info->depthClampEnable			= state.depthClipEnable;
+		info->rasterizerDiscardEnable	= GetViewportState() == nullptr;
+		info->polygonMode				= PolygonMode_FK2VK(state.fill);
+        info->cullMode					= CullMode_FK2VK(state.CullMode);
+	    info->frontFace					= state.frontCounterClockWise ? VkFrontFace::VK_FRONT_FACE_CLOCKWISE : VkFrontFace::VK_FRONT_FACE_COUNTER_CLOCKWISE;
+		info->depthBiasEnable			= state.depthBias > 0.0f;
+		info->depthBiasConstantFactor	= state.depthBias;
+		info->depthBiasClamp			= state.depthBiasClamp;
+		info->depthBiasSlopeFactor		= state.slopeScaledDepthBias;
+		info->lineWidth					= 1.0f;
+
+		multiSampleStateInfo->rasterizationSamples	= VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+		multiSampleStateInfo->alphaToCoverageEnable = false;
+		multiSampleStateInfo->alphaToOneEnable		= false;
+		multiSampleStateInfo->sampleShadingEnable	= false;
+		multiSampleStateInfo->minSampleShading		= 0.0f;
+		multiSampleStateInfo->pSampleMask			= nullptr;
 
 		return *this;
 	}
 
 	IPipelineBuilderImpl& vkPipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
+		VkPipelineViewportStateCreateInfo& viewport = [this]() -> VkPipelineViewportStateCreateInfo&
+		    {
+		        auto viewport = GetViewportState();
+				if (viewport == nullptr)
+				{
+					viewport				= &allocator.allocate<VkPipelineViewportStateCreateInfo>();
+					viewport->sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+					viewport->pNext			= nullptr;
+					viewport->flags			= 0;
+					viewport->viewportCount	= 0;
+					viewport->pViewports	= nullptr;
+					viewport->scissorCount	= 0;
+					viewport->pScissors		= nullptr;
+
+					stateObjects.push_back({
+				        .type = InfoType::Viewport,
+						._ptr = viewport
+					});
+				}
+
+				return *viewport;
+		    }();
+
+		
+
 		return *this;
 	}
 
@@ -358,15 +441,17 @@ namespace VK_internal
 			VkDescriptorType	type;
 			uint16_t			binding;
 			uint16_t			set;
+			uint32_t			stages = 0;
 		};
 
 		Vector<VkDescriptorSetLayout>	descriptorLayout	{ vkRS.allocator };
 		Vector<VkPushConstantRange>		pushConstantRanges	{ tempAllocator };
 		Vector<Descriptor>				descriptors			{ tempAllocator };
 
+		uint32_t pushConstantFlags = 0;
 		uint32_t pushConstantsSize = 0;
 
-		for (auto& shader : shaders)
+		for (auto&& [idx, shader] : enumerate(shaders))
 		{
 			spirv_cross::Compiler compiler((uint32_t*)shader.buffer, shader.bufferSize / 4);
 			auto shaderResources = compiler.get_shader_resources();
@@ -385,13 +470,22 @@ namespace VK_internal
 
 				auto ranges = compiler.get_active_buffer_ranges(constant.id);
 
-				if (descriptorLayout.size() < (set + 1))
+				if (auto res = std::ranges::find_if(
+					descriptors,
+					[&](Descriptor& desc) -> bool
+					{
+						return (desc.set == set && desc.binding == binding);
+					}); res == std::end(descriptors))
 				{
-					descriptors.resize(set + 1);
-					descriptors[set].type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-					descriptors[set].binding	= (uint16_t)binding;
-					descriptors[set].set		= (uint16_t)set;
+					descriptors.push_back({
+						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+						.binding	= (uint16_t)binding,
+						.set		= (uint16_t)set,
+						.stages		= (uint32_t)shaderStages[idx].stage,
+					});
 				}
+				else
+					res->stages |= shaderStages[idx].stage;
 			}
 
 			for (auto pushConstants : shaderResources.push_constant_buffers)
@@ -404,7 +498,7 @@ namespace VK_internal
 					auto s = r.range;
 
 					pushConstantsSize = Max(pushConstantsSize, r.range + r.offset);
-
+					pushConstantFlags |= shaderStages[idx].stage;
 					//VkPushConstantRange constantRange{
 					//    .stageFlags = VkShaderStageFlagBits::VK_SHADER_STAGE_ALL,
 					//    .offset		= (uint32_t)r.offset,
@@ -416,15 +510,50 @@ namespace VK_internal
 
 			}
 
-			for (auto image : shaderResources.sampled_images)
+			for (auto image : shaderResources.separate_images)
 			{
 				auto binding	= compiler.get_decoration(image.id, spv::DecorationBinding);
 				auto set		= compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
-				descriptors.push_back(Descriptor{
-					.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-				    .binding	= (uint16_t)binding,
-				    .set		= (uint16_t)set,
-				});
+
+				if (auto res = std::ranges::find_if(
+					descriptors,
+					[&](Descriptor& desc) -> bool
+					{
+						return (desc.set == set && desc.binding == binding);
+					}); res == std::end(descriptors))
+				{
+					descriptors.push_back({
+						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+						.binding	= (uint16_t)binding,
+						.set		= (uint16_t)set,
+						.stages		= (uint32_t)shaderStages[idx].stage,
+					});
+				}
+				else
+					res->stages |= shaderStages[idx].stage;
+			}
+
+			for (auto image : shaderResources.separate_samplers)
+			{
+			    auto binding	= compiler.get_decoration(image.id, spv::DecorationBinding);
+				auto set		= compiler.get_decoration(image.id, spv::DecorationDescriptorSet);
+
+				if (auto res = std::ranges::find_if(
+					descriptors,
+					[&](Descriptor& desc) -> bool
+					{
+						return (desc.set == set && desc.binding == binding);
+					}); res == std::end(descriptors))
+				{
+					descriptors.push_back({
+						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
+						.binding	= (uint16_t)binding,
+						.set		= (uint16_t)set,
+						.stages		= (uint32_t)shaderStages[idx].stage,
+					});
+				}
+				else
+					res->stages |= shaderStages[idx].stage;
 			}
 		}
 
@@ -453,13 +582,14 @@ namespace VK_internal
 
 			Vector<VkDescriptorSetLayoutBinding> bindings{ allocator };
 			auto span = std::span(begin, end);
+			bindings.reserve(span.size());
 			for (auto& desc : span)
 			{
 			    bindings.push_back(VkDescriptorSetLayoutBinding{
-					.binding			= desc.set, 
+					.binding			= desc.binding, 
 					.descriptorType		= desc.type,
 					.descriptorCount	= 1,
-					.stageFlags			= 0, //VkShaderStageFlagBits;
+					.stageFlags			= desc.stages, //VkShaderStageFlagBits;
 					.pImmutableSamplers	= samplers
 			    });
 		    }
@@ -467,7 +597,7 @@ namespace VK_internal
 			VkDescriptorSetLayoutCreateInfo createInfo{
 				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 				.pNext			= nullptr,
-			    .flags			= 0,//VkDescriptorSetLayoutCreateFlagBits,
+			    .flags			= 0,//kDescriptorSetLayoutCreateFlagBits,
 				.bindingCount	= (uint32_t)bindings.size(),
 				.pBindings		= bindings.data()
 			};
@@ -481,9 +611,9 @@ namespace VK_internal
 
 		if (pushConstantsSize > 0)
 		    pushConstantRanges.push_back(VkPushConstantRange{
-			    .stageFlags = VkPipelineStageFlagBits::VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-	            .offset		= 0,
-	            .size		= pushConstantsSize
+			    .stageFlags			= pushConstantFlags,
+	            .offset				= 0,
+	            .size				= pushConstantsSize
 		    });
 
 		VkPipelineLayoutCreateInfo layoutCreateInfo{
@@ -503,6 +633,23 @@ namespace VK_internal
 			return {};
 		}
 
+
+		static const VkDynamicState dynamicStates[] = {
+			VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+			VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+			VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT,
+			VK_DYNAMIC_STATE_SAMPLE_MASK_EXT,
+			VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT
+		};
+
+		static const VkPipelineDynamicStateCreateInfo dynamicInfo{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			.pNext				= nullptr,
+			.flags				= 0,
+			.dynamicStateCount	= 2,
+			.pDynamicStates		= dynamicStates,
+		};
+
 		VkGraphicsPipelineCreateInfo createInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 			.pNext					= nullptr,
@@ -517,7 +664,7 @@ namespace VK_internal
 			.pMultisampleState		= GetMultiSampleState(),
 			.pDepthStencilState		= GetDepthStencilState(),
 			.pColorBlendState		= GetBlendState(),
-			.pDynamicState			= GetDynamicState(),
+			.pDynamicState			= &dynamicInfo,
 			.layout					= pipelineLayout,
 			.renderPass				= nullptr,
 			.subpass				= 0,
@@ -628,6 +775,7 @@ namespace VK_internal
 		return nullptr;
 	}
 
+	/*
 	VkPipelineDynamicStateCreateInfo* vkPipelineBuilder::GetDynamicState() const
 	{
 		for (auto& obj : stateObjects)
@@ -638,4 +786,5 @@ namespace VK_internal
 
 		return nullptr;
 	}
+    */
 }

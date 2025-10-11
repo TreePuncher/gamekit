@@ -54,7 +54,7 @@ namespace VK_internal
 		VkPipelineMultisampleStateCreateInfo*	GetMultiSampleState() const;
 		VkPipelineDepthStencilStateCreateInfo*	GetDepthStencilState() const;
 		VkPipelineColorBlendStateCreateInfo*	GetBlendState() const;
-		VkPipelineDynamicStateCreateInfo*		GetDynamicState() const;
+		//VkPipelineDynamicStateCreateInfo*		GetDynamicState() const;
 
         enum class InfoType
 		{

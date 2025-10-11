@@ -1,5 +1,5 @@
-Texture2D<float4>	diffuse			: register(t0);
-sampler				defaultSampler : register(s0);
+						Texture2D<float4>	diffuse			: register(t2);
+[[vk::binding(0, 2)]]	sampler				defaultSampler	: register(s0);
 
 struct PushConstants
 {
