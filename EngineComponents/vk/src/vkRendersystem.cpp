@@ -220,10 +220,11 @@ namespace VK_internal
 		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 	}
 
-	vkRenderSystem::vkRenderSystem(iAllocator& IN_allocator) :
+	vkRenderSystem::vkRenderSystem(ThreadManager* threads, iAllocator& IN_allocator) :
 	    resources				{ IN_allocator },
 	    allocator				{ IN_allocator },
-		pendingDirectContexts	{ IN_allocator } {}
+		pendingDirectContexts	{ IN_allocator },
+		pipelineStates			{ threads, IN_allocator } {}
 
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
@@ -365,8 +366,9 @@ namespace VK_internal
 	}
 
 
-	void vkRenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN)
+	void vkRenderSystem::RegisterPSOLoader(PSOHandle state, LOADSTATE_FN FN)
 	{
+		pipelineStates.RegisterLoader(state, FN);
 	}
 
 
@@ -375,14 +377,15 @@ namespace VK_internal
 	}
 
 
-	void vkRenderSystem::QueuePSOLoad(PSOHandle State)
+	void vkRenderSystem::QueuePSOLoad(PSOHandle state)
 	{
+		pipelineStates.QueueLoad(state);
 	}
 
 
 	const IPipelineState* vkRenderSystem::GetPSO(PSOHandle State, iAllocator& temp)
 	{
-		return nullptr;
+		return pipelineStates.GetPSO(State, temp);
 	}
 
 

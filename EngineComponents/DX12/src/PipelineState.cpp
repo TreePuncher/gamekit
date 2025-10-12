@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "PipelineState.hpp"
+#include "dxRenderSystem.hpp"
 #include <RenderSystemInterface.hpp>
 
 
@@ -31,6 +32,18 @@ namespace dx_Internal
 {
 	/************************************************************************************************/
 
+
+	DevicePipelineState_ptr DXPipelineState::GetDevicePipeState() const
+	{
+		return state;
+	}
+
+	const IPipelineInterface* DXPipelineState::GetInterface() const noexcept
+	{
+		return rootSignature;
+	}
+
+	/************************************************************************************************/
 
 	bool PipelineStateObject::changeState(const PipelineStateObject::PSO_States newState)
 	{
@@ -65,7 +78,7 @@ namespace dx_Internal
 
 		if (pipelineInterface)
 		{
-			pipelineInterface->Release();
+			const_cast<IPipelineInterface*>(pipelineInterface)->Release();
 			pipelineInterface = nullptr;
 		}
 
@@ -125,6 +138,7 @@ namespace dx_Internal
 
 				state				= PipelineStateObject::PSO_States::Loaded;
 				PSO.state			= res.pipelineState.As<ID3D12PipelineState>();
+				PSO.rootSignature	= res.pipelineInterface;
 				pipelineInterface	= static_cast<const IPipelineInterface*>(res.pipelineInterface);
 				CV.notify_all();
 				return;
@@ -280,8 +294,9 @@ namespace dx_Internal
 
 					FK_LOG_2("Finished PSO Load");
 
-					PSO->state			= PipelineStateObject::PSO_States::Loaded;
-					PSO->PSO.state		= res.pipelineState.As<ID3D12PipelineState>();
+					PSO->state				= PipelineStateObject::PSO_States::Loaded;
+					PSO->PSO.state			= res.pipelineState.As<ID3D12PipelineState>();
+					PSO->PSO.rootSignature	= res.pipelineInterface;
 					PSO->pipelineInterface	= static_cast<const IPipelineInterface*>(res.pipelineInterface);
 					PSO->CV.notify_all();
 

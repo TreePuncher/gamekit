@@ -2355,7 +2355,7 @@ namespace FlexKit
 		virtual const DesciptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
 		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
 
-		virtual void Release() const = 0;
+		virtual void Release() = 0;
 	};
 
 
@@ -2364,7 +2364,8 @@ namespace FlexKit
 
 	struct IPipelineState
 	{
-		virtual DevicePipelineState_ptr GetDevicePipeState() const = 0;
+		virtual DevicePipelineState_ptr		GetDevicePipeState() const = 0;
+		virtual const IPipelineInterface*	GetInterface() const noexcept = 0;
 	};
 
 

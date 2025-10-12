@@ -1,6 +1,8 @@
 #include <RenderSystemInterface.hpp>
 #include <VkBootstrap.h>
 #include <vkResourceTable.hpp>
+#include <vkPipelineState.hpp>
+#include <ThreadUtilities.hpp>
 
 namespace VK_internal
 {
@@ -14,7 +16,7 @@ namespace VK_internal
 
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
     {
-        vkRenderSystem(iAllocator& allocator);
+        vkRenderSystem(ThreadManager* threads, iAllocator& allocator);
 
         bool													Initiate(Graphics_Desc& desc) final;
 
@@ -24,8 +26,8 @@ namespace VK_internal
 		void													QueuePSOLoad			(PSOHandle State) final;
 
 		const IPipelineState*									GetPSO					(PSOHandle State, iAllocator& temp) final;
-		const IPipelineInterface* const 							GetPSORootSignature		(PSOHandle state) const final;
-		std::tuple<IPipelineState*, const IPipelineInterface*>		GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const final;
+		const IPipelineInterface* const 						GetPSORootSignature		(PSOHandle state) const final;
+		std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const final;
 
 		// Sync functions
 		uint64_t	GetCurrentProgress() const;
@@ -164,7 +166,7 @@ namespace VK_internal
 
 
 		const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept final;
-		ResourceHandle			DefaultTexture() const noexcept;
+		ResourceHandle				DefaultTexture() const noexcept;
 
 		// Resetable resources
 		void ResetConstantBuffer(ConstantBufferHandle constant) final;
@@ -184,6 +186,8 @@ namespace VK_internal
 		VkDevice	GetDevice();
 		VkQueue		GetQueue() const;
 
+		using vkPipelineState_ptr = vkPipelineState*;
+
 		// API objects
 		vkb::Instance			instance;
 		vkb::Device				device;
@@ -200,8 +204,9 @@ namespace VK_internal
 		std::atomic_uint64_t	copySubmissionCounter		= 0;
 
 		// Bookkeeping 
-		vkResourceTable					resources;
-		Vector<struct vkDirectContext*>	pendingDirectContexts;
+		vkResourceTable						resources;
+		Vector<struct vkDirectContext*>		pendingDirectContexts;
+		vkStateTable						pipelineStates;
     };
 }
 

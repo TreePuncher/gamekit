@@ -250,20 +250,90 @@ namespace VK_internal
 	void vkDirectContext::SetComputePipelineState(const PSOHandle, iAllocator& temp)
     {}
 
-	void vkDirectContext::SetGraphicsPipelineState(const PSOHandle, iAllocator& temp)
-    {}
+	void vkDirectContext::SetGraphicsPipelineState(const PSOHandle psoHandle, iAllocator& temp)
+	{
+		auto pso = RenderSystem().GetPSO(psoHandle, temp);
+
+		vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pso->GetDevicePipeState().As<VkPipeline_T>());
+	}
 
 	void vkDirectContext::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil, const size_t MIPMapOffset)
-    {}
+	{
+		EndPass();
+
+		for (auto& rt : RTs)
+		{
+			auto res = RenderSystem().resources.Get<ResourceFieldID::APIHandle>(rt);
+			
+			VkRenderingAttachmentInfo attachment{
+			    .sType					= VkStructureType::VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+				.pNext					= nullptr,
+				.imageView				= nullptr,
+				.imageLayout			= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
+				.resolveMode			= VkResolveModeFlagBits::VK_RESOLVE_MODE_NONE,
+				.resolveImageView		= nullptr,
+				.resolveImageLayout		= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
+				.loadOp					= VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+				.storeOp				= VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE,
+				.clearValue				= VkClearValue{ .color{ .float32{ 0.0f, 0.0f, 0.0f, 0.0f } } }
+			};
+
+			pendingAttachments.push_back(attachment);
+		}
+
+		pendingTargetConfiguration = true;
+	}
 
 	void vkDirectContext::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
-    {}
+	{
+		EndPass();
+	}
 
 	void vkDirectContext::SetScissorAndViewports(static_vector<ResourceHandle, 16>	RenderTargets)
-    {}
+	{
+		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		Vector<VkRenderingAttachmentInfo> attachments{ renderSystem.allocator };
+		/*
+	    {
+			VkStructureType          sType;
+			const void*				 pNext;
+			VkImageView              imageView;
+			VkImageLayout            imageLayout;
+			VkResolveModeFlagBits    resolveMode;
+			VkImageView              resolveImageView;
+			VkImageLayout            resolveImageLayout;
+			VkAttachmentLoadOp       loadOp;
+			VkAttachmentStoreOp      storeOp;
+			VkClearValue             clearValue;
+		} VkRenderingAttachmentInfo;
+        */
+
+		
+		//VkRenderingInfoKHR renderTargetInfo{
+		//	VkStructureType                        sType;
+		//	const void* pNext;
+		//	VkRenderingFlagsKHR                    flags;
+		//	VkRect2D                               renderArea;
+		//	uint32_t                               layerCount;
+		//	uint32_t                               viewMask;
+		//	uint32_t                               colorAttachmentCount;
+		//	const VkRenderingAttachmentInfoKHR* pColorAttachments;
+		//	const VkRenderingAttachmentInfoKHR* pDepthAttachment;
+		//	const VkRenderingAttachmentInfoKHR* pStencilAttachment;
+		//};
+
+		//const VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info{
+		//	.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+		//	.colorAttachmentCount = 1,
+		//	.pColorAttachmentFormats = &swapchain_image_format_,
+		//};
+	}
 
 	void vkDirectContext::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
-	{}
+	{
+	    
+	}
 
 	void vkDirectContext::QueueReadBack(ReadBackResourceHandle readBack)
     {}
@@ -439,17 +509,41 @@ namespace VK_internal
 	void vkDirectContext::SetVertexBuffers2(const std::span<const VBView> views, uint32_t offset)
     {}
 
-	void vkDirectContext::Draw(const size_t VertexCount, const size_t BaseVertex, const size_t baseIndex)
-    {}
+	void vkDirectContext::Draw(const size_t vertexCount, const size_t baseVertex, const size_t baseIndex)
+	{
+		FlushBarriers();
+		ApplyRenderTargetSetup();
 
-	void vkDirectContext::DrawInstanced(const size_t VertexCount, const size_t BaseVertex, const size_t instanceCount, size_t instanceOffset)
-    {}
+	    vkCmdDraw(commandBuffer, vertexCount, 1, baseVertex, 0);
+		pendingDraws = true;
+	}
 
-	void vkDirectContext::DrawIndexed(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex)
-    {}
+	void vkDirectContext::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, size_t instanceOffset)
+	{
+		FlushBarriers();
+		ApplyRenderTargetSetup();
 
-	void vkDirectContext::DrawIndexedInstanced(const size_t IndexCount, const size_t IndexOffet, const size_t BaseVertex, const size_t InstanceCount, const size_t InstanceOffset)
-    {}
+	    vkCmdDraw(commandBuffer, vertexCount, instanceCount, baseVertex, instanceOffset);
+		pendingDraws = true;
+	}
+
+	void vkDirectContext::DrawIndexed(const size_t indexCount, const size_t indexOffet, const size_t baseVertex)
+	{
+		FlushBarriers();
+		ApplyRenderTargetSetup();
+
+	    vkCmdDrawIndexed(commandBuffer, indexCount, 1, baseVertex, baseVertex, 0);
+		pendingDraws = true;
+	}
+
+	void vkDirectContext::DrawIndexedInstanced(const size_t indexCount, const size_t indexOffet, const size_t baseVertex, const size_t instanceCount, const size_t instanceOffset)
+	{
+		FlushBarriers();
+		ApplyRenderTargetSetup();
+
+	    vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, baseVertex, baseVertex, instanceOffset);
+		pendingDraws = true;
+	}
 
 	void vkDirectContext::Clear()
     {}
@@ -495,6 +589,8 @@ namespace VK_internal
 
 	void vkDirectContext::Close()
 	{
+		EndPass();
+
 	    VkCommandBufferSubmitInfo clInfo{
 			.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
 	        .pNext			= nullptr,
@@ -511,6 +607,7 @@ namespace VK_internal
 		waits.clear();
 		signals.clear();
 		dispatchValue = submissionValue;
+		pendingDraws = false;
 
 		VkCommandBufferBeginInfo beginInfo{
 			.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -532,6 +629,40 @@ namespace VK_internal
 
 	void vkDirectContext::SetScissorRects(std::span<const Rect>	rects)
 	{}
+
+	void vkDirectContext::EndPass()
+	{
+		if (!pendingDraws)
+			return;
+
+        //vkCmdEndRenderingKHR(commandBuffer);
+
+		pendingDraws = false;
+		pendingAttachments.clear();
+		depthBufferAttachment.reset();
+		stencilBufferAttachment.reset();
+	}
+
+	void vkDirectContext::ApplyRenderTargetSetup()
+	{
+		if (!pendingTargetConfiguration)
+			return;
+
+		VkRenderingInfo renderingInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_RENDERING_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,
+			.renderArea				= {},
+			.layerCount				= 0,
+			.viewMask				= 0,
+			.colorAttachmentCount	= (uint32_t)pendingAttachments.size(),
+			.pColorAttachments		= pendingAttachments.data(),
+			.pDepthAttachment		= depthBufferAttachment.and_then([](auto& val)		{ return std::optional{ &val }; }).value_or(nullptr),
+			.pStencilAttachment		= stencilBufferAttachment.and_then([](auto& val)	{ return std::optional{ &val }; }).value_or(nullptr),
+		};
+
+		//vkCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
+	}
 
 	vkRenderSystem& vkDirectContext::RenderSystem() noexcept
 	{
