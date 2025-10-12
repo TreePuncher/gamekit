@@ -17,27 +17,22 @@ struct TestState : FrameworkState
 		renderWindow = CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 
-		PipelineBuilder builder(GetRenderSystem(), framework.core.GetTempMemory());
-		builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
-		builder.AddVertexShader("VMain",	"assets/shaders/TestShader.hlsl");
-		builder.AddRasterizerState();
-		builder.AddRenderTargetState({
-            .targetCount	= 1,
-			.targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
-		});
+		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
+			[](IRenderSystem& renderSystem, iAllocator& allocator)
+			{
+				PipelineBuilder builder(renderSystem, allocator);
+				builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
+				builder.AddVertexShader("VMain",	"assets/shaders/TestShader.hlsl");
+				builder.AddRasterizerState();
+				builder.AddRenderTargetState({	
+					    .targetCount	= 1,
+					    .targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
+					});
 
-		auto PSO = builder.Build(GetRenderSystem(), GetTempAllocator());
+				return builder.Build(renderSystem, allocator);
+			});
 
-		//GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Hello),
-		//	[](IRenderSystem& renderSystem, iAllocator& allocator)
-		//	{
-		//
-		//		return builder.Build(renderSystem);
-		//	});
-		//
-		//GetRenderSystem().QueuePSOLoad(GetTypeGUID(Hello));
-
-		int x = 0;
+		GetRenderSystem().QueuePSOLoad(GetTypeGUID(Trangle));
 	}
 
 
@@ -57,6 +52,26 @@ struct TestState : FrameworkState
 		auto renderTarget = renderWindow->GetBackBuffer();
 		frameGraph.AddOutput(renderTarget);
 		ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
+
+		struct DrawTrangle
+		{
+			FrameResourceHandle renderTarget;
+		};
+
+		frameGraph.AddNode<>(
+			DrawTrangle{},
+			[&](FrameGraphNodeBuilder& builder, auto& data)
+			{
+				data.renderTarget = builder.RenderTarget(renderTarget);
+			},
+			[](const auto& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
+			{
+				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), allocator);
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
+				ctx.Draw(3);
+			});
+
 		PresentBackBuffer(frameGraph, *renderWindow);
 	    return nullptr;
 	}

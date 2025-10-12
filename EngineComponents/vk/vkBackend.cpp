@@ -7,7 +7,7 @@ namespace FlexKit
 {
     IRenderSystem* CreateVK(const RenderSystemOptions& options)
     {
-        return &options.allocator->allocate<VK_internal::vkRenderSystem>(*options.allocator);
+        return &options.allocator->allocate<VK_internal::vkRenderSystem>(options.threads, *options.allocator);
     }
 }
 

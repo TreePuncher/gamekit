@@ -27,6 +27,7 @@ target_sources(
         "src/vkDirectContext.cpp"
         "src/vkPipelineLayout.cpp"
         "src/vkPipelineBuilder.cpp"
+        "src/vkPipelineState.cpp"
         "src/vkRendersystem.cpp"
         "src/vkResourceTable.cpp"
         "src/vkWaylandSurface.cpp"
@@ -52,6 +53,7 @@ target_sources(
     "src/vkDirectContext.hpp"
     "src/vkPipelineLayout.hpp"
     "src/vkPipelineBuilder.hpp"
+    "src/vkPipelineState.hpp"
     "src/vkRenderSystem.hpp"
     "src/vkResourceTable.hpp"
 )

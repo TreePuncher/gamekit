@@ -1004,7 +1004,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void RootSignature::Release() const
+	void RootSignature::Release()
 	{
 		if(Signature && !Signature->Release())
 		{
@@ -4523,7 +4523,7 @@ namespace dx_Internal
 				nullptr);
 
 			std::string formattedMessage =
-				std::format("Signature failed to load : {}", string);
+				std::format("interface failed to load : {}", string);
 
 			FK_LOG_ERROR(formattedMessage.c_str());
 
@@ -6882,7 +6882,7 @@ namespace dx_Internal
 			ErrorBlob->Release();
 
 #ifdef _DEBUG 
-			FK_ASSERT(false, "Invalid Root Signature Description!");
+			FK_ASSERT(false, "Invalid Root interface Description!");
 #endif
 
 			return nullptr;
@@ -6910,7 +6910,6 @@ namespace dx_Internal
 
 		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSignature, std::move(object_ptr));
 		rootSignatureEntry->get()->slots = std::move(slots);
-
 	    builder.Clear();
 
 		return rootSignatureEntry->get();

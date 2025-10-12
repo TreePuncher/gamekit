@@ -60,12 +60,11 @@ namespace dx_Internal
 	class DXPipelineState : public IPipelineState
 	{
 	public:
-		ID3D12PipelineState* state = nullptr;
+		ID3D12PipelineState*		state			= nullptr;
+		const IPipelineInterface*	rootSignature	= nullptr;
 
-		virtual DevicePipelineState_ptr GetDevicePipeState() const final
-		{
-			return state;
-		}
+		DevicePipelineState_ptr		GetDevicePipeState() const final;
+		const IPipelineInterface*	GetInterface() const noexcept final;
 	};
 
 	class PipelineStateObject
@@ -130,9 +129,9 @@ namespace dx_Internal
 		void							RegisterPSOLoader	(PSOHandle, LOADSTATE_FN);
 		bool							QueuePSOLoad		(PSOHandle, iAllocator*);
 
-		DXPipelineState*				GetPSO			(PSOHandle, iAllocator& temp);
+		DXPipelineState*					GetPSO			(PSOHandle, iAllocator& temp);
 		IPipelineInterface const * const 	GetPSORootSig	(PSOHandle) const;
-		PipelineStateObject*			GetPSOObject	(PSOHandle) const;
+		PipelineStateObject*				GetPSOObject	(PSOHandle) const;
 
 
 	private:

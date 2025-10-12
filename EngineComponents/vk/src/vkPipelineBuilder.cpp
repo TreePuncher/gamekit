@@ -679,7 +679,9 @@ namespace VK_internal
 			return {};
 		}
 
-	    return {};
+		auto& pipelineInterface = allocator.allocate<vkPipelineInterface>(allocator);
+		pipelineInterface.layout = pipelineLayout;
+	    return { pipeline, &pipelineInterface };
 	}
 
 	LoadPipelineStateRes vkPipelineBuilder::BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size)

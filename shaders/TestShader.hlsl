@@ -1,5 +1,5 @@
-						Texture2D<float4>	diffuse			: register(t2);
-[[vk::binding(0, 2)]]	sampler				defaultSampler	: register(s0);
+//						Texture2D<float4>	diffuse			: register(t2);
+//[[vk::binding(0, 2)]]	sampler				defaultSampler	: register(s0);
 
 struct PushConstants
 {
@@ -7,7 +7,7 @@ struct PushConstants
 	float4 RGBA;
 };
 
-[[vk::push_constant]] PushConstants pushConstants;
+//[[vk::push_constant]] PushConstants pushConstants;
 
 cbuffer cb0 : register(b0)
 {
@@ -44,5 +44,6 @@ VOut VMain()
 
 float4 PMain(VOut vin) : SV_Target
 {
-	return float4(vin.position + pushConstants.asdfdsa * pushConstants.RGBA + xyzw + asdf + posw) + diffuse.Sample(defaultSampler, float2(0.5, 0.5));
+	//return float4(vin.position + pushConstants.asdfdsa * pushConstants.RGBA + xyzw + asdf + posw) + diffuse.Sample(defaultSampler, float2(0.5, 0.5));
+	return float4(1.0f, 1.0f, 1.0f, 1.0f);
 }

@@ -20,7 +20,7 @@ namespace VK_internal
         return nullptr;
     }
 
-    void vkPipelineLayout::Release() const
+    void vkPipelineLayout::Release()
     {
     }
 }

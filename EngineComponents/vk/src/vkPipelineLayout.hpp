@@ -14,7 +14,7 @@ namespace VK_internal
         const DesciptorHeapLayout&  GetDescHeap(uint32_t idx) const noexcept final;
         DeviceRootSignature_ptr		GetAPIObject() const noexcept final;
 
-        void Release() const final;
+        void Release() final;
 
         Vector<DesciptorHeapLayout> descriptorlayouts;
         VkPipelineLayout            apiLayout;

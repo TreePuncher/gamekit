@@ -1053,7 +1053,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator ID3D12RootSignature* ()	const { return Signature; }
 		ID3D12RootSignature* Get_ptr()		const { return Signature; };
 
-		void Release() const;
+		void Release();
 
 		virtual const DesciptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final
 		{
@@ -1100,6 +1100,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 			return -1u;
 		}
+
 
 		ID3D12RootSignature*			Signature = nullptr;
 		iAllocator*						allocator = nullptr;
@@ -2148,9 +2149,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			op();
 		}
 
-		const IPipelineState*								GetPSO(PSOHandle StateID, iAllocator& temp);
-		const IPipelineInterface* const							GetPSORootSignature(PSOHandle StateID) const;
-		std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const;
+		const IPipelineState*									GetPSO(PSOHandle StateID, iAllocator& temp) override;
+		const IPipelineInterface* const							GetPSORootSignature(PSOHandle StateID) const override;
+		std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature(PSOHandle StateID, iAllocator& temp) const override;
 
 		void BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc);
 		void RegisterPSOLoader(PSOHandle State, LOADSTATE_FN FN);
