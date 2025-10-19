@@ -388,13 +388,14 @@ namespace FlexKit
 
 			auto signal = presentSemaphores[imageIndex];
 
-			renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout>(
+			renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout, ResourceFieldID::View>(
 				resource,
 				vkResourceEntry{
 				    .type	= vkResourceEntry::Type::RenderTarget,
 					.image	= images[imageIndex]
 				},
-				layout[imageIndex]);
+				layout[imageIndex],
+				vkResourceViews{ .imageView = views[imageIndex] });
 
 			current[0] = wait;
 			current[1] = signal;
@@ -465,6 +466,7 @@ namespace FlexKit
 
 	    ResourceHandle	resource	= InvalidHandle;
 		VkImage			images[3];
+		VkImageView		views[3]	= { nullptr, nullptr, nullptr };
 		DeviceLayout	layout[3]	= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
 		uint32_t		imageIndex;
 
@@ -547,11 +549,33 @@ namespace FlexKit
 		desc._ptr			= swapchain;
 		desc.initialLayout	= DeviceLayout::Undefined;
 
+
 		auto renderTarget = renderSystem.CreateGPUResource(desc);
 		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
 
 		uint imageCount;
 		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
+
+		VkImageViewCreateInfo createInfo{};
+		createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format							= createSwapChainInfo.imageFormat;
+		createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.a						= VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.baseMipLevel	= 0;
+		createInfo.subresourceRange.levelCount		= 1;
+		createInfo.subresourceRange.baseArrayLayer	= 0;
+		createInfo.subresourceRange.layerCount		= 1;
+
+		for (size_t i = 0; i < 3; i++)
+		{
+			createInfo.image = newRenderWindow.images[i];
+			if (auto res = vkCreateImageView(device, &createInfo, nullptr, &newRenderWindow.views[i]); res != VK_SUCCESS)
+				FK_LOG_ERROR("VK: Failed to create swapchain image view");
+		}
 
 		VkSemaphoreCreateInfo createSemaphoreInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -583,7 +607,13 @@ namespace FlexKit
 		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &newRenderWindow.windowFence); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create fence for direct queue!");
 
-		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags>(renderTarget, (void*)newRenderWindow.current, ResourceFlags::SwapChain);
+		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags, ResourceFieldID::View, ResourceFieldID::XYZW>(
+			    renderTarget,
+			    (void*)newRenderWindow.current,
+			    ResourceFlags::SwapChain | ResourceFlags::RenderTarget,
+			    vkResourceViews{ .imageView = newRenderWindow.views[0] },
+                uint4{ createSwapChainInfo.imageExtent.width, createSwapChainInfo.imageExtent.height, 0, 0 }
+		);
 
 		newRenderWindow.resource	= renderTarget;
 		newRenderWindow.swapchain	= swapchain;

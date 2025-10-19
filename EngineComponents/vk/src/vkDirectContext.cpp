@@ -11,11 +11,14 @@ namespace VK_internal
 	vkDirectContext::vkDirectContext()
 	{
 		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
-		pendingBarriers	= Vector<Barrier>{ renderSystem.allocator };
-		resourcesUsed	= Vector<ResourceHandle>{ renderSystem.allocator };
-		waits			= Vector<VkSemaphore>{ renderSystem.allocator };
-		signals			= Vector<VkSemaphore>{ renderSystem.allocator };
-
+		pendingBarriers		= Vector<Barrier>{ renderSystem.allocator };
+		resourcesUsed		= Vector<ResourceHandle>{ renderSystem.allocator };
+		waits				= Vector<VkSemaphore>{ renderSystem.allocator };
+		signals				= Vector<VkSemaphore>{ renderSystem.allocator };
+		pendingAttachments	= Vector<VkRenderingAttachmentInfo>{ renderSystem.allocator };
+		viewports			= Vector<VkViewport>{ renderSystem.allocator };
+		scissors			= Vector<VkRect2D>{ renderSystem.allocator };
+		
 		VkCommandPoolCreateInfo createPoolDesc{
 				.sType				= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 				.pNext				= nullptr,
@@ -46,6 +49,9 @@ namespace VK_internal
 
 	void vkDirectContext::FlushBarriers() noexcept
 	{
+		if (pendingBarriers.size() == 0)
+			return;
+
 		auto& RS = RenderSystem();
 
 		Vector<VkMemoryBarrier2, 16, uint8_t>		memoryBarriers	{ pendingBarriers.Allocator };
@@ -177,6 +183,8 @@ namespace VK_internal
 
 	void vkDirectContext::AddBarriers(std::span<const Barrier> barriers)
 	{
+	    EndPass();
+
 		for (auto& b : barriers)
 			pendingBarriers.push_back(b);
 	}
@@ -260,25 +268,25 @@ namespace VK_internal
 	void vkDirectContext::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil, const size_t MIPMapOffset)
 	{
 		EndPass();
+		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		pendingAttachments.clear();
 
 		for (auto& rt : RTs)
 		{
-			auto res = RenderSystem().resources.Get<ResourceFieldID::APIHandle>(rt);
-			
-			VkRenderingAttachmentInfo attachment{
-			    .sType					= VkStructureType::VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-				.pNext					= nullptr,
-				.imageView				= nullptr,
-				.imageLayout			= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
-				.resolveMode			= VkResolveModeFlagBits::VK_RESOLVE_MODE_NONE,
-				.resolveImageView		= nullptr,
-				.resolveImageLayout		= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
-				.loadOp					= VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-				.storeOp				= VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE,
-				.clearValue				= VkClearValue{ .color{ .float32{ 0.0f, 0.0f, 0.0f, 0.0f } } }
-			};
+			auto [clear, view] = RenderSystem().resources.Get<ResourceFieldID::Clear, ResourceFieldID::View>(rt);
 
-			pendingAttachments.push_back(attachment);
+			pendingAttachments.push_back(
+					VkRenderingAttachmentInfo{
+						.sType			= VkStructureType::VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+						.pNext			= nullptr,
+						.imageView		= view.imageView,
+						.imageLayout	= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
+						.resolveMode	= VkResolveModeFlagBits::VK_RESOLVE_MODE_NONE, 
+						.loadOp			= VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_NONE,
+						.storeOp		= VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE,
+						.clearValue		= clear
+					});
 		}
 
 		pendingTargetConfiguration = true;
@@ -293,41 +301,39 @@ namespace VK_internal
 	{
 		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
-		Vector<VkRenderingAttachmentInfo> attachments{ renderSystem.allocator };
-		/*
-	    {
-			VkStructureType          sType;
-			const void*				 pNext;
-			VkImageView              imageView;
-			VkImageLayout            imageLayout;
-			VkResolveModeFlagBits    resolveMode;
-			VkImageView              resolveImageView;
-			VkImageLayout            resolveImageLayout;
-			VkAttachmentLoadOp       loadOp;
-			VkAttachmentStoreOp      storeOp;
-			VkClearValue             clearValue;
-		} VkRenderingAttachmentInfo;
-        */
+		scissors.clear();
+		viewports.clear();
+		pendingAttachments.clear();
 
-		
-		//VkRenderingInfoKHR renderTargetInfo{
-		//	VkStructureType                        sType;
-		//	const void* pNext;
-		//	VkRenderingFlagsKHR                    flags;
-		//	VkRect2D                               renderArea;
-		//	uint32_t                               layerCount;
-		//	uint32_t                               viewMask;
-		//	uint32_t                               colorAttachmentCount;
-		//	const VkRenderingAttachmentInfoKHR* pColorAttachments;
-		//	const VkRenderingAttachmentInfoKHR* pDepthAttachment;
-		//	const VkRenderingAttachmentInfoKHR* pStencilAttachment;
-		//};
+		for (auto& target : RenderTargets)
+		{
+			bool isRenderTarget = (renderSystem.resources.Get<ResourceFieldID::Flags>(target) & ResourceFlags::RenderTarget);
 
-		//const VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info{
-		//	.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
-		//	.colorAttachmentCount = 1,
-		//	.pColorAttachmentFormats = &swapchain_image_format_,
-		//};
+			if (isRenderTarget)
+			{
+				auto XY = renderSystem.resources.Get<ResourceFieldID::XYZW>(target);
+
+				renderArea.offset = { .x = 0, .y = 0 };
+				renderArea.extent = { .width = XY[0], .height = XY[1] };
+
+				VkViewport viewport{
+					.x			= 0,
+					.y			= (float)XY[1],
+					.width		= (float)XY[0],
+					.height		= -(float)XY[1],
+					.minDepth	= 0.0f,
+					.maxDepth	= 1.0f
+				};
+
+				VkRect2D rect{
+					.offset = {.x = 0, .y = 0 },
+	                .extent = {.width = XY[0], .height = XY[1] }
+				};
+
+				scissors.push_back(rect);
+				viewports.push_back(viewport);
+			}
+		}
 	}
 
 	void vkDirectContext::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
@@ -590,6 +596,7 @@ namespace VK_internal
 	void vkDirectContext::Close()
 	{
 		EndPass();
+		FlushBarriers();
 
 	    VkCommandBufferSubmitInfo clInfo{
 			.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -652,8 +659,8 @@ namespace VK_internal
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_RENDERING_INFO,
 			.pNext					= nullptr,
 			.flags					= 0,
-			.renderArea				= {},
-			.layerCount				= 0,
+			.renderArea				= renderArea,
+			.layerCount				= 1,
 			.viewMask				= 0,
 			.colorAttachmentCount	= (uint32_t)pendingAttachments.size(),
 			.pColorAttachments		= pendingAttachments.data(),
@@ -661,7 +668,13 @@ namespace VK_internal
 			.pStencilAttachment		= stencilBufferAttachment.and_then([](auto& val)	{ return std::optional{ &val }; }).value_or(nullptr),
 		};
 
+
+		vkCmdSetScissorWithCount(commandBuffer, scissors.size(), scissors.data());
+		vkCmdSetViewportWithCount(commandBuffer, viewports.size(), viewports.data());
+
 		vkCmdBeginRendering(commandBuffer, &renderingInfo);
+
+		pendingTargetConfiguration = false;
 	}
 
 	vkRenderSystem& vkDirectContext::RenderSystem() noexcept

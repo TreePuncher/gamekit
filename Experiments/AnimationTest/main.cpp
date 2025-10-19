@@ -51,7 +51,7 @@ struct TestState : FrameworkState
 	{
 		auto renderTarget = renderWindow->GetBackBuffer();
 		frameGraph.AddOutput(renderTarget);
-		ClearBackBuffer(frameGraph, renderTarget, { 0, 1, 0, 1 });
+		ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 0, 1 });
 
 		struct DrawTrangle
 		{
@@ -93,10 +93,10 @@ int main()
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{
-			.GPUdebugMode = true,
-			.GPUValidation = true,
-			.GPUSyncQueues = true,
-			.CreateRenderSystem = CreateDX,
+			.GPUdebugMode		= true,
+			.GPUValidation		= true,
+			.GPUSyncQueues		= true,
+			.CreateRenderSystem = CreateVK,
 		});
 
 		app->PushState<TestState>();

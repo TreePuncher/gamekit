@@ -24,6 +24,11 @@ namespace VK_internal
 	};
 
 
+	typedef void (*vkGetDescriptorSetLayoutSizeFNDef)(VkDevice, VkDescriptorSetLayout, VkDeviceSize*);
+	typedef void (*vkGetDescriptorFNDef)(VkDevice, const VkDescriptorGetInfoEXT*, size_t, void* pDescriptor);
+	typedef void (*vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)(VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout,uint32_t);
+
+
 
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
     {

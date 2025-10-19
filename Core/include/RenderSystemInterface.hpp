@@ -1775,6 +1775,23 @@ namespace FlexKit
 			return true;
 		}
 
+		bool SetParameterAsSRVImage(
+			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
+		{
+			HeapDescriptor Desc;
+			Desc.registerIdx	= uint32_t(BaseRegister);
+			Desc.space			= uint32_t(RegisterSpace);
+			Desc.type			= DescHeapEntryType::ShaderResourceImage;
+			Desc.count			= RegisterCount;
+
+			if (entries.size() <= Index)
+				entries.resize(Index + 1);
+
+			entries[Index] = Desc;
+
+			return true;
+		}
+
 
 		bool SetParameterAsShaderUAV(
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
