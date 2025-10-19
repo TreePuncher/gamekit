@@ -39,8 +39,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 				((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))
 
 
-namespace FlexKit
+namespace dx_Internal
 {
+	using namespace FlexKit;
 	using DirectX::DDS_ALPHA_MODE;
 
 	struct DDS_PIXELFORMAT
@@ -115,9 +116,9 @@ namespace FlexKit
 	typedef FlexKit::Pair<DDSTexture3D*, bool>	DDSTexture3DLoad_RES; // Not-Implemented
 	typedef FlexKit::Pair<ResourceHandle, bool>	LoadDDSTexture2DFromFile_RES;
 
-	DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, IRenderSystem* RS, CopyContextHandle);
+	DDSTexture2DLoad_RES			LoadDDSTexture2DFromFile(const char* File, iAllocator* In, struct dxRenderSystem* RS, CopyContextHandle);
 	DDSTexture3DLoad_RES			LoadDDSTexture3DFromFile();
-	LoadDDSTexture2DFromFile_RES	LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, IRenderSystem* RS, CopyContextHandle);
+	LoadDDSTexture2DFromFile_RES	LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, struct dxRenderSystem* RS, CopyContextHandle);
 
 	/*
 	bool CreateDDSTextureFromFile12(

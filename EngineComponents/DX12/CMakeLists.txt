@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(dxBackend
+	"src/DDSUtilities.cpp"
 	"src/dxBackend.cpp"
 	"src/dxContext.cpp"
     "src/dxDescriptorHeaps.cpp"
@@ -22,6 +23,7 @@ target_sources(
     "include/dxBackend.hpp"
     "include/Win32Graphics.hpp"
 
+    "src/DDSUtilities.hpp"
 	"src/dxContext.hpp"
     "src/dxDescriptorHeaps.hpp"
     "src/dxIndirectLayout.hpp"

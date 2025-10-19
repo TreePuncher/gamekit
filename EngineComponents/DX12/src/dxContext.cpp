@@ -2556,7 +2556,7 @@ namespace dx_Internal
 
 	void dxDirectContext::Close()
 	{
-		renderSystem->_ReleaseDescriptorRange(shaderResources, dispatchIdx);
+		renderSystem->ReleaseDescriptorRange(shaderResources, dispatchIdx);
 		shaderResources = {};
 
 		if (auto HR = DeviceContext->Close(); FAILED(HR)) {

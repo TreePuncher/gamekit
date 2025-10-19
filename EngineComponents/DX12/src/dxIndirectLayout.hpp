@@ -52,8 +52,8 @@ namespace dx_Internal
 
 		operator bool() noexcept { return signature != nullptr; }
 
-		static			dxIndirectLayout& GetImpl(IndirectLayout&);
-		static const	dxIndirectLayout& GetImpl(const IndirectLayout&);
+		static			dxIndirectLayout& GetImpl(IndirectLayout& layout)		{ return *std::launder((dxIndirectLayout*)layout.internal); }
+		static const	dxIndirectLayout& GetImpl(const IndirectLayout& layout)	{ return *std::launder((dxIndirectLayout*)layout.internal); }
 
 		ID3D12CommandSignature*			signature = nullptr;
 		size_t							stride = 0;

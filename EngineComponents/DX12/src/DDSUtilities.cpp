@@ -1,16 +1,15 @@
-
-#if 0
 #include "DDSUtilities.hpp"
-
+#include "dxRenderSystem.hpp"
 #include <d3d12.h>
 #include <Windows.h>
 
-namespace FlexKit
+
+namespace dx_Internal
 {   /************************************************************************************************/
 	// Lifted the following functions from DirectTex
 	// TODO: move to DTex
+	using namespace FlexKit;
 
-#if 0
 	size_t BitsPerPixel(DXGI_FORMAT fmt)
 	{
 		switch( fmt )
@@ -159,12 +158,12 @@ namespace FlexKit
 			return 0;
 		}
 	}
-#endif
+
 
 	/************************************************************************************************/
 
-#if 0
-	DXGI_FORMAT MakeSRGB(_In_ DXGI_FORMAT format)
+
+    DXGI_FORMAT MakeSRGB(_In_ DXGI_FORMAT format)
 	{
 		switch (format)
 		{
@@ -193,12 +192,12 @@ namespace FlexKit
 			return format;
 		}
 	}
-#endif
+
 
 	/************************************************************************************************/
 
-#if 0
-	inline bool IsDepthStencil(DXGI_FORMAT fmt)
+
+    inline bool IsDepthStencil(DXGI_FORMAT fmt)
 	{
 		switch (fmt)
 		{
@@ -218,12 +217,12 @@ namespace FlexKit
 			return false;
 		}
 	}
-#endif
+
 
 	/************************************************************************************************/
 
-#if 0
-	static HRESULT LoadTextureDataFromFile(_In_z_ const wchar_t* fileName,
+
+    static HRESULT LoadTextureDataFromFile(_In_z_ const wchar_t* fileName,
 		uint8_t** ddsData,
 		DDS_HEADER** header,
 		uint8_t** bitData,
@@ -317,12 +316,12 @@ namespace FlexKit
 		
 		return S_OK;
 	}
-#endif
+
 
 	/************************************************************************************************/
 
-#if 0
-	HRESULT GetSurfaceInfo(
+
+    HRESULT GetSurfaceInfo(
 		_In_ size_t width,
 		_In_ size_t height,
 		_In_ DXGI_FORMAT fmt,
@@ -467,15 +466,14 @@ namespace FlexKit
 
 		return S_OK;
 	}
-#endif
 
 
 	/************************************************************************************************/
 
 	#define ISBITMASK( r,g,b,a ) ( ddpf.RBitMask == r && ddpf.GBitMask == g && ddpf.BBitMask == b && ddpf.ABitMask == a )
 
-#if 0
-	DXGI_FORMAT GetDXGIFormat(const DDS_PIXELFORMAT& ddpf)
+
+    DXGI_FORMAT GetDXGIFormat(const DDS_PIXELFORMAT& ddpf)
 	{
 		if (ddpf.flags & DDS_RGB)
 		{
@@ -713,7 +711,7 @@ namespace FlexKit
 
 		return DXGI_FORMAT_UNKNOWN;
 	}
-#endif
+
 
 	/************************************************************************************************/
 
@@ -871,9 +869,9 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-#if 0
-	static HRESULT CreateD3DResources12(
-		IRenderSystem*          RS,
+
+    static HRESULT CreateD3DResources12(
+		dxRenderSystem*         RS,
 		CopyContextHandle       handle,
 		uint32_t                resDim,
 		size_t                  width,
@@ -935,7 +933,7 @@ namespace FlexKit
 				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
 				ID3D12Resource* textureUploadHeap	= nullptr;
-				ID3D12GraphicsCommandList* cmdList	= RS->_GetCopyContext(handle).GetAPIObject();
+				ID3D12GraphicsCommandList* cmdList	= RS->GetCopyContext(handle).GetAPIObject();
 
 				auto heapProperties     = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 				auto resDesc            = CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize);
@@ -969,7 +967,7 @@ namespace FlexKit
 
 		return hr;
 	}
-#endif
+
 
 	/************************************************************************************************/
 
@@ -1009,9 +1007,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-#if 0
-	static HRESULT CreateTextureFromDDS12(
-		IRenderSystem*      RS,
+    static HRESULT CreateTextureFromDDS12(
+		dxRenderSystem*      RS,
 		CopyContextHandle   handle,
 		const DDS_HEADER*   header,
 		const uint8_t*      bitData,
@@ -1205,13 +1202,13 @@ namespace FlexKit
 
 		return hr;
 	}
-#endif
-	
+
+
 	/************************************************************************************************/
 
-#if 0
-	bool CreateDDSTextureFromFile12(
-		RenderSystem*		RS,
+
+    bool CreateDDSTextureFromFile12(
+		dxRenderSystem*		RS,
 		CopyContextHandle	handle,
 		const wchar_t*		szFileName,
 		ID3D12Resource**	texture,
@@ -1255,15 +1252,15 @@ namespace FlexKit
 		if (SUCCEEDED(hr)) if (alphaMode) *alphaMode = GetAlphaMode(header);
 		return SUCCEEDED(hr);
 	}
-#endif
+
 
 	/************************************************************************************************/
 
-#if 0
-	DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(
+
+    DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(
 		const char*         File,
 		iAllocator*         Memory,
-		RenderSystem*       RS,
+		dxRenderSystem*       RS,
 		CopyContextHandle   handle)
 	{
 		size_t NewSize = 0;
@@ -1289,13 +1286,12 @@ namespace FlexKit
 
 		return {TextureOut, res};
 	}
-#endif
 
-#if
-	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(
+
+    LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(
 		const char*			File,
 		iAllocator*			Memory,
-		RenderSystem*		RS,
+		dxRenderSystem*		RS,
 		CopyContextHandle	handle)
 	{
 		size_t NewSize = 0;
@@ -1311,16 +1307,18 @@ namespace FlexKit
 
 		auto res = CreateDDSTextureFromFile12(RS, handle, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
 
+		DeviceResource_ptr resource = TextureResources;
+
 		ResourceHandle Texture = RS->CreateGPUResource(
 			GPUResourceDesc::BuildFromMemory(
 				GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, TextureDimension::Texture2D),
-				&TextureResources, 1));
+				&resource, 1));
 
 		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");
 
 		return {Texture, res && (size_t)Texture != INVALIDHANDLE};
 	}
-#endif
+
 
 	/************************************************************************************************/
 
@@ -1333,4 +1331,3 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }
-#endif

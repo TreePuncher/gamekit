@@ -64,7 +64,7 @@ namespace dx_Internal
 		static const	dxDescriptorHeap& GetImpl(const DescriptorHeap&) noexcept;
 	private:
 
-		DescriptorHeap Clone() const;
+		DescriptorHeap Clone() const { return {}; }
 
 
 		static bool CheckType(const DesciptorHeapLayout& layout, DescHeapEntryType type, size_t idx);

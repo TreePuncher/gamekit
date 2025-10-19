@@ -62,20 +62,6 @@ namespace dx_Internal
 	using namespace FlexKit;
 	using FlexKit::IContext;
 
-    /*
-	struct buffer;
-	struct RenderTargetDesc;
-	struct RenderWindowDesc;
-	struct RenderViewDesc;
-	struct RenderWindow;
-	struct ShaderResource;
-	struct Texture2D;
-	struct TriMesh;
-
-	class ConstantBufferDataSet;
-	class StackAllocator;
-	class VertexBufferDataSet;
-    */
 	class dxDirectContext;
 	class dxRenderSystem;
 
@@ -770,7 +756,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	struct UAVBuffer
 	{
-		UAVBuffer(const dxRenderSystem& rs, const ResourceHandle handle, const size_t stride = -1, const size_t offset = 0); // auto Fills the struct
+		UAVBuffer(dxRenderSystem& rs, const ResourceHandle handle, const size_t IN_stride = -1, const size_t IN_offset = 0);
 
 		ID3D12Resource* resource;
 		uint32_t		elementCount;
@@ -2138,7 +2124,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		dxRenderSystem(const dxRenderSystem&) = delete;
 		dxRenderSystem& operator =	(const dxRenderSystem&) = delete;
 
-		bool Initiate(Graphics_Desc* desc_in);
+		bool Initiate(Graphics_Desc& desc_in) final;
 		void Release();
 
 		template<typename FN>
@@ -2231,9 +2217,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual TextureDimension	GetTextureDimension(ResourceHandle handle) const final;
 		virtual	size_t				GetTextureArraySize(ResourceHandle handle) const final;
 
+		virtual ResourceHandle		LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator) final;
+
 		virtual void				UploadTexture(ResourceHandle, CopyContextHandle, std::byte* buffer, size_t bufferSize) final; // Uses Upload Queue
 		virtual void				UploadTexture(ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount) final; // Uses Upload Queue
-		virtual void				UpdateResourceByUploadQueue(ID3D12Resource* Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) final;
+		virtual void				UpdateResourceByUploadQueue(DeviceResource_ptr Dest, CopyContextHandle, const void* Data, size_t Size, size_t ByteSize, DeviceAccessState EndState) final;
 
 
 		virtual Shader								LoadShader			(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) final;
@@ -2243,6 +2231,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
+		[[nodiscard]] virtual bool						CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator);
 		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
 		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true);
@@ -2258,10 +2247,13 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count);
 		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
+		              virtual void						CreateTextureView(ResourceHandle, DescHeapPOS) final;
+
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t resourceSize, size_t alignment)		noexcept final;
+		virtual UploadReservation	ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)		noexcept final;
 
 		virtual const IPipelineInterface* Library(ROOTLIBRARYSIG ID) const noexcept final;
 
@@ -2340,8 +2332,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		using AllocationResult = std::expected<DescriptorRange, DescriptorRangeAllocationError>;
 
-		AllocationResult	_AllocateDescriptorRange(const size_t size);
-		void				_ReleaseDescriptorRange(DescriptorRange range, uint64_t lockIdx);
+		std::optional<DescriptorRange>	CreateDescriptorRange(const uint32_t size) final;
+		void							ReleaseDescriptorRange(DescriptorRange range, uint64_t lockIdx);
 
 		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
 
@@ -2361,7 +2353,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] ID3D12DescriptorHeap* _CreateShaderVisibleHeap(const size_t);
 
 		ID3D12QueryHeap*	_GetQueryResource(QueryHandle handle);
-		CopyContext&		_GetCopyContext(CopyContextHandle handle = InvalidHandle);
+		CopyContext&		GetCopyContext(CopyContextHandle handle = InvalidHandle) final;
 		auto*				_GetCopyQueue() { return copyEngine.copyQueue; }
 
 		void				_OnCrash();

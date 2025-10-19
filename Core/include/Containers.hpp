@@ -374,13 +374,19 @@ namespace FlexKit
 			{
 				if (RHS.size() > internalBuffer.size())
 				{
-					throw std::runtime_error{ "Impossible Copy. Vector has no allocator, attempted copy into a internal buffer if too small size" };
+					throw std::runtime_error{ "Impossible Copy. Vector has no allocator, attempted copy into a internal buffer too small in size" };
 				}
 				else if(RHS.size() == 0)
 				{
 					Size	= 0;
 					A		= 0;
 					Max		= 0;
+					return *this;
+				}
+				else
+				{
+					for (auto& e : RHS)
+						push_back(e);
 				}
 
 				return *this;

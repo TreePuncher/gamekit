@@ -4,6 +4,9 @@
 #include <vkPipelineState.hpp>
 #include <ThreadUtilities.hpp>
 
+#include "vkDescriptorAllocator.hpp"
+#include "vkMemoryManager.hpp"
+
 namespace VK_internal
 {
     using namespace FlexKit;
@@ -13,6 +16,14 @@ namespace VK_internal
 	uint32_t LayoutToVK(DeviceLayout layout) noexcept;
 	uint32_t GetFormatElementSize(VkFormat format);
 	VkFormat FormatToVK(DeviceFormat format);
+
+	struct vkDescriptorHeap
+	{
+		vkAllocation	allocation;
+		VkBuffer		buffer;
+	};
+
+
 
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
     {
@@ -193,8 +204,11 @@ namespace VK_internal
 		vkb::Device				device;
 
 		iAllocator*				allocator = nullptr;
-		VkAllocationCallbacks	vkAllocator;
-		VkDescriptorPool		descriptorPool = nullptr;
+		VkAllocationCallbacks	vkAllocators;
+
+        vkDescriptorHeap			descriptorPool;
+		vkDescriptorHeapAllocator	heapAllocator;
+		vkMemoryAllocator			memoryAllocator;
 
 		// Synchronization
 		VkFence					directQueueFence = nullptr;
@@ -207,6 +221,7 @@ namespace VK_internal
 		vkResourceTable						resources;
 		Vector<struct vkDirectContext*>		pendingDirectContexts;
 		vkStateTable						pipelineStates;
+
     };
 }
 

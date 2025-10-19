@@ -330,8 +330,12 @@ namespace FlexKit
 	enum class DescHeapEntryType : uint32_t
 	{
 		ConstantBuffer,
-		ShaderResource,
-		UAVBuffer,
+		ShaderResource,			// DX12
+		ShaderResourceImage,	// VK
+		ShaderResourceBuffer,	// VK
+		UAV,					// DX12
+		UAVBuffer,				// VK
+		UAVImage,				// VK
 		HeapError
 	};
 
@@ -1711,9 +1715,9 @@ namespace FlexKit
 	struct HeapDescriptor
 	{
 		uint32_t				registerIdx = -1;
-		uint32_t				count = 0;
-		uint32_t				space = 0;
-		DescHeapEntryType		type = DescHeapEntryType::HeapError;
+		uint32_t				count	= 0;
+		uint32_t				space	= 0;
+		DescHeapEntryType		type	= DescHeapEntryType::HeapError;
 	};
 
 
@@ -2547,7 +2551,7 @@ namespace FlexKit
 		virtual SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept = 0;
 		virtual SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept = 0;
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment)					noexcept = 0;
-		virtual UploadReservation	ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)			noexcept = 0;
+		virtual UploadReservation	ReserveUploadBuffer		(const size_t uploadSize, CopyContextHandle)	noexcept = 0;
 
 		// Shader
 		virtual Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) = 0;
