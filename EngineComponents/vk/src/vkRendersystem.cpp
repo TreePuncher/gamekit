@@ -24,9 +24,9 @@ namespace VK_internal
 {
 	using namespace FlexKit;
 
-
-	typedef void (*vkGetDescriptorSetLayoutSizeFN)(VkDevice, VkDescriptorSetLayout, VkDeviceSize*);
-	vkGetDescriptorSetLayoutSizeFN vkGetDescriptorSetLayoutSize = nullptr;
+	vkGetDescriptorSetLayoutSizeFNDef				vkGetDescriptorSetLayoutSize	= nullptr;
+	vkGetDescriptorFNDef							vkGetDescriptor = nullptr;
+	vkCmdBindDescriptorBufferEmbeddedSamplersFNDef	vkCmdBindDescriptorBufferEmbeddedSamplers = nullptr;
 
 	VkBool32 VKErrorCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT          messageSeverity,
@@ -378,7 +378,14 @@ namespace VK_internal
 			return false;
 		}
 
-		vkGetDescriptorSetLayoutSize = (vkGetDescriptorSetLayoutSizeFN)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
+		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
+		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
+		vkCmdBindDescriptorBufferEmbeddedSamplers	= (vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
+
+		
+
+		FK_ASSERT(vkGetDescriptorSetLayoutSize != nullptr, "VK: Failed to get vkGetDescriptorSetLayoutSizeEXT");
+		FK_ASSERT(vkGetDescriptor != nullptr, "VK: Failed to get vkGetDescriptorEXT");
 
 		auto queue = queueRequest.value();
 
@@ -420,7 +427,7 @@ namespace VK_internal
 
 		// Create Heap Layout
 		DesciptorHeapLayout layout{};
-		layout.SetParameterAsSRV(0, 0, 1);
+		layout.SetParameterAsSRVImage(0, 0, 1);
 
 		auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
 
@@ -1322,9 +1329,6 @@ namespace VK_internal
 		{
 		case ResourceType::RenderTarget:
 		    {
-				//auto descriptorSet	= AllocateDescriptorSet(device, layout, descriptorPool);
-				//auto imageView		= CreateImageSRV(device, descriptorSet, (VkImage)desc._ptr, {});
-
 			    resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout> (
 				        resourceHandle,
 				        vkResourceEntry{

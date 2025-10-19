@@ -205,6 +205,8 @@ namespace VK_internal
 		Vector<VkSemaphore>					waits;
 		Vector<VkSemaphore>					signals;
 		Vector<VkRenderingAttachmentInfo>	pendingAttachments;
+		Vector<VkViewport>					viewports;
+		Vector<VkRect2D>					scissors;
 
 		VkRect2D									renderArea;
 		std::optional<VkRenderingAttachmentInfo>	depthBufferAttachment;

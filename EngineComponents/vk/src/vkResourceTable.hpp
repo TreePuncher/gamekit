@@ -25,12 +25,13 @@ namespace VK_internal
             VkBuffer    buffer;
             VkImage     image;
         };
+    };
 
-        union
-        {
-            VkBufferView    bufferView;
-            VkImageView     imageView;
-        };
+
+    union vkResourceViews
+    {
+        VkBufferView    bufferView;
+        VkImageView     imageView;
     };
 
 
@@ -42,13 +43,15 @@ namespace VK_internal
         Layout      = 3,
         XYZW        = 4,
         Flags       = 5,
-        Extra       = 6
+        View        = 6,
+        Clear       = 7, 
+        Extra       = 8
     };
 
 
     struct vkResourceTable
     {
-        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout, uint4, uint32_t, void*>;
+        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout, uint4, uint32_t, vkResourceViews, VkClearValue, void*>;
 
         vkResourceTable(iAllocator& IN_allocator) :
             fields  { IN_allocator },
@@ -59,7 +62,7 @@ namespace VK_internal
         {
             auto ul = std::unique_lock{ m };
 
-            auto idx = fields.push_back({}, {}, {}, DeviceLayout::Common, { 0, 0, 0, 0 }, 0, { });
+            auto idx = fields.push_back({}, {}, {}, DeviceLayout::Common, { 0, 0, 0, 0 }, 0, {}, VkClearValue{ .color = { 0.0f, 0.0f, 0.0f, 0.0f } }, {});
             return handles.GetNewHandle(idx);;
         }
 
