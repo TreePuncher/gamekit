@@ -76,8 +76,8 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	
-	UAVBuffer::UAVBuffer(const dxRenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
+
+	UAVBuffer::UAVBuffer(dxRenderSystem& rs, const ResourceHandle handle, const size_t IN_stride, const size_t IN_offset)
 	{
 		FK_ASSERT(IN_offset < std::numeric_limits<uint32_t>::max());
 
@@ -91,7 +91,6 @@ namespace dx_Internal
 		offset			= (uint32_t)IN_offset;
 		format			= uavLayout.format;
 	}
-
 
 	/************************************************************************************************/
 
@@ -2057,11 +2056,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool dxRenderSystem::Initiate(Graphics_Desc* in)
+	bool dxRenderSystem::Initiate(Graphics_Desc& in)
 	{
-		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
+		Vector<ID3D12DeviceChild*> ObjectsCreated(in.Memory);
 
-		Memory				= in->Memory;
+		Memory				= in.Memory;
 		Settings.AAQuality	= 0;
 		Settings.AASamples	= 1;
 		UINT DeviceFlags	= 0;
@@ -2086,15 +2085,15 @@ namespace dx_Internal
 #endif
 
 
-		if (in->DX_DebugMode && !FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug1), (void**)&Debug)))
+		if (in.DX_DebugMode && !FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug1), (void**)&Debug)))
 		{
 			Debug->EnableDebugLayer();
 
 			if (!FAILED(D3D12GetDebugInterface(__uuidof(ID3D12Debug5), (void**)&pDebug5)))
 			{
 				pDebug5->SetEnableAutoName(true);
-				pDebug5->SetEnableGPUBasedValidation(in->DX_GPUvalidation);
-				Debug->SetEnableSynchronizedCommandQueueValidation(in->DX_GPUvalidation);
+				pDebug5->SetEnableGPUBasedValidation(in.DX_GPUvalidation);
+				Debug->SetEnableSynchronizedCommandQueueValidation(in.DX_GPUvalidation);
 			}
 		}
 		else
@@ -2366,20 +2365,20 @@ namespace dx_Internal
 		DescriptorDSVSize			= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 		DescriptorCBVSRVUAVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-		descriptorHeapAllocator.Initialize(*this, 1'000'000, in->Memory);
+		descriptorHeapAllocator.Initialize(*this, 1'000'000, in.Memory);
 		heaps.Init(features.resourceHeapTier, pDevice);
-		copyEngine.Initiate(Device, uint32_t((threads.GetThreadCount() + 1) * 1.5), ObjectsCreated, in->Memory);
+		copyEngine.Initiate(Device, uint32_t((threads.GetThreadCount() + 1) * 1.5), ObjectsCreated, in.Memory);
 
 		for (size_t I = 0; I < 3 * (1 + threads.GetThreadCount()); ++I)
 			Contexts.emplace_back(this, Memory);
 
 		InitiateComplete = true;
 		
-		rootLibrary.Initiate(this, *in->Memory, *in->TempMemory);
+		rootLibrary.Initiate(this, *in.Memory, *in.TempMemory);
 		ReadBackTable.Initiate(Device);
 
-		FreeList_GraphicsQueue.Allocator	= in->Memory;
-		FreeList_CopyQueue.Allocator		= in->Memory;
+		FreeList_GraphicsQueue.Allocator	= in.Memory;
+		FreeList_CopyQueue.Allocator		= in.Memory;
 		DefaultTexture						= _CreateDefaultTexture();
 
 		RegisterPSOLoader(CLEARBUFFERPSO, CreateClearBufferPSO);
@@ -2842,6 +2841,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	ResourceHandle dxRenderSystem::LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator)
+	{
+		return InvalidHandle;
+	}
+
 	void dxRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
 	{
 		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
@@ -2953,6 +2957,15 @@ namespace dx_Internal
 	void dxRenderSystem::SetTextureFrameGraphIndex(ResourceHandle Texture, size_t Index) noexcept
 	{
 		Textures.SetFrameGraphIndex(Texture, directSubmissionCounter, Index);
+	}
+
+
+	/************************************************************************************************/
+
+
+	[[nodiscard]] bool dxRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator)
+	{
+		return false;
 	}
 
 
@@ -3702,6 +3715,15 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	void dxRenderSystem::CreateTextureView(ResourceHandle, DescHeapPOS)
+	{
+		FK_LOG_ERROR("DX: CreateTextureView unimplemented!");
+	}
+
+
+	/************************************************************************************************/
+
+
 	SubAllocation dxRenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept
 	{
 		return ConstantBuffers.Reserve(CB, reserveSize);
@@ -4285,7 +4307,7 @@ namespace dx_Internal
 
 	void _UpdateSubResourceByUploadQueue(dxRenderSystem* RS, CopyContextHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* desc)
 	{
-		auto& copyCtx = RS->_GetCopyContext(uploadHandle);
+		auto& copyCtx = RS->GetCopyContext(uploadHandle);
 
 		for (size_t I = 0; I < desc->subResourceCount; ++I)
 		{
@@ -4310,18 +4332,18 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxRenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceAccessState endState)
+	void dxRenderSystem::UpdateResourceByUploadQueue(DeviceResource_ptr dest, CopyContextHandle uploadQueue, const void* data, size_t Size, size_t byteSize, DeviceAccessState endState)
 	{
-		if (nullptr == data || nullptr == dest) [[unlikely]]
+		if (nullptr == data || nullptr == dest._ptr)
 			return;
 
-		auto& copyCtx = _GetCopyContext(uploadQueue);
+		auto& copyCtx = GetCopyContext(uploadQueue);
 
 		const auto reservedSpace = copyCtx.Reserve(Size);
 
 		memcpy(reservedSpace.buffer, data, Size);
 
-		copyCtx.CopyBuffer(dest, 0, reservedSpace);
+		copyCtx.CopyBuffer(dest.As<ID3D12Resource>(), 0, reservedSpace);
 	}
 
 
@@ -4628,7 +4650,7 @@ namespace dx_Internal
 		HEAP_Props.CreationNodeMask	    = 0;
 		HEAP_Props.VisibleNodeMask		= 0;
 
-		auto& cctx = RS->_GetCopyContext(handle);
+		auto& cctx = RS->GetCopyContext(handle);
 
 		for (uint32_t itr = 0; itr < BufferCount; ++itr)
 		{
@@ -6061,7 +6083,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	dxRenderSystem::AllocationResult	dxRenderSystem::_AllocateDescriptorRange(const size_t size)
+	std::optional<DescriptorRange>	dxRenderSystem::CreateDescriptorRange(const uint32_t size)
 	{
 		uint64_t completed = directFence->GetCompletedValue();
 
@@ -6070,14 +6092,14 @@ namespace dx_Internal
 		if (res)
 			return res.value();
 		else
-			return std::unexpected{ dxRenderSystem::DescriptorRangeAllocationError::OutOfSpace };
+			return {};// std::unexpected{ dxRenderSystem::DescriptorRangeAllocationError::OutOfSpace };
 	}
 
 
 	/************************************************************************************************/
 
 
-	void dxRenderSystem::_ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
+	void dxRenderSystem::ReleaseDescriptorRange(DescriptorRange range, uint64_t lock)
 	{
 		descriptorHeapAllocator.Release(range, lock, directFence->GetCompletedValue());
 	}
@@ -6157,7 +6179,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	CopyContext& dxRenderSystem::_GetCopyContext(CopyContextHandle handle)
+	CopyContext& dxRenderSystem::GetCopyContext(CopyContextHandle handle)
 	{
 		if (handle == InvalidHandle)
 		{
@@ -6689,6 +6711,15 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	UploadReservation	dxRenderSystem::ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)	noexcept
+	{
+		return UploadReservation{};
+	}
+
+
+	/************************************************************************************************/
+
+
 	const IPipelineInterface* dxRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		switch (ID)
@@ -6744,7 +6775,7 @@ namespace dx_Internal
 	RootSignature* dxRenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> desciptorHeaps{ temp };
-		Vector<RootSignature::SlotType, 32>		slots;
+		Vector<RootSignature::SlotType, 32>		slots{ Memory };
 		static_vector<CD3DX12_ROOT_PARAMETER>	parameters;
 
 		for (const auto& I : builder.RootEntries)
@@ -6960,7 +6991,7 @@ namespace dx_Internal
 				dxDirectContext& context = Contexts[idx];
 				if (context._GetCounter() <= completedCounter)
 				{
-					auto range = _AllocateDescriptorRange(1024);
+					auto range = CreateDescriptorRange(1024);
 
 					if (!range.has_value())
 						FK_LOG_ERROR("Failed to Allocate descriptor range!");
@@ -7780,7 +7811,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAV1DToDescHeap(dxRenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS)
+	DescHeapPOS PushUAV1DToDescHeap(dxRenderSystem* RS, ID3D12Resource* resource, DXGI_FORMAT format, uint mip, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= format;
@@ -7796,7 +7827,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAVBufferToDescHeap(dxRenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS)
+	DescHeapPOS PushUAVBufferToDescHeap(dxRenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= buffer.format;
@@ -7819,7 +7850,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	inline DescHeapPOS PushUAVBufferToDescHeap2(dxRenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
+	DescHeapPOS PushUAVBufferToDescHeap2(dxRenderSystem* RS, UAVBuffer buffer, ID3D12Resource* counter, DescHeapPOS POS)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format						= buffer.format;

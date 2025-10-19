@@ -25,6 +25,12 @@ namespace VK_internal
             VkBuffer    buffer;
             VkImage     image;
         };
+
+        union
+        {
+            VkBufferView    bufferView;
+            VkImageView     imageView;
+        };
     };
 
 

@@ -635,7 +635,7 @@ namespace VK_internal
 		if (!pendingDraws)
 			return;
 
-        //vkCmdEndRenderingKHR(commandBuffer);
+		vkCmdEndRendering(commandBuffer);
 
 		pendingDraws = false;
 		pendingAttachments.clear();
@@ -661,7 +661,7 @@ namespace VK_internal
 			.pStencilAttachment		= stencilBufferAttachment.and_then([](auto& val)	{ return std::optional{ &val }; }).value_or(nullptr),
 		};
 
-		//vkCmdBeginRenderingKHR(commandBuffer, &renderingInfo);
+		vkCmdBeginRendering(commandBuffer, &renderingInfo);
 	}
 
 	vkRenderSystem& vkDirectContext::RenderSystem() noexcept

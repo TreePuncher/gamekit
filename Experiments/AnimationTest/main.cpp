@@ -3,7 +3,7 @@
 #include "AnimationTest.hpp"
 #include <vkBackend.hpp>
 #include <vkSurface.hpp>
-
+#include <dxBackend.hpp>
 
 using namespace FlexKit;
 
@@ -92,7 +92,12 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{ .CreateRenderSystem = FlexKit::CreateVK });
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{
+			.GPUdebugMode = true,
+			.GPUValidation = true,
+			.GPUSyncQueues = true,
+			.CreateRenderSystem = CreateDX,
+		});
 
 		app->PushState<TestState>();
 		app->GetCore().FPSLimit		= 144;

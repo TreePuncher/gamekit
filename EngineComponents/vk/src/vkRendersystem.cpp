@@ -25,6 +25,9 @@ namespace VK_internal
 	using namespace FlexKit;
 
 
+	typedef void (*vkGetDescriptorSetLayoutSizeFN)(VkDevice, VkDescriptorSetLayout, VkDeviceSize*);
+	vkGetDescriptorSetLayoutSizeFN vkGetDescriptorSetLayoutSize = nullptr;
+
 	VkBool32 VKErrorCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT          messageSeverity,
 		VkDebugUtilsMessageTypeFlagsEXT                 messageTypes,
@@ -75,7 +78,7 @@ namespace VK_internal
 		VkDescriptorPoolCreateInfo descriptorPoolCreateDesc{
 			.sType				= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
 			.pNext				= &ext0,
-			.flags				= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV | VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV,
+			.flags				= VK_DESCRIPTOR_POOL_CREATE_HOST_ONLY_BIT_EXT,
             .maxSets			= 10000,
             .poolSizeCount		= 1,
             .pPoolSizes			= sizes
@@ -113,49 +116,74 @@ namespace VK_internal
 	}
 
 
-	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
+	vkDescriptorHeap CreateDescriptorBuffer(VkDevice device, size_t bufferSize, const vkAllocation& allocation)
 	{
-		static constexpr VkDescriptorType typesAvailable[] = {
-		   VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-		   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-		   VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-		   VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-		   VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		   VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+	    // Create Buffer
+		VkBufferCreateInfo createBufferInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,			//VkBufferCreateFlags;
+			.size					= bufferSize,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,			// uint32_t               
+			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
 		};
 
+		VkBuffer buffer;
+		vkCreateBuffer(device, &createBufferInfo, nullptr, &buffer);
+		vkBindBufferMemory(device, buffer, allocation.memory, allocation.offset);
+
+		vkDescriptorHeap heap{
+			.allocation	= allocation,
+			.buffer		= buffer,
+		};
+
+		return heap;
+	}
+
+
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
+	{
 		Vector<VkDescriptorSetLayoutBinding>	bindings		{ allocator };
-		Vector<VkMutableDescriptorTypeListEXT>	validMutations	{ allocator };
 
 		for (auto& entry : layout.entries)
 		{
+			VkDescriptorType type;
+			switch (entry.type)
+			{
+			case DescHeapEntryType::ConstantBuffer:
+				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				break;
+			case DescHeapEntryType::ShaderResourceBuffer:
+				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+				break;
+			case DescHeapEntryType::ShaderResourceImage:
+				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				break;
+			case DescHeapEntryType::UAVBuffer:
+				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				break;
+			case DescHeapEntryType::UAVImage:
+				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				break;
+			}
+
 			VkDescriptorSetLayoutBinding binding;
 			binding = VkDescriptorSetLayoutBinding{
 						.binding			= entry.registerIdx,
-						.descriptorType		= VkDescriptorType::VK_DESCRIPTOR_TYPE_MUTABLE_EXT,
+						.descriptorType		= type,
 						.descriptorCount	= entry.count,
 						.stageFlags			= VK_SHADER_STAGE_ALL,
 						.pImmutableSamplers = nullptr };
 
 			bindings.push_back(binding);
-			validMutations.push_back(
-				VkMutableDescriptorTypeListEXT{
-					.descriptorTypeCount	= 6,
-				    .pDescriptorTypes		= typesAvailable
-				});
 		}
-
-		VkMutableDescriptorTypeCreateInfoEXT ext0{
-			.sType							= VkStructureType::VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_EXT,
-			.pNext							= nullptr,
-			.mutableDescriptorTypeListCount	= (uint32_t)validMutations.size(),
-			.pMutableDescriptorTypeLists	= validMutations.data()
-		};
 
 		VkDescriptorSetLayoutCreateInfo createLayoutDesc{
 			.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext			= &ext0,
-			.flags			= 0,
+			.pNext			= nullptr,
+			.flags			= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
 			.bindingCount	= (uint32_t)bindings.size(),
 			.pBindings		= bindings.data()
 		};
@@ -220,11 +248,34 @@ namespace VK_internal
 		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 	}
 
+	void CreateImageSRV(VkDevice device, VkDescriptorSet descriptorSet, VkImage buffer, const DescriptorLocation& viewLocation = {})
+	{
+		VkDescriptorImageInfo imageInfo{
+	        .sampler		= nullptr, 
+            .imageView		= nullptr,
+            .imageLayout	= VK_IMAGE_LAYOUT_GENERAL
+		};
+
+		VkWriteDescriptorSet write{
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext				= nullptr,
+            .dstSet				= descriptorSet,
+            .dstBinding			= viewLocation.idx,
+            .dstArrayElement	= viewLocation.arrayIdx,
+            .descriptorCount	= 1,
+            .descriptorType		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            .pImageInfo			= &imageInfo
+		};
+		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+	}
+
 	vkRenderSystem::vkRenderSystem(ThreadManager* threads, iAllocator& IN_allocator) :
-	    resources				{ IN_allocator },
 	    allocator				{ IN_allocator },
+		memoryAllocator			{ IN_allocator },
 		pendingDirectContexts	{ IN_allocator },
-		pipelineStates			{ threads, IN_allocator } {}
+		pipelineStates			{ threads, IN_allocator },
+	    resources				{ IN_allocator },
+        vkAllocators			{ nullptr }{}
 
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
@@ -259,10 +310,21 @@ namespace VK_internal
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
 
-		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutableDescriptors{
-			.sType					= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT,
-			.pNext					= nullptr,
-			.mutableDescriptorType	= true
+		VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeature{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+	        .pNext = nullptr, 
+	        .descriptorBuffer					= true,
+	        .descriptorBufferCaptureReplay		= false,
+	        .descriptorBufferImageLayoutIgnored	= true,
+	        .descriptorBufferPushDescriptors	= true,
+		};
+
+		VkPhysicalDeviceBufferDeviceAddressFeaturesEXT deviceAddressFeatureInfo{
+			.sType								= VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT,
+		    .pNext								= &descriptorBufferFeature,
+            .bufferDeviceAddress				= true,
+            .bufferDeviceAddressCaptureReplay	= false,
+            .bufferDeviceAddressMultiDevice		= false
 		};
 
 		auto physRequest = selector
@@ -272,10 +334,10 @@ namespace VK_internal
 			.add_required_extension("VK_KHR_depth_stencil_resolve")
 		    .add_required_extension("VK_KHR_dynamic_rendering")
 			.add_required_extension("VK_KHR_maintenance3")
-			.add_required_extension("VK_EXT_mutable_descriptor_type")
             .add_required_extension("VK_KHR_swapchain")
 			.add_required_extension("VK_KHR_timeline_semaphore")
 			.add_required_extension("VK_KHR_spirv_1_4")
+			.add_required_extension("VK_EXT_descriptor_buffer")
 		    //.add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
 			.set_required_features({
                     .fullDrawIndexUint32	= true,
@@ -296,7 +358,7 @@ namespace VK_internal
             })
 	        .set_required_features_13({
                     .sType				= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-			        .pNext				= &mutableDescriptors,
+			        .pNext				= &deviceAddressFeatureInfo,
 				    .synchronization2	= true,
                     .dynamicRendering	= true,
 	        })
@@ -316,16 +378,57 @@ namespace VK_internal
 			return false;
 		}
 
+		vkGetDescriptorSetLayoutSize = (vkGetDescriptorSetLayoutSizeFN)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
+
 		auto queue = queueRequest.value();
 
-		//descriptorPool = CreateDescriptorHeap(device, 1000);
+		memoryAllocator.Init(*this);
+
+		auto descriptorHeapBufferAllocation = memoryAllocator.Allocate(0,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			1000000u * 64);
+
+		if (!descriptorHeapBufferAllocation)
+			throw std::runtime_error{ "VK: Failed to allocate descriptor heap buffer!" };
+
+		descriptorPool = CreateDescriptorBuffer(device, 1000000u, descriptorHeapBufferAllocation.value());
+
+		VkBufferDeviceAddressInfoKHR address_info{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR };
+		address_info.buffer = descriptorPool.buffer;
+		auto gpuAddress = vkGetBufferDeviceAddress(device, &address_info);
+
+		VkMemoryMapInfo memoryMapInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.memory = descriptorHeapBufferAllocation.value().memory,
+			.offset	= 0,
+			.size = VK_WHOLE_SIZE
+		};
+
+		uint64_t cpuAddress;
+		vkMapMemory2(device, &memoryMapInfo, (void**)&cpuAddress);
+
+		HeapAllocatorDescription heapAllocDesc{
+			.CPUBegin	= cpuAddress,
+			.GPUBegin	= gpuAddress,
+			.size		= 1000000u,
+			.device		= device, 
+			.buffer		= descriptorPool.buffer
+		};
+		heapAllocator.Initialize(heapAllocDesc, allocator);
 
 		// Create Heap Layout
 		DesciptorHeapLayout layout{};
-		layout.SetParameterAsCBV(0, 0, 1);
-		layout.SetParameterAsSRV(1, 1, 1);
+		layout.SetParameterAsSRV(0, 0, 1);
 
-		//auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
+		auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
+
+		VkDeviceSize size;
+		vkGetDescriptorSetLayoutSize(device, vkLayout, &size);
+
+		heapAllocator.Alloc_ST(size, 0);
+
 
 		//auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
 
@@ -1219,18 +1322,20 @@ namespace VK_internal
 		{
 		case ResourceType::RenderTarget:
 		    {
+				//auto descriptorSet	= AllocateDescriptorSet(device, layout, descriptorPool);
+				//auto imageView		= CreateImageSRV(device, descriptorSet, (VkImage)desc._ptr, {});
+
 			    resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout> (
 				        resourceHandle,
 				        vkResourceEntry{
-					        .type	= vkResourceEntry::Type::RenderTarget,
-					        .image	= (VkImage)desc._ptr
+					        .type		= vkResourceEntry::Type::RenderTarget,
+					        .image		= (VkImage)desc._ptr,
+							//.imageView	= imageView
 				        },
 					    desc.initialLayout);
 
-				if (desc.swapChain)
-				{
-				    
-				}
+
+
 		    }	break;
 		case ResourceType::DepthTarget:
 		    {

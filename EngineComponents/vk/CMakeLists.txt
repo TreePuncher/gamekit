@@ -24,7 +24,9 @@ target_sources(
         vkBackend.cpp
         "src/vkCopyContext.cpp"
         "src/vkDescriptorHeap.cpp"
+	    "src/vkDescriptorAllocator.cpp"
         "src/vkDirectContext.cpp"
+        "src/vkMemoryManager.cpp"
         "src/vkPipelineLayout.cpp"
         "src/vkPipelineBuilder.cpp"
         "src/vkPipelineState.cpp"
@@ -50,7 +52,9 @@ target_sources(
 
     "src/vkCopyContext.hpp"
     "src/vkDescriptorHeap.hpp"
+	"src/vkDescriptorAllocator.hpp"
     "src/vkDirectContext.hpp"
+    "src/vkMemoryManager.hpp"
     "src/vkPipelineLayout.hpp"
     "src/vkPipelineBuilder.hpp"
     "src/vkPipelineState.hpp"
