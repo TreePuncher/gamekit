@@ -1,6 +1,6 @@
 #include "DDSUtilities.hpp"
 #include "dxRenderSystem.hpp"
-#include <d3d12.h>
+#include <DirectX/d3d12.h>
 #include <Windows.h>
 
 

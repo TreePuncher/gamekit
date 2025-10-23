@@ -38,27 +38,27 @@ namespace FlexKit
 	void Win32UpdateInput();
 
 
-	IRenderWindow*	CreateWin32RenderWindow			(IRenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc);
-	IRenderWindow*	CreateWin32RenderWindowFromHWND	(IRenderSystem& renderSystem, uint64_t hwnd);
+	IRenderWindow*		CreateWin32RenderWindow			(IRenderSystem& renderSystem, const Win32RenderWindowDesc& renderWindowDesc);
+	IRenderWindow*		CreateWin32RenderWindowFromHWND	(IRenderSystem& renderSystem, uint64_t hwnd);
 
 
-	float			GetDPIScaling(const IRenderWindow*);
-	int2			GetMousedPos(const IRenderWindow*);
+	float				GetDPIScaling	(const IRenderWindow*);
+	int2				GetMousedPos	(const IRenderWindow*);
 
-	void			HideSystemCursor(IRenderWindow*);
-	void			ShowSystemCursor(IRenderWindow*);
+	void				HideSystemCursor(IRenderWindow*);
+	void				ShowSystemCursor(IRenderWindow*);
 
-	void			ToggleMouseCapture(IRenderWindow*);
-	MouseInputState	UpdateCapturedMouseInput(double dT, IRenderWindow*);
-	bool			IsMouseCaptured(IRenderWindow*);
+	void				ToggleMouseCapture(IRenderWindow*);
+	MouseInputState		UpdateCapturedMouseInput(double dT, IRenderWindow*);
+	bool				IsMouseCaptured(IRenderWindow*);
 
-	bool			isValid(const IRenderWindow*);
+	bool				isValid(const IRenderWindow*);
 
-	void			SetWindowTitle(const char* str, IRenderWindow*);
-	void			SetMouseCapture(bool enable, IRenderWindow*);
-	void			SetSystemCursorToWindowCenter(IRenderWindow*);
+	void				SetWindowTitle(const char* str, IRenderWindow*);
+	void				SetMouseCapture(bool enable, IRenderWindow*);
+	void				SetSystemCursorToWindowCenter(IRenderWindow*);
 
-	void			Subscribe(IRenderWindow*, Win32InputSubscriber& subscriber);
+	void				Subscribe(IRenderWindow*, Win32InputSubscriber& subscriber);
 
 	IDXGISwapChain4*	INTERNAL_GetSwapChain(const IRenderWindow*);
 	uint64_t			INTERNAL_WindowHandle(const IRenderWindow*);

@@ -499,7 +499,6 @@ namespace FlexKit
 		ComputeQueueShaderResource,
 		ComputeQueueCopySrc,
 		ComputeQueueCopyDst,
-		VideoQueueCommon,
 		Undefined,
 
 		Unknown = 0xffffffff,
@@ -2695,7 +2694,6 @@ namespace FlexKit
 		case DeviceLayout::ComputeQueueShaderResource:
 		case DeviceLayout::ComputeQueueCopySrc:
 		case DeviceLayout::ComputeQueueCopyDst:
-		case DeviceLayout::VideoQueueCommon:
 		default:
 			return false;
 		}

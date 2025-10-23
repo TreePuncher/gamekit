@@ -1,5 +1,4 @@
-#if 0
-#include "DX12Graphics.hpp"
+#include "dxRenderSystem.hpp"
 #include "MemoryUtilities.hpp"
 #include "ProfilingUtilities.hpp"
 #include "Win32Graphics.hpp"
@@ -12,6 +11,7 @@
 
 namespace FlexKit
 {	/************************************************************************************************/
+	using namespace dx_Internal;
 
 	// Globals
 	inline HWND			        gWindowHandle	= 0;
@@ -508,7 +508,7 @@ namespace FlexKit
 				swapChain   = nullptr;
 				hWindow     = 0;
 
-				RenderSystem::_GetInstance().Memory->release(*this);
+				static_cast<dxRenderSystem&>(IRenderSystem::GetInstance()).Memory->release(*this);
 			}
 		}
 
@@ -643,23 +643,23 @@ namespace FlexKit
 		HWND						WindowHandle() const { return hWindow; }
 
 
-		RenderSystem*               renderSystem;
-		IDXGISwapChain4*            swapChain;
-		ResourceHandle              backBuffer;
-		DXGI_FORMAT					Format;
-		HWND						hWindow;
-		UINT                        flags;
+		dxRenderSystem*		renderSystem	= nullptr;
+		IDXGISwapChain4*	swapChain		= nullptr;
+		ResourceHandle		backBuffer		= InvalidHandle;
+		DXGI_FORMAT			Format;
+		HWND				hWindow;
+		UINT				flags;
 
-		uint2						maxSize;
-		uint2						WH; // Width-Height
-		uint2						WindowCenterPosition;
-		uint2                       LastMousePOS;
-		Viewport					VP;
+		uint2				maxSize;
+		uint2				WH; // Width-Height
+		uint2				WindowCenterPosition;
+		uint2				LastMousePOS;
+		Viewport			VP;
 
-		bool						fullscreen = false;
-		bool                        mouseCapture = false;
-		double                      T = 0.0f;
-		MouseInputState             mouseState;
+		bool				fullscreen		= false;
+		bool				mouseCapture	= false;
+		double				T = 0.0f;
+		MouseInputState		mouseState;
 
 		EventNotifier<> Handler;
 
@@ -691,7 +691,7 @@ namespace FlexKit
 
 	IRenderWindow* CreateWin32RenderWindow(IRenderSystem& irenderSystem, const Win32RenderWindowDesc& renderWindowDesc)
 	{
-		RenderSystem& renderSystem = static_cast<RenderSystem&>(irenderSystem);
+		dxRenderSystem& renderSystem = static_cast<dxRenderSystem&>(irenderSystem);
 
 		static bool _TEMP   =
 			[]
@@ -755,8 +755,7 @@ namespace FlexKit
 		renderWindow.VP.Min         = 0.0f;
 
 
-
-		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
+		IDXGISwapChain1* newSwapChainPtr = nullptr;
 
 		// Create Swap Chain
 		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
@@ -776,7 +775,7 @@ namespace FlexKit
 		HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
 			renderSystem.GraphicsQueue, windowHWND,
 			&SwapChainDesc, nullptr, nullptr,
-			&NewSwapChain_ptr);
+			&newSwapChainPtr);
 
 		if (FAILED(HR))
 		{
@@ -784,14 +783,14 @@ namespace FlexKit
 			return {};
 		}
 
-		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(newSwapChainPtr);
 		renderWindow.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
-		ID3D12Resource* buffer[3];
+		DeviceResource_ptr buffer[3];
 
 		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
-			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+			newSwapChainPtr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
 				FK_ASSERT(buffer[I], "Failed to create back buffer!");
 				return nullptr;
@@ -808,17 +807,17 @@ namespace FlexKit
 
 		if (renderWindowDesc.fullscreen)
 		{
-			auto res = NewSwapChain_ptr->SetFullscreenState(true, nullptr);
+			auto res = newSwapChainPtr->SetFullscreenState(true, nullptr);
 
 			for (auto& b : buffer)
-				b->Release();
+				b.As<ID3D12Resource>()->Release();
 
-			NewSwapChain_ptr->ResizeBuffers(3, internal_WH[0], internal_WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+			newSwapChainPtr->ResizeBuffers(3, internal_WH[0], internal_WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 			renderWindow.WH = internal_WH;
 
 			for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 			{
-				NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+				newSwapChainPtr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 				if (!buffer[I]) {
 					FK_ASSERT(buffer[I], "Failed to create back buffer!");
 					return nullptr;
@@ -828,7 +827,7 @@ namespace FlexKit
 		}
 
 		renderWindow.backBuffer = renderSystem.CreateGPUResource(
-			GPUResourceDesc::BackBuffered(
+			GPUResourceDesc::SwapChain(
 				{ SwapChainDesc.Width, SwapChainDesc.Height },
 				DeviceFormat::R16G16B16A16_FLOAT,
 				buffer, 3));
@@ -848,9 +847,8 @@ namespace FlexKit
 
 	IRenderWindow* CreateWin32RenderWindowFromHWND(IRenderSystem& irenderSystem, uint64_t hwnd)
 	{
-		RenderSystem& renderSystem = static_cast<RenderSystem&>(irenderSystem);
-
-		Win32RenderWindow& renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
+		dxRenderSystem&		renderSystem = static_cast<dxRenderSystem&>(irenderSystem);
+		Win32RenderWindow&	renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
 
 		RECT rect;
 		GetWindowRect((HWND)hwnd, &rect);
@@ -867,11 +865,11 @@ namespace FlexKit
 		SwapChainDesc.SampleDesc.Count	= 1;
 		SwapChainDesc.Flags				= DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
+		IDXGISwapChain1* newSwapChainPtr = nullptr;
 		HRESULT HR = renderSystem.pGIFactory->CreateSwapChainForHwnd(
 			renderSystem.GraphicsQueue, (HWND)hwnd,
 			&SwapChainDesc, nullptr, nullptr,
-			&NewSwapChain_ptr);
+			&newSwapChainPtr);
 
 		if (FAILED(HR))
 		{
@@ -879,15 +877,15 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
+		renderWindow.swapChain  = static_cast<IDXGISwapChain4*>(newSwapChainPtr);
 		renderWindow.flags      = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH | DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
 		//CreateBackBuffer
-		ID3D12Resource* buffer[3];
+		DeviceResource_ptr buffer[3];
 
 		for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
-			NewSwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+			newSwapChainPtr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
 			if (!buffer[I]) {
 				FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
 				return nullptr;
@@ -896,7 +894,7 @@ namespace FlexKit
 		}
 
 		renderWindow.backBuffer = renderSystem.CreateGPUResource(
-			GPUResourceDesc::BackBuffered(
+			GPUResourceDesc::SwapChain(
 				{ SwapChainDesc.Width, SwapChainDesc.Height },
 				DeviceFormat::R16G16B16A16_FLOAT,
 				buffer, 3));
@@ -1094,4 +1092,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-#endif

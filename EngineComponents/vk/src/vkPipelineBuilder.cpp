@@ -24,9 +24,9 @@ namespace VK_internal
 		switch (mode)
 		{
 		case ECullMode::BACK:
-			return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
-		case ECullMode::FRONT:
 			return VkCullModeFlagBits::VK_CULL_MODE_FRONT_BIT;
+		case ECullMode::FRONT:
+			return VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT;
 		case ECullMode::NONE:
 			return VkCullModeFlagBits::VK_CULL_MODE_NONE;
 		}

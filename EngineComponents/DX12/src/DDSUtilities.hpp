@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DDSUTILITIES_H
 #define DDSUTILITIES_H
 
+#define USING_DIRECTX_HEADERS
+
 #include "BuildSettings.hpp"
 #include "Containers.hpp"
 #include "RenderSystemInterface.hpp"

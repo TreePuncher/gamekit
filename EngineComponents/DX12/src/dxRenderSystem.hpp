@@ -340,8 +340,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE;
 		case DeviceLayout::ComputeQueueCopyDst:
 			return D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST;
-		case DeviceLayout::VideoQueueCommon:
-			return D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON;
 		case DeviceLayout::Undefined:
 			return D3D12_BARRIER_LAYOUT_UNDEFINED;
 		case DeviceLayout::Unknown:
