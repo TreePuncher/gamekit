@@ -26,8 +26,8 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 	
     if(BuildEditor)
         message("Building Editor")
-        add_subdirectory(EditorReflection)
-        add_subdirectory(Editor)
+        #add_subdirectory(EditorReflection)
+        #add_subdirectory(Editor)
     endif()
 
     if(BuildExamples)

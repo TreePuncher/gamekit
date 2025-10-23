@@ -491,6 +491,7 @@ namespace FlexKit
 		VkInstance	instance	= vkRS.instance;
 		VkDevice	device		= vkRS.device;
 
+
 		auto windowHWND = CreateWindowW(L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
 								0,
 								0,
@@ -500,6 +501,18 @@ namespace FlexKit
 								nullptr,
 								gInstance,
 								new FlexKit::EventNotifier<>);
+
+		RECT ClientRect;
+		RECT WindowRect;
+		GetClientRect(windowHWND, &ClientRect);
+		GetWindowRect(windowHWND, &WindowRect);
+		MoveWindow(
+			windowHWND,
+			10, 10,
+			WindowRect.right - WindowRect.left - ClientRect.right + WH[0],
+			WindowRect.bottom - WindowRect.top - ClientRect.bottom + WH[1],
+			false);
+
 
 		ShowWindow(windowHWND, 5);
 		VkWin32SurfaceCreateInfoKHR createSurfaceInfo{
@@ -517,6 +530,11 @@ namespace FlexKit
 			return nullptr;
 		}
 
+		VkSurfaceCapabilitiesKHR capabilities;
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkRS.device.physical_device, surface, &capabilities);
+
+		FK_ASSERT((capabilities.supportedUsageFlags | (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) > 0);
+
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
 		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .pNext					= 0,
@@ -525,7 +543,7 @@ namespace FlexKit
             .minImageCount			= 3,
             .imageFormat			= VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
             .imageColorSpace		= VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .imageExtent			= { .width = 782, .height = 553 },
+            .imageExtent			= { .width = capabilities.maxImageExtent.width, .height = capabilities.maxImageExtent.height },
             .imageArrayLayers		= 1,
             .imageUsage				= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE,
@@ -612,7 +630,7 @@ namespace FlexKit
 			    (void*)newRenderWindow.current,
 			    ResourceFlags::SwapChain | ResourceFlags::RenderTarget,
 			    vkResourceViews{ .imageView = newRenderWindow.views[0] },
-                uint4{ createSwapChainInfo.imageExtent.width, createSwapChainInfo.imageExtent.height, 0, 0 }
+                uint4{ createSwapChainInfo.imageExtent.width, createSwapChainInfo.imageExtent.height }
 		);
 
 		newRenderWindow.resource	= renderTarget;

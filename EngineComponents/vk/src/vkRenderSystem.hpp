@@ -228,6 +228,15 @@ namespace VK_internal
 		vkStateTable						pipelineStates;
 
     };
+
+
+	struct UploadBufferResults
+	{
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+	};
+
+	std::optional<UploadBufferResults> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize);
 }
 
 

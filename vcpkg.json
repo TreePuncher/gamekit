@@ -13,12 +13,12 @@
     "boost-process",
     "directx-dxc",
     {
-    "name": "directxtk12",
-    "platform": "windows"
+      "name": "directxtk12",
+      "platform": "windows"
     },
     {
-    "name": "directx12-agility",
-    "platform": "windows"
+      "name": "directx12-agility",
+      "platform": "windows"
     },
     "directxmesh",
     {
@@ -52,17 +52,17 @@
         "platform": "windows"
     },
     "zlib-ng",
-    "vulkan", 
+    "vulkan",
     "vk-bootstrap",
     "vulkan-loader",
-    "vulkan-tools", 
+    "vulkan-tools",
     "vulkan-validationlayers",
     "vulkan-utility-libraries",
     "vulkan-extensionlayer",
     "vulkan-sdk-components",
     {
-        "name": "wayland",
-        "platform": "linux"
+      "name": "wayland",
+      "platform": "linux"
     }
   ]
 }

@@ -32,6 +32,7 @@ target_sources(
         "src/vkPipelineState.cpp"
         "src/vkRendersystem.cpp"
         "src/vkResourceTable.cpp"
+	    "src/vkUploadBuffer.cpp"
         "src/vkWaylandSurface.cpp"
 )
 
@@ -60,6 +61,7 @@ target_sources(
     "src/vkPipelineState.hpp"
     "src/vkRenderSystem.hpp"
     "src/vkResourceTable.hpp"
+    "src/vkUploadBuffer.hpp"
 )
 
 if(WIN32)

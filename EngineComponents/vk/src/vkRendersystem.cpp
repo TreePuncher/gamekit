@@ -13,6 +13,8 @@
 #include <fmt/format.h>
 #include <print>
 
+#include "../../../core/include/BuildSettings.hpp"
+
 #ifdef WIN32
 #include "Unknwnbase.h"
 #endif
@@ -140,6 +142,43 @@ namespace VK_internal
 		};
 
 		return heap;
+	}
+
+
+	std::optional<UploadBufferResults> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize)
+	{
+		auto allocationRes = renderSystem.memoryAllocator.Allocate(
+			0,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			bufferSize
+		);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+	     // Create Buffer
+		VkBufferCreateInfo createBufferInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,			//VkBufferCreateFlags;
+			.size					= bufferSize,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,			// uint32_t               
+			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
+		};
+
+		VkBuffer buffer;
+		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
+		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+
+		return UploadBufferResults
+		{
+			.buffer = buffer,
+			.memory = memory
+		};
 	}
 
 
@@ -433,9 +472,6 @@ namespace VK_internal
 
 		VkDeviceSize size;
 		vkGetDescriptorSetLayoutSize(device, vkLayout, &size);
-
-		heapAllocator.Alloc_ST(size, 0);
-
 
 		//auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
 
@@ -1659,8 +1695,6 @@ namespace VK_internal
 		case DeviceLayout::ComputeQueueCopySrc:
 		case DeviceLayout::ComputeQueueCopyDst:
 			return VkImageLayout::VK_IMAGE_LAYOUT_GENERAL;
-		case DeviceLayout::VideoQueueCommon:
-			return VkImageLayout::VK_IMAGE_LAYOUT_VIDEO_DECODE_SRC_KHR;
 		case DeviceLayout::Undefined:
 		case DeviceLayout::Unknown:
 			return VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
