@@ -3164,7 +3164,7 @@ namespace FlexKit
 				if constexpr (!std::is_trivially_destructible_v<TY_value>)
 					values[idx].~TY_value();
 
-				keys[idx] = 0xffffffffffffffff;
+				memset(&keys[idx], 0xffffffffffffffff, sizeof(TY_key));
 				used--;
 				return true;
 			}

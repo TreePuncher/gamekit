@@ -5,6 +5,8 @@ namespace VK_internal
 {
 	using namespace FlexKit;
 
+	struct vkPipelineInterface;
+
 	struct vkDirectContext : public IDirectContext
 	{
 		vkDirectContext();
@@ -196,9 +198,11 @@ namespace VK_internal
 		bool					pendingDraws				= false;
 		bool					pendingTargetConfiguration	= false;
 
-	    VkCommandPool			commandPool		= nullptr;
-		VkCommandBuffer			commandBuffer	= nullptr;
-		uint64_t				dispatchValue	= 0;
+	    VkCommandPool				commandPool				= nullptr;
+		VkCommandBuffer				commandBuffer			= nullptr;
+		const vkPipelineInterface*	currentGraphicsLayout	= nullptr;
+
+		uint64_t				dispatchValue			= 0;
 
 		Vector<Barrier>						pendingBarriers;
 		Vector<ResourceHandle>				resourcesUsed;

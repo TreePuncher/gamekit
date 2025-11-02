@@ -2533,11 +2533,6 @@ namespace FlexKit
 	}
 
 
-	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
-	{
-		return Resources.renderSystem->ConstantBufferAlign(CB);
-	}
-
 	/************************************************************************************************/
 
 

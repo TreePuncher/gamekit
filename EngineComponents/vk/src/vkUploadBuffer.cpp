@@ -19,7 +19,7 @@ namespace VK_internal
 		if (!res)
 			throw std::runtime_error{ "VK: Failed to create upload buffer!" };
 
-		auto& [newBuffer, newMemory] = res.value();
+		auto& [newBuffer, newMemory, offset] = res.value();
 
 		VkMemoryMapInfo memoryMapInfo{
 			.sType	= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
@@ -178,7 +178,7 @@ namespace VK_internal
 		if (!createRes.has_value())
 			throw std::runtime_error{ "VK: Failed to resize upload buffer!" };
 
-		auto& [newBuffer, newMemory] = createRes.value();
+		auto& [newBuffer, newMemory, offset] = createRes.value();
 
 		position = 0;
 		last = 0;

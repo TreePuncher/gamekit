@@ -17,6 +17,7 @@ namespace VK_internal
         void Release() final;
 
         Vector<DesciptorHeapLayout> descriptorlayouts;
+        uint32_t                    pushConstantFlags;
         VkPipelineLayout            apiLayout;
     };
 }

@@ -1,3 +1,4 @@
+#pragma once
 #include <BuildSettings.hpp>
 #include <tuple>
 #include <utility>
@@ -172,6 +173,22 @@ namespace FlexKit
 			FK_ASSERT(idx < used);
 
 			return std::get<fieldIdx>(fields)[idx];
+		}
+
+		template<size_t fieldIdx>
+		auto& Get_ref(size_t idx) noexcept
+		{
+			FK_ASSERT(idx < used);
+
+			return std::get<fieldIdx>(fields)[idx];
+		}
+
+		template<size_t ... FieldIdx>
+		auto Get_ref(size_t idx) noexcept requires(sizeof ... (FieldIdx) > 1)
+		{
+			FK_ASSERT(idx < used);
+
+			return std::forward_as_tuple(std::get<FieldIdx>(fields)[idx]...);
 		}
 
 		template<size_t ... fieldIDs>
@@ -638,7 +655,7 @@ namespace FlexKit
 		size_t			used		= 0;
 		iAllocator*		allocator	= nullptr;
 
-		FieldContainer			fields;
+		FieldContainer	fields;
 	};
 }
 

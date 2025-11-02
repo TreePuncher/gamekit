@@ -2448,14 +2448,14 @@ namespace FlexKit
 			return *instance;
 		}
 
-		virtual bool												Initiate(Graphics_Desc& desc) = 0;
+		virtual bool													Initiate(Graphics_Desc& desc) = 0;
 
-		virtual void												BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
-		virtual void												RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
-		virtual void												LoadPSOIfRequired		(PSOHandle State) = 0;
-		virtual void												QueuePSOLoad			(PSOHandle State) = 0;
+		virtual void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
+		virtual void													RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
+		virtual void													LoadPSOIfRequired		(PSOHandle State) = 0;
+		virtual void													QueuePSOLoad			(PSOHandle State) = 0;
 
-		virtual const IPipelineState*								GetPSO					(PSOHandle State, iAllocator& temp) = 0;
+		virtual const IPipelineState*									GetPSO					(PSOHandle State, iAllocator& temp) = 0;
 		virtual const IPipelineInterface* const 						GetPSORootSignature		(PSOHandle state) const = 0;
 		virtual std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
 
@@ -2548,8 +2548,7 @@ namespace FlexKit
 
 		virtual PackedResourceTileInfo	GetPackedTileInfo(ResourceHandle)	const noexcept { return {}; }
 
-		virtual bool				VertexBufferPush		(VertexBufferHandle, void* _ptr, size_t elementSize) = 0;
-		virtual size_t				ConstantBufferAlign		(ConstantBufferHandle) = 0;
+		virtual bool				VertexBufferPush(VertexBufferHandle, void* _ptr, size_t elementSize) = 0;
 
 		virtual void				BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept = 0;
 

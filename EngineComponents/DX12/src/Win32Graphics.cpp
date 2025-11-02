@@ -1,5 +1,4 @@
 #include "dxRenderSystem.hpp"
-#include "MemoryUtilities.hpp"
 #include "ProfilingUtilities.hpp"
 #include "Win32Graphics.hpp"
 
@@ -36,7 +35,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+	static LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
 		int Param = wParam;
 		auto ShiftState = GetAsyncKeyState(VK_LSHIFT) | GetAsyncKeyState(VK_RSHIFT);
@@ -365,7 +364,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RegisterWindowClass( HINSTANCE hinst )
+	static void RegisterWindowClass( HINSTANCE hinst )
 	{
 		// Register Window Class
 		WNDCLASSEXW wcex = {0};
@@ -508,7 +507,7 @@ namespace FlexKit
 				swapChain   = nullptr;
 				hWindow     = 0;
 
-				static_cast<dxRenderSystem&>(IRenderSystem::GetInstance()).Memory->release(*this);
+				static_cast<dx_Internal::dxRenderSystem&>(IRenderSystem::GetInstance()).Memory->release(*this);
 			}
 		}
 
@@ -691,7 +690,7 @@ namespace FlexKit
 
 	IRenderWindow* CreateWin32RenderWindow(IRenderSystem& irenderSystem, const Win32RenderWindowDesc& renderWindowDesc)
 	{
-		dxRenderSystem& renderSystem = static_cast<dxRenderSystem&>(irenderSystem);
+		auto& renderSystem = static_cast<dx_Internal::dxRenderSystem&>(irenderSystem);
 
 		static bool _TEMP   =
 			[]

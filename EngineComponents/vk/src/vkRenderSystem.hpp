@@ -4,12 +4,15 @@
 #include <vkPipelineState.hpp>
 #include <ThreadUtilities.hpp>
 
+#include "vkPushBuffers.hpp"
 #include "vkDescriptorAllocator.hpp"
 #include "vkMemoryManager.hpp"
 
 namespace VK_internal
 {
     using namespace FlexKit;
+
+    struct vkRenderSystem;
 
 	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept;
 	uint32_t AccessToVK(DeviceAccessState access) noexcept;
@@ -28,6 +31,18 @@ namespace VK_internal
 	typedef void (*vkGetDescriptorFNDef)(VkDevice, const VkDescriptorGetInfoEXT*, size_t, void* pDescriptor);
 	typedef void (*vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)(VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout,uint32_t);
 
+
+	struct BufferAPIObject
+	{
+		VkBuffer		buffer;
+		VkDeviceMemory	memory;
+		uint32_t		offset;
+	};
+
+
+    std::optional<BufferAPIObject>	CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize);
+	std::optional<BufferAPIObject>	CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
+	std::optional<BufferAPIObject>	CreateConstantBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
 
 
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove
@@ -135,7 +150,6 @@ namespace VK_internal
 		size_t				GetVertexBufferOffset(const VertexBufferHandle Handle)	const final;
 
 		bool				VertexBufferPush		(VertexBufferHandle, void* _ptr, size_t elementSize) final;
-		size_t				ConstantBufferAlign		(ConstantBufferHandle) final;
 
 		void				BackResource(ResourceHandle handle, const GPUResourceDesc& desc) noexcept final;
 
@@ -202,6 +216,10 @@ namespace VK_internal
 		VkDevice	GetDevice();
 		VkQueue		GetQueue() const;
 
+
+		std::byte*	MapDeviceAddress(VkDeviceMemory, uint32_t offset);
+		void		UnMapDeviceAddress(VkDeviceMemory);
+
 		using vkPipelineState_ptr = vkPipelineState*;
 
 		// API objects
@@ -222,21 +240,22 @@ namespace VK_internal
 		std::atomic_uint64_t	directSubmissionCounter		= 0;
 		std::atomic_uint64_t	copySubmissionCounter		= 0;
 
+		struct DeviceMemoryMapping
+		{
+			uint32_t	refCount;
+			std::byte*	mapping;
+		};
+
+		HashTable<DeviceMemoryMapping, VkDeviceMemory> mappings;
+
 		// Bookkeeping 
 		vkResourceTable						resources;
+		vkVertexPushBuffers					vertexPushBuffers;
+		vkConstantPushBuffers				constantPushBuffers;
 		Vector<struct vkDirectContext*>		pendingDirectContexts;
 		vkStateTable						pipelineStates;
 
     };
-
-
-	struct UploadBufferResults
-	{
-		VkBuffer		buffer;
-		VkDeviceMemory	memory;
-	};
-
-	std::optional<UploadBufferResults> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize);
 }
 
 
