@@ -531,9 +531,12 @@ namespace FlexKit
 		}
 
 		VkSurfaceCapabilitiesKHR capabilities;
+		uint32_t surfaceCount = 0;
+		VkSurfaceFormatKHR formats[128];
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkRS.device.physical_device, surface, &capabilities);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, formats);
 
-		FK_ASSERT((capabilities.supportedUsageFlags | (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) > 0);
 
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
 		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,

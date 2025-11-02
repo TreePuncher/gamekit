@@ -21,6 +21,7 @@ namespace VK_internal
 
 	VkCullModeFlags CullMode_FK2VK(ECullMode mode)
 	{
+		// Cullmode is reversed since VK has top pointing down on Y flipping windings relative to DX12
 		switch (mode)
 		{
 		case ECullMode::BACK:
@@ -103,7 +104,16 @@ namespace VK_internal
 
 		shaderStages.push_back(stage);
 
-		AddInputLayout({});
+		AddInputLayout({
+			.inputs = { {
+				.name				= "POSITION",
+		        .index				= 0,
+		        .format				= DeviceFormat::R32G32B32_FLOAT,
+		        .slot				= 0,
+		        .alignedByteOffset	= 0,
+			} },
+			.count = 1
+		});
 		AddInputTopology({});
 
 		return *this;
@@ -681,6 +691,7 @@ namespace VK_internal
 
 		auto& pipelineInterface = allocator.allocate<vkPipelineInterface>(allocator);
 		pipelineInterface.layout = pipelineLayout;
+		pipelineInterface.pushConstantFlags = pushConstantRanges.size() ? pushConstantRanges.front().stageFlags : 0;
 	    return { pipeline, &pipelineInterface };
 	}
 
@@ -776,17 +787,4 @@ namespace VK_internal
 
 		return nullptr;
 	}
-
-	/*
-	VkPipelineDynamicStateCreateInfo* vkPipelineBuilder::GetDynamicState() const
-	{
-		for (auto& obj : stateObjects)
-		{
-			if (obj.type == InfoType::Dynamic)
-				return reinterpret_cast<VkPipelineDynamicStateCreateInfo*>(obj._ptr);
-		}
-
-		return nullptr;
-	}
-    */
 }

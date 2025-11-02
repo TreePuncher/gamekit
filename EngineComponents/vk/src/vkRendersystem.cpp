@@ -145,7 +145,7 @@ namespace VK_internal
 	}
 
 
-	std::optional<UploadBufferResults> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize)
+	std::optional<BufferAPIObject> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize)
 	{
 		auto allocationRes = renderSystem.memoryAllocator.Allocate(
 			0,
@@ -174,13 +174,88 @@ namespace VK_internal
 		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
 		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
 
-		return UploadBufferResults
-		{
-			.buffer = buffer,
-			.memory = memory
-		};
+		return BufferAPIObject
+				{
+					.buffer = buffer,
+					.memory = memory
+				};
 	}
 
+
+	std::optional<BufferAPIObject> CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident)
+	{
+	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
+			0,
+			GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			bufferSize
+		);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+	     // Create Buffer
+		VkBufferCreateInfo createBufferInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,			//VkBufferCreateFlags;
+			.size					= bufferSize,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,			// uint32_t               
+			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
+		};
+
+		VkBuffer buffer;
+		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
+		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+
+		return BufferAPIObject
+		        {
+			        .buffer		= buffer,
+			        .memory		= memory,
+					.offset		= offset
+		        };
+	}
+
+
+    std::optional<BufferAPIObject> CreateConstantBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident)
+	{
+	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
+			0,
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			bufferSize
+		);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+	     // Create Buffer
+		VkBufferCreateInfo createBufferInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0,			//VkBufferCreateFlags;
+			.size					= bufferSize,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,			// uint32_t               
+			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
+		};
+
+		VkBuffer buffer;
+		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
+		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+
+		return BufferAPIObject
+		        {
+			        .buffer		= buffer,
+			        .memory		= memory,
+					.offset		= offset
+		        };
+	}
 
 	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
 	{
@@ -314,7 +389,10 @@ namespace VK_internal
 		pendingDirectContexts	{ IN_allocator },
 		pipelineStates			{ threads, IN_allocator },
 	    resources				{ IN_allocator },
-        vkAllocators			{ nullptr }{}
+        vkAllocators			{ nullptr },
+		vertexPushBuffers		{ IN_allocator },
+		mappings				{ IN_allocator	},
+		constantPushBuffers		{ IN_allocator } {}
 
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
@@ -432,28 +510,20 @@ namespace VK_internal
 
 		auto descriptorHeapBufferAllocation = memoryAllocator.Allocate(0,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			1000000u * 64);
-
+			64 * KILOBYTE);
+		
 		if (!descriptorHeapBufferAllocation)
 			throw std::runtime_error{ "VK: Failed to allocate descriptor heap buffer!" };
 
 		descriptorPool = CreateDescriptorBuffer(device, 1000000u, descriptorHeapBufferAllocation.value());
 
+		auto [offset, memory] = descriptorHeapBufferAllocation.value();
+
+		uint64_t cpuAddress = (uint64_t)MapDeviceAddress(memory, offset);
+
 		VkBufferDeviceAddressInfoKHR address_info{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR };
 		address_info.buffer = descriptorPool.buffer;
 		auto gpuAddress = vkGetBufferDeviceAddress(device, &address_info);
-
-		VkMemoryMapInfo memoryMapInfo{
-			.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.memory = descriptorHeapBufferAllocation.value().memory,
-			.offset	= 0,
-			.size = VK_WHOLE_SIZE
-		};
-
-		uint64_t cpuAddress;
-		vkMapMemory2(device, &memoryMapInfo, (void**)&cpuAddress);
 
 		HeapAllocatorDescription heapAllocDesc{
 			.CPUBegin	= cpuAddress,
@@ -462,16 +532,18 @@ namespace VK_internal
 			.device		= device, 
 			.buffer		= descriptorPool.buffer
 		};
-		heapAllocator.Initialize(heapAllocDesc, allocator);
 
-		// Create Heap Layout
-		DesciptorHeapLayout layout{};
-		layout.SetParameterAsSRVImage(0, 0, 1);
+	    heapAllocator.Initialize(heapAllocDesc, allocator);
 
-		auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
+		//
+		//// Create Heap Layout
+		//DesciptorHeapLayout layout{};
+		//layout.SetParameterAsSRVImage(0, 0, 1);
+		//
+		//auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
 
-		VkDeviceSize size;
-		vkGetDescriptorSetLayoutSize(device, vkLayout, &size);
+		//VkDeviceSize size;
+		//vkGetDescriptorSetLayoutSize(device, vkLayout, &size);
 
 		//auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
 
@@ -1008,21 +1080,15 @@ namespace VK_internal
 	}
 
 
-	size_t vkRenderSystem::GetVertexBufferOffset(const VertexBufferHandle Handle) const
+	size_t vkRenderSystem::GetVertexBufferOffset(const VertexBufferHandle handle) const
 	{
-		return 0;
+		return vertexPushBuffers.GetOffset(handle);
 	}
 
 
-	bool vkRenderSystem::VertexBufferPush(VertexBufferHandle, void* _ptr, size_t elementSize)
+	bool vkRenderSystem::VertexBufferPush(VertexBufferHandle handle, void* _ptr, size_t elementSize)
 	{
-		return false;
-	}
-
-
-	size_t vkRenderSystem::ConstantBufferAlign(ConstantBufferHandle)
-	{
-		return 0;
+		return vertexPushBuffers.Push(handle, _ptr, elementSize);
 	}
 
 
@@ -1080,9 +1146,9 @@ namespace VK_internal
 		return {};
 	}
 
-	SubAllocation vkRenderSystem::ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)	noexcept
+	SubAllocation vkRenderSystem::ReserveVertexBuffer(VertexBufferHandle handle, size_t reserveSize)	noexcept
 	{
-		return {};
+		return vertexPushBuffers.Reserve(handle, reserveSize);
 	}
 
 
@@ -1338,9 +1404,9 @@ namespace VK_internal
 	}
 
 
-	VertexBufferHandle vkRenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
+	VertexBufferHandle vkRenderSystem::CreateVertexBuffer(size_t bufferSize, bool GPUResident)
 	{
-		return InvalidHandle;
+		return vertexPushBuffers.CreateBuffer(bufferSize, GPUResident);
 	}
 
 
@@ -1370,12 +1436,8 @@ namespace VK_internal
 				        vkResourceEntry{
 					        .type		= vkResourceEntry::Type::RenderTarget,
 					        .image		= (VkImage)desc._ptr,
-							//.imageView	= imageView
 				        },
 					    desc.initialLayout);
-
-
-
 		    }	break;
 		case ResourceType::DepthTarget:
 		    {
@@ -1485,23 +1547,31 @@ namespace VK_internal
 
 
 	void vkRenderSystem::ResetConstantBuffer(ConstantBufferHandle constant)
-    {}
+	{
+		constantPushBuffers.Reset(constant, GetCurrentCounter());
+	}
 
 
-    void vkRenderSystem::ResetVertexBuffer(VertexBufferHandle constant)
-    {}
+    void vkRenderSystem::ResetVertexBuffer(VertexBufferHandle handle)
+	{
+		vertexPushBuffers.Reset(handle, GetCurrentCounter());
+	}
 
 
     void vkRenderSystem::ResetQuery(QueryHandle handle)
     {}
 
 
-	void vkRenderSystem::ReleaseCB(ConstantBufferHandle)
-    {}
+	void vkRenderSystem::ReleaseCB(ConstantBufferHandle handle)
+	{
+	    constantPushBuffers.ReleaseBuffer(handle);
+	}
 
 
-    void vkRenderSystem::ReleaseVB(VertexBufferHandle)
-    {}
+    void vkRenderSystem::ReleaseVB(VertexBufferHandle handle)
+	{
+		vertexPushBuffers.ReleaseBuffer(handle);
+	}
 
 
     void vkRenderSystem::ReleaseResource(ResourceHandle)
@@ -1540,6 +1610,58 @@ namespace VK_internal
 		return device.get_queue(vkb::QueueType::graphics).value();
 	}
 
+
+	std::byte* vkRenderSystem::MapDeviceAddress(VkDeviceMemory memory, uint32_t offset)
+	{
+		auto res = mappings.find(memory);
+
+		if (!res)
+		{
+		    VkMemoryMapInfo memoryMapInfo{
+			    .sType	= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
+			    .pNext	= nullptr,
+			    .flags	= 0,
+			    .memory = memory,
+			    .offset	= 0,
+			    .size	= VK_WHOLE_SIZE
+		    };
+
+			std::byte* mappedAddress = nullptr;
+			if (auto res = vkMapMemory2(device, &memoryMapInfo, (void**)&mappedAddress); res != VK_SUCCESS)
+			{
+				FK_LOG_ERROR("VK: Failed to map memory!");
+				return nullptr;
+			}
+
+			mappings.insert(
+				memory,
+				DeviceMemoryMapping{
+				    .refCount	= 1,
+				    .mapping	= mappedAddress
+				});
+
+		    return mappedAddress + offset;
+		}
+		else
+		{
+			res->refCount++;
+			return res->mapping + offset;
+		}
+	}
+
+	void vkRenderSystem::UnMapDeviceAddress(VkDeviceMemory memory)
+	{
+		auto res = mappings.find(memory);
+		if (res)
+		{
+			if (res->refCount-- == 0)
+			{
+				vkUnmapMemory(device, memory);
+
+				mappings.remove(memory);
+			}
+		}
+	}
 
 	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept
 	{

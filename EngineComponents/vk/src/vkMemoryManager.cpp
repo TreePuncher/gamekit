@@ -20,12 +20,13 @@ namespace VK_internal
 
     std::expected<vkAllocation, AllocationError> vkMemoryAllocator::Allocate(uint32_t flags, uint32_t heapFlags, uint64_t size, uint8_t alignment)
     {
-        auto slab = FindSlab(heapFlags, size + alignment);
+        auto slab = FindSlab(heapFlags, size);
 
         // for now using linear allocators
-        auto address = slab->used;
-        auto alignedOffset = Align(address, alignment);
-        slab->used = alignedOffset + size;
+        auto address        = slab->used;
+        auto alignedOffset  = Align(address, alignment);
+        auto alignedSize    = AlignedSize(size);
+        slab->used = alignedOffset + alignedSize;
 
         slab->allocations.push_back(SlabRange{
             .offset = address,
@@ -37,6 +38,16 @@ namespace VK_internal
         };
 
         return allocation;
+    }
+
+    void vkMemoryAllocator::Release(VkDeviceMemory memory)
+    {
+        for (auto& slab : slabs)
+        {
+            if ((uint64_t)slab.memory < (uint64_t)memory && (uint64_t)memory < ((uint64_t)slab.memory + slab.size))
+            {// TODO: Handle free
+            }
+        }
     }
 
     void  vkMemoryAllocator::CreateSlab(uint32_t flags, uint64_t requiredSize)
@@ -87,12 +98,12 @@ namespace VK_internal
     {
         for (auto& slab : slabs)
         {
-            if ((slab.flags & heapFlags) == heapFlags)
+            if ((slab.flags & heapFlags) == heapFlags && slab.size - slab.used > requiredSize)
                 return &slab;
         }
 
         // if no slabs create one
-        CreateSlab(heapFlags, requiredSize);
+        CreateSlab(heapFlags, 32 * MEGABYTE);
 
         // Try again
         return FindSlab(heapFlags, requiredSize);

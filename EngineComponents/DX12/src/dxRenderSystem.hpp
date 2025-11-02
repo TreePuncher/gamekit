@@ -424,6 +424,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	inline D3D12_BARRIER_SYNC SyncPoint2DX_Forward(const DeviceSyncPoint syncPoint)
 	{
+		if (DeviceSyncPoint::Sync_All == syncPoint)
+			return D3D12_BARRIER_SYNC_ALL;
+
 		D3D12_BARRIER_SYNC out = SyncPoint2DX(syncPoint);
 
 		out = (syncPoint & DeviceSyncPoint::Sync_RenderTarget != 0) ? D3D12_BARRIER_SYNC_RENDER_TARGET : out;
@@ -1254,7 +1257,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		size_t					GetBufferSize			(const ConstantBufferHandle) const;
 
 
-		size_t					AlignNext				(ConstantBufferHandle);
 		std::optional<size_t>	Push					(ConstantBufferHandle, void* ptr, size_t size);
 		
 		SubAllocation			Reserve					(ConstantBufferHandle, size_t size);
@@ -2282,9 +2284,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		virtual bool		VertexBufferPush(VertexBufferHandle, void* _ptr, size_t elementSize);
 
-		virtual size_t		ConstantBufferAlign(ConstantBufferHandle) noexcept;
-
-
 		UAVResourceLayout	GetUAVBufferLayout(const ResourceHandle) const noexcept;
 		void				SetUAVBufferLayout(const ResourceHandle, const UAVResourceLayout) noexcept;
 		size_t				GetUAVBufferSize(const ResourceHandle) const noexcept;
@@ -2537,35 +2536,37 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PipelineBuilderImpl(iAllocator& allocator);
 		~PipelineBuilderImpl();
 
-		PipelineBuilderImpl& AddRootSignature	(const RootSignature* rootSig);
+		IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig) final;
 
-		PipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {});
+		IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {}) final;
 
-		PipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
 
-		PipelineBuilderImpl& AddAmplificationShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		PipelineBuilderImpl& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilderImpl& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
 
-		PipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const Shader&) final;
 
-		PipelineBuilderImpl& SetDebugName			(const char* name) { debugName = name; return *this; }
+		IPipelineBuilderImpl& SetDebugName			(const char* name) { debugName = name; return *this; }
 
-		PipelineBuilderImpl& AddInputLayout			(const InputLayoutState&	state = {});
-		PipelineBuilderImpl& AddInputTopology		(const ETopology			topology);
-		PipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {});
-		PipelineBuilderImpl& AddRasterizerState		(const RasterizerState&		state = {});
-		PipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {});
-		PipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		PipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
+		IPipelineBuilderImpl& AddInputLayout		(const InputLayoutState&	state = {});
+		IPipelineBuilderImpl& AddInputTopology		(const ETopology			topology);
+		IPipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {});
+		IPipelineBuilderImpl& AddRasterizerState	(const RasterizerState&		state = {});
+		IPipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {});
+		IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
 
-		FlexKit::LoadPipelineStateRes Build(dxRenderSystem& renderSystem);
-		FlexKit::LoadPipelineStateRes BuildStream(dxRenderSystem& renderSystem, void* buffer, const size_t size);
+		LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator) final;
+		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size) final;
 
+		void Release() final;
 
 		class PipelineBlob
 		{
@@ -2646,6 +2647,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			void Serialize(auto& ar)
 			{
 				ar& buffer;
+			}
+
+			void Release()
+			{
+				buffer.Release();
 			}
 
 			Vector<char> buffer;

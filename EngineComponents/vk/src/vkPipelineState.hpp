@@ -19,6 +19,7 @@ namespace VK_internal
 		void Release() final;
 
 		VkPipelineLayout				layout;
+		uint32_t						pushConstantFlags;
 		Vector<VkDescriptorSetLayout>	vkLayouts;
 		Vector<DesciptorHeapLayout>		heapLayouts;
 	};

@@ -2,6 +2,7 @@
 #include "vkRenderSystem.hpp"
 #include <VkBootstrapDispatch.h>
 #include <VkBootstrap.h>
+#include <vkPipelineLayout.hpp>
 
 namespace VK_internal
 {
@@ -262,6 +263,7 @@ namespace VK_internal
 	{
 		auto pso = RenderSystem().GetPSO(psoHandle, temp);
 
+		currentGraphicsLayout = static_cast<const vkPipelineInterface*>(pso->GetInterface());
 		vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pso->GetDevicePipeState().As<VkPipeline_T>());
 	}
 
@@ -354,7 +356,13 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
-    {}
+	{
+		vkCmdPushConstants(
+			commandBuffer,
+			currentGraphicsLayout->layout,
+			currentGraphicsLayout->pushConstantFlags,
+			(uint32_t)offset, valueCount * 4, data_ptr);
+	}
 
 	void vkDirectContext::NullGraphicsConstantBufferView(size_t idx)
     {}
@@ -501,10 +509,28 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& span)
-    {}
+	{
+		SetVertexBuffers(std::span(span));
+	}
 
 	void vkDirectContext::SetVertexBuffers(const std::span<const VertexBufferEntry> span)
-    {}
+	{
+	    VkBuffer		buffers[16];
+		VkDeviceSize	offsets[16];
+
+
+		auto& vkRS = RenderSystem();
+		for (auto&& [idx, entry] : enumerate(span))
+		{
+			auto& [handle, stride, offset] = entry;
+			auto& [bufs, memory, locks, memoryOffset, current] = vkRS.vertexPushBuffers.fields.Get_ref<vkVertexPushBuffers::apiObjects>(handle);
+
+			buffers[idx] = bufs[current];
+			offsets[idx] = offset;
+		}
+
+		vkCmdBindVertexBuffers(commandBuffer, 0, span.size(), buffers, offsets);
+	}
 
 	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& span)
     {}
