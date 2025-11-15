@@ -17,6 +17,11 @@ namespace VK_internal
 		VkBuffer buffer;
 	};
 
+	struct Alloc2Res
+	{
+		DescriptorRange range;
+		uint64_t		offset;
+	};
 
 	class vkDescriptorHeapAllocator
 	{
@@ -26,7 +31,13 @@ namespace VK_internal
 		void							Initialize	(const HeapAllocatorDescription& description, iAllocator* IN_allocator);
 
 		std::optional<DescriptorRange>	Alloc_ST	(const size_t size, uint64_t completedIdx) noexcept;
-		auto							Alloc		(const size_t size, uint64_t completedIdx) noexcept;
+		std::optional<DescriptorRange>	Alloc		(const size_t size, uint64_t completedIdx) noexcept;
+
+		std::optional<Alloc2Res>		Alloc2_ST	(const size_t size, uint64_t completedIdx) noexcept;
+		std::optional<Alloc2Res>		Alloc2		(const size_t size, uint64_t completedIdx) noexcept;
+
+		std::optional<Alloc2Res>		Alloc2Temp_ST	(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept;
+		std::optional<Alloc2Res>		Alloc2Temp		(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept;
 
 		void							Release_ST	(const DescriptorRange range, uint64_t lockIdx, uint64_t completed) noexcept;
 		void							Release		(const DescriptorRange range, uint64_t lockIdx, uint64_t completed);
@@ -52,7 +63,7 @@ namespace VK_internal
 			void Release(iAllocator* allocator);
 
 			std::pair<size_t, size_t> SplitSizes();
-			size_t BlockCount() const noexcept { return end - begin; }
+			size_t BlockCount() const noexcept { return (end - begin); }
 			size_t FreeCount() const noexcept;
 
 		};

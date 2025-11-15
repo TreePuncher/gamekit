@@ -259,10 +259,11 @@ namespace VK_internal
         if (used + alignedSize >= bufferSize) // relaxed check
             return false;
 
-        if (auto begin = std::atomic_ref(used).fetch_add(alignedSize); begin + alignedSize > bufferSize) // atomic check plus attempt to allocate space
+        auto begin = std::atomic_ref(used).fetch_add(alignedSize);
+        if (begin + alignedSize > bufferSize) // atomic check plus attempt to allocate space
             return false;
 
-        memcpy(buffer, _ptr, size);
+        memcpy(buffer + begin, _ptr, size);
         return true;
     }
 
@@ -276,7 +277,7 @@ namespace VK_internal
         auto&& [buffers, memory, locks, memoryOffset, current] = fields.Get_ref<PushBufferFields::apiObjects>(idx);
         auto flag = fields.Get<PushBufferFields::Flags>(idx);
 
-        if (flag & FlagBits::gpuResident != 0)
+        if ((flag & FlagBits::gpuResident) == 0)
             vkRS.UnMapDeviceAddress(memory[current]);
 
         locks[current] = vkRS.GetCurrentCounter();
@@ -305,6 +306,15 @@ namespace VK_internal
             return SubAllocation{ nullptr, 0, 0 };
 
         return SubAllocation{ (char*)buffer, begin, reserveSize };
+    }
+
+    VkBuffer vkConstantPushBuffers::GetAPIBuffer(ConstantBufferHandle handle)
+    {
+        std::shared_lock lock{ mutex };
+        auto idx = handles[handle];
+        auto&& [buffers, memory, locks, memoryOffset, current] = fields.Get_ref<PushBufferFields::apiObjects>(idx);
+
+        return buffers[current];
     }
 
 }

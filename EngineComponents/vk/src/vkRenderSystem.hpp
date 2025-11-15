@@ -30,8 +30,18 @@ namespace VK_internal
 	typedef void (*vkGetDescriptorSetLayoutSizeFNDef)(VkDevice, VkDescriptorSetLayout, VkDeviceSize*);
 	typedef void (*vkGetDescriptorFNDef)(VkDevice, const VkDescriptorGetInfoEXT*, size_t, void* pDescriptor);
 	typedef void (*vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)(VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout,uint32_t);
+	typedef void (*vkCmdBindDescriptorBuffersFNDef)(VkCommandBuffer, uint32_t, const VkDescriptorBufferBindingInfoEXT*);
+	typedef void (*vkGetDescriptorSetLayoutBindingOffsetFNDef)(VkDevice, VkDescriptorSetLayout, uint32_t, VkDeviceSize*);
+	typedef void (*vkCmdSetDescriptorBufferOffsetsFNDef)(VkCommandBuffer, VkPipelineBindPoint, VkPipelineLayout, uint32_t, uint32_t, const uint32_t*, const VkDeviceSize*);
 
+	inline vkGetDescriptorSetLayoutSizeFNDef				vkGetDescriptorSetLayoutSize				= nullptr;
+	inline vkGetDescriptorSetLayoutBindingOffsetFNDef		vkGetDescriptorSetLayoutBindingOffset		= nullptr;
+	inline vkGetDescriptorFNDef								vkGetDescriptor								= nullptr;
+	inline vkCmdBindDescriptorBufferEmbeddedSamplersFNDef	vkCmdBindDescriptorBufferEmbeddedSamplers	= nullptr;
+	inline vkCmdBindDescriptorBuffersFNDef					vkCmdBindDescriptorBuffers					= nullptr;
+	inline vkCmdSetDescriptorBufferOffsetsFNDef				vkCmdSetDescriptorBufferOffsets				= nullptr;
 
+	;
 	struct BufferAPIObject
 	{
 		VkBuffer		buffer;
@@ -236,6 +246,8 @@ namespace VK_internal
 		// Synchronization
 		VkFence					directQueueFence = nullptr;
 		VkSemaphore				vkDirectQueueCounter;
+		uint64_t				vkDirectQueueProgress = 0;
+
 
 		std::atomic_uint64_t	directSubmissionCounter		= 0;
 		std::atomic_uint64_t	copySubmissionCounter		= 0;
@@ -254,7 +266,6 @@ namespace VK_internal
 		vkConstantPushBuffers				constantPushBuffers;
 		Vector<struct vkDirectContext*>		pendingDirectContexts;
 		vkStateTable						pipelineStates;
-
     };
 }
 

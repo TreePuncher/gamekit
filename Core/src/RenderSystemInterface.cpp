@@ -54,7 +54,6 @@ namespace FlexKit
 
 	void PipelineInterfaceBuilder::Clear()
 	{
-	    
 	}
 
 	IPipelineInterface* PipelineInterfaceBuilder::Build(iAllocator& TempMemory)
@@ -262,8 +261,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(IContext&, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeap::DescriptorHeap(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
 	{
+		
 	}
 
 

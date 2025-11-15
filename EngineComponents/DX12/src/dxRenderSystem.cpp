@@ -780,7 +780,7 @@ namespace dx_Internal
 			}
 
 			const D3D12_VERSIONED_ROOT_SIGNATURE_DESC* versioned_desc;
-			deserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_0, &versioned_desc);
+			deserializer->GetRootSignatureDescAtVersion(D3D_ROOT_SIGNATURE_VERSION_1_1, &versioned_desc);
 			auto desc = &versioned_desc->Desc_1_1;
 
 			size_t parametersEnd = desc->NumParameters;

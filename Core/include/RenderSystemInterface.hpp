@@ -5,6 +5,7 @@
 #include "ResourceHandles.hpp"
 
 #include <expected>
+#include <variant>
 
 namespace FlexKit
 {
@@ -31,7 +32,7 @@ namespace FlexKit
 		template<typename TY>
 		TY* As() noexcept
 		{
-		    return reinterpret_cast<TY*>(_ptr);
+			return reinterpret_cast<TY*>(_ptr);
 		}
 
 		template<typename TY>
@@ -44,19 +45,19 @@ namespace FlexKit
 	};
 
 
-	using DeviceResource_ptr		= TaggedVoidPtr<GetCRCGUID(Resource)>; 
-	using DeviceFence_ptr			= TaggedVoidPtr<GetCRCGUID(Fence)>; 
-	using DeviceHeap_ptr			= TaggedVoidPtr<GetCRCGUID(Heap)>;
-	using DevicePipelineState_ptr	= TaggedVoidPtr<GetCRCGUID(PipelineState)>;
-	using DeviceRootSignature_ptr	= TaggedVoidPtr<GetCRCGUID(RootSignature)>;
+	using DeviceResource_ptr = TaggedVoidPtr<GetCRCGUID(Resource)>;
+	using DeviceFence_ptr = TaggedVoidPtr<GetCRCGUID(Fence)>;
+	using DeviceHeap_ptr = TaggedVoidPtr<GetCRCGUID(Heap)>;
+	using DevicePipelineState_ptr = TaggedVoidPtr<GetCRCGUID(PipelineState)>;
+	using DeviceRootSignature_ptr = TaggedVoidPtr<GetCRCGUID(RootSignature)>;
 
 
 	enum class ELineAliasMode
 	{
-		ALIASED					= 0,
-		ALPHA_ANTIALIASED		= 1,
-		QUADRILATERAL_WIDE		= 2,
-		QUADRILATERAL_NARROW	= 3
+		ALIASED = 0,
+		ALPHA_ANTIALIASED = 1,
+		QUADRILATERAL_WIDE = 2,
+		QUADRILATERAL_NARROW = 3
 	};
 
 	enum class EFillMode
@@ -69,23 +70,23 @@ namespace FlexKit
 
 	enum class ECullMode
 	{
-		NONE	= 1,
-		FRONT	= 2,
-		BACK	= 3
+		NONE = 1,
+		FRONT = 2,
+		BACK = 3
 	};
 
 
 	enum class EComparison : uint32_t
 	{
-		NONE			= 0,
-		NEVER			= 1,
-		LESS			= 2,
-		EQUAL			= 3,
-		LESS_EQUAL		= 4,
-		GREATER			= 5,
-		NOT_EQUAL		= 6,
-		GREATER_EQUAL	= 7,
-		ALWAYS			= 8,
+		NONE = 0,
+		NEVER = 1,
+		LESS = 2,
+		EQUAL = 3,
+		LESS_EQUAL = 4,
+		GREATER = 5,
+		NOT_EQUAL = 6,
+		GREATER_EQUAL = 7,
+		ALWAYS = 8,
 		COUNT
 	};
 
@@ -99,76 +100,76 @@ namespace FlexKit
 
 	enum class EDepthWriteMask : uint32_t
 	{
-		Zero	= 0,
-		All		= 1
+		Zero = 0,
+		All = 1
 	};
 
 
 	enum class EStencilOP : uint32_t
 	{
-		KEEP		= 1,
-		ZERO		= 2,
-		REPLACE		= 3,
-		INCR_SAT	= 4,
-		DECR_SAT	= 5,
-		INVERT		= 6,
-		INCR		= 7,
-		DECR		= 8
+		KEEP = 1,
+		ZERO = 2,
+		REPLACE = 3,
+		INCR_SAT = 4,
+		DECR_SAT = 5,
+		INVERT = 6,
+		INCR = 7,
+		DECR = 8
 	};
 
 
 	enum class EBlend : uint32_t
 	{
-		ZERO				= 1,
-		ONE					= 2,
-		SRC_COLOR			= 3,
-		INV_SRC_COLOR		= 4,
-		SRC_ALPHA			= 5,
-		INV_SRC_ALPHA		= 6,
-		DEST_ALPHA			= 7,
-		INV_DEST_ALPHA		= 8,
-		DEST_COLOR			= 9,
-		INV_DEST_COLOR		= 10,
-		SRC_ALPHA_SAT		= 11,
-		BLEND_FACTOR		= 14,
-		INV_BLEND_FACTOR	= 15,
-		SRC1_COLOR			= 16,
-		INV_SRC1_COLOR		= 17,
-		SRC1_ALPHA			= 18,
-		INV_SRC1_ALPHA		= 19,
-		ALPHA_FACTOR		= 20,
-		INV_ALPHA_FACTOR	= 21
+		ZERO = 1,
+		ONE = 2,
+		SRC_COLOR = 3,
+		INV_SRC_COLOR = 4,
+		SRC_ALPHA = 5,
+		INV_SRC_ALPHA = 6,
+		DEST_ALPHA = 7,
+		INV_DEST_ALPHA = 8,
+		DEST_COLOR = 9,
+		INV_DEST_COLOR = 10,
+		SRC_ALPHA_SAT = 11,
+		BLEND_FACTOR = 14,
+		INV_BLEND_FACTOR = 15,
+		SRC1_COLOR = 16,
+		INV_SRC1_COLOR = 17,
+		SRC1_ALPHA = 18,
+		INV_SRC1_ALPHA = 19,
+		ALPHA_FACTOR = 20,
+		INV_ALPHA_FACTOR = 21
 	};
 
 
 	enum class EBlendOP : uint32_t
 	{
-		ADD				= 1,
-		SUBTRACT		= 2,
-		REV_SUBTRACT	= 3,
-		MIN				= 4,
-		MAX				= 5
+		ADD = 1,
+		SUBTRACT = 2,
+		REV_SUBTRACT = 3,
+		MIN = 4,
+		MAX = 5
 	};
 
 
 	enum class ELogicOP : uint32_t
 	{
-		CLEAR			= 0,
-		SET				= 1,
-		COPY			= 2,
-		COPY_INVERTED	= 3,
-		NOOP			= 4,
-		INVERT			= 5,
-		AND				= 6,
-		NAND			= 7,
-		OR				= 8,
-		NOR				= 9,
-		XOR				= 10,
-		EQUIV			= 11,
-		AND_REVERSE		= 12,
-		AND_INVERTED	= 13,
-		OR_REVERSE		= 14,
-		OR_INVERTED		= 15
+		CLEAR = 0,
+		SET = 1,
+		COPY = 2,
+		COPY_INVERTED = 3,
+		NOOP = 4,
+		INVERT = 5,
+		AND = 6,
+		NAND = 7,
+		OR = 8,
+		NOR = 9,
+		XOR = 10,
+		EQUIV = 11,
+		AND_REVERSE = 12,
+		AND_INVERTED = 13,
+		OR_REVERSE = 14,
+		OR_INVERTED = 15
 	};
 
 
@@ -234,96 +235,96 @@ namespace FlexKit
 
 	enum EInputPrimitive
 	{
-		INPUTPRIMITIVEPOINTLIST			= 1,
-		INPUTPRIMITIVELINELIST			= 2,
+		INPUTPRIMITIVEPOINTLIST = 1,
+		INPUTPRIMITIVELINELIST = 2,
 
-		INPUTPRIMITIVETRIANGLELIST		= 4,
-		INPUTPRIMITIVETRIANGLESTRIP		= 5,
+		INPUTPRIMITIVETRIANGLELIST = 4,
+		INPUTPRIMITIVETRIANGLESTRIP = 5,
 
-		INPUTPRIMITIVELINELIST_ADJ		= 10,
-		INPUTPRIMITIVETRIANGLELIST_ADJ	= 12,
-		INPUTPRIMITIVETRIANGLESTRIP_ADJ	= 13,
+		INPUTPRIMITIVELINELIST_ADJ = 10,
+		INPUTPRIMITIVETRIANGLELIST_ADJ = 12,
+		INPUTPRIMITIVETRIANGLESTRIP_ADJ = 13,
 
 
-		INPUTPRIMITIVEPATCH_CP_1		= 33,
-		INPUTPRIMITIVEPATCH_CP_2		= 34,
-		INPUTPRIMITIVEPATCH_CP_3		= 35,
-		INPUTPRIMITIVEPATCH_CP_4		= 36,
-		INPUTPRIMITIVEPATCH_CP_5		= 37,
-		INPUTPRIMITIVEPATCH_CP_6		= 38,
-		INPUTPRIMITIVEPATCH_CP_7		= 39,
-		INPUTPRIMITIVEPATCH_CP_8		= 40,
-		INPUTPRIMITIVEPATCH_CP_9		= 41,
-		INPUTPRIMITIVEPATCH_CP_10		= 42,
-		INPUTPRIMITIVEPATCH_CP_11		= 43,
-		INPUTPRIMITIVEPATCH_CP_12		= 44,
-		INPUTPRIMITIVEPATCH_CP_13		= 45,
-		INPUTPRIMITIVEPATCH_CP_14		= 46,
-		INPUTPRIMITIVEPATCH_CP_15		= 47,
-		INPUTPRIMITIVEPATCH_CP_16		= 48,
-		INPUTPRIMITIVEPATCH_CP_17		= 49,
-		INPUTPRIMITIVEPATCH_CP_18		= 50,
-		INPUTPRIMITIVEPATCH_CP_19		= 51,
-		INPUTPRIMITIVEPATCH_CP_20		= 52,
-		INPUTPRIMITIVEPATCH_CP_21		= 53,
-		INPUTPRIMITIVEPATCH_CP_22		= 54,
-		INPUTPRIMITIVEPATCH_CP_23		= 55,
-		INPUTPRIMITIVEPATCH_CP_24		= 56,
-		INPUTPRIMITIVEPATCH_CP_25		= 57,
-		INPUTPRIMITIVEPATCH_CP_26		= 58,
-		INPUTPRIMITIVEPATCH_CP_27		= 59,
-		INPUTPRIMITIVEPATCH_CP_28		= 60,
-		INPUTPRIMITIVEPATCH_CP_29		= 61,
-		INPUTPRIMITIVEPATCH_CP_30		= 62,
-		INPUTPRIMITIVEPATCH_CP_31		= 63,
-		INPUTPRIMITIVEPATCH_CP_32		= 64,
+		INPUTPRIMITIVEPATCH_CP_1 = 33,
+		INPUTPRIMITIVEPATCH_CP_2 = 34,
+		INPUTPRIMITIVEPATCH_CP_3 = 35,
+		INPUTPRIMITIVEPATCH_CP_4 = 36,
+		INPUTPRIMITIVEPATCH_CP_5 = 37,
+		INPUTPRIMITIVEPATCH_CP_6 = 38,
+		INPUTPRIMITIVEPATCH_CP_7 = 39,
+		INPUTPRIMITIVEPATCH_CP_8 = 40,
+		INPUTPRIMITIVEPATCH_CP_9 = 41,
+		INPUTPRIMITIVEPATCH_CP_10 = 42,
+		INPUTPRIMITIVEPATCH_CP_11 = 43,
+		INPUTPRIMITIVEPATCH_CP_12 = 44,
+		INPUTPRIMITIVEPATCH_CP_13 = 45,
+		INPUTPRIMITIVEPATCH_CP_14 = 46,
+		INPUTPRIMITIVEPATCH_CP_15 = 47,
+		INPUTPRIMITIVEPATCH_CP_16 = 48,
+		INPUTPRIMITIVEPATCH_CP_17 = 49,
+		INPUTPRIMITIVEPATCH_CP_18 = 50,
+		INPUTPRIMITIVEPATCH_CP_19 = 51,
+		INPUTPRIMITIVEPATCH_CP_20 = 52,
+		INPUTPRIMITIVEPATCH_CP_21 = 53,
+		INPUTPRIMITIVEPATCH_CP_22 = 54,
+		INPUTPRIMITIVEPATCH_CP_23 = 55,
+		INPUTPRIMITIVEPATCH_CP_24 = 56,
+		INPUTPRIMITIVEPATCH_CP_25 = 57,
+		INPUTPRIMITIVEPATCH_CP_26 = 58,
+		INPUTPRIMITIVEPATCH_CP_27 = 59,
+		INPUTPRIMITIVEPATCH_CP_28 = 60,
+		INPUTPRIMITIVEPATCH_CP_29 = 61,
+		INPUTPRIMITIVEPATCH_CP_30 = 62,
+		INPUTPRIMITIVEPATCH_CP_31 = 63,
+		INPUTPRIMITIVEPATCH_CP_32 = 64,
 	};
 
 
 	enum PIPELINE : unsigned char
 	{
-		PIPELINE_DEST_NONE		= 0x00,
-		PIPELINE_DEST_IA		= 0x01,
-		PIPELINE_DEST_HS		= 0x02,
-		PIPELINE_DEST_GS		= 0x04,
-		PIPELINE_DEST_VS		= 0x08,
-		PIPELINE_DEST_PS		= 0x10,
-		PIPELINE_DEST_CS		= 0x20,
-		PIPELINE_DEST_OM		= 0x30,
-		PIPELINE_DEST_DS		= 0x40,
-		PIPELINE_DEST_AS		= 0x50,
-		PIPELINE_DEST_MS		= 0x60,
-		PIPELINE_DEST_RT		= 0x70,
-		PIPELINE_DEST_AS_BUILD	= 0x80,
+		PIPELINE_DEST_NONE = 0x00,
+		PIPELINE_DEST_IA = 0x01,
+		PIPELINE_DEST_HS = 0x02,
+		PIPELINE_DEST_GS = 0x04,
+		PIPELINE_DEST_VS = 0x08,
+		PIPELINE_DEST_PS = 0x10,
+		PIPELINE_DEST_CS = 0x20,
+		PIPELINE_DEST_OM = 0x30,
+		PIPELINE_DEST_DS = 0x40,
+		PIPELINE_DEST_AS = 0x50,
+		PIPELINE_DEST_MS = 0x60,
+		PIPELINE_DEST_RT = 0x70,
+		PIPELINE_DEST_AS_BUILD = 0x80,
 
 		PIPELINE_DEST_ALL = 0xFF
 	};
 
 	enum class ETopology
 	{
-		EIT_LINE			= 2,
-		EIT_TRIANGLE		= 3,
-		EIT_POINT			= 1,
-		EIT_PATCH			= 4,
+		EIT_LINE = 2,
+		EIT_TRIANGLE = 3,
+		EIT_POINT = 1,
+		EIT_PATCH = 4,
 	};
 
 
 	enum class EColorWriteEnable : uint8_t
 	{
-		RED		= 1,
-		GREEN	= 2,
-		BLUE	= 4,
-		ALPHA	= 8,
-		ALL		= (RED | GREEN | BLUE | ALPHA)
+		RED = 1,
+		GREEN = 2,
+		BLUE = 4,
+		ALPHA = 8,
+		ALL = (RED | GREEN | BLUE | ALPHA)
 	};
 
 
 	struct DepthStencilOP
 	{
-		EStencilOP	stencilFailOp		= EStencilOP::KEEP;
-		EStencilOP	stencilDepthFailOp	= EStencilOP::KEEP;
-		EStencilOP	stencilPassOp		= EStencilOP::KEEP;
-		EComparison	stencilFunc			= EComparison::ALWAYS;
+		EStencilOP	stencilFailOp = EStencilOP::KEEP;
+		EStencilOP	stencilDepthFailOp = EStencilOP::KEEP;
+		EStencilOP	stencilPassOp = EStencilOP::KEEP;
+		EComparison	stencilFunc = EComparison::ALWAYS;
 	};
 
 
@@ -353,16 +354,18 @@ namespace FlexKit
 
 	enum class SHADER_TYPE : uint8_t
 	{
-		Compute,
-		Domain,
-		Geometry,
-		Hull,
-		Pixel,
-		Vertex,
-		Unknown
+		Compute			= 0x01 << 0,
+		Domain			= 0x01 << 1,
+		Geometry		= 0x01 << 2,
+		Hull			= 0x01 << 3,
+		Pixel			= 0x01 << 4,
+		Vertex			= 0x01 << 5,
+		Mesh			= 0x01 << 6,
+		Amplification	= 0x01 << 7,
+		Unknown			= 0x00
 	};
 
-	
+
 	enum class PredicateOp
 	{
 		EqualZero,
@@ -372,54 +375,54 @@ namespace FlexKit
 
 	enum DeviceAccessState : uint16_t
 	{
-		DASReadFlag					= 0x0001,
-		DASWriteFlag				= 0x0002,
+		DASReadFlag = 0x0001,
+		DASWriteFlag = 0x0002,
 
-		DASRetired					= 0x1000,
-		DASPresent					= 0x1005,
-		DASRenderTarget				= 0x0006,
-		DASPixelShaderResource		= 0x0009,
-		DASUAV						= 0x000A,
-		DASSTREAMOUT				= 0x000B,
-		DASVERTEXBUFFER				= 0x000C,
-		DASCONSTANTBUFFER			= 0x000C,
-		DASDEPTHBUFFER				= 0x0030,
-		DASDEPTHBUFFERREAD			= 0x0030 | DASReadFlag,
-		DASDEPTHBUFFERWRITE			= 0x0030 | DASWriteFlag,
+		DASRetired = 0x1000,
+		DASPresent = 0x1005,
+		DASRenderTarget = 0x0006,
+		DASPixelShaderResource = 0x0009,
+		DASUAV = 0x000A,
+		DASSTREAMOUT = 0x000B,
+		DASVERTEXBUFFER = 0x000C,
+		DASCONSTANTBUFFER = 0x000C,
+		DASDEPTHBUFFER = 0x0030,
+		DASDEPTHBUFFERREAD = 0x0030 | DASReadFlag,
+		DASDEPTHBUFFERWRITE = 0x0030 | DASWriteFlag,
 
-		DASACCELERATIONSTRUCTURE_WRITE	= 0x00D0 | DASWriteFlag,
-		DASACCELERATIONSTRUCTURE_READ	= 0x00D0 | DASReadFlag,
+		DASACCELERATIONSTRUCTURE_WRITE = 0x00D0 | DASWriteFlag,
+		DASACCELERATIONSTRUCTURE_READ = 0x00D0 | DASReadFlag,
 
-		DASPREDICATE				= 0x0010 | DASReadFlag,
-		DASINDIRECTARGS				= 0x0020 | DASReadFlag,
+		DASPREDICATE = 0x0010 | DASReadFlag,
+		DASINDIRECTARGS = 0x0020 | DASReadFlag,
 
-		DASNonPixelShaderResource	= 0x0040 | DASWriteFlag,
+		DASNonPixelShaderResource = 0x0040 | DASWriteFlag,
 
-		DASCopyDest					= 0x0050 | DASWriteFlag,
-		DASCopySrc					= 0x0050 | DASReadFlag,
+		DASCopyDest = 0x0050 | DASWriteFlag,
+		DASCopySrc = 0x0050 | DASReadFlag,
 
-		DASINDEXBUFFER				= 0x0060 | DASReadFlag,
+		DASINDEXBUFFER = 0x0060 | DASReadFlag,
 
-		DASGenericRead				= 0x0070 | DASReadFlag,
-		DASCommon					= 0x0080 | DASReadFlag,
+		DASGenericRead = 0x0070 | DASReadFlag,
+		DASCommon = 0x0080 | DASReadFlag,
 
-		DASShadingRateSrc			= 0x00A0 | DASReadFlag,
-		DASShadingRateDst			= 0x00A0 | DASWriteFlag,
+		DASShadingRateSrc = 0x00A0 | DASReadFlag,
+		DASShadingRateDst = 0x00A0 | DASWriteFlag,
 
-		DASDecodeWrite				= 0x00B0 | DASWriteFlag,
+		DASDecodeWrite = 0x00B0 | DASWriteFlag,
 
-		DASProcessRead				= 0x00E0 | DASReadFlag,
-		DASProcessWrite				= 0x00E0 | DASWriteFlag,
+		DASProcessRead = 0x00E0 | DASReadFlag,
+		DASProcessWrite = 0x00E0 | DASWriteFlag,
 
-		DASEncodeRead				= 0x0100 | DASReadFlag,
-		DASEncodeWrite				= 0x0100 | DASWriteFlag,
+		DASEncodeRead = 0x0100 | DASReadFlag,
+		DASEncodeWrite = 0x0100 | DASWriteFlag,
 
-		DASResolveRead				= 0x0200 | DASReadFlag,
-		DASResolveWrite				= 0x0200 | DASWriteFlag,
+		DASResolveRead = 0x0200 | DASReadFlag,
+		DASResolveWrite = 0x0200 | DASWriteFlag,
 
-		DASNOACCESS					= 0xF000,
-		DASUNKNOWN					= 0x0300,
-		DASERROR					= 0xFFFF,
+		DASNOACCESS = 0xF000,
+		DASUNKNOWN = 0x0300,
+		DASERROR = 0xFFFF,
 	};
 
 
@@ -428,44 +431,44 @@ namespace FlexKit
 	{
 		Sync_None,
 
-		Sync_IA					= 0x01 << 0,
-		Sync_VertexShader		= 0x01 << 1,
-		Sync_HullShader			= 0x01 << 2,
-		Sync_DomainShader		= 0x01 << 3,
-		Sync_GeometryShader		= 0x01 << 4,
-		Sync_PixelShader		= 0x01 << 5,
-		Sync_DepthStencil		= 0x01 << 6,
-		Sync_RenderTarget		= 0x01 << 7,
-		Sync_Raytracing			= 0x01 << 8,
-		Sync_Copy				= 0x01 << 9,
-		Sync_Resolve			= 0x01 << 10,
-		Sync_ExecuteIndirect	= 0x01 << 11,
-		Sync_Predication		= 0x01 << 12,
-		Sync_Compute			= 0x01 << 13,
+		Sync_IA = 0x01 << 0,
+		Sync_VertexShader = 0x01 << 1,
+		Sync_HullShader = 0x01 << 2,
+		Sync_DomainShader = 0x01 << 3,
+		Sync_GeometryShader = 0x01 << 4,
+		Sync_PixelShader = 0x01 << 5,
+		Sync_DepthStencil = 0x01 << 6,
+		Sync_RenderTarget = 0x01 << 7,
+		Sync_Raytracing = 0x01 << 8,
+		Sync_Copy = 0x01 << 9,
+		Sync_Resolve = 0x01 << 10,
+		Sync_ExecuteIndirect = 0x01 << 11,
+		Sync_Predication = 0x01 << 12,
+		Sync_Compute = 0x01 << 13,
 
-		Sync_EmitRaytracingAccelerationStructurePostBuildInfo	= 0x01 << 14,
-		Sync_BuildRaytracingAccelerationStructure				= 0x01 << 15,
-		Sync_CopyRaytracingAccelerationStructure				= 0x01 << 16,
+		Sync_EmitRaytracingAccelerationStructurePostBuildInfo = 0x01 << 14,
+		Sync_BuildRaytracingAccelerationStructure = 0x01 << 15,
+		Sync_CopyRaytracingAccelerationStructure = 0x01 << 16,
 
-	    Sync_VideoDecode										= 0x01 << 17,
-		Sync_VideoProcess										= 0x01 << 18,
-		Sync_VideoEncode										= 0x01 << 19,
+		Sync_VideoDecode = 0x01 << 17,
+		Sync_VideoProcess = 0x01 << 18,
+		Sync_VideoEncode = 0x01 << 19,
 
-		Sync_ClearUAV											= 0x01 << 20,
+		Sync_ClearUAV = 0x01 << 20,
 
-		Sync_Mesh			= 0x01 << 21,
-		Sync_Amplification	= 0x01 << 22,
+		Sync_Mesh = 0x01 << 21,
+		Sync_Amplification = 0x01 << 22,
 
-		Sync_Draw				= Sync_IA | Sync_VertexShader | Sync_HullShader  | Sync_DomainShader | Sync_PixelShader | Sync_DepthStencil | Sync_RenderTarget,
-	    Sync_All_Shading		= Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_PixelShader | Sync_Compute,
-		Sync_NonPixelShading	= Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_Compute,
+		Sync_Draw = Sync_IA | Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_PixelShader | Sync_DepthStencil | Sync_RenderTarget,
+		Sync_All_Shading = Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_PixelShader | Sync_Compute,
+		Sync_NonPixelShading = Sync_VertexShader | Sync_HullShader | Sync_DomainShader | Sync_Compute,
 
 		Sync_Unknown,
-		Sync_All	= 0xffffffff,
+		Sync_All = 0xffffffff,
 
 	};
 
-	
+
 	enum class DeviceLayout : uint32_t
 	{
 		Common,
@@ -532,11 +535,11 @@ namespace FlexKit
 	{
 		enum DeviceHeapFlagEnums : uint32_t
 		{
-			NONE			= 0,
-			RenderTarget	= 1,
-			UAVBuffer		= 2,
-			UAVTextures		= 4,
-			ALL				= 0xff
+			NONE = 0,
+			RenderTarget = 1,
+			UAVBuffer = 2,
+			UAVTextures = 4,
+			ALL = 0xff
 		};
 	}
 
@@ -564,11 +567,11 @@ namespace FlexKit
 	{
 		enum ResourceFlags
 		{
-			NONE			= 0x00,
-			INUSE			= 0x01,
-			RenderTarget	= 0x02,
-			SwapChain		= 0x04,
-			DepthBuffer		= 0x08,
+			NONE = 0x00,
+			INUSE = 0x01,
+			RenderTarget = 0x02,
+			SwapChain = 0x04,
+			DepthBuffer = 0x08,
 		};
 	}
 
@@ -592,7 +595,7 @@ namespace FlexKit
 		TimeStats,
 	};
 
-	
+
 	enum class IndirectLayoutEntryType : uint8_t
 	{
 		DrawCall,
@@ -624,20 +627,20 @@ namespace FlexKit
 
 	enum class VERTEXBUFFER_FORMAT
 	{
-		UNKNOWN			= -1,
-		R8				= 1,
-		R8G8B8			= 3,
-		R8G8B8A8		= 8,
-		R16				= 2,
-		R16G16			= 4,
-		R16G16B16		= 6,
-		R16G16B16A16	= 8,
-		R32				= 4,
-		R32G32			= 8,
-		R32G32B32		= 12,
-		R32G32B32A32	= 16,
-		MATRIX			= 64,
-		COMBINED		= 32
+		UNKNOWN = -1,
+		R8 = 1,
+		R8G8B8 = 3,
+		R8G8B8A8 = 8,
+		R16 = 2,
+		R16G16 = 4,
+		R16G16B16 = 6,
+		R16G16B16A16 = 8,
+		R32 = 4,
+		R32G32 = 8,
+		R32G32B32 = 12,
+		R32G32B32A32 = 16,
+		MATRIX = 64,
+		COMBINED = 32
 	};
 
 
@@ -694,10 +697,10 @@ namespace FlexKit
 
 			struct
 			{
-				unsigned int ytile		: 12;
-				unsigned int xtile		: 12;
-				unsigned int mipLevel	: 7;
-				unsigned int packed		: 1;
+				unsigned int ytile : 12;
+				unsigned int xtile : 12;
+				unsigned int mipLevel : 7;
+				unsigned int packed : 1;
 			}   segments;
 		};
 
@@ -724,7 +727,7 @@ namespace FlexKit
 
 		bool packed() const
 		{
-		   return (bytes >> 31) & 0x01;
+			return (bytes >> 31) & 0x01;
 		}
 
 		bool operator == (const TileID_t& rhs) const
@@ -783,8 +786,8 @@ namespace FlexKit
 
 	enum SubmitCopyFlags
 	{
-		SYNC_Graphics   = 0x01,
-		SYNC_Compute    = 0x02
+		SYNC_Graphics = 0x01,
+		SYNC_Compute = 0x02
 	};
 
 	struct PipelineStateLibraryDesc
@@ -820,7 +823,7 @@ namespace FlexKit
 	struct LoadPipelineStateRes
 	{
 		DevicePipelineState_ptr		pipelineState;
-		const IPipelineInterface*	pipelineInterface;
+		const IPipelineInterface* pipelineInterface;
 	};
 
 	using LOADSTATE_FN = FlexKit::TypeErasedCallable<LoadPipelineStateRes(struct IRenderSystem&, iAllocator&), 32>;
@@ -861,13 +864,13 @@ namespace FlexKit
 		ResourceHeapTier resourceHeapTier;
 	};
 
-	
+
 	struct ShaderOptions
 	{
-		bool enable16BitTypes	= false;
-		bool hlsl2021			= false;
-		bool enableDebug		= false;
-		bool loadRootSignature	= false;
+		bool enable16BitTypes = false;
+		bool hlsl2021 = false;
+		bool enableDebug = false;
+		bool loadRootSignature = false;
 	};
 
 	enum class BarrierType
@@ -888,11 +891,11 @@ namespace FlexKit
 	{
 		Barrier() {}
 
-		DeviceAccessState accessBefore	= DeviceAccessState::DASUNKNOWN;
-		DeviceAccessState accessAfter	= DeviceAccessState::DASUNKNOWN;
+		DeviceAccessState accessBefore = DeviceAccessState::DASUNKNOWN;
+		DeviceAccessState accessAfter = DeviceAccessState::DASUNKNOWN;
 
-		DeviceSyncPoint	src	= DeviceSyncPoint::Sync_Unknown;
-		DeviceSyncPoint	dst	= DeviceSyncPoint::Sync_Unknown;
+		DeviceSyncPoint	src = DeviceSyncPoint::Sync_Unknown;
+		DeviceSyncPoint	dst = DeviceSyncPoint::Sync_Unknown;
 
 		BarrierType type = BarrierType::Unknown;
 
@@ -911,8 +914,8 @@ namespace FlexKit
 
 			struct
 			{
-				uint64_t rangeBegin	= 0;
-				uint64_t rangeEnd	= UINT64_MAX;
+				uint64_t rangeBegin = 0;
+				uint64_t rangeEnd = UINT64_MAX;
 			} buffer;
 		};
 
@@ -951,6 +954,59 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct ShaderAttributeConstantValues
+	{
+		uint32_t num;
+		uint32_t pipelineStage;
+		std::string id;
+	};
+
+	enum class DescriptorType
+	{
+	    UAV, SRV, CBV    
+	};
+
+	struct DescriptorTableEntry
+	{
+		uint32_t		num;
+		DescriptorType	type;
+	};
+
+	struct ShaderAttributeDescriptorTable
+	{
+		uint32_t binding;
+		std::vector<DescriptorTableEntry> entries;
+	};
+
+	struct ShaderAttributeFlag
+	{
+		uint32_t flag;
+	};
+
+	struct ShaderAttributeCBV
+	{
+		uint32_t reg;
+		uint32_t pipelineStage;
+	};
+
+	struct ShaderAttributeSRV
+	{
+	};
+
+	struct ShaderAttributeUAV
+	{
+	};
+
+	struct ShaderAttributeSampler{};
+
+
+	using ShaderAttribute = std::variant<ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, ShaderAttributeCBV, ShaderAttributeSRV, ShaderAttributeUAV, ShaderAttributeSampler>;
+
+	struct ShaderExtra
+	{
+		Vector<ShaderAttribute> attributes;
+	};
+
 	struct Shader
 	{
 		Shader() = default;
@@ -958,7 +1014,7 @@ namespace FlexKit
 
 		Shader(char* IN_buffer, size_t IN_bufferSize, iAllocator* IN_allocator) :
 			buffer		{ (char*)IN_allocator->malloc(IN_bufferSize) },
-			bufferSize	{ IN_bufferSize },
+			bufferSize	{ (uint32_t)IN_bufferSize },
 			allocator	{ IN_allocator	}
 		{
 			memcpy(buffer, IN_buffer, bufferSize);
@@ -976,13 +1032,11 @@ namespace FlexKit
 
 		Shader(Shader&& rhs)
 		{
-			allocator	= rhs.allocator;
-			buffer		= rhs.buffer;
-			bufferSize	= rhs.bufferSize;
-
-			rhs.allocator	= nullptr;
-			rhs.buffer		= nullptr;
-			rhs.bufferSize	= 0;
+			allocator	= std::exchange(rhs.allocator, nullptr);
+			buffer		= std::exchange(rhs.buffer, nullptr);
+			bufferSize	= std::exchange(rhs.bufferSize, 0);
+			type		= std::exchange(rhs.type, SHADER_TYPE::Unknown);
+			extra		= std::exchange(rhs.extra, nullptr);
 		}
 
 
@@ -995,6 +1049,9 @@ namespace FlexKit
 				allocator   = nullptr;
 				buffer      = nullptr;
 				bufferSize = 0;
+
+				if (extra)
+					allocator->release(extra);
 			}
 
 		}
@@ -1028,10 +1085,51 @@ namespace FlexKit
 		}
 
 
-		char*   buffer = nullptr;
-		size_t  bufferSize = 0;
+		ShaderExtra& GetExtra()
+		{
+		    if (!extra)
+				extra = &allocator->allocate<ShaderExtra>(ShaderExtra{ .attributes{ allocator } });
 
-		iAllocator* allocator = nullptr;
+			return *extra;
+		}
+
+		std::optional<ShaderAttributeCBV> FindCBVAttribute(uint32_t reg) const noexcept
+		{
+			if (!extra)
+				return {};
+
+			for (const auto& attrib : extra->attributes)
+			{
+				bool result = std::visit(
+					Overloaded{
+						[&](const ShaderAttributeCBV& attribute)
+						{
+							int x = 0;
+							return attribute.reg == reg;
+						},
+						[](auto&& attribute)
+						{
+							return false;
+						}
+					}, attrib);
+
+				if (result)
+					return std::get<ShaderAttributeCBV>(attrib);
+			}
+
+			return {};
+		}
+
+		void AddAttribute(ShaderAttribute attribute)
+		{
+			GetExtra().attributes.push_back(attribute);
+		}
+
+		char*			buffer		= nullptr;
+		uint32_t		bufferSize	= 0;
+		SHADER_TYPE		type		= SHADER_TYPE::Unknown;
+		ShaderExtra*	extra		= nullptr;
+		iAllocator*		allocator	= nullptr;
 	};
 
 

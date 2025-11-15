@@ -3,11 +3,15 @@
 #include "AnimationTest.hpp"
 #include <vkBackend.hpp>
 #include <vkSurface.hpp>
-#include <dxBackend.hpp>
-#include <Win32Graphics.hpp>
 
 
 #define USEVK 1
+
+
+#if !USEVK
+#include <Win32Graphics.hpp>
+#include <dxBackend.hpp>
+#endif
 
 using namespace FlexKit;
 
@@ -30,12 +34,22 @@ struct TestState : FrameworkState
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
 			{
 				PipelineBuilder builder(renderSystem, allocator);
-				builder.AddPixelShader("PMain",		"assets/shaders/TestShader.hlsl");
-				builder.AddVertexShader("VMain",	"assets/shaders/TestShader.hlsl");
+				builder.AddInputLayout({
+					.inputs = {
+						{
+							.name = "POSITION",
+							.index = 0,
+							.format = DeviceFormat::R32G32B32_FLOAT,
+							.inputSlotClass = EInputClassification::PerVertex,
+						}},
+					.count = 1
+					});
+				builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl");
+				builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
 				builder.AddRasterizerState();
-				builder.AddRenderTargetState({	
-					    .targetCount	= 1,
-					    .targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
+				builder.AddRenderTargetState({
+						.targetCount = 1,
+						.targetFormats = { DeviceFormat::R8G8B8A8_UNORM },
 					});
 
 				return builder.Build(renderSystem, allocator);
@@ -43,12 +57,13 @@ struct TestState : FrameworkState
 
 		GetRenderSystem().QueuePSOLoad(GetTypeGUID(Trangle));
 
-		pushBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
+		vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
+		cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
 	}
 
 	~TestState()
 	{
-		GetRenderSystem().ReleaseVB(pushBuffer);
+		GetRenderSystem().ReleaseVB(vBuffer);
 	}
 
 	UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT)
@@ -70,7 +85,6 @@ struct TestState : FrameworkState
 
 	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
 	{
-
 		auto renderTarget = renderWindow->GetBackBuffer();
 		frameGraph.AddOutput(renderTarget);
 
@@ -83,7 +97,7 @@ struct TestState : FrameworkState
 			{.xyz = { 1.0f, -1.0f, 0.0f }},
 		};
 
-		GetRenderSystem().VertexBufferPush(pushBuffer, triangle, sizeof(triangle));
+		GetRenderSystem().VertexBufferPush(vBuffer, triangle, sizeof(triangle));
 
 
 #if USEVK
@@ -96,6 +110,8 @@ struct TestState : FrameworkState
 			FrameResourceHandle renderTarget;
 		};
 
+		frameGraph.AddConstantBuffer(cBuffer);
+
 		frameGraph.AddNode<>(
 			DrawTrangle{},
 			[&](FrameGraphNodeBuilder& builder, auto& data)
@@ -106,17 +122,45 @@ struct TestState : FrameworkState
 			{
 				float fTime = (float)t;
 
+				
+				auto cb = resources.ReserveCB(512);
+				struct
+				{
+					float4 xyz;
+					float4 uvw;
+				} constants0{
+					.xyz = float4{ 0.0f, 1.0f, 0.0f, 0.0f },
+					.uvw = float4{ 1.0f, 0.0f, 0.0f, 0.0f },
+				};
+
+				struct
+				{
+					float time;
+				} constants1{
+					.time = fTime,
+				};
+
+				const auto cb0Set = ConstantBufferDataSet{ constants0, cb };
+				const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
+
+				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), allocator)->GetInterface();
+				DescriptorHeap heap{ ctx, pipelineInterface->GetDescHeap(0), allocator };
+
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), allocator);
 				ctx.SetVertexBuffers(static_vector<VertexBufferEntry, 1>{ VertexBufferEntry
 					                    {
-						                    .VertexBuffer	= pushBuffer,
+						                    .VertexBuffer	= vBuffer,
 		                                    .Stride			= 36,
 		                                    .Offset			= 0, 
 				                        } });
 
 				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
-				ctx.SetGraphicsConstantValue(0, 1, &fTime);
+				ctx.SetGraphicsConstantValue(0, 8, &constants0);
+				ctx.SetGraphicsConstantBufferView(0, cb1Set);
+
+				//ctx.SetGraphicsConstantBufferView(0, cBuffer, 0);
+
 				ctx.Draw(3);
 			});
 
@@ -128,12 +172,13 @@ struct TestState : FrameworkState
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override
 	{
 		bool res = renderWindow->Present();
-		core.RenderSystem->ResetVertexBuffer(pushBuffer);
+		core.RenderSystem->ResetVertexBuffer(vBuffer);
 	}
 
-	double				t				= 0.0;
-	IRenderWindow*		renderWindow	= nullptr;
-	VertexBufferHandle	pushBuffer;
+	double					t				= 0.0;
+	IRenderWindow*			renderWindow	= nullptr;
+	VertexBufferHandle		vBuffer			= InvalidHandle;
+	ConstantBufferHandle	cBuffer			= InvalidHandle;
 };
 
 int main()

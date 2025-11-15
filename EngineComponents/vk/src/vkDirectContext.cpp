@@ -4,6 +4,8 @@
 #include <VkBootstrap.h>
 #include <vkPipelineLayout.hpp>
 
+#include "PushBuffers.hpp"
+
 namespace VK_internal
 {
 	using namespace FlexKit;
@@ -257,7 +259,9 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::SetComputePipelineState(const PSOHandle, iAllocator& temp)
-    {}
+	{
+		memset(computeDescriptorBuffer, 0x00, sizeof(computeDescriptorBuffer));
+	}
 
 	void vkDirectContext::SetGraphicsPipelineState(const PSOHandle psoHandle, iAllocator& temp)
 	{
@@ -265,6 +269,8 @@ namespace VK_internal
 
 		currentGraphicsLayout = static_cast<const vkPipelineInterface*>(pso->GetInterface());
 		vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pso->GetDevicePipeState().As<VkPipeline_T>());
+
+		memset(graphicsDescriptorBuffer, 0x00, sizeof(graphicsDescriptorBuffer));
 	}
 
 	void vkDirectContext::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil, const size_t MIPMapOffset)
@@ -368,10 +374,88 @@ namespace VK_internal
     {}
 
 	void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset)
-    {}
+	{
+	    auto& renderSystem = RenderSystem();
+		auto vkBufferObj = renderSystem.constantPushBuffers.GetAPIBuffer(CB);
+
+		if (currentGraphicsLayout->pushLayout)
+		{
+			size_t offset;
+			vkGetDescriptorSetLayoutBindingOffset(renderSystem.device, currentGraphicsLayout->pushLayout, idx, &offset);
+
+			auto buffer = renderSystem.constantPushBuffers.GetAPIBuffer(CB);
+			VkBufferDeviceAddressInfo getAddressInfo{
+				.sType	= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+				.pNext	= nullptr,
+				.buffer	= buffer
+			};
+
+			const auto address = vkGetBufferDeviceAddress(renderSystem.device, &getAddressInfo);
+
+			VkDescriptorAddressInfoEXT bufferInfo{
+				.sType		= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT,
+                .pNext		= nullptr,
+                .address	= address + Offset,
+                .range		= 1024 * 4,
+                .format		= VkFormat::VK_FORMAT_UNDEFINED
+			};
+
+			VkDescriptorGetInfoEXT getInfo{
+	            .sType	= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+	            .pNext	= nullptr,
+	            .type	= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.data {
+				    .pUniformBuffer = &bufferInfo
+				}
+			};
+
+			vkGetDescriptor(renderSystem.device, &getInfo, 8, graphicsDescriptorBuffer + offset);
+
+			pendingGraphicsDescriptorBind = true;
+		}
+	}
 
 	void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, const struct ConstantBufferDataSet& CB)
-    {}
+	{
+		auto& renderSystem = RenderSystem();
+		auto vkBufferObj = renderSystem.constantPushBuffers.GetAPIBuffer(CB.Handle());
+
+		if (currentGraphicsLayout->pushLayout)
+		{
+			size_t offset;
+			vkGetDescriptorSetLayoutBindingOffset(renderSystem.device, currentGraphicsLayout->pushLayout, idx, &offset);
+
+			auto buffer = renderSystem.constantPushBuffers.GetAPIBuffer(CB.Handle());
+			VkBufferDeviceAddressInfo getAddressInfo{
+				.sType	= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+				.pNext	= nullptr,
+				.buffer	= buffer
+			};
+
+			const auto address = vkGetBufferDeviceAddress(renderSystem.device, &getAddressInfo);
+
+			VkDescriptorAddressInfoEXT bufferInfo{
+				.sType		= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT,
+                .pNext		= nullptr,
+                .address	= address + CB.Offset(),
+                .range		= CB.Size(),
+                .format		= VkFormat::VK_FORMAT_UNDEFINED
+			};
+
+			VkDescriptorGetInfoEXT getInfo{
+	            .sType	= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT,
+	            .pNext	= nullptr,
+	            .type	= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.data {
+				    .pUniformBuffer = &bufferInfo
+				}
+			};
+
+			vkGetDescriptor(renderSystem.device, &getInfo, 8, graphicsDescriptorBuffer + offset);
+
+			pendingGraphicsDescriptorBind = true;
+		}
+	}
 
     void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, DevicePointer)
     {}
@@ -512,7 +596,7 @@ namespace VK_internal
 	{
 		SetVertexBuffers(std::span(span));
 	}
-
+        
 	void vkDirectContext::SetVertexBuffers(const std::span<const VertexBufferEntry> span)
 	{
 	    VkBuffer		buffers[16];
@@ -545,6 +629,8 @@ namespace VK_internal
 	{
 		FlushBarriers();
 		ApplyRenderTargetSetup();
+		ApplyPendingRasterizingStates();
+		ApplyGraphicsDescriptorSetBindings();
 
 	    vkCmdDraw(commandBuffer, vertexCount, 1, baseVertex, 0);
 		pendingDraws = true;
@@ -554,6 +640,8 @@ namespace VK_internal
 	{
 		FlushBarriers();
 		ApplyRenderTargetSetup();
+		ApplyPendingRasterizingStates();
+		ApplyGraphicsDescriptorSetBindings();
 
 	    vkCmdDraw(commandBuffer, vertexCount, instanceCount, baseVertex, instanceOffset);
 		pendingDraws = true;
@@ -563,6 +651,8 @@ namespace VK_internal
 	{
 		FlushBarriers();
 		ApplyRenderTargetSetup();
+		ApplyPendingRasterizingStates();
+		ApplyGraphicsDescriptorSetBindings();
 
 	    vkCmdDrawIndexed(commandBuffer, indexCount, 1, baseVertex, baseVertex, 0);
 		pendingDraws = true;
@@ -572,6 +662,8 @@ namespace VK_internal
 	{
 		FlushBarriers();
 		ApplyRenderTargetSetup();
+		ApplyPendingRasterizingStates();
+		ApplyGraphicsDescriptorSetBindings();
 
 	    vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, baseVertex, baseVertex, instanceOffset);
 		pendingDraws = true;
@@ -649,6 +741,24 @@ namespace VK_internal
 			.pInheritanceInfo	= nullptr
 		};
 		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+
+		VkBufferDeviceAddressInfo getAddressInfo{
+				.sType	= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+				.pNext	= nullptr,
+				.buffer = RenderSystem().descriptorPool.buffer,
+			};
+
+	    auto address = vkGetBufferDeviceAddress(RenderSystem().device, &getAddressInfo);
+
+		VkDescriptorBufferBindingInfoEXT bindingInfo{
+				.sType		= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT,
+				.pNext		= nullptr,
+				.address	= address,
+				.usage		= VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT,
+		};
+
+		vkCmdBindDescriptorBuffers(commandBuffer, 1, &bindingInfo);
 	}
 
 	void vkDirectContext::Reset()
@@ -701,6 +811,66 @@ namespace VK_internal
 		vkCmdBeginRendering(commandBuffer, &renderingInfo);
 
 		pendingTargetConfiguration = false;
+	}
+
+	void vkDirectContext::ApplyPendingRasterizingStates()
+	{
+		/*
+		VkWriteDescriptorSet writeDescriptors{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = ;
+			uint32_t                         dstBinding;
+			uint32_t                         dstArrayElement;
+			uint32_t                         descriptorCount;
+			VkDescriptorType                 descriptorType;
+			const VkDescriptorImageInfo* pImageInfo;
+			const VkDescriptorBufferInfo* pBufferInfo;
+			const VkBufferView* pTexelBufferView;
+		};
+
+		vkCmdPushDescriptorSet(
+			commandBuffer,
+            VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
+			currentGraphicsLayout->layout,
+            0, 1, &writeDescriptors
+		);
+		*/
+	}
+
+	void vkDirectContext::ApplyGraphicsDescriptorSetBindings()
+	{
+		if (pendingGraphicsDescriptorBind && currentGraphicsLayout->pushLayout)
+		{
+			auto& renderSystem = RenderSystem();
+
+			size_t size;
+			vkGetDescriptorSetLayoutSize(renderSystem.device, currentGraphicsLayout->pushLayout, &size);
+
+			auto allocation = renderSystem.heapAllocator.Alloc2Temp(size, renderSystem.GetCurrentProgress(), dispatchValue);
+			if (!allocation)
+			{
+				FK_LOG_ERROR("VK: allocation failed : Failed to bind inline descriptor set!");
+				return;
+			}
+			
+			auto& [range, offset] = allocation.value();
+
+			uint32_t indices[]		= { 0 };
+			uint64_t offsets[16]	= { offset };
+
+			memcpy((void*)range.begin.V1.to_uint(), graphicsDescriptorBuffer, size);
+
+			vkCmdSetDescriptorBufferOffsets(
+				commandBuffer,
+				VK_PIPELINE_BIND_POINT_GRAPHICS,
+				currentGraphicsLayout->layout,
+				currentGraphicsLayout->pushSet,
+				1,
+				indices, offsets);
+
+			pendingGraphicsDescriptorBind = false;
+		}
 	}
 
 	vkRenderSystem& vkDirectContext::RenderSystem() noexcept
