@@ -107,9 +107,11 @@ namespace VK_internal
         void                    Reset(ConstantBufferHandle, uint64_t id);
         SubAllocation           Reserve(ConstantBufferHandle, uint64_t reserveSize);
 
+        VkBuffer                GetAPIBuffer(ConstantBufferHandle);
+
         using Fields_TY = MultiField<ConstantBuffer, uint32_t, APIObjects, ConstantBufferHandle>;
 
-        HandleUtilities::HandleTable<ConstantBufferHandle>        handles;
+        HandleUtilities::HandleTable<ConstantBufferHandle>      handles;
         Fields_TY                                               fields;
         std::shared_mutex                                       mutex;
     };

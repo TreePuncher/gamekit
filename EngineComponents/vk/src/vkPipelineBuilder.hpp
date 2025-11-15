@@ -9,6 +9,13 @@ namespace VK_internal
 
 	struct vkRenderSystem;
 
+	struct VertexStateObject
+	{
+		Vector<VkVertexInputAttributeDescription>	inputAttributes;
+		Vector<VkVertexInputBindingDescription>		inputBindings;
+		VkPipelineVertexInputStateCreateInfo		info;
+	};
+
     struct vkPipelineBuilder : IPipelineBuilderImpl
     {
 		vkPipelineBuilder(vkRenderSystem&, iAllocator&);
@@ -46,7 +53,7 @@ namespace VK_internal
 		LoadPipelineStateRes Build					(IRenderSystem& renderSystem, iAllocator& tempAllocator) override;
 		LoadPipelineStateRes BuildStream			(IRenderSystem& renderSystem, void* buffer, const size_t size) override;
 
-		VkPipelineVertexInputStateCreateInfo*	GetVertexInputState() const;
+		struct VertexStateObject*				GetVertexInputState() const;
 		VkPipelineInputAssemblyStateCreateInfo* GetInputAssemblyState() const;
 		VkPipelineTessellationStateCreateInfo*	GetTessellationState() const;
 		VkPipelineViewportStateCreateInfo*		GetViewportState() const;
@@ -74,9 +81,16 @@ namespace VK_internal
 			void* _ptr;
 		};
 
+		struct LoadedShader
+		{
+			const char*				entryPoint;
+			VkShaderStageFlagBits	stage;
+			Shader					shader;
+		};
+
 		Vector<StateObject, 0, uint8_t>							stateObjects;
 		Vector<VkPipelineShaderStageCreateInfo, 0, uint8_t>		shaderStages;
-		Vector<Shader, 0, uint8_t>								shaders;
+		Vector<LoadedShader, 0, uint8_t>						shaders;
 		iAllocator&												allocator;
     };
 }

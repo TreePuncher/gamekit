@@ -13,41 +13,51 @@ namespace VK_internal
 
 	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc_ST(const size_t size, uint64_t completedIdx) noexcept
 	{
-		auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
+		return Alloc2_ST(size, completedIdx).and_then([](auto res) { return std::optional{ res.range }; });
+	}
 
-		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less );
+
+	/************************************************************************************************/
+
+
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2_ST(const size_t size, uint64_t completedIdx) noexcept
+	{
+		auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
+		const size_t blockCount = AlignedSize(size, 64) / 64;
+
+		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less);
 		else
 			std::ranges::sort(freeList, cmp_less);
 
 		for (auto& freeNode : freeList)
 		{
-			if (freeNode->BlockCount() > size && freeNode->lockUntil <= completedIdx)
+			if (freeNode->BlockCount() > blockCount && freeNode->lockUntil <= completedIdx)
 			{
-				auto node						= freeNode;
-				auto potentialSplit				= node->SplitSizes();
-				auto& [leftSplit, rightSplit]	= potentialSplit;
+				auto node = freeNode;
+				auto potentialSplit = node->SplitSizes();
+				auto& [leftSplit, rightSplit] = potentialSplit;
 
 				freeList.erase(std::remove(freeList.begin(), freeList.end(), freeNode), freeList.end());
 
-				while((leftSplit > size || rightSplit > size)  && (leftSplit > 0 && rightSplit > 0))
+				while ((leftSplit > blockCount || rightSplit > blockCount) && (leftSplit > 0 && rightSplit > 0))
 				{
 					node->Split(allocator);
 					auto lhs = node->left;
 					auto rhs = node->right;
 
-					if (rhs->BlockCount() == size)
+					if (rhs->BlockCount() == blockCount)
 					{
 						node = rhs;
 						freeList.push_back(lhs);
 						break;
 					}
-					else if (lhs->BlockCount() == size)
+					else if (lhs->BlockCount() == blockCount)
 					{
 						node = lhs;
 						freeList.push_back(rhs);
 						break;
 					}
-					else if (rhs->BlockCount() > size)
+					else if (rhs->BlockCount() > blockCount)
 					{
 						node = rhs;
 						freeList.push_back(lhs);
@@ -63,17 +73,20 @@ namespace VK_internal
 
 				node->free = false;
 
-				const auto offset = node->begin;
+				const auto offset = node->begin * 64;
 
-				if (size == 0)
+				if (blockCount == 0)
 					DebugBreak();
 
-				return DescriptorRange{
+				return Alloc2Res{
+					.range{
 					.begin	= { { (uint64_t)description.CPUBegin + offset },
 								{ (uint64_t)description.GPUBegin + offset } },
 					.size	= (uint32_t)size,
-					.stride = (uint32_t)1,
-				};
+					.stride = (uint32_t)8,
+				    },
+
+				    .offset = offset };
 			}
 		}
 
@@ -87,9 +100,9 @@ namespace VK_internal
 
 	void vkDescriptorHeapAllocator::Initialize(const HeapAllocatorDescription& IN_Description, FlexKit::iAllocator* IN_allocator)
 	{
-		root			= Node{ .begin = 0, .end = description.size };
-		freeList		= Vector<Node*>{ IN_allocator };
-		allocator		= IN_allocator;
+		root = Node{ .begin = 0, .end = IN_Description.size / 64 };
+		freeList = Vector<Node*>{ IN_allocator };
+		allocator = IN_allocator;
 
 		freeList.push_back(&root);
 		description = IN_Description;
@@ -99,11 +112,123 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	auto vkDescriptorHeapAllocator::Alloc(const size_t size, uint64_t completedIdx) noexcept
+	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc(const size_t size, uint64_t completedIdx) noexcept
 	{
 		std::scoped_lock lock{ mutex };
 
 		return Alloc_ST(size, completedIdx);
+	}
+
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2(const size_t size, uint64_t completedIdx) noexcept
+	{
+		std::scoped_lock lock{ mutex };
+		return Alloc2_ST(size, completedIdx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp_ST(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept
+	{
+	    auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
+		const size_t blockCount = AlignedSize(size, 64) / 64;
+
+		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less);
+		else
+			std::ranges::sort(freeList, cmp_less);
+
+		for (auto& freeNode : freeList)
+		{
+			if (freeNode->BlockCount() == blockCount && freeNode->lockUntil <= completedIdx)
+			{
+				auto node = freeNode;
+				node->lockUntil = lockIdx;
+				const auto offset = node->begin * 64;
+
+				if (blockCount == 0)
+					DebugBreak();
+
+				return Alloc2Res{
+						.range{
+						.begin	= { { (uint64_t)description.CPUBegin + offset },
+									{ (uint64_t)description.GPUBegin + offset } },
+						.size	= (uint32_t)size,
+						.stride = (uint32_t)8,
+				    },
+
+				    .offset = offset };
+			}
+			else if (freeNode->BlockCount() > blockCount && freeNode->lockUntil <= completedIdx)
+			{
+				auto node = freeNode;
+				auto potentialSplit = node->SplitSizes();
+				auto& [leftSplit, rightSplit] = potentialSplit;
+
+				freeList.erase(std::remove(freeList.begin(), freeList.end(), freeNode), freeList.end());
+
+				while ((leftSplit > blockCount || rightSplit > blockCount) && (leftSplit > 0 && rightSplit > 0))
+				{
+					node->Split(allocator);
+					auto lhs = node->left;
+					auto rhs = node->right;
+
+					if (rhs->BlockCount() == blockCount)
+					{
+						node = rhs;
+						freeList.push_back(lhs);
+						break;
+					}
+					else if (lhs->BlockCount() == blockCount)
+					{
+						node = lhs;
+						freeList.push_back(rhs);
+						break;
+					}
+					else if (rhs->BlockCount() > blockCount)
+					{
+						node = rhs;
+						freeList.push_back(lhs);
+					}
+					else
+					{
+						node = lhs;
+						freeList.push_back(rhs);
+					}
+
+					potentialSplit = node->SplitSizes();
+				}
+
+				node->free = true;
+				node->lockUntil = lockIdx;
+				freeList.push_back(node);
+
+				const auto offset = node->begin * 64;
+
+				if (blockCount == 0)
+					DebugBreak();
+
+				return Alloc2Res{
+					.range{
+					.begin	= { { (uint64_t)description.CPUBegin + offset },
+								{ (uint64_t)description.GPUBegin + offset } },
+					.size	= (uint32_t)size,
+					.stride = (uint32_t)8,
+				    },
+
+				    .offset = offset };
+			}
+		}
+
+		DebugBreak();
+		return {};
+	}
+
+
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept
+	{
+		std::scoped_lock lock{ mutex };
+		return Alloc2Temp_ST(size, completedIdx, lockIdx);
 	}
 
 

@@ -21,14 +21,14 @@
 
 #include <directx-dxc/dxcapi.h>
 #include <iostream>
+#include <scn/xchar.h>
+#include <scn/scan.h>
+#include <scn/regex.h>
+#include <regex>
 
 namespace VK_internal
 {
 	using namespace FlexKit;
-
-	vkGetDescriptorSetLayoutSizeFNDef				vkGetDescriptorSetLayoutSize	= nullptr;
-	vkGetDescriptorFNDef							vkGetDescriptor = nullptr;
-	vkCmdBindDescriptorBufferEmbeddedSamplersFNDef	vkCmdBindDescriptorBufferEmbeddedSamplers = nullptr;
 
 	VkBool32 VKErrorCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT          messageSeverity,
@@ -201,7 +201,7 @@ namespace VK_internal
 			.pNext					= nullptr,
 			.flags					= 0,			//VkBufferCreateFlags;
 			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
@@ -224,7 +224,7 @@ namespace VK_internal
 	{
 	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
 			0,
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+			GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 			bufferSize
 		);
 
@@ -239,7 +239,7 @@ namespace VK_internal
 			.pNext					= nullptr,
 			.flags					= 0,			//VkBufferCreateFlags;
 			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			.usage					= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
@@ -498,11 +498,16 @@ namespace VK_internal
 		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
 		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
 		vkCmdBindDescriptorBufferEmbeddedSamplers	= (vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
-
-		
+		vkCmdBindDescriptorBuffers					= (vkCmdBindDescriptorBuffersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBuffersEXT");
+		vkGetDescriptorSetLayoutBindingOffset		= (vkGetDescriptorSetLayoutBindingOffsetFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutBindingOffsetEXT");
+		vkCmdSetDescriptorBufferOffsets				= (vkCmdSetDescriptorBufferOffsetsFNDef)vkGetDeviceProcAddr(device, "vkCmdSetDescriptorBufferOffsetsEXT");
 
 		FK_ASSERT(vkGetDescriptorSetLayoutSize != nullptr, "VK: Failed to get vkGetDescriptorSetLayoutSizeEXT");
 		FK_ASSERT(vkGetDescriptor != nullptr, "VK: Failed to get vkGetDescriptorEXT");
+		FK_ASSERT(vkCmdBindDescriptorBufferEmbeddedSamplers != nullptr, "VK: Failed to get vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
+		FK_ASSERT(vkCmdBindDescriptorBuffers != nullptr, "VK: Failed to get vkCmdBindDescriptorBuffersEXT");
+		FK_ASSERT(vkGetDescriptorSetLayoutBindingOffset != nullptr, "VK: Failed to get vkCmdBindDescriptorBuffersEXT");
+		FK_ASSERT(vkCmdSetDescriptorBufferOffsets != nullptr, "VK: Failed to get vkCmdSetDescriptorBufferOffsetsEXT");
 
 		auto queue = queueRequest.value();
 
@@ -808,9 +813,27 @@ namespace VK_internal
 			signalInfos.push_back(signalInfo);
 		}
 
+
+		VkTimelineSemaphoreSubmitInfoKHR  timelineSignal{
+				.sType						= VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR,
+				.pNext						= nullptr,
+				.signalSemaphoreValueCount	= 1,
+				.pSignalSemaphoreValues		= &vkDirectQueueProgress,
+		};
+
+		VkSemaphoreSubmitInfo timelineSignalInfo{
+				.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext		= nullptr,
+				.semaphore	= vkDirectQueueCounter,
+                .value		= submissionValue,
+				.stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR,
+		};
+
+		signalInfos.push_back(timelineSignalInfo);
+
 		const VkSubmitInfo2 submit{
 			.sType						= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-			.pNext						= nullptr,
+			.pNext						= nullptr, //&timelineSignal,
 			.flags						= 0x0,
             .waitSemaphoreInfoCount		= (uint32_t)waitInfos.size(), 
             .pWaitSemaphoreInfos		= waitInfos.data(),
@@ -1141,14 +1164,14 @@ namespace VK_internal
 	}
 
 
-	SubAllocation vkRenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize) noexcept
+	SubAllocation vkRenderSystem::ReserveConstantBuffer(ConstantBufferHandle cb, size_t size) noexcept
 	{
-		return {};
+		return constantPushBuffers.Reserve(cb, size);
 	}
 
-	SubAllocation vkRenderSystem::ReserveVertexBuffer(VertexBufferHandle handle, size_t reserveSize)	noexcept
+	SubAllocation vkRenderSystem::ReserveVertexBuffer(VertexBufferHandle vb, size_t size)	noexcept
 	{
-		return vertexPushBuffers.Reserve(handle, reserveSize);
+		return vertexPushBuffers.Reserve(vb, size);
 	}
 
 
@@ -1193,23 +1216,22 @@ namespace VK_internal
 		ULONG Release() { return 0; }
 	};
 
-
 	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
 	{
-		IDxcLibrary*		hlslLibrary = nullptr;
-		IDxcIncludeHandler* hlslIncludeHandler = nullptr;
-		IDxcCompiler3*		hlslCompiler = nullptr;
+		IDxcUtils*			hlslUtils			= nullptr;
+		IDxcIncludeHandler* hlslIncludeHandler	= nullptr;
+		IDxcCompiler3*		hlslCompiler		= nullptr;
 
-		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslLibrary))))
+		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslUtils))))
 			throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
 
 		if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&hlslCompiler))))
 			throw(std::runtime_error{ "Unable to create HLSL 6.x Compiler!" });
 
-		if (hlslLibrary) hlslLibrary->CreateIncludeHandler(&hlslIncludeHandler);
+		if (hlslUtils) hlslUtils->CreateDefaultIncludeHandler(&hlslIncludeHandler);
 
 		EXITSCOPE({
-			if (hlslLibrary) hlslLibrary->Release();
+			if (hlslUtils) hlslUtils->Release();
 		    if (hlslIncludeHandler) hlslIncludeHandler->Release();
 		    if (hlslCompiler) hlslCompiler->Release();
 		});
@@ -1231,9 +1253,232 @@ namespace VK_internal
 		mbstowcs(fileW, file, 256);
 		mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
 
+		auto type = [](const char* profile)
+			{
+				uint16_t code = *(uint16_t*)profile;
+
+				switch (code)
+				{
+				case 0x7370:
+					return SHADER_TYPE::Pixel;
+				case 0x7376:
+					return SHADER_TYPE::Vertex;
+				case 0x7361:
+					return SHADER_TYPE::Amplification;
+				case 0x736d:
+					return SHADER_TYPE::Mesh;
+				case 0x7363:
+					return SHADER_TYPE::Compute;
+				case 0x7364:
+					return SHADER_TYPE::Domain;
+				case 0x7368:
+					return SHADER_TYPE::Hull;
+				default:
+					return SHADER_TYPE::Unknown;
+				}
+			}(profile);
+
+		auto size = FlexKit::GetFileSize(filePath.string().c_str());
+		std::string shaderStr;
+		shaderStr.resize(size);
+		LoadFileIntoBuffer(filePath.string().c_str(), (std::byte*)shaderStr.data(), size);
+
+		static const std::regex attributeRegex{ R"(\[\[fk::\w*\((\w*?|\n*?|\(|\)|\=|\s|\,|\")*?\)?\]\])" };
+		
+		std::smatch base_match;
+		std::sregex_iterator itr = std::sregex_iterator(
+			shaderStr.begin(),
+			shaderStr.end(),
+			attributeRegex);
+
+		std::sregex_iterator end;
+		Vector<ShaderAttribute> attributes{ static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance()).allocator };
+
+		uint32_t CBVcount = 0;
+		uint32_t tableCount = 0;
+
+		size_t shaderOffset = 0;
+		while(itr != end)
+		{
+			auto match = itr->str();
+
+			if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::DescriptorSetCBV(binding={}, set={})]])"); res)
+			{
+				auto [set, binding] = res->values();
+
+				size_t pos = itr->position() + shaderOffset;
+
+				auto line = std::format("cbuffer constants_{0}_{1} : register(b{0}, space{1})", set, binding);
+				shaderStr.replace(pos, itr->length(), line);
+
+				shaderOffset = pos + line.length();
+
+				itr = std::sregex_iterator(
+					shaderStr.begin() + shaderOffset,
+					shaderStr.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructuredRW(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture2D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture3D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetCubeMap(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructured(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture2D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture3D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, scn::regex_matches>(match, R"([[fk::DescriptorSet(set={}, {:/((\w)+\((\w|\=|\,|\s)*\)|(\s|\,)?)*/n})]])"); res)
+			{
+				auto [set, descriptors] = res->values();
+				if (descriptors.size())
+				{
+					auto str = descriptors.at(0).value().get();
+					auto itr = str.begin();
+
+					ShaderAttributeDescriptorTable table{ .binding = tableCount++ };
+
+					while (itr != str.end())
+					{
+						if (std::isspace(*itr))
+							itr++;
+						else if (std::string_view{ itr, itr + 3 } == "CBV")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "CBV(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::CBV });
+						    itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 3 } == "SRV")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "SRV(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::SRV });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 3 } == "UAV")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "UAV(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::UAV });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else
+							itr++;
+					}
+
+					attributes.push_back(table);
+				}
+			}
+			else if (auto res = scn::scan<>(match, R"([[fk::CBV()]])"); res)
+			{
+				size_t pos = itr->position() + shaderOffset;
+				shaderStr.replace(pos, itr->length(), std::format("cbuffer type_{} : register(b{})", rand(), CBVcount));
+
+				attributes.push_back(
+					ShaderAttributeCBV{
+						.reg			= CBVcount++,
+						.pipelineStage	= (uint32_t)type
+					});
+
+				shaderOffset = pos;
+
+				itr = std::sregex_iterator(
+					shaderStr.begin() + shaderOffset,
+					shaderStr.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<scn::regex_matches, uint32_t>(match, R"([[fk::InlineValues(id="{:/(\w|\d)*/}", num={})]])"); res)
+			{
+				std::string type_id = std::format("type_{}", rand());
+
+				auto [id_match, num] = res->values();
+				auto id = id_match.at(0).and_then([](auto m) { return std::optional<std::string>{m.get()}; }).value_or(std::string{""});
+
+				attributes.push_back(
+					ShaderAttributeConstantValues{
+						.num			= num,
+						.pipelineStage	= (uint32_t)type,
+						.id				= id,
+					});
+
+				static const std::regex structRegex{ R"(\{(\w|\d|\s|\;)*\};)" };
+
+				std::string replacement		= std::format("struct {}", type_id);
+				std::string insertLine		= std::format("\n[[vk::push_constant]] {} {};", type_id, id);
+
+				auto structBlock = std::sregex_iterator(
+					shaderStr.begin() + shaderOffset,
+					shaderStr.end(),
+					structRegex);
+				
+				auto pos	= itr->position() + shaderOffset;
+				auto posEnd = itr->position() + itr->length();
+				auto block	= structBlock->position();
+
+				if (posEnd + 2 >= block)
+				{	// formatted correctly? Maybe?
+					shaderStr.replace(pos, itr->length(), replacement);
+
+					auto offset = replacement.length() + structBlock->length() + 2;
+					shaderStr.insert(pos + offset, insertLine);
+				}
+
+				shaderOffset = pos;
+
+				itr = std::sregex_iterator(
+					shaderStr.begin() + shaderOffset,
+					shaderStr.end(),
+					attributeRegex);
+
+				continue;
+			}
+
+			shaderStr.erase(itr->position() + shaderOffset, itr->length());
+
+			shaderOffset += itr->position();
+			itr = std::sregex_iterator(
+				shaderStr.begin() + shaderOffset,
+				shaderStr.end(),
+				attributeRegex);
+		}
 
 		IDxcBlobEncoding* blob;
-		auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
+		auto HR1 = hlslUtils->CreateBlobFromPinned(shaderStr.data(), shaderStr.size(), DXC_CP_ACP, &blob);
 
 		EXITSCOPE({ blob->Release(); });
 
@@ -1278,7 +1523,8 @@ namespace VK_internal
 		arguments.push_back(L"-spirv");
 		arguments.push_back(L"-E");
 		arguments.push_back(entryPointW);
-#else
+		//arguments.push_back(L"/T rootsig_1_1");
+		#else
 		arguments.push_back(L"-O3");
 #endif
 
@@ -1349,7 +1595,6 @@ namespace VK_internal
 				errors->Release();
 				IDxcResult* compileResult = nullptr;
 
-				HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
 				HR2 = hlslCompiler->Compile(
 					&buffer,
 					arguments.data(),
@@ -1367,6 +1612,11 @@ namespace VK_internal
 
 			Shader out{ (char*)byteCodeBlob->GetBufferPointer(), byteCodeBlob->GetBufferSize(), FlexKit::SystemAllocator };
 			byteCodeBlob->Release();
+
+			if (attributes.size())
+			    out.GetExtra().attributes = std::move(attributes);
+
+			out.type = type;
 			result->Release();
 
 			return out;
@@ -1398,15 +1648,15 @@ namespace VK_internal
 	}
 
 
-	ConstantBufferHandle vkRenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
+	ConstantBufferHandle vkRenderSystem::CreateConstantBuffer(size_t size, bool gpuResident)
 	{
-		return InvalidHandle;
+		return constantPushBuffers.CreateBuffer(size, gpuResident);
 	}
 
 
-	VertexBufferHandle vkRenderSystem::CreateVertexBuffer(size_t bufferSize, bool GPUResident)
+	VertexBufferHandle vkRenderSystem::CreateVertexBuffer(size_t size, bool gpuResident)
 	{
-		return vertexPushBuffers.CreateBuffer(bufferSize, GPUResident);
+		return vertexPushBuffers.CreateBuffer(size, gpuResident);
 	}
 
 

@@ -19,9 +19,13 @@ namespace VK_internal
 		void Release() final;
 
 		VkPipelineLayout				layout;
+		VkDescriptorSetLayout			pushLayout;
+		uint32_t						pushSet;
 		uint32_t						pushConstantFlags;
+		uint32_t						pushCount;
 		Vector<VkDescriptorSetLayout>	vkLayouts;
 		Vector<DesciptorHeapLayout>		heapLayouts;
+		Vector<DesciptorHeapLayout>		pushLayouts;
 	};
 
 	struct vkPipelineState : IPipelineState, NoCopy

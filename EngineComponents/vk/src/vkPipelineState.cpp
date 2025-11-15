@@ -110,6 +110,9 @@ namespace VK_internal
 		if (object)
 		{
 			auto state = std::atomic_ref{ object->state };
+			if (state == PipelineState::Loaded)
+				return &object->pipeline;
+
 			if (state != PipelineState::Loading)
 			{
 				auto expected = state.load(std::memory_order_relaxed);

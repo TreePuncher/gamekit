@@ -14,7 +14,7 @@ add_executable(
 )
 
 set_property(TARGET AnimationTest PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(AnimationTest PRIVATE flex flex_optional vkBackend PhysxComponent HighQualityRenderingComponent TextureStreaming dxBackend)
+target_link_libraries(AnimationTest PRIVATE flex flex_optional vkBackend PhysxComponent HighQualityRenderingComponent TextureStreaming)
 
 if(NOT EXISTS ${PROJECT_BINARY_DIR}/assets)
     file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)

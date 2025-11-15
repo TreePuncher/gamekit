@@ -189,20 +189,24 @@ namespace VK_internal
 
 		void EndPass();
 		void ApplyRenderTargetSetup();
+		void ApplyPendingRasterizingStates();
+		void ApplyGraphicsDescriptorSetBindings();
+		void ApplyComputeDescriptorSetBindings();
 
 		static struct vkRenderSystem& RenderSystem() noexcept;
 
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment) final;
 		IRenderSystem&		GetRenderSystem() noexcept final;
 
-		bool					pendingDraws				= false;
-		bool					pendingTargetConfiguration	= false;
+		bool					pendingDraws					= false;
+		bool					pendingTargetConfiguration		= false;
+		bool					pendingGraphicsDescriptorBind	= false;
 
 	    VkCommandPool				commandPool				= nullptr;
 		VkCommandBuffer				commandBuffer			= nullptr;
 		const vkPipelineInterface*	currentGraphicsLayout	= nullptr;
 
-		uint64_t				dispatchValue			= 0;
+		uint64_t					dispatchValue			= 0;
 
 		Vector<Barrier>						pendingBarriers;
 		Vector<ResourceHandle>				resourcesUsed;
@@ -215,5 +219,12 @@ namespace VK_internal
 		VkRect2D									renderArea;
 		std::optional<VkRenderingAttachmentInfo>	depthBufferAttachment;
 		std::optional<VkRenderingAttachmentInfo>	stencilBufferAttachment;
+
+		static_vector<VkDescriptorBufferInfo, 8>	pendingDescriptorBufferInfoWrites;
+		static_vector<VkDescriptorImageInfo, 8>		pendingDescriptorImageInfoWrites;
+		static_vector<VkBufferView, 8>				pendingDescriptorBufferViewWrites;
+
+		char graphicsDescriptorBuffer[256];
+		char computeDescriptorBuffer[256];
 	};
 }

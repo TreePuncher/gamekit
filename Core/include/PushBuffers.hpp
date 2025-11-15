@@ -112,6 +112,8 @@ namespace FlexKit
 
 		size_t begin() const { return pushBufferBegin; }
 
+
+		std::byte* data() { return (std::byte*)buffer; }
 	private:
 		ConstantBufferHandle	CB				= InvalidHandle;
 		char*					buffer			= nullptr;
