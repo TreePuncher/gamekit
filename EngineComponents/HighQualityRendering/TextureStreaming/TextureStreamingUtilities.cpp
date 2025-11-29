@@ -533,7 +533,7 @@ namespace FlexKit
 		PipelineInterfaceBuilder builder{ *IN_allocator };
 		builder.AllowIA = true;
 
-		DesciptorHeapLayout srvHeap;
+		DescriptorHeapLayout srvHeap;
 		srvHeap.SetParameterAsSRV(0, 0, -1);
 		FK_ASSERT(srvHeap.Check());
 

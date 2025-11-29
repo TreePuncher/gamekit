@@ -617,7 +617,7 @@ namespace dx_Internal
 
 
     bool RootSignatureBuilder::SetParameterAsDescriptorTable(
-		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
+		size_t index, const DescriptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type							= RootSignatureEntryType::DescriptorHeap;
@@ -794,7 +794,7 @@ namespace dx_Internal
 						
 						for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 						{
-							DesciptorHeapLayout layout;
+							DescriptorHeapLayout layout;
 							switch(range.RangeType)
 							{
 							case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
@@ -905,7 +905,7 @@ namespace dx_Internal
 				case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
 				{
 					auto& parameter = desc->pParameters[itr].DescriptorTable;
-					DesciptorHeapLayout layout;
+					DescriptorHeapLayout layout;
 
 					for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 					{
@@ -1516,7 +1516,7 @@ namespace dx_Internal
 
 		{
 			builder.AllowIA = true;
-			DesciptorHeapLayout DescriptorHeap;
+			DescriptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 6);
 			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
 			FK_ASSERT(DescriptorHeap.Check());
@@ -1535,7 +1535,7 @@ namespace dx_Internal
 		{
 			builder.AllowIA	= true;
 			builder.AllowSO	= true;
-			DesciptorHeapLayout DescriptorHeap;
+			DescriptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 8);
 
 			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
@@ -1549,7 +1549,7 @@ namespace dx_Internal
 		}
 		{
 			builder.AllowIA = true;
-			DesciptorHeapLayout DescriptorHeap;
+			DescriptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 4);
 			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
 			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
@@ -1562,7 +1562,7 @@ namespace dx_Internal
 			SETDEBUGNAME(*RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
 		{
-			DesciptorHeapLayout DescriptorHeap;
+			DescriptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV		(0, 0, 8);
 			DescriptorHeap.SetParameterAsShaderUAV	(1, 0, 1);
 			DescriptorHeap.SetParameterAsCBV		(2, 0, 2);
@@ -1576,11 +1576,11 @@ namespace dx_Internal
 		}
 		{
 
-			DesciptorHeapLayout DescriptorHeapSRV;
+			DescriptorHeapLayout DescriptorHeapSRV;
 			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
 			FK_ASSERT(DescriptorHeapSRV.Check());
 
-			DesciptorHeapLayout DescriptorHeapUAV;
+			DescriptorHeapLayout DescriptorHeapUAV;
 			DescriptorHeapUAV.SetParameterAsShaderUAV(0, 0, -1);
 			FK_ASSERT(DescriptorHeapUAV.Check());
 
@@ -1597,7 +1597,7 @@ namespace dx_Internal
 		}
 		{
 			builder.AllowIA = false;
-			DesciptorHeapLayout DescriptorHeap;
+			DescriptorHeapLayout DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderUAV(0, 0, 4, 0);
 			DescriptorHeap.SetParameterAsSRV(1, 0, 4, 0);
 			DescriptorHeap.SetParameterAsCBV(2, 0, 2, 0);

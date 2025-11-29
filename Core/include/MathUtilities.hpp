@@ -2996,7 +2996,7 @@ namespace FlexKit
 
 	int			Exp( int32_t Number, uint32_t exp );
 	Quaternion	MatrixToQuat(const Matrix<4,4>& );
-	void			NumberToString( int32_t n, std::string& _Dest );
+	void		NumberToString( int32_t n, std::string& _Dest );
 	int			Testing();
 
 

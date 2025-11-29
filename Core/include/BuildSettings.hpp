@@ -233,7 +233,7 @@ namespace FlexKit {
 
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 
-#if WIN32
+#ifdef WIN32
 #define NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
 #include "cstdlib"
@@ -246,7 +246,6 @@ inline void _aligned_free(void* ptr) { free(ptr); }
 
 inline void __debugbreak(){}
 inline void DebugBreak(){}
-
 #endif
 
 #if WIN32

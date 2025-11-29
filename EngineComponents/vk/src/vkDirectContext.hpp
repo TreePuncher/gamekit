@@ -64,13 +64,13 @@ namespace VK_internal
 		void SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset) final;
 		void SetGraphicsConstantBufferView(size_t idx, const struct ConstantBufferDataSet& CB) final;
 		void SetGraphicsConstantBufferView(size_t idx, DevicePointer) final;
-		void SetGraphicsDescriptorTable(size_t idx, const struct DescriptorHeap& DH) final;
+		void SetGraphicsDescriptorTable(size_t idx, const struct DescriptorSet& DH) final;
 		void SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range) final;
 		void SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset) final;
 		void SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle resource, size_t offset) final;
 
 		void SetComputeDescriptorTable(size_t idx) final;
-		void SetComputeDescriptorTable(size_t idx, const struct DescriptorHeap& DH) final;
+		void SetComputeDescriptorTable(size_t idx, const struct DescriptorSet& DH) final;
 		void SetComputeDescriptorTable(size_t idx, const DescriptorRange& range) final;
 
 		void SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle, size_t offset) final;

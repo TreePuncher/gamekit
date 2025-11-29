@@ -1,4 +1,4 @@
-#include "dxDescriptorHeaps.hpp"
+#include "dxDescriptorSet.hpp"
 #include "dxContext.hpp"
 #include "dxRenderSystem.hpp"
 #include <PushBuffers.hpp>
@@ -9,7 +9,7 @@ namespace dx_Internal
 	using namespace FlexKit;
 	using FlexKit::IContext;
 
-	dxDescriptorHeap::dxDescriptorHeap(IContext& ictx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory) :
+	dxDescriptorSet::dxDescriptorSet(IContext& ictx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) :
 		FillState(TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
@@ -28,7 +28,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	dxDescriptorHeap::dxDescriptorHeap(dxDescriptorHeap&& rhs)
+	dxDescriptorSet::dxDescriptorSet(dxDescriptorSet&& rhs)
 	{
 		descriptorHeap	= rhs.descriptorHeap;
 		FillState		= std::move(rhs.FillState);
@@ -42,7 +42,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	dxDescriptorHeap& dxDescriptorHeap::operator = (dxDescriptorHeap&& rhs)
+	dxDescriptorSet& dxDescriptorSet::operator = (dxDescriptorSet&& rhs)
 	{
 		descriptorHeap	= rhs.descriptorHeap;
 		FillState		= std::move(rhs.FillState);
@@ -58,7 +58,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory)
+	void dxDescriptorSet::Init(IContext& ictx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -77,7 +77,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::Init(IContext& ictx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+	void dxDescriptorSet::Init(IContext& ictx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -96,7 +96,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::Init2(IContext& ictx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+	void dxDescriptorSet::Init2(IContext& ictx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -115,7 +115,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::NullFill(IContext& ictx, const size_t end)
+	void dxDescriptorSet::NullFill(IContext& ictx, const size_t end)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -188,14 +188,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
+	void dxDescriptorSet::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -216,14 +216,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
+	void dxDescriptorSet::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -244,14 +244,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+	void dxDescriptorSet::SetSRVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle, DeviceFormat format)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -273,14 +273,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	void dxDescriptorSet::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -303,14 +303,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
+	void dxDescriptorSet::SetSRV(IContext& ictx, size_t idx, ResourceHandle handle, uint MipOffset, DeviceFormat format)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -334,14 +334,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	void dxDescriptorSet::SetSRVArray(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRV(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -364,14 +364,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
+	void dxDescriptorSet::SetSRV3D(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetSRV3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -399,14 +399,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
+	void dxDescriptorSet::SetCBV(IContext& ictx, size_t idx, const ConstantBufferDataSet& constants)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
+			FK_LOG_ERROR("dxDescriptorSet::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, constants.Handle().to_uint(), constants.Offset());
 			return;
 		}
 #endif
@@ -430,14 +430,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
+	void dxDescriptorSet::SetCBV(IContext& ictx, size_t idx, ConstantBufferHandle handle, size_t offset, size_t bufferSize)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
+			FK_LOG_ERROR("dxDescriptorSet::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle, offset);
 			return;
 		}
 #endif
@@ -460,14 +460,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
+	void dxDescriptorSet::SetCBV(IContext& ictx, size_t idx, ResourceHandle	handle, size_t offset, size_t bufferSize)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			FK_LOG_ERROR("dxDescriptorSet::SetCBV(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
 			return;
 		}
 #endif
@@ -492,7 +492,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
+	void dxDescriptorSet::SetUAVBuffer(IContext& ictx, size_t idx, ResourceHandle handle, size_t offset)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -502,7 +502,7 @@ namespace dx_Internal
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVBuffer(%u, %u, %u): Failed to set descriptor!", idx, handle.to_uint(), offset);
 			return;
 		}
 #endif
@@ -527,14 +527,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
+	void dxDescriptorSet::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -559,14 +559,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	void dxDescriptorSet::SetUAVTexture(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -591,7 +591,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
+	void dxDescriptorSet::SetUAVTexture(IContext& ictx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -601,7 +601,7 @@ namespace dx_Internal
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVTexture(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -627,14 +627,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
+	void dxDescriptorSet::SetUAVCubemap(IContext& ictx, size_t idx, ResourceHandle	handle)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVCubemap(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -655,14 +655,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
+	void dxDescriptorSet::SetUAVTexture3D(IContext& ictx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
 		dxDirectContext& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVTexture3D(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -688,14 +688,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	void dxDescriptorSet::SetUAVStructured(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -718,7 +718,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorHeap::SetUAVStructured(
+	void dxDescriptorSet::SetUAVStructured(
 		IContext&		ictx,
 		size_t			idx,
 		ResourceHandle	resource,
@@ -735,7 +735,7 @@ namespace dx_Internal
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx) || resource == InvalidHandle)
 		{
-			FK_LOG_ERROR("DescriptorHeap::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, resource.to_uint());
+			FK_LOG_ERROR("DescriptorSet::SetUAVStructured(%u, %u): Failed to set descriptor!", idx, resource.to_uint());
 			return;
 		}
 #endif
@@ -760,14 +760,14 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-    void dxDescriptorHeap::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+    void dxDescriptorSet::SetStructuredResource(IContext& ictx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
 #if USING(DEBUGGRAPHICS)
 		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx) || handle == InvalidHandle)
 		{
-			FK_LOG_ERROR("dxDescriptorHeap::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
+			FK_LOG_ERROR("dxDescriptorSet::SetStructuredResource(%u, %u): Failed to set descriptor!", idx, handle.to_uint());
 			return;
 		}
 #endif
@@ -804,12 +804,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescriptorHeap dxDescriptorHeap::GetHeapOffsetted(size_t offset, IContext& ictx) const
+	DescriptorSet dxDescriptorSet::GetHeapOffsetted(size_t offset, IContext& ictx) const
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
-		DescriptorHeap subHeap = Clone();
-		dxDescriptorHeap& impl = GetImpl(subHeap);
+		DescriptorSet subHeap = Clone();
+		dxDescriptorSet& impl = GetImpl(subHeap);
 
 		impl.descriptorHeap = IncrementHeapPOS(
 										descriptorHeap,
@@ -820,21 +820,21 @@ namespace dx_Internal
 	}
 
 
-	dxDescriptorHeap& dxDescriptorHeap::GetImpl(DescriptorHeap& abstractHeap) noexcept
+	dxDescriptorSet& dxDescriptorSet::GetImpl(DescriptorSet& abstractHeap) noexcept
 	{
-		return *std::launder<dxDescriptorHeap>((dxDescriptorHeap*)abstractHeap.internal);
+		return *std::launder<dxDescriptorSet>((dxDescriptorSet*)abstractHeap.internal);
 	}
 
 
-	const dxDescriptorHeap& dxDescriptorHeap::GetImpl(const DescriptorHeap& abstractHeap) noexcept
+	const dxDescriptorSet& dxDescriptorSet::GetImpl(const DescriptorSet& abstractHeap) noexcept
 	{
-		return *std::launder<const dxDescriptorHeap>((const dxDescriptorHeap*)abstractHeap.internal);
+		return *std::launder<const dxDescriptorSet>((const dxDescriptorSet*)abstractHeap.internal);
 	}
 
-	//void DescriptorHeap::Mirror(const DescriptorHeap& rhs);
-	//DescriptorHeap DescriptorHeap::Clone() const;
+	//void DescriptorSet::Mirror(const DescriptorSet& rhs);
+	//DescriptorSet DescriptorSet::Clone() const;
 
-	dxDescriptorHeap::operator DescriptorRange() const noexcept
+	dxDescriptorSet::operator DescriptorRange() const noexcept
 	{
 		return {
 			.begin		= descriptorHeap,
@@ -844,7 +844,7 @@ namespace dx_Internal
 	}
 
 
-	bool dxDescriptorHeap::CheckType(const DesciptorHeapLayout& layout, DescHeapEntryType type, size_t idx)
+	bool dxDescriptorSet::CheckType(const DescriptorHeapLayout& layout, DescHeapEntryType type, size_t idx)
 	{
 		size_t entryIdx = 0;
 		for (HeapDescriptor entry : layout.entries)

@@ -1126,7 +1126,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const DesciptorHeapLayout&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
+	const DescriptorHeapLayout&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
 		auto rootSig = resources->renderSystem->GetPSORootSignature(State);
 		return rootSig->GetDescHeap(idx);
@@ -2011,11 +2011,11 @@ namespace FlexKit
 			},
 			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
-				DescriptorHeap descHeap;
+				DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
 					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
-					&allocator);
+					allocator);
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
@@ -2161,11 +2161,11 @@ namespace FlexKit
 			},
 			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
-				DescriptorHeap descHeap;
+				DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
 					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
-					&allocator);
+					allocator);
 				descHeap.NullFill(ctx);
 
 				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));

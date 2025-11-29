@@ -202,6 +202,7 @@ namespace VK_internal
 		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) final;
 		bool							CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) final;
+		void							CreateDescriptorSet(std::byte*, size_t) final;
 	    void							CreateTextureView(ResourceHandle, DescHeapPOS) final;
 
 
@@ -266,6 +267,8 @@ namespace VK_internal
 		vkConstantPushBuffers				constantPushBuffers;
 		Vector<struct vkDirectContext*>		pendingDirectContexts;
 		vkStateTable						pipelineStates;
+
+		VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties;
     };
 }
 

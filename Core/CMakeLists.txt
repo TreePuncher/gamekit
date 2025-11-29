@@ -1,20 +1,34 @@
 #src
 
+
 project(flex)
+include(FetchContent)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+FetchContent_Declare(
+        scn
+        GIT_REPOSITORY  https://github.com/eliaskosunen/scnlib
+        GIT_TAG         v4.0.1
+        GIT_SHALLOW     TRUE
+)
+set(SCN_REGEX_BACKEND "Boost")
+
+FetchContent_MakeAvailable(scn)
+
 find_package(Angelscript CONFIG REQUIRED)
+find_package(Boost COMPONENTS Boost::regex)
 find_package(fmt CONFIG REQUIRED)
 find_package(range-v3 CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
 find_package(implot CONFIG REQUIRED)
 find_package(loguru CONFIG REQUIRED)
-find_package(scn CONFIG REQUIRED)
 find_package(RmlUi CONFIG REQUIRED)
 find_package(PkgConfig)
+
+set(SCN_REGEX_BACKEND "Boost")
 
 add_library(AngelScriptComponents
     "src/AngelScriptAddons.cpp")
@@ -140,6 +154,7 @@ target_include_directories(flex
     ${FLEX_ROOT}/ThirdParty/
     )
 
+
 target_link_libraries(flex PUBLIC fmt::fmt)
 target_link_libraries(flex PUBLIC range-v3::meta range-v3::concepts range-v3::range-v3)
 target_link_libraries(flex PRIVATE AngelScriptComponents)
@@ -148,7 +163,7 @@ target_link_libraries(flex PUBLIC imguizmo::imguizmo)
 target_link_libraries(flex PUBLIC Angelscript::angelscript)
 target_link_libraries(flex PUBLIC implot::implot)
 target_link_libraries(flex PRIVATE loguru::loguru)
-target_link_libraries(flex PUBLIC scn::scn)
+target_link_libraries(flex PRIVATE scn::scn)
 target_link_libraries(flex PUBLIC RmlUi::Core RmlUi::Debugger)
 
 find_path(SIMDE_INCLUDE_DIRS "simde")
@@ -165,6 +180,7 @@ if(WIN32)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
     target_link_libraries(flex PUBLIC ZLIB-NG)
 
+    target_compile_definitions(flex PUBLIC WIN32)
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
 
     #target_link_libraries(flex PRIVATE WINPIX) 
@@ -174,6 +190,7 @@ if(WIN32)
     target_compile_options(flex PUBLIC /UTF-8)
     target_compile_options(flex PUBLIC "$<$<C_COMPILER_ID:MSVC>:/utf-8>")
     target_compile_options(flex PUBLIC "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+    target_compile_options(flex PUBLIC /EHsc)
 
     file(COPY ${D3D12CORE_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
     file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})

@@ -1,19 +1,21 @@
 #pragma once
 #include <RenderSystemInterface.hpp>
+#include "vkPipelineLayout.hpp"
 #include <vulkan/vulkan.hpp>
 
 namespace VK_internal
 {
     using namespace FlexKit;
 
-    struct vkDesctriptorHeap : FlexKit::IDescriptorHeap
+    struct vkDescriptorSet : FlexKit::IDescriptorHeap
     {
-        ~vkDesctriptorHeap() override;
+        vkDescriptorSet(struct vkRenderSystem&);
+        ~vkDescriptorSet() override;
         IDescriptorHeap& operator=(IDescriptorHeap&&) override;
 
-        void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory) override;
-        void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;   
-        void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;
+        void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) override;
+        void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;   
+        void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;
         void NullFill(IContext& ctx, const size_t end) override;
 
         void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) override;
@@ -40,7 +42,15 @@ namespace VK_internal
         void SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset) override;
 
         DevicePointer GetGPUDescriptorHandle() const override;
-        DescriptorHeap GetHeapOffsetted(size_t offset, IContext& ctx) const override;
+        DescriptorSet GetHeapOffsetted(size_t offset, IContext& ctx) const override;
+
+        struct vkRenderSystem& GetVKRS() noexcept;
+
+        VkDescriptorSetLayout       apiLayout           = nullptr;
+        const DescriptorHeapLayout*  layout              = nullptr;
+        std::byte*                  descriptorBuffer    = nullptr;
+        uint64_t                    size                = 0;
+        uint32_t                    bufferOffset        = 0;
     };
 }
 

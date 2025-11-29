@@ -7,7 +7,7 @@ add_library(dxBackend
 	"src/DDSUtilities.cpp"
 	"src/dxBackend.cpp"
 	"src/dxContext.cpp"
-    "src/dxDescriptorHeaps.cpp"
+    "src/dxDescriptorSet.cpp"
 	"src/dxRenderSystem.cpp"
     "src/dxUpload.cpp"
 	"src/PipelineState.cpp"
@@ -25,7 +25,7 @@ target_sources(
 
     "src/DDSUtilities.hpp"
 	"src/dxContext.hpp"
-    "src/dxDescriptorHeaps.hpp"
+    "src/dxDescriptorSet.hpp"
     "src/dxIndirectLayout.hpp"
     "src/dxFrameBufferedObjects.hpp"
     "src/dxRenderSystem.hpp"

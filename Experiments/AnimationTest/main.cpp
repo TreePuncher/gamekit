@@ -118,35 +118,37 @@ struct TestState : FrameworkState
 			{
 				data.renderTarget = builder.RenderTarget(renderTarget);
 			},
-			[=](const auto& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
+			[=](const auto& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				float fTime = (float)t;
 
 				
 				auto cb = resources.ReserveCB(512);
+				
 				struct
+				{
+					float time;
+				} constants0{
+					.time = fTime,
+				};
+
+			    struct
 				{
 					float4 xyz;
 					float4 uvw;
-				} constants0{
+				} constants1{
 					.xyz = float4{ 0.0f, 1.0f, 0.0f, 0.0f },
 					.uvw = float4{ 1.0f, 0.0f, 0.0f, 0.0f },
 				};
 
-				struct
-				{
-					float time;
-				} constants1{
-					.time = fTime,
-				};
-
 				const auto cb0Set = ConstantBufferDataSet{ constants0, cb };
-				const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
+				//const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
 
-				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), allocator)->GetInterface();
-				DescriptorHeap heap{ ctx, pipelineInterface->GetDescHeap(0), allocator };
+				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
+				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator};
+				descriptorSet.SetCBV(ctx, 0, cb0Set);
 
-				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), allocator);
+				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
 				ctx.SetVertexBuffers(static_vector<VertexBufferEntry, 1>{ VertexBufferEntry
 					                    {
 						                    .VertexBuffer	= vBuffer,
@@ -156,8 +158,9 @@ struct TestState : FrameworkState
 
 				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
-				ctx.SetGraphicsConstantValue(0, 8, &constants0);
-				ctx.SetGraphicsConstantBufferView(0, cb1Set);
+				//ctx.SetGraphicsConstantValue(0, 8, &constants0);
+				//ctx.SetGraphicsConstantBufferView(0, cb1Set);
+				ctx.SetGraphicsDescriptorTable(0, descriptorSet);
 
 				//ctx.SetGraphicsConstantBufferView(0, cBuffer, 0);
 

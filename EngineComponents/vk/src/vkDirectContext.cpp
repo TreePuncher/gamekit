@@ -1,4 +1,5 @@
 #include "vkDirectContext.hpp"
+#include "vkDescriptorSet.hpp"
 #include "vkRenderSystem.hpp"
 #include <VkBootstrapDispatch.h>
 #include <VkBootstrap.h>
@@ -460,8 +461,20 @@ namespace VK_internal
     void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, DevicePointer)
     {}
 
-	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const struct DescriptorHeap& DH)
-	{}
+	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const struct DescriptorSet& DH)
+	{
+		const auto& implDH = static_cast<const vkDescriptorSet&>(DH.GetImpl());
+		uint32_t indices[]	 = { 0 };
+		uint64_t offsets[16] = { implDH.bufferOffset };
+
+		vkCmdSetDescriptorBufferOffsets(
+			commandBuffer,
+			VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
+			currentGraphicsLayout->layout,
+			idx, 1,
+			indices,
+			offsets);
+	}
 
 	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
     {}
@@ -475,7 +488,7 @@ namespace VK_internal
 	void vkDirectContext::SetComputeDescriptorTable(size_t idx)
     {}
 
-	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const struct DescriptorHeap& DH)
+	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const struct DescriptorSet& DH)
     {}
 
 	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)

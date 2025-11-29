@@ -394,8 +394,8 @@ namespace FlexKit
 
 						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
 
-						FlexKit::DescriptorHeap heap;
-						heap.Init2( ctx, rootSig->GetDescHeap(0), 1, &allocator );
+						FlexKit::DescriptorSet heap;
+						heap.Init2(ctx, rootSig->GetDescHeap(0), 1, allocator);
 						heap.SetSRV(ctx, 0, texture);
 
 						ctx.SetGraphicsDescriptorTable(4, heap);

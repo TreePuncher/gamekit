@@ -171,11 +171,11 @@ namespace FlexKit
 	template<typename Ty, size_t InternalBufferSize = 0, typename TYSize = size_t>
 	struct Vector
 	{
-		using value_t = Ty;
-		using THISTYPE = Vector<Ty, InternalBufferSize, TYSize>;
+		using value_t			= Ty;
+		using THISTYPE			= Vector<Ty, InternalBufferSize, TYSize>;
 
-		using Iterator = Ty*;
-		using Iterator_const = const Ty*;
+		using Iterator			= Ty*;
+		using Iterator_const	= const Ty*;
 
 		Vector(
 			iAllocator*		Alloc = nullptr,

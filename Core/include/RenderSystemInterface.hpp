@@ -21,7 +21,7 @@ namespace FlexKit
 		TaggedVoidPtr(nullptr_t) : _ptr{ nullptr } {}
 		TaggedVoidPtr(const TaggedVoidPtr&) = default;
 
-		TaggedVoidPtr& operator = (auto IN_ptr) { _ptr = IN_ptr; }
+		TaggedVoidPtr& operator = (auto IN_ptr) { _ptr = IN_ptr; return *this; }
 		TaggedVoidPtr& operator = (TaggedVoidPtr&) = default;
 
 		bool operator == (auto rhs) const noexcept { return rhs == _ptr; }
@@ -45,11 +45,12 @@ namespace FlexKit
 	};
 
 
-	using DeviceResource_ptr = TaggedVoidPtr<GetCRCGUID(Resource)>;
-	using DeviceFence_ptr = TaggedVoidPtr<GetCRCGUID(Fence)>;
-	using DeviceHeap_ptr = TaggedVoidPtr<GetCRCGUID(Heap)>;
-	using DevicePipelineState_ptr = TaggedVoidPtr<GetCRCGUID(PipelineState)>;
-	using DeviceRootSignature_ptr = TaggedVoidPtr<GetCRCGUID(RootSignature)>;
+	using DeviceResource_ptr		= TaggedVoidPtr<GetCRCGUID(Resource)>;
+	using DeviceFence_ptr			= TaggedVoidPtr<GetCRCGUID(Fence)>;
+	using DeviceHeap_ptr			= TaggedVoidPtr<GetCRCGUID(Heap)>;
+	using DevicePipelineState_ptr	= TaggedVoidPtr<GetCRCGUID(PipelineState)>;
+	using DeviceRootSignature_ptr	= TaggedVoidPtr<GetCRCGUID(RootSignature)>;
+	using DeviceHeapLayout_ptr		= TaggedVoidPtr<GetCRCGUID(DeviceHeapLayout_ptr)>;
 
 
 	enum class ELineAliasMode
@@ -974,8 +975,8 @@ namespace FlexKit
 
 	struct ShaderAttributeDescriptorTable
 	{
-		uint32_t binding;
-		std::vector<DescriptorTableEntry> entries;
+		uint32_t							set;
+		std::vector<DescriptorTableEntry>	entries;
 	};
 
 	struct ShaderAttributeFlag
@@ -985,8 +986,17 @@ namespace FlexKit
 
 	struct ShaderAttributeCBV
 	{
-		uint32_t reg;
-		uint32_t pipelineStage;
+		uint32_t	binding;
+		uint32_t	set;
+		uint32_t	pipelineStage;
+		std::string id;
+	};
+
+	struct ShaderAttributePushCBV
+	{
+		uint32_t	binding;
+		uint32_t	pipelineStage;
+		std::string id;
 	};
 
 	struct ShaderAttributeSRV
@@ -1000,7 +1010,10 @@ namespace FlexKit
 	struct ShaderAttributeSampler{};
 
 
-	using ShaderAttribute = std::variant<ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, ShaderAttributeCBV, ShaderAttributeSRV, ShaderAttributeUAV, ShaderAttributeSampler>;
+	using ShaderAttribute = std::variant<
+		ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, 
+        ShaderAttributeCBV, ShaderAttributeSRV, ShaderAttributeUAV, ShaderAttributeSampler, ShaderAttributePushCBV>;
+
 
 	struct ShaderExtra
 	{
@@ -1105,7 +1118,7 @@ namespace FlexKit
 						[&](const ShaderAttributeCBV& attribute)
 						{
 							int x = 0;
-							return attribute.reg == reg;
+							return attribute.binding == reg;
 						},
 						[](auto&& attribute)
 						{
@@ -1118,6 +1131,77 @@ namespace FlexKit
 			}
 
 			return {};
+		}
+		
+		std::optional<ShaderAttributePushCBV> FindCBVPushAttribute(std::string_view id) const noexcept
+		{
+			if (!extra)
+				return {};
+
+			for (const auto& attrib : extra->attributes)
+			{
+				bool result = std::visit(
+					Overloaded{
+						[&](const ShaderAttributePushCBV& attribute)
+						{
+							return attribute.id == id;
+						},
+						[](auto&& attribute)
+						{
+							return false;
+						}
+					}, attrib);
+
+				if (result)
+					return std::get<ShaderAttributePushCBV>(attrib);
+			}
+
+			return {};
+		}
+
+	    std::optional<ShaderAttributeCBV> FindCBVAttribute(std::string_view id) const noexcept
+		{
+			if (!extra)
+				return {};
+
+			for (const auto& attrib : extra->attributes)
+			{
+				bool result = std::visit(
+					Overloaded{
+						[&](const ShaderAttributeCBV& attribute)
+						{
+							return attribute.id == id;
+						},
+						[](auto&& attribute)
+						{
+							return false;
+						}
+					}, attrib);
+
+				if (result)
+					return std::get<ShaderAttributeCBV>(attrib);
+			}
+
+			return {};
+		}
+
+		template<typename TY_fn>
+		void ForEachDescriptorSetAttribute(TY_fn fn) requires( std::is_invocable_r_v<void, TY_fn, const ShaderAttributeDescriptorTable&>)
+		{
+			if (!extra)
+				return;
+
+			for (const auto& attrib : extra->attributes)
+			{
+				std::visit(
+					Overloaded{
+						[&](const ShaderAttributeDescriptorTable& descriptorTable)
+						{
+							fn(descriptorTable);
+						},
+						[](auto&& attribute){}
+					}, attrib);
+			}
 		}
 
 		void AddAttribute(ShaderAttribute attribute)
@@ -1821,13 +1905,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class DesciptorHeapLayout
+	class DescriptorHeapLayout
 	{
 	public:
-		DesciptorHeapLayout() {}
-		DesciptorHeapLayout(iAllocator& allocator) : entries{ allocator } {}
+		DescriptorHeapLayout() {}
+		DescriptorHeapLayout(iAllocator& allocator) : entries{ allocator } {}
 
-		DesciptorHeapLayout(const DesciptorHeapLayout& RHS)
+		DescriptorHeapLayout(const DescriptorHeapLayout& RHS)
 		{
 			entries = RHS.entries;
 
@@ -1927,6 +2011,7 @@ namespace FlexKit
 		}
 
 		static constexpr size_t EntryCount = 4;
+		DeviceHeapLayout_ptr deviceLayout = nullptr;
 		Vector<HeapDescriptor, EntryCount> entries;
 	};
 
@@ -2001,7 +2086,7 @@ namespace FlexKit
 	struct RootSignatureHeapEntry
 	{
 		size_t					idx;
-		DesciptorHeapLayout		Heap;
+		DescriptorHeapLayout		Heap;
 	};
 
 
@@ -2020,7 +2105,7 @@ namespace FlexKit
 		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorTable(
-			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t index, const DescriptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
@@ -2202,14 +2287,14 @@ namespace FlexKit
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct DescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 
 
 		virtual void SetComputeDescriptorTable		(size_t idx) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetComputeDescriptorTable		(size_t idx, const struct DescriptorHeap& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeDescriptorTable		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) IDIRECTCONTEXTDEBUGBODY;
@@ -2372,9 +2457,9 @@ namespace FlexKit
 
 	    virtual IDescriptorHeap& operator = (IDescriptorHeap&&) = 0;
 
-		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory) = 0;
-		virtual void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
-		virtual void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
+		virtual void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
 		virtual void NullFill(IContext& ctx, const size_t end = -1) = 0;
 
 		virtual void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) = 0;
@@ -2408,58 +2493,59 @@ namespace FlexKit
 		virtual void SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0) = 0; //
 
 		virtual DevicePointer	GetGPUDescriptorHandle	() const = 0;
-		virtual DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const = 0;
+		virtual DescriptorSet	GetHeapOffsetted(size_t offset, IContext& ctx) const = 0;
 	};
 
 
-	struct DescriptorHeap
+	struct DescriptorSet
 	{
-		DescriptorHeap() = default;
-		DescriptorHeap(IContext&, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory);
+		DescriptorSet() = default;
+		DescriptorSet(IContext&, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
 
-		DescriptorHeap& operator = (const DescriptorHeap&);
+		DescriptorSet& operator = (const DescriptorSet&);
 
 		// moveable
-		DescriptorHeap(DescriptorHeap&& rhs);
-		DescriptorHeap& operator = (DescriptorHeap&&);
+		DescriptorSet(DescriptorSet&& rhs);
+		DescriptorSet& operator = (DescriptorSet&&);
 
-		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory);
-		DescriptorHeap& Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
-		DescriptorHeap& NullFill(IContext& ctx, const size_t end = -1);
+		IDescriptorHeap& Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		IDescriptorHeap& Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
+		IDescriptorHeap& Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap layouts
+		IDescriptorHeap& NullFill(IContext& ctx, const size_t end = -1);
 
-		DescriptorHeap& SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
-		DescriptorHeap& SetCBV(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
-		DescriptorHeap& SetCBV(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
+		IDescriptorHeap& SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
+		IDescriptorHeap& SetCBV(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize);
+		IDescriptorHeap& SetCBV(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize);
 
-		DescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle);
-		DescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
-		DescriptorHeap& SetSRVArray(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		IDescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle);
+		IDescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		IDescriptorHeap& SetSRV(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format);
+		IDescriptorHeap& SetSRVArray(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetSRV3D(IContext& ctx, size_t idx, ResourceHandle);
+		IDescriptorHeap& SetSRV3D(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle		Handle);
-		DescriptorHeap& SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
+		IDescriptorHeap& SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle		Handle);
+		IDescriptorHeap& SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVBuffer(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
+		IDescriptorHeap& SetUAVBuffer(IContext& ctx, size_t idx, ResourceHandle, size_t   offset = 0);
 
-		DescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle);
+		IDescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle);
 
-		DescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
-		DescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
+		IDescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		IDescriptorHeap& SetUAVTexture(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVCubemap(IContext& ctx, size_t idx, ResourceHandle handle);
+		IDescriptorHeap& SetUAVCubemap(IContext& ctx, size_t idx, ResourceHandle handle);
 
-		DescriptorHeap& SetUAVTexture3D(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
+		IDescriptorHeap& SetUAVTexture3D(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format);
 
-		DescriptorHeap& SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
-		DescriptorHeap& SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
+		IDescriptorHeap& SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset = 0);
+		IDescriptorHeap& SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset);
 
-		DescriptorHeap& SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
+		IDescriptorHeap& SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle, size_t stride = 4, size_t offset = 0); //
 
-		DescriptorHeap			GetHeapOffsetted(size_t offset, IContext& ctx) const;
-		static IDescriptorHeap&	GetImpl(std::byte*) noexcept;
+		DescriptorSet			GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		IDescriptorHeap&		GetImpl() noexcept;
+		const IDescriptorHeap&	GetImpl() const noexcept;
 
 		std::byte internal[64];
 	};
@@ -2470,7 +2556,7 @@ namespace FlexKit
 
 	struct IPipelineInterface
 	{
-		virtual const DesciptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
+		virtual const DescriptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
 		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
 
 		virtual void Release() = 0;
@@ -2690,16 +2776,17 @@ namespace FlexKit
 		[[nodiscard]] virtual ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) = 0;
 		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
 	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
+					  virtual void								CreateDescriptorSet(std::byte*, size_t) = 0;
 
-					  virtual void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
-	    [[nodiscard]] virtual std::pair<void*, size_t>	OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) { return {nullptr, 0}; }
+					  virtual void								SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
+	    [[nodiscard]] virtual std::pair<void*, size_t>			OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) { return {nullptr, 0}; }
 
 		virtual void CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer) {}
 	    virtual void FlushPendingReadBacks() {}
 
 
 		virtual const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
-		virtual ResourceHandle			DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
+		virtual ResourceHandle				DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
 
 		// Resettable resources
 		virtual void ResetConstantBuffer(ConstantBufferHandle constant) = 0;

@@ -1462,7 +1462,7 @@ namespace FlexKit
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
-		const DesciptorHeapLayout&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+		const DescriptorHeapLayout&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
 		IRenderSystem&	GetRenderSystem();
 		FrameResources& GetResources() { return *resources; }
@@ -2932,10 +2932,10 @@ namespace FlexKit
 						{
 							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
-							DescriptorHeap descHeap;
+							DescriptorSet descHeap;
 							auto& desciptorTableLayout = rootSig->GetDescHeap(0);
 
-							descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
+							descHeap.Init2(context, desciptorTableLayout, 1, allocator);
 							descHeap.NullFill(context, 1);
 							descHeap.SetSRV(context, 0, D.texture);
 

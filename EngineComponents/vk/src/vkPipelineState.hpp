@@ -13,7 +13,7 @@ namespace VK_internal
 		vkPipelineInterface(iAllocator& allocator);
 		virtual ~vkPipelineInterface() final;
 
-		const DesciptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final;
+		const DescriptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final;
 		DeviceRootSignature_ptr		GetAPIObject() const noexcept final;
 
 		void Release() final;
@@ -24,8 +24,8 @@ namespace VK_internal
 		uint32_t						pushConstantFlags;
 		uint32_t						pushCount;
 		Vector<VkDescriptorSetLayout>	vkLayouts;
-		Vector<DesciptorHeapLayout>		heapLayouts;
-		Vector<DesciptorHeapLayout>		pushLayouts;
+		Vector<DescriptorHeapLayout>		heapLayouts;
+		Vector<DescriptorHeapLayout>		pushLayouts;
 	};
 
 	struct vkPipelineState : IPipelineState, NoCopy

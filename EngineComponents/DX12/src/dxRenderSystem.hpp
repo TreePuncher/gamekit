@@ -948,7 +948,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	struct RootSignatureHeapEntry
 	{
 		size_t				idx;
-		DesciptorHeapLayout	heap;
+		DescriptorHeapLayout	heap;
 	};
 
 
@@ -961,7 +961,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorTable(
-			size_t index, const DesciptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t index, const DescriptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
@@ -1042,7 +1042,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		void Release();
 
-		virtual const DesciptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final
+		virtual const DescriptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final
 		{
 			return Heaps[idx].heap;
 		}

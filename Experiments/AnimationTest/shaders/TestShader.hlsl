@@ -1,34 +1,16 @@
-#define RS0 "RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)"
+[[fk::RootFlag(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
+[[fk::DescriptorSet(set=0,
+	CBV(num=1)
+)]]
 
-//						Texture2D<float4>	diffuse			: register(t2);
-//[[vk::binding(0, 2)]]	sampler				defaultSampler	: register(s0);
-
-struct PushConstants
+[[fk::CBV(binding=0, set=0)]]
 {
-	float4 asdfdsa;
-	float4 RGBA;
-};
-
-//[[vk::push_constant]] PushConstants pushConstants;
-
-cbuffer cb0 : register(b0)
-{
-	float4 xyzw;
-};
-
-cbuffer cb1 : register(b1)
-{
-	float4 asdf;
-};
-
-cbuffer cb0_1 : register(b0, space1)
-{
-	float4 posw;
+	float time;
 };
 
 struct VIN
 {
-	[[vk::location(0)]] float4 xyz : POSITION;
+	[[vk::location(0)]] float3 xyz : POSITION;
 };
 
 struct VOut
@@ -37,30 +19,21 @@ struct VOut
 	[[vk::location(1)]] float3 uvw : UVW;
 };
 
-[RootSignature(RS0)]
-VOut VMain(uint vertexID : SV_VertexID)
+VOut VMain(VIN vin, uint vertexID : SV_VertexID)
 {
-	const static float3 tri[3] =
-	{
-		float3(-1.0f, -1.0f, 0.0f),
-		float3(0.0f, 1.0f, 0.0f),
-		float3(1.0f, -1.0f, 0.0f),
-	};
-	
 	VOut OUT;
-	OUT.position = float4(tri[vertexID], 1);
-	OUT.uvw = tri[vertexID] / 2.0f + 0.5f;
+	OUT.position	= float4(vin.xyz, 1);
+	OUT.uvw			= vin.xyz / 2.0f + 0.5f;
 
 	return OUT;
 }
 
-
 float4 PMain(VOut vin) : SV_Target
 {
-	//return float4(vin.position + pushConstants.asdfdsa * pushConstants.RGBA + xyzw + asdf + posw) + diffuse.Sample(defaultSampler, float2(0.5, 0.5));
-	return float4(
-		0,
-		vin.uvw.y,
-		vin.position.y / 553.0f,
-		1.0f);
+	return
+        float4(
+            sin(time) / 2.0f + 0.5f,
+            cos(time) / 2.0f + 0.5f,
+            vin.position.y / 553.0f,
+            1.0f);
 }

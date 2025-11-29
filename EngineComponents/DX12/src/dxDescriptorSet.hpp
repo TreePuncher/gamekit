@@ -7,19 +7,19 @@ namespace dx_Internal
     using namespace FlexKit;
 	using FlexKit::IContext;
 
-	class dxDescriptorHeap : public IDescriptorHeap
+	class dxDescriptorSet : public IDescriptorHeap
 	{
 	public:
-		dxDescriptorHeap() = default;
-		dxDescriptorHeap(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		dxDescriptorSet() = default;
+		dxDescriptorSet(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
 
 		// moveable
-		dxDescriptorHeap(dxDescriptorHeap&& rhs);
-		dxDescriptorHeap& operator = (dxDescriptorHeap&&);
+		dxDescriptorSet(dxDescriptorSet&& rhs);
+		dxDescriptorSet& operator = (dxDescriptorSet&&);
 
-		void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator& TempMemory);
-		void Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
-		void Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap v
+		void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
+		void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap v
 		void NullFill(IContext& ctx, const size_t end = -1);
 
 		void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
@@ -55,22 +55,22 @@ namespace dx_Internal
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
 
-		DescriptorHeap	GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		DescriptorSet	GetHeapOffsetted(size_t offset, IContext& ctx) const;
 
-		void Mirror(const DescriptorHeap& rhs);
+		void Mirror(const DescriptorSet& rhs);
 		operator DescriptorRange() const noexcept;
 
-		static			dxDescriptorHeap& GetImpl(DescriptorHeap&) noexcept;
-		static const	dxDescriptorHeap& GetImpl(const DescriptorHeap&) noexcept;
+		static			dxDescriptorSet& GetImpl(DescriptorSet&) noexcept;
+		static const	dxDescriptorSet& GetImpl(const DescriptorSet&) noexcept;
 	private:
 
-		DescriptorHeap Clone() const { return {}; }
+		DescriptorSet Clone() const { return {}; }
 
 
-		static bool CheckType(const DesciptorHeapLayout& layout, DescHeapEntryType type, size_t idx);
+		static bool CheckType(const DescriptorHeapLayout& layout, DescHeapEntryType type, size_t idx);
 
 		DescHeapPOS						descriptorHeap;
-		const DesciptorHeapLayout* Layout;
+		const DescriptorHeapLayout* Layout;
 		Vector<bool>					FillState;
 	};
 }

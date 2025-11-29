@@ -851,7 +851,7 @@ void HairRenderingTest::DrawStrandsOIT(
 			ctx.SetGraphicsConstantValue(0, 17, &shaderConstants0);
 			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
 			ctx.SetGraphicsDescriptorTable(2,
-				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
+				DescriptorSet{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
 					.SetUAVTexture(ctx, 0, b0Buffer)
 					.SetUAVTexture(ctx, 1, momentBuffer));
 
@@ -865,7 +865,7 @@ void HairRenderingTest::DrawStrandsOIT(
 			ctx.SetGraphicsShaderResourceView(1, strandBuffer);
 
 			ctx.SetGraphicsDescriptorTable(2,
-				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
+				DescriptorSet{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
 					.SetSRV(ctx, 0, resources.PixelShaderResource(data.b0Buffer,		ctx, Sync_PixelShader,	Sync_PixelShader))
 					.SetSRV(ctx, 1, resources.PixelShaderResource(data.momentBuffer,	ctx, Sync_PixelShader,	Sync_PixelShader))
 					.NullFill(ctx));
@@ -878,7 +878,7 @@ void HairRenderingTest::DrawStrandsOIT(
 			ctx.SetGraphicsPipelineState(MBOITBlend, threadLocalAllocator);
 
 			ctx.SetGraphicsDescriptorTable(1,
-				DescriptorHeap{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
+				DescriptorSet{ ctx, ctx.CurrentGraphicsRootSig()->GetDescHeap(0), threadLocalAllocator }
 					.SetSRV(ctx, 0, b0Buffer)
 					.SetSRV(ctx, 1, momentBuffer)
 					.SetSRV(ctx, 2, resources.PixelShaderResource(data.accumBuffer,		ctx, Sync_RenderTarget,	Sync_PixelShader)));

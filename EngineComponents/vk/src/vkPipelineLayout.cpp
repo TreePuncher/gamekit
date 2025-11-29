@@ -8,9 +8,9 @@ namespace VK_internal
     {
     }
 
-    const DesciptorHeapLayout& vkPipelineLayout::GetDescHeap(uint32_t idx) const noexcept
+    const DescriptorHeapLayout& vkPipelineLayout::GetDescHeap(uint32_t idx) const noexcept
     {
-        static DesciptorHeapLayout out;
+        static DescriptorHeapLayout out;
 
         return out;
     }
