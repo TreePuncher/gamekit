@@ -23,7 +23,7 @@ target_sources(
         vkBackend PRIVATE
         vkBackend.cpp
         "src/vkCopyContext.cpp"
-        "src/vkDescriptorHeap.cpp"
+        "src/vkDescriptorSet.cpp"
 	    "src/vkDescriptorAllocator.cpp"
         "src/vkDirectContext.cpp"
         "src/vkMemoryManager.cpp"
@@ -53,7 +53,7 @@ target_sources(
     "include/vkSurface.hpp"
 
     "src/vkCopyContext.hpp"
-    "src/vkDescriptorHeap.hpp"
+    "src/vkDescriptorSet.hpp"
 	"src/vkDescriptorAllocator.hpp"
     "src/vkDirectContext.hpp"
     "src/vkMemoryManager.hpp"

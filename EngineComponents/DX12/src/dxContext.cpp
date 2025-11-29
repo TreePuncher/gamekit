@@ -1,7 +1,7 @@
 #include "dxContext.hpp"
 #include "dxRenderSystem.hpp"
 #include "PushBuffers.hpp"
-#include "dxDescriptorHeaps.hpp"
+#include "dxDescriptorSet.hpp"
 #include "TriMeshResource.hpp"
 
 #include <directx/d3d12.h>
@@ -108,6 +108,7 @@ namespace dx_Internal
 
 
 	/************************************************************************************************/
+
 
 	dxDirectContext::dxDirectContext(dxDirectContext&& RHS)
 	{
@@ -1093,12 +1094,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& IDH)
+	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorSet& IDH)
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
 
-		auto& impl = dxDescriptorHeap::GetImpl(IDH);
+		auto& impl = dxDescriptorSet::GetImpl(IDH);
 		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, impl);
 	}
 
@@ -1213,14 +1214,14 @@ namespace dx_Internal
 	}
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorHeap& IDH)
+	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorSet& IDH)
 	{
 		if (!CurrentComputeRootSig())
 			return;
 
 		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
 
-		auto& DH = dxDescriptorHeap::GetImpl(IDH);
+		auto& DH = dxDescriptorSet::GetImpl(IDH);
 		DeviceContext->SetComputeRootDescriptorTable((UINT)idx, DH);
 	}
 

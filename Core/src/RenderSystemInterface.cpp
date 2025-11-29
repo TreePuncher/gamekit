@@ -1,5 +1,8 @@
 #include "BuildSettings.hpp"
 #include "RenderSystemInterface.hpp"
+
+#include <ios>
+
 #include "TextureUtilities.hpp"
 #include <new>
 
@@ -26,7 +29,7 @@ namespace FlexKit
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsDescriptorTable(
-		size_t index, const DesciptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
+		size_t index, const DescriptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
 		return false;
 	}
@@ -261,178 +264,260 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap::DescriptorHeap(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
+	DescriptorSet::DescriptorSet(IContext& ctx, const DescriptorHeapLayout& layout_IN, iAllocator& tempMemory)
 	{
-		
+		auto& instance = IRenderSystem::GetInstance();
+		instance.CreateDescriptorSet(internal, sizeof(internal));
+
+		auto& impl = GetImpl();
+		impl.Init(ctx, layout_IN, tempMemory);
 	}
 
 
-	DescriptorHeap& DescriptorHeap::operator = (const DescriptorHeap&)
+	DescriptorSet& DescriptorSet::operator = (const DescriptorSet&)
 	{
 		return *this;
 	}
 
 	// moveable
-	DescriptorHeap::DescriptorHeap(DescriptorHeap&& rhs)
+	DescriptorSet::DescriptorSet(DescriptorSet&& rhs)
 	{
+		auto& instance = IRenderSystem::GetInstance();
+		instance.CreateDescriptorSet(internal, sizeof(internal));
 	}
 
 
-	DescriptorHeap& DescriptorHeap::operator = (DescriptorHeap&&)
+	DescriptorSet& DescriptorSet::operator = (DescriptorSet&&)
 	{
+		auto& impl = GetImpl();
 		return *this;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, iAllocator* TempMemory)
+	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, iAllocator& tempMemory)
 	{
-		return *this;
+		auto& impl = GetImpl();
+	    impl.Init(ctx, layout_IN, *tempMemory);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.Init(ctx, layout_IN, reserveCount, tempMemory);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::Init2(IContext& ctx, const DesciptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator* TempMemory)
+	IDescriptorHeap& DescriptorSet::Init2(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.Init2(ctx, layout_IN, reserveCount, tempMemory);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::NullFill(IContext& ctx, const size_t end)
+	IDescriptorHeap& DescriptorSet::NullFill(IContext& ctx, const size_t end)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.NullFill(ctx, end);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants)
+	IDescriptorHeap& DescriptorSet::SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetCBV(ctx, idx, constants);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ctx, size_t idx, ConstantBufferHandle, size_t offset, size_t bufferSize)
+	IDescriptorHeap& DescriptorSet::SetCBV(IContext& ctx, size_t idx, ConstantBufferHandle cbHandle, size_t offset, size_t bufferSize)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetCBV(ctx, idx, cbHandle, offset, bufferSize);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetCBV(IContext& ctx, size_t idx, ResourceHandle, size_t offset, size_t bufferSize)
+	IDescriptorHeap& DescriptorSet::SetCBV(IContext& ctx, size_t idx, ResourceHandle handle, size_t offset, size_t bufferSize)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetCBV(ctx, idx, handle, offset, bufferSize);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ctx, size_t idx, ResourceHandle)
+	IDescriptorHeap& DescriptorSet::SetSRV(IContext& ctx, size_t idx, ResourceHandle handle)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRV(ctx, idx, handle);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetSRV(IContext& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRV(ctx, idx, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV(IContext& ctx, size_t idx, ResourceHandle, uint MipOffset, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetSRV(IContext& ctx, size_t idx, ResourceHandle handle, uint mipOffset, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRV(ctx, idx, handle, mipOffset, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVArray(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetSRVArray(IContext& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRVArray(ctx, idx, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRV3D(IContext& ctx, size_t idx, ResourceHandle)
+	IDescriptorHeap& DescriptorSet::SetSRV3D(IContext& ctx, size_t idx, ResourceHandle handle)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRV3D(ctx, idx, handle);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle	Handle)
+	IDescriptorHeap& DescriptorSet::SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle handle)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRVCubemap(ctx, idx, handle);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle Handle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetSRVCubemap(IContext& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetSRVCubemap(ctx, idx, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVBuffer(IContext& ctx, size_t idx, ResourceHandle, size_t offset)
+	IDescriptorHeap& DescriptorSet::SetUAVBuffer(IContext& ctx, size_t idx, ResourceHandle handle, size_t offset)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVBuffer(ctx, idx, handle, offset);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle)
+	IDescriptorHeap& DescriptorSet::SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle handle)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVTexture(ctx, idx, handle);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetUAVTexture(IContext& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVTexture(ctx, idx, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetUAVTexture(IContext& ctx, size_t idx, size_t mipLevel, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVTexture(ctx, idx, mipLevel, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVCubemap(IContext& ctx, size_t idx, ResourceHandle handle)
+	IDescriptorHeap& DescriptorSet::SetUAVCubemap(IContext& ctx, size_t idx, ResourceHandle handle)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVCubemap(ctx, idx, handle);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVTexture3D(IContext& ctx, size_t idx, ResourceHandle, DeviceFormat format)
+	IDescriptorHeap& DescriptorSet::SetUAVTexture3D(IContext& ctx, size_t idx, ResourceHandle handle, DeviceFormat format)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVTexture3D(ctx, idx, handle, format);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle, size_t stride, size_t offset)
+	IDescriptorHeap& DescriptorSet::SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVStructured(ctx, idx, handle, stride, offset);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t Offset)
+	IDescriptorHeap& DescriptorSet::SetUAVStructured(IContext& ctx, size_t idx, ResourceHandle resource, ResourceHandle counter, size_t stride, size_t offset)
 	{
-		return *this;
+		auto& impl = GetImpl();
+		impl.SetUAVStructured(ctx, idx, resource, counter, stride, offset);
+
+		return impl;
 	}
 
 
-	DescriptorHeap& DescriptorHeap::SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
+	IDescriptorHeap& DescriptorSet::SetStructuredResource(IContext& ctx, size_t idx, ResourceHandle handle, size_t stride, size_t offset)
 	{
-		GetImpl(internal).SetStructuredResource(ctx, idx, handle, stride, offset);
-		return *this;
+		auto& impl = GetImpl();
+	    impl.SetStructuredResource(ctx, idx, handle, stride, offset);
+
+		return impl;
 	}
 
 
-	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, IContext& ctx) const
+	DescriptorSet	DescriptorSet::GetHeapOffsetted(size_t offset, IContext& ctx) const
 	{
-		return {};
+		DescriptorSet out;
+
+		return out;
 	}
 
 
-	IDescriptorHeap& DescriptorHeap::GetImpl(std::byte* _ptr) noexcept
+	IDescriptorHeap& DescriptorSet::GetImpl() noexcept
 	{
-		return *std::launder<IDescriptorHeap>((IDescriptorHeap*)_ptr);
+		return *std::launder<IDescriptorHeap>((IDescriptorHeap*)internal);
 	}	
+
+	const IDescriptorHeap& DescriptorSet::GetImpl() const noexcept
+	{
+		return *std::launder<const IDescriptorHeap>((const IDescriptorHeap*)internal);
+	}
 
 
 	/************************************************************************************************/

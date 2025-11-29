@@ -11,12 +11,12 @@ namespace VK_internal
     {
         vkPipelineLayout(iAllocator& allocator);
 
-        const DesciptorHeapLayout&  GetDescHeap(uint32_t idx) const noexcept final;
+        const DescriptorHeapLayout&  GetDescHeap(uint32_t idx) const noexcept final;
         DeviceRootSignature_ptr		GetAPIObject() const noexcept final;
 
         void Release() final;
 
-        Vector<DesciptorHeapLayout> descriptorlayouts;
+        Vector<DescriptorHeapLayout> descriptorlayouts;
         uint32_t                    pushConstantFlags;
         VkPipelineLayout            apiLayout;
     };

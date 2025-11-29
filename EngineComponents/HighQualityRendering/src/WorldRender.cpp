@@ -666,7 +666,7 @@ namespace FlexKit
 			//transparency				{ renderSystem, *persistent },
 			passHistories				{ *persistent }
 	{
-		FlexKit::DesciptorHeapLayout layout{};
+		FlexKit::DescriptorHeapLayout layout{};
 		layout.SetParameterAsSRV(0, 0, 2, 0);
 		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
 
@@ -1161,10 +1161,10 @@ namespace FlexKit
 			{
 				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
-				DescriptorHeap heap{
+				DescriptorSet heap{
 					ctx,
 					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
-					&allocator };
+					allocator };
 
 				heap.NullFill(ctx);
 
@@ -1246,8 +1246,8 @@ namespace FlexKit
 			},
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
-				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, &tempAllocator);
+				DescriptorSet descHeap;
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, tempAllocator);
 				//descHeap.SetSRV(ctx, 6, data.diffuseMap);
 				descHeap.NullFill(ctx, 20);
 
@@ -1353,8 +1353,8 @@ namespace FlexKit
 					float  t;
 				}passConstants = { float2(WH[0], WH[1]), t };
 
-				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, &allocator);
+				DescriptorSet descHeap;
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, allocator);
 
 				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
@@ -1435,8 +1435,8 @@ namespace FlexKit
 					float2 WH;
 				}passConstants = { float2(WH[0], WH[1]) };
 
-				DescriptorHeap descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, &allocator);
+				DescriptorSet descHeap;
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, allocator);
 
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.Source));
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
@@ -1454,8 +1454,8 @@ namespace FlexKit
 
 				ctx.Draw(6);
 
-				DescriptorHeap descHeap2;
-				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, &allocator);
+				DescriptorSet descHeap2;
+				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, allocator);
 
 				descHeap2.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
 				descHeap2.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
@@ -1589,8 +1589,8 @@ namespace FlexKit
 				const uint2 WH = resources.GetTextureWH(data.sourceTarget);
 				const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
 
-				DescriptorHeap heap1{};
-				heap1.Init(ctx, rootSignatureToneMapping->GetDescHeap(0), &allocator);
+				DescriptorSet heap1{};
+				heap1.Init(ctx, rootSignatureToneMapping->GetDescHeap(0), allocator);
 				heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
 
 #if 0

@@ -1,11 +1,13 @@
-#include "vkCopyContext.hpp"
-#include "vkDirectContext.hpp"
-#include "vkRenderSystem.hpp"
+#include <BuildSettings.hpp>
 #include <Handle.hpp>
 #include <RenderSystemInterface.hpp>
 
+#include "vkCopyContext.hpp"
+#include "vkDirectContext.hpp"
+#include "vkRenderSystem.hpp"
+
 #include "vkPipelineBuilder.hpp"
-#include "vkDescriptorHeap.hpp"
+#include "vkDescriptorSet.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -13,7 +15,6 @@
 #include <fmt/format.h>
 #include <print>
 
-#include "../../../core/include/BuildSettings.hpp"
 
 #ifdef WIN32
 #include "Unknwnbase.h"
@@ -257,7 +258,7 @@ namespace VK_internal
 		        };
 	}
 
-	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DesciptorHeapLayout& layout, iAllocator& allocator)
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DescriptorHeapLayout& layout, iAllocator& allocator)
 	{
 		Vector<VkDescriptorSetLayoutBinding>	bindings		{ allocator };
 
@@ -428,8 +429,8 @@ namespace VK_internal
 		vkb::PhysicalDeviceSelector selector{ instance };
 
 		VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeature{
-			.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-	        .pNext = nullptr, 
+			.sType								= VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
+	        .pNext								= nullptr, 
 	        .descriptorBuffer					= true,
 	        .descriptorBufferCaptureReplay		= false,
 	        .descriptorBufferImageLayoutIgnored	= true,
@@ -495,6 +496,8 @@ namespace VK_internal
 			return false;
 		}
 
+		auto queue = queueRequest.value();
+
 		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
 		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
 		vkCmdBindDescriptorBufferEmbeddedSamplers	= (vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
@@ -509,7 +512,13 @@ namespace VK_internal
 		FK_ASSERT(vkGetDescriptorSetLayoutBindingOffset != nullptr, "VK: Failed to get vkCmdBindDescriptorBuffersEXT");
 		FK_ASSERT(vkCmdSetDescriptorBufferOffsets != nullptr, "VK: Failed to get vkCmdSetDescriptorBufferOffsetsEXT");
 
-		auto queue = queueRequest.value();
+		descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+		descriptorBufferProperties.pNext = nullptr;
+
+	    VkPhysicalDeviceProperties2KHR deviceProperties{};
+		deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+		deviceProperties.pNext = &descriptorBufferProperties;
+		vkGetPhysicalDeviceProperties2(device.physical_device, &deviceProperties);
 
 		memoryAllocator.Init(*this);
 
@@ -540,20 +549,6 @@ namespace VK_internal
 
 	    heapAllocator.Initialize(heapAllocDesc, allocator);
 
-		//
-		//// Create Heap Layout
-		//DesciptorHeapLayout layout{};
-		//layout.SetParameterAsSRVImage(0, 0, 1);
-		//
-		//auto vkLayout = CreateDescriptorSetLayout(device, layout, *allocator);
-
-		//VkDeviceSize size;
-		//vkGetDescriptorSetLayoutSize(device, vkLayout, &size);
-
-		//auto descriptorSet = AllocateDescriptorSet(device, vkLayout, descriptorPool);
-
-		//auto constantBuffer = VK_internal::CreateConstantBuffer(device, 1024u);
-		//CreateCBV(device, descriptorSet, constantBuffer);
 
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -1302,7 +1297,7 @@ namespace VK_internal
 		{
 			auto match = itr->str();
 
-			if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::DescriptorSetCBV(binding={}, set={})]])"); res)
+			if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::DescriptorSetCBV(set={}, set={})]])"); res)
 			{
 				auto [set, binding] = res->values();
 
@@ -1320,43 +1315,46 @@ namespace VK_internal
 
 				continue;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructuredRW(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructuredRW(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture2D(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture2D(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture3D(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture3D(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetCubeMap(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetCubeMap(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructured(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructured(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture2D(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture2D(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture3D(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture3D(set={}, set={}, type={})]])"); res)
 			{
 				int x = 0;
 			}
 			else if (auto res = scn::scan<uint32_t, scn::regex_matches>(match, R"([[fk::DescriptorSet(set={}, {:/((\w)+\((\w|\=|\,|\s)*\)|(\s|\,)?)*/n})]])"); res)
 			{
 				auto [set, descriptors] = res->values();
+				uint32_t descriptorCount = 0;
+
 				if (descriptors.size())
 				{
 					auto str = descriptors.at(0).value().get();
 					auto itr = str.begin();
 
-					ShaderAttributeDescriptorTable table{ .binding = tableCount++ };
+					tableCount = Max(tableCount, set + 1);
+					ShaderAttributeDescriptorTable table{ .set = set };
 
 					while (itr != str.end())
 					{
@@ -1402,15 +1400,42 @@ namespace VK_internal
 					attributes.push_back(table);
 				}
 			}
-			else if (auto res = scn::scan<>(match, R"([[fk::CBV()]])"); res)
+			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::CBV(set={})]])"); res)
 			{
 				size_t pos = itr->position() + shaderOffset;
-				shaderStr.replace(pos, itr->length(), std::format("cbuffer type_{} : register(b{})", rand(), CBVcount));
+				auto [binding] = res->values();
+				std::string id = fmt::format("cb_{}", rand());
+				shaderStr.replace(pos, itr->length(), std::format("cbuffer {} : register(b{})", id, binding));
+
+				attributes.push_back(
+					ShaderAttributePushCBV{
+						.binding		= (uint16_t)binding,
+						.pipelineStage	= (uint32_t)type,
+						.id				= id
+					});
+
+				shaderOffset = pos;
+
+				itr = std::sregex_iterator(
+					shaderStr.begin() + shaderOffset,
+					shaderStr.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::CBV(binding={}, set={})]])"); res)
+			{
+				size_t pos = itr->position() + shaderOffset;
+				auto [binding, set] = res->values();
+				std::string id = fmt::format("cb_{}", rand());
+				shaderStr.replace(pos, itr->length(), std::format("cbuffer {} : register(b{}, space{})", id, binding, set));
 
 				attributes.push_back(
 					ShaderAttributeCBV{
-						.reg			= CBVcount++,
-						.pipelineStage	= (uint32_t)type
+						.binding			= binding,
+						.set			= set,
+						.pipelineStage	= (uint32_t)type,
+						.id				= id
 					});
 
 				shaderOffset = pos;
@@ -1447,7 +1472,7 @@ namespace VK_internal
 					structRegex);
 				
 				auto pos	= itr->position() + shaderOffset;
-				auto posEnd = itr->position() + itr->length();
+				auto posEnd = itr->position() + shaderOffset + itr->length();
 				auto block	= structBlock->position();
 
 				if (posEnd + 2 >= block)
@@ -1458,10 +1483,10 @@ namespace VK_internal
 					shaderStr.insert(pos + offset, insertLine);
 				}
 
-				shaderOffset = pos;
+				shaderOffset = posEnd;
 
 				itr = std::sregex_iterator(
-					shaderStr.begin() + shaderOffset,
+					shaderStr.begin() + posEnd,
 					shaderStr.end(),
 					attributeRegex);
 
@@ -1638,7 +1663,16 @@ namespace VK_internal
 
 	std::optional<DescriptorRange> vkRenderSystem::CreateDescriptorRange(const uint32_t descriptorCount)
 	{
-		return {};
+		auto allocation = heapAllocator.Alloc2Temp(descriptorCount, GetCurrentProgress(), 0xffffffffffffffff);
+		if (!allocation)
+		{
+			FK_LOG_ERROR("VK: allocation failed : Failed to bind inline descriptor set!");
+			return {};
+		}
+
+		auto& [range, offset] = allocation.value();
+
+		return range;
 	}
 
 
@@ -1775,6 +1809,13 @@ namespace VK_internal
 	{
 		std::construct_at((vkPipelineBuilder*)_ptr, *this, tempAllocator);
 		return false;
+	}
+
+
+	void vkRenderSystem::CreateDescriptorSet(std::byte* buffer, size_t size)
+	{
+		FK_ASSERT(size >= sizeof(vkDescriptorSet));
+		std::construct_at<vkDescriptorSet>((vkDescriptorSet*)buffer, *this);
 	}
 
 

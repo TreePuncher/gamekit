@@ -311,7 +311,7 @@ namespace FlexKit
 	ShadowMapper::ShadowMapper(IRenderSystem& renderSystem, iAllocator& allocator) :
 		resourcePool    { &allocator }
 	{
-		DesciptorHeapLayout heapLayout;
+		DescriptorHeapLayout heapLayout;
 		heapLayout.SetParameterAsShaderUAV(0, 0, 1);	// output
 
 		PipelineInterfaceBuilder builder{ allocator };
@@ -1002,7 +1002,7 @@ namespace FlexKit
 			DeviceLayout::RenderTarget,	DeviceLayout::UnorderedAccess,
 			Sync_RenderTarget,			Sync_Compute);
 
-		DescriptorHeap heap{ ctx, rootSignature.GetDescHeap(0), allocator };
+		DescriptorSet heap{ ctx, rootSignature.GetDescHeap(0), allocator };
 		heap.SetUAVTexture(ctx, 0, target);
 
 		ctx.SetComputeDescriptorTable(4, heap);

@@ -110,7 +110,7 @@ namespace dx_Internal
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB) final;
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) final;
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH) final;
+		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorSet& DH) final;
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) final;
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource& Resource, size_t Count, size_t ElementSize);
 		//void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
@@ -119,7 +119,7 @@ namespace dx_Internal
 
 
 		void SetComputeDescriptorTable		(size_t idx) final;
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH) final;
+		void SetComputeDescriptorTable		(size_t idx, const DescriptorSet& DH) final;
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) final;
 
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) final;
@@ -341,7 +341,7 @@ namespace dx_Internal
 
 		
 		static_vector<ResourceHandle, 16>		RenderTargets;
-		static_vector<DescriptorHeap*>			DesciptorHeaps;
+		static_vector<DescriptorSet*>			DesciptorHeaps;
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 
 		struct StreamOutResource {
