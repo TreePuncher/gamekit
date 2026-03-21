@@ -98,8 +98,8 @@ namespace FlexKit
 					}
 				},
 
-			.layout		= FlexKit::DeviceLayout::Common,
-			.access		= FlexKit::DeviceAccessState::DASNonPixelShaderResource,
+			.layout		= DeviceLayout::Common,
+			.access		= DeviceAccessState::DASNonPixelShaderResource,
 			.max		= 32,
 			.pool		= &pool,
 			.dependency = &passes

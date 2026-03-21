@@ -49,10 +49,17 @@ namespace VK_internal
 		uint32_t		offset;
 	};
 
+	struct TextureAPIObject
+	{
+		VkImage			image;
+		VkDeviceMemory	memory;
+		uint32_t		offset;
+	};
 
     std::optional<BufferAPIObject>	CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize);
 	std::optional<BufferAPIObject>	CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
 	std::optional<BufferAPIObject>	CreateConstantBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
+	std::optional<TextureAPIObject>	CreateTextureResource(vkRenderSystem& renderSystem, uint2 WH, DeviceFormat format);
 
 
     struct vkRenderSystem : IRenderSystem, NoCopy, NoMove

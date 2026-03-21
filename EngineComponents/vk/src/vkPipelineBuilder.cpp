@@ -547,7 +547,7 @@ namespace VK_internal
 				[&](const ShaderAttributeDescriptorTable& descriptorTable)
 			    {
 					uint32_t bindingCounter = 0;
-					for (auto& entry : descriptorTable.entries)
+					for (const DescriptorTableEntry& entry : descriptorTable.entries)
 					{
 						std::span spanDescriptors{ descriptors.begin(), descriptors.end() };
 
@@ -565,10 +565,28 @@ namespace VK_internal
 							}
 							else
 							{
+								const auto getType = [&]() -> VkDescriptorType
+								{
+									switch (entry.type)
+									{
+									case DescriptorType::SRVBuffer:
+										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+									case DescriptorType::SRVTexture:
+										return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+									case DescriptorType::CBV:
+										return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+									case DescriptorType::UAVBuffer:
+										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+									case DescriptorType::UAVTexture:
+										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+									}
+								};
+
+								
 								descriptors.push_back(
 									Descriptor
 									{
-										.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+										.type		= getType(),
 										.binding	= (uint16_t)bindingCounter,
 										.set		= (uint16_t)descriptorTable.set,
 										.stages		= (uint32_t)shaderRec.stage
@@ -668,15 +686,7 @@ namespace VK_internal
 
 					pushConstantsSize = Max(pushConstantsSize, r.range + r.offset);
 					pushConstantFlags |= shaders[idx].stage;
-					//VkPushConstantRange constantRange{
-					//    .stageFlags = VkShaderStageFlagBits::VK_SHADER_STAGE_ALL,
-					//    .offset		= (uint32_t)r.offset,
-					//    .size		= (uint32_t)r.range,
-					//};
-					//
-					//pushConstantRanges.push_back(constantRange);
 				}
-
 			}
 
 			for (auto image : shaderResources.separate_images)
@@ -693,10 +703,10 @@ namespace VK_internal
 					}); res == std::end(descriptors))
 				{
 					descriptors.push_back({
-						.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-						.binding = (uint16_t)binding,
-						.set = (uint16_t)set,
-						.stages = (uint32_t)shaders[idx].stage,
+						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+						.binding	= (uint16_t)binding,
+						.set		= (uint16_t)set,
+						.stages		= (uint32_t)shaders[idx].stage,
 						});
 				}
 				else
@@ -716,10 +726,10 @@ namespace VK_internal
 					}); res == std::end(descriptors))
 				{
 					descriptors.push_back({
-						.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
-						.binding = (uint16_t)binding,
-						.set = (uint16_t)set,
-						.stages = (uint32_t)shaders[idx].stage,
+						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
+						.binding	= (uint16_t)binding,
+						.set		= (uint16_t)set,
+						.stages		= (uint32_t)shaders[idx].stage,
 						});
 				}
 				else
@@ -758,8 +768,8 @@ namespace VK_internal
 
 		for (size_t i = 0; i < setCount; i++)
 		{
-			auto begin = std::lower_bound(descriptors.begin(), descriptors.end(), i, [](const Descriptor& lhs, const auto& v) { return lhs.set < v; });
-			auto end = std::upper_bound(descriptors.begin(), descriptors.end(), i, [](const auto& v, const Descriptor& rhs) { return v < rhs.set; });
+			auto begin	= std::lower_bound(descriptors.begin(), descriptors.end(), i, [](const Descriptor& lhs, const auto& v) { return lhs.set < v; });
+			auto end	= std::upper_bound(descriptors.begin(), descriptors.end(), i, [](const auto& v, const Descriptor& rhs) { return v < rhs.set; });
 
 			Vector<VkDescriptorSetLayoutBinding> bindings{ allocator };
 			auto span = std::span(begin, end);
@@ -767,20 +777,20 @@ namespace VK_internal
 			for (auto& desc : span)
 			{
 				bindings.push_back(VkDescriptorSetLayoutBinding{
-					.binding = desc.binding,
-					.descriptorType = desc.type,
-					.descriptorCount = 1,
-					.stageFlags = desc.stages, //VkShaderStageFlagBits;
+					.binding			= desc.binding,
+					.descriptorType		= desc.type,
+					.descriptorCount	= 1,
+					.stageFlags			= desc.stages,
 					.pImmutableSamplers = samplers
 					});
 			}
 
 			VkDescriptorSetLayoutCreateInfo createInfo{
-				.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,//kDescriptorSetLayoutCreateFlagBits,
-				.bindingCount = (uint32_t)bindings.size(),
-				.pBindings = bindings.data()
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext			= nullptr,
+				.flags			= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+				.bindingCount	= (uint32_t)bindings.size(),
+				.pBindings		= bindings.data()
 			};
 
 			VkDescriptorSetLayout layout;
@@ -806,21 +816,22 @@ namespace VK_internal
 
 			for (auto& pushDesc : pushDescriptorLayout)
 			{
-				bindings.push_back(VkDescriptorSetLayoutBinding{
-					.binding = pushDesc.binding,
-					.descriptorType = pushDesc.type,
-					.descriptorCount = 1,
-					.stageFlags = pushDesc.stages,
-					.pImmutableSamplers = nullptr
+				bindings.push_back(
+					VkDescriptorSetLayoutBinding{
+					    .binding			= pushDesc.binding,
+					    .descriptorType		= pushDesc.type,
+					    .descriptorCount	= 1,
+					    .stageFlags			= pushDesc.stages,
+					    .pImmutableSamplers = nullptr
 					});
 			}
 
 			VkDescriptorSetLayoutCreateInfo createInfo{
-				.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-				.bindingCount = (uint32_t)bindings.size(),
-				.pBindings = bindings.data()
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext			= nullptr,
+				.flags			= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+				.bindingCount	= (uint32_t)bindings.size(),
+				.pBindings		= bindings.data()
 			};
 
 			if (auto res = vkCreateDescriptorSetLayout(vkRS.device, &createInfo, nullptr, &pushLayout); res != VK_SUCCESS)
@@ -843,10 +854,11 @@ namespace VK_internal
 		}
 
 		if (pushConstantsSize > 0)
-			pushConstantRanges.push_back(VkPushConstantRange{
-				.stageFlags = pushConstantFlags,
-				.offset = 0,
-				.size = pushConstantsSize
+			pushConstantRanges.push_back(
+			    VkPushConstantRange{
+				    .stageFlags = pushConstantFlags,
+				    .offset		= 0,
+				    .size		= pushConstantsSize
 				});
 
 
@@ -867,12 +879,12 @@ namespace VK_internal
 			}
 
 			VkPipelineShaderStageCreateInfo stage{
-				.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.stage = shaderRec.stage,
-				.module = shaderModule,
-				.pName = shaderRec.entryPoint,
+				.sType		= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+				.pNext		= nullptr,
+				.flags		= 0,
+				.stage		= shaderRec.stage,
+				.module		= shaderModule,
+				.pName		= shaderRec.entryPoint,
 				.pSpecializationInfo = nullptr
 			};
 
@@ -906,11 +918,11 @@ namespace VK_internal
 		};
 
 		static const VkPipelineDynamicStateCreateInfo dynamicInfo{
-			.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.dynamicStateCount = 2,
-			.pDynamicStates = dynamicStates,
+			.sType				= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			.pNext				= nullptr,
+			.flags				= 0,
+			.dynamicStateCount	= 2,
+			.pDynamicStates		= dynamicStates,
 		};
 
 		VkGraphicsPipelineCreateInfo createInfo{

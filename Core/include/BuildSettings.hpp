@@ -161,23 +161,6 @@ template<typename TY_1, typename TY_2>	void Discard(TY_1, TY_2) {}
 #define FINALLABEL FINALLABEL_(__LINE__)
 
 
-#if 0
-
-struct _FINALLY
-{
-	_FINALLY(std::function<void ()> INFN) : FN(INFN){}
-	~_FINALLY(){FN();}
-	std::function<void ()> FN;
-
-private: 
-	_FINALLY(const _FINALLY& INFN) {}
-};
-
-#define FINALLY _FINALLY FINALLABEL([&]()->void {
-#define FINALLYOVER });
-
-#else
-
 template<typename TY>
 struct FINAL_CONTAINER
 {
@@ -199,7 +182,25 @@ auto BuildFinal(FN_TYPE FN) -> FINAL_CONTAINER<decltype(FN)> { return FINAL_CONT
 
 #define EXITSCOPE(a) FINAL(a;)
 
-#endif
+struct DeferBlockBuilder
+{
+	auto operator | (auto&& fn)
+	{
+		struct DeferContainer
+		{
+			~DeferContainer()
+			{
+				callable();
+			}
+
+			mutable decltype(fn) callable;
+		};
+
+		return DeferContainer{ .callable{ std::move(fn) } };
+	}
+};
+
+#define Defer const auto FINALLABEL = DeferBlockBuilder{} | [&]
 
 #ifdef _DEBUG
 #define DEBUGBLOCK(A) A;

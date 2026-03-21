@@ -193,8 +193,45 @@ namespace VK_internal
 			pendingBarriers.push_back(b);
 	}
 
-	void vkDirectContext::ClearDepthBuffer(ResourceHandle Texture, float ClearDepth)
-    {}
+
+	void vkDirectContext::ClearDepthBuffer(ResourceHandle resource, float clearDepth, uint32_t stencil)
+	{
+		if (std::find(resourcesUsed.begin(), resourcesUsed.end(), resource) == resourcesUsed.end())
+		{
+			resourcesUsed.push_back(resource);
+			auto flags = RenderSystem().resources.Get<ResourceFieldID::Flags>(resource);
+
+			if ((flags & ResourceFlags::SwapChain) != 0)
+			{
+				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(resource);
+				waits.push_back((VkSemaphore)semaphore[0]);
+				signals.push_back((VkSemaphore)semaphore[1]);
+			}
+		}
+
+		auto apiResource = RenderSystem().GetDeviceResource(resource);
+		FlushBarriers();
+
+		VkImageSubresourceRange subresource{
+			.aspectMask		= VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT,
+			.baseMipLevel	= 0,
+			.levelCount		= 1,
+			.baseArrayLayer = 0,
+			.layerCount		= 1
+		};
+
+		VkClearDepthStencilValue value{
+			.depth		= clearDepth,
+			.stencil	= 0
+		};
+
+		vkCmdClearDepthStencilImage(
+			commandBuffer,
+			apiResource.As<VkImage_T>(),
+			VK_IMAGE_LAYOUT_GENERAL,
+			&value, 1, &subresource);
+	}
+
 
 	void vkDirectContext::ClearRenderTarget(ResourceHandle texture, float4 rgba)
 	{
@@ -229,40 +266,52 @@ namespace VK_internal
 			(VkClearColorValue*)&rgba, 1, &subresource);
 	}
 
+
 	void vkDirectContext::ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor)
     {}
+
 
 	void vkDirectContext::ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor)
     {}
 
+
 	void vkDirectContext::ClearUAV(ResourceHandle UAV, uint4 clearColor)
     {}
+
 
 	void vkDirectContext::ClearUAVBuffer(ResourceHandle UAV, uint4 clearColor)
     {}
 
+
 	void vkDirectContext::ClearUAVBufferRange(ResourceHandle UAV, uint begin, uint end, uint4 clearColor)
     {}
+
 
 	void vkDirectContext::SetRootSignature(RootSigHandle)
     {}
 
+
 	void vkDirectContext::SetRootSignature(const IPipelineInterface*)
     {}
+
 
 	void vkDirectContext::SetComputeRootSignature(RootSigHandle)
     {}
 
+
 	void vkDirectContext::SetComputeRootSignature(const IPipelineInterface*)
     {}
 
+
 	void vkDirectContext::SetPipelineState(const struct IPipelineState* const PSO)
     {}
+
 
 	void vkDirectContext::SetComputePipelineState(const PSOHandle, iAllocator& temp)
 	{
 		memset(computeDescriptorBuffer, 0x00, sizeof(computeDescriptorBuffer));
 	}
+
 
 	void vkDirectContext::SetGraphicsPipelineState(const PSOHandle psoHandle, iAllocator& temp)
 	{
@@ -273,6 +322,7 @@ namespace VK_internal
 
 		memset(graphicsDescriptorBuffer, 0x00, sizeof(graphicsDescriptorBuffer));
 	}
+
 
 	void vkDirectContext::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil, const size_t MIPMapOffset)
 	{
@@ -301,10 +351,12 @@ namespace VK_internal
 		pendingTargetConfiguration = true;
 	}
 
+
 	void vkDirectContext::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
 	{
 		EndPass();
 	}
+
 
 	void vkDirectContext::SetScissorAndViewports(static_vector<ResourceHandle, 16>	RenderTargets)
 	{
@@ -345,22 +397,28 @@ namespace VK_internal
 		}
 	}
 
+
 	void vkDirectContext::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
 	{
 	    
 	}
 
+
 	void vkDirectContext::QueueReadBack(ReadBackResourceHandle readBack)
     {}
+
 
 	void vkDirectContext::QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback)
     {}
 
+
 	void vkDirectContext::SetDepthStencil(ResourceHandle DS)
 	{}
 
+
     void vkDirectContext::SetInputPrimitive(EInputPrimitive primitive)
     {}
+
 
 	void vkDirectContext::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
 	{
@@ -373,6 +431,7 @@ namespace VK_internal
 
 	void vkDirectContext::NullGraphicsConstantBufferView(size_t idx)
     {}
+
 
 	void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset)
 	{
@@ -416,6 +475,7 @@ namespace VK_internal
 		}
 	}
 
+
 	void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, const struct ConstantBufferDataSet& CB)
 	{
 		auto& renderSystem = RenderSystem();
@@ -458,8 +518,10 @@ namespace VK_internal
 		}
 	}
 
+
     void vkDirectContext::SetGraphicsConstantBufferView(size_t idx, DevicePointer)
     {}
+
 
 	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const struct DescriptorSet& DH)
 	{
@@ -476,65 +538,86 @@ namespace VK_internal
 			offsets);
 	}
 
+
 	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
     {}
+
 
 	void vkDirectContext::SetGraphicsShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
     {}
 
+
 	void vkDirectContext::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle resource, size_t offset)
     {}
+
 
 	void vkDirectContext::SetComputeDescriptorTable(size_t idx)
     {}
 
+
 	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const struct DescriptorSet& DH)
     {}
+
 
 	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)
     {}
 
+
 	void vkDirectContext::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle, size_t offset)
     {}
+
 
 	void vkDirectContext::SetComputeConstantBufferView(size_t idx, const struct ConstantBufferDataSet& CB)
     {}
 
+
 	void vkDirectContext::SetComputeConstantBufferView(size_t idx, ResourceHandle, size_t offset, size_t bufferSize)
     {}
+
 
 	void vkDirectContext::SetComputeConstantBufferView(size_t idx, DevicePointer)
     {}
 
+
 	void vkDirectContext::SetComputeShaderResourceView(size_t idx, ResourceHandle resource, size_t offset)
     {}
+
 
 	void vkDirectContext::SetComputeUnorderedAccessView(size_t idx, ResourceHandle resource, size_t offset)
     {}
 
+
 	void vkDirectContext::SetComputeConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
     {}
+
 
 	void vkDirectContext::BeginQuery(QueryHandle query, size_t idx)
     {}
 
+
 	void vkDirectContext::EndQuery(QueryHandle query, size_t idx)
     {}
+
 
 	void vkDirectContext::TimeStamp(QueryHandle query, size_t idx)
     {}
 
+
 	void vkDirectContext::SetMarker_DEBUG(const char* str)
     {}
+
 
 	void vkDirectContext::BeginEvent_DEBUG(const char* str)
     {}
 
+
 	void vkDirectContext::EndEvent_DEBUG()
     {}
 
+
 	void vkDirectContext::CopyResource(ResourceHandle dest, ResourceHandle src)
     {}
+
 
 	void vkDirectContext::CopyBufferRegion(
 		ResourceHandle	destination,
@@ -544,6 +627,7 @@ namespace VK_internal
 		size_t			sourceOffset)
     {}
 
+
 	void vkDirectContext::CopyBufferRegion(
 		ResourceHandle		destination,
 		DeviceResource_ptr	source,
@@ -551,6 +635,7 @@ namespace VK_internal
 		size_t				destinationOffset,
 		size_t				sourceOffset)
     {}
+
 
 	void vkDirectContext::CopyBufferRegion(
 		DeviceResource_ptr	destination,
@@ -560,6 +645,7 @@ namespace VK_internal
 		size_t				sourceOffset)
     {}
 
+
 	void vkDirectContext::CopyBufferRegion(
 		DeviceResource_ptr	destination,
 		DeviceResource_ptr	source,
@@ -567,6 +653,7 @@ namespace VK_internal
 		size_t				destinationOffset,
 		size_t				sourceOffset)
     {}
+
 
 	void vkDirectContext::CopyTextureRegion(
 		ResourceHandle		dest,
@@ -576,12 +663,14 @@ namespace VK_internal
 		uint2				wh)
     {}
 
+
 	void vkDirectContext::CopyTile(
 		ResourceHandle			dest,
 		const uint3				destTile,
 		const size_t			tileOffset,
 		const UploadReservation src)
     {}
+
 
 	void vkDirectContext::ImmediateWrite(
 		static_vector<ResourceHandle>		handles,
@@ -590,26 +679,33 @@ namespace VK_internal
 		static_vector<DeviceAccessState>	finalStates)
     {}
 
+
 	void vkDirectContext::AddIndexBuffer(TriMesh* Mesh, uint32_t lod)
     {}
+
 
 	void vkDirectContext::SetIndexBuffer(VertexBufferEntry buffer, DeviceFormat format)
     {}
 
+
 	void vkDirectContext::SetIndexBuffer(ResourceHandle, DeviceFormat format)
     {}
+
 
 	void vkDirectContext::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers)
     {}
 
+
 	void vkDirectContext::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers)
     {}
+
 
 	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& span)
 	{
 		SetVertexBuffers(std::span(span));
 	}
-        
+    
+
 	void vkDirectContext::SetVertexBuffers(const std::span<const VertexBufferEntry> span)
 	{
 	    VkBuffer		buffers[16];
@@ -629,14 +725,18 @@ namespace VK_internal
 		vkCmdBindVertexBuffers(commandBuffer, 0, span.size(), buffers, offsets);
 	}
 
+
 	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& span)
     {}
+
 
 	void vkDirectContext::SetVertexBuffers(const std::span<const VertexBufferResource> span)
     {}
 
+
 	void vkDirectContext::SetVertexBuffers2(const std::span<const VBView> views, uint32_t offset)
     {}
+
 
 	void vkDirectContext::Draw(const size_t vertexCount, const size_t baseVertex, const size_t baseIndex)
 	{
@@ -648,6 +748,7 @@ namespace VK_internal
 	    vkCmdDraw(commandBuffer, vertexCount, 1, baseVertex, 0);
 		pendingDraws = true;
 	}
+
 
 	void vkDirectContext::DrawInstanced(const size_t vertexCount, const size_t baseVertex, const size_t instanceCount, size_t instanceOffset)
 	{
@@ -682,49 +783,64 @@ namespace VK_internal
 		pendingDraws = true;
 	}
 
+
 	void vkDirectContext::Clear()
     {}
 
-	void vkDirectContext::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
+	
+    void vkDirectContext::ResolveQuery(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset)
 	{}
+
 
 	void vkDirectContext::ResolveQuery(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset)
     {}
 
+
 	void vkDirectContext::ExecuteIndirect(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
     {}
+
 
 	void vkDirectContext::Dispatch(const uint3)
     {}
 
+
 	void vkDirectContext::Dispatch(const IPipelineState* const PSO, const uint3 xyz)
 	{}
+
 
 	void vkDirectContext::DispatchRays(const uint3, const DispatchDesc desc)
     {}
 
+
 	void vkDirectContext::DispatchMesh(const uint3)
     {}
+
 
 	void vkDirectContext::SetPredicate(bool Enable, ResourceHandle Handle, size_t, PredicateOp op)
     {}
 
+
 	void vkDirectContext::CopyBuffer(const UploadReservation src, const ResourceHandle destination, const size_t destOffset)
     {}
 
-	void vkDirectContext::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
+	
+    void vkDirectContext::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
     {}
 
-	void vkDirectContext::SetRTRead(ResourceHandle Handle)
+	
+    void vkDirectContext::SetRTRead(ResourceHandle Handle)
     {}
 
-	void vkDirectContext::SetRTWrite(ResourceHandle Handle)
+	
+    void vkDirectContext::SetRTWrite(ResourceHandle Handle)
     {}
 
-	void vkDirectContext::SetRTFree(ResourceHandle Handle)
+	
+    void vkDirectContext::SetRTFree(ResourceHandle Handle)
     {}
 
-	void vkDirectContext::Close()
+	
+    void vkDirectContext::Close()
 	{
 		EndPass();
 		FlushBarriers();
@@ -738,6 +854,7 @@ namespace VK_internal
 		if (auto res = vkEndCommandBuffer(commandBuffer); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to close command buffer!" };
 	}
+
 
 	void vkDirectContext::Begin(uint64_t submissionValue)
 	{
@@ -774,17 +891,21 @@ namespace VK_internal
 		vkCmdBindDescriptorBuffers(commandBuffer, 1, &bindingInfo);
 	}
 
+
 	void vkDirectContext::Reset()
 	{
 		if (auto res = vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to reset commandbuffer!" };
 	}
 
+
 	void vkDirectContext::SetViewports(std::span<const Viewport> VPs)
     {}
 
+
 	void vkDirectContext::SetScissorRects(std::span<const Rect>	rects)
 	{}
+
 
 	void vkDirectContext::EndPass()
 	{
@@ -798,6 +919,7 @@ namespace VK_internal
 		depthBufferAttachment.reset();
 		stencilBufferAttachment.reset();
 	}
+
 
 	void vkDirectContext::ApplyRenderTargetSetup()
 	{
@@ -826,6 +948,7 @@ namespace VK_internal
 		pendingTargetConfiguration = false;
 	}
 
+
 	void vkDirectContext::ApplyPendingRasterizingStates()
 	{
 		/*
@@ -850,6 +973,7 @@ namespace VK_internal
 		);
 		*/
 	}
+
 
 	void vkDirectContext::ApplyGraphicsDescriptorSetBindings()
 	{
@@ -886,15 +1010,18 @@ namespace VK_internal
 		}
 	}
 
+
 	vkRenderSystem& vkDirectContext::RenderSystem() noexcept
 	{
 		return static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 	}
 
+
 	UploadReservation vkDirectContext::ReserveDirectUploadSpace(size_t size, size_t alignment)
 	{
 		return {};
 	}
+
 
 	IRenderSystem& vkDirectContext::GetRenderSystem() noexcept
 	{

@@ -4,6 +4,8 @@
 #include <vkBackend.hpp>
 #include <vkSurface.hpp>
 
+#include "../../EngineComponents/DX12/include/Win32Graphics.hpp"
+
 
 #define USEVK 1
 
@@ -19,16 +21,17 @@ struct TestState : FrameworkState
 {
 	TestState(GameFramework& IN_framework) : FrameworkState(IN_framework)
 	{
-#if WIN32
 #if USEVK
-		renderWindow = CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+#if WIN32
+		renderWindow	= CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #else
-		renderWindow = CreateWin32RenderWindow(GetRenderSystem(), DefaultWindowDesc({ 800, 600 }));
+		renderWindow	= CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 #else
-		renderWindow = CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 
+		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::ShaderResource({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
 
 		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
@@ -92,19 +95,15 @@ struct TestState : FrameworkState
 		{
 			float xyz[3];
 		} triangle[3] = {
-			{.xyz = { -1.0f, -1.0f, 0.0f }},
-			{.xyz = { 0.0f, 1.0f, 0.0f }},
-			{.xyz = { 1.0f, -1.0f, 0.0f }},
+			{.xyz = { -1.0f, -1.0f,  0.0f }},
+			{.xyz = {  0.0f,  1.0f,  0.0f }},
+			{.xyz = {  1.0f, -1.0f,  0.0f }},
 		};
 
 		GetRenderSystem().VertexBufferPush(vBuffer, triangle, sizeof(triangle));
 
+		ClearBackBuffer(frameGraph, renderTarget, { 0, 0, 0, 1 });
 
-#if USEVK
-		ClearBackBuffer(frameGraph, renderTarget, { 0, 0, 0, 1 });
-#else
-		ClearBackBuffer(frameGraph, renderTarget, { 0, 0, 0, 1 });
-#endif
 		struct DrawTrangle
 		{
 			FrameResourceHandle renderTarget;
@@ -112,13 +111,19 @@ struct TestState : FrameworkState
 
 		frameGraph.AddConstantBuffer(cBuffer);
 
-		frameGraph.AddNode<>(
-			DrawTrangle{},
-			[&](FrameGraphNodeBuilder& builder, auto& data)
+		auto node = frameGraph.AddNode2(
+			[&](FrameGraphNodeBuilder& ){},
+			[](const ResourceHandler&, IDirectContext&, iAllocator&){});
+
+		frameGraph.AddNode2(
+			[&](FrameGraphNodeBuilder& builder) -> DrawTrangle
 			{
-				data.renderTarget = builder.RenderTarget(renderTarget);
+				builder.AddNodeDependency(node);
+			    return DrawTrangle{
+				    .renderTarget = builder.RenderTarget(renderTarget)
+			    };
 			},
-			[=](const auto& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
+			[=](const DrawTrangle& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				float fTime = (float)t;
 
@@ -182,6 +187,7 @@ struct TestState : FrameworkState
 	IRenderWindow*			renderWindow	= nullptr;
 	VertexBufferHandle		vBuffer			= InvalidHandle;
 	ConstantBufferHandle	cBuffer			= InvalidHandle;
+	UniqueResourceHandle	testTexture;
 };
 
 int main()
@@ -191,16 +197,19 @@ int main()
 		auto* allocator = FlexKit::CreateEngineMemory();
 		EXITSCOPE(ReleaseEngineMemory(allocator));
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator, FlexKit::CoreOptions{
-			.GPUdebugMode		= true,
-			.GPUValidation		= true,
-			.GPUSyncQueues		= true,
+		auto app = std::make_unique<FlexKit::FKApplication>(allocator,
+			FlexKit::CoreOptions{
+				.GPUdebugMode		= true,
+				.GPUValidation		= true,
+				.GPUSyncQueues		= true,
 #if USEVK
-			.CreateRenderSystem = CreateVK,
+				.CreateRenderSystem = CreateVK,
 #else
-			.CreateRenderSystem = CreateDX,
+				.CreateRenderSystem = CreateDX,
 #endif
-		});
+			}, FlexKit::FrameworkOptions{
+				.integrateIMGUI		= false
+			});
 
 		app->PushState<TestState>();
 		app->GetCore().FPSLimit		= 144;
