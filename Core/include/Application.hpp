@@ -37,7 +37,7 @@ namespace FlexKit
 	class FKApplication
 	{
 	public:
-		FKApplication(EngineMemory* Memory, const CoreOptions& options = {});
+		FKApplication(EngineMemory* Memory, const CoreOptions& options = {}, const FrameworkOptions& frameWorkOptions = {});
 
 		~FKApplication();
 

@@ -44,7 +44,7 @@ namespace dx_Internal
 		void AddBufferBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint);
 		void AddBarriers				(std::span<const Barrier> barriers) final;
 
-		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f) final; // Assumes full-screen Clear
+		void ClearDepthBuffer		(ResourceHandle resource, float clearDepth = 0.0f, uint32_t stencil = 0x00) final; // Assumes full-screen Clear
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)) final; // Assumes full-screen Clear
 		void ClearUAVTextureFloat	(ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0)) final;
 		void ClearUAVTextureUint	(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) final;

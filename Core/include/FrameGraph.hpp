@@ -1690,23 +1690,23 @@ namespace FlexKit
 	{
 	public:
 		FrameGraph(IRenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
-			resources			{ RS, Temp },
-			threads				{ IN_threads },
-			globalDependencies	{ Temp },
-			computeStateContext	{ resources, IN_threads, RS, Temp },
-			directStateContext	{ resources, IN_threads, RS, Temp },
-			memory				{ Temp },
-			nodes				{ Temp },
-			pendingDirectNodes	{ Temp },
-			pendingComputeNodes	{ Temp },
-			submissions			{ Temp },
-			acquiredResources	{ Temp },
-			pendingAcquire		{ Temp }
+			resources{ RS, Temp },
+			threads{ IN_threads },
+			globalDependencies{ Temp },
+			computeStateContext{ resources, IN_threads, RS, Temp },
+			directStateContext{ resources, IN_threads, RS, Temp },
+			memory{ Temp },
+			nodes{ Temp },
+			pendingDirectNodes{ Temp },
+			pendingComputeNodes{ Temp },
+			submissions{ Temp },
+			acquiredResources{ Temp },
+			pendingAcquire{ Temp }
 		{
 			nodes.reserve(64);
 		}
 
-		FrameGraph				(const FrameGraph& RHS) = delete;
+		FrameGraph(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
 
 
@@ -1716,8 +1716,9 @@ namespace FlexKit
 			struct NodeData
 			{
 				NodeData(TY&& IN_initial, DrawFN&& IN_drawFN) :
-					draw	{ std::move(IN_drawFN)  },
-					fields	{ std::move(IN_initial) } {}
+					draw{ std::move(IN_drawFN) },
+					fields{ std::move(IN_initial) } {
+				}
 
 				~NodeData() = default;
 
@@ -1725,21 +1726,21 @@ namespace FlexKit
 				DrawFN	draw;
 			};
 
-			auto& data	= memory->allocate_aligned<NodeData>(std::move(std::forward<TY>(initial)), std::move(draw));
+			auto& data = memory->allocate_aligned<NodeData>(std::move(std::forward<TY>(initial)), std::move(draw));
 
 			auto idx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
 				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
-					newWorkItem.node			= &node;
-					newWorkItem.submissionID	= node.submissionID;
+					newWorkItem.node = &node;
+					newWorkItem.submissionID = node.submissionID;
 
-					newWorkItem.action	=
-						[](	FrameGraphNode&	node,
-							FrameResources&	resources,
-							IDirectContext&	ctx,
-							iAllocator&		tempAllocator)
+					newWorkItem.action =
+						[](FrameGraphNode& node,
+							FrameResources& resources,
+							IDirectContext& ctx,
+							iAllocator& tempAllocator)
 						{
 							ProfileFunction();
 
@@ -1774,6 +1775,126 @@ namespace FlexKit
 			pendingDirectNodes.push_back(&nodes[idx]);
 
 			return data.fields;
+		}
+
+		template<typename SetupFN, typename DrawFN> requires !std::is_void_v<decltype(std::declval<SetupFN&>()(std::declval<FrameGraphNodeBuilder&>()))>
+		auto& AddNode2(SetupFN&& setup, DrawFN&& draw) 
+		{
+			using TY = decltype(setup(std::declval<FrameGraphNodeBuilder&>()));
+
+			struct NodeData
+			{
+				TY		fields;
+				DrawFN	draw;
+			};
+
+			auto idx	= nodes.size();
+			void* _ptr	= memory->_aligned_malloc(sizeof(NodeData));
+
+			nodes.emplace_back(
+				FrameGraphNodeHandle{ nodes.size() },
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				{
+					FrameGraphNodeWorkItem newWorkItem;
+					newWorkItem.node = &node;
+					newWorkItem.submissionID = node.submissionID;
+
+					newWorkItem.action =
+						[](FrameGraphNode&	node,
+							FrameResources& resources,
+							IDirectContext& ctx,
+							iAllocator&		tempAllocator)
+						{
+							ProfileFunction();
+
+							NodeData& data = *reinterpret_cast<NodeData*>(node.nodeData);
+
+							node.HandleBarriers(resources, ctx);
+
+							LocallyTrackedObjectList localTracking{ &tempAllocator };
+							localTracking = node.subNodeTracking;
+
+							ResourceHandler handler{ resources, localTracking };
+							data.draw(data.fields, handler, ctx, tempAllocator);
+
+							node.RestoreResourceStates(ctx, resources, localTracking);
+
+							{
+								ProfileFunctionLabeled(Destruction);
+								data.fields.~TY();
+							}
+						};
+
+					tasks_out.push_back(newWorkItem);
+				},
+				_ptr,
+				memory);
+
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[idx], directStateContext, memory);
+
+			auto& data = *(new(_ptr)
+				NodeData{
+					.fields{ setup(builder) },
+					.draw = std::move(draw)
+				});
+
+			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[idx]);
+
+			return data.fields;
+		}
+
+		template<typename SetupFN, typename DrawFN> requires std::is_void_v<decltype(std::declval<SetupFN&>()(std::declval<FrameGraphNodeBuilder&>()))>
+		auto AddNode2(SetupFN&& setup, DrawFN&& draw)
+		{
+			struct NodeData
+			{
+				DrawFN	draw;
+			};
+
+			auto& data = memory->allocate_aligned<NodeData>(std::move(draw));
+
+			auto idx = nodes.emplace_back(
+				FrameGraphNodeHandle{ nodes.size() },
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				{
+					FrameGraphNodeWorkItem newWorkItem;
+					newWorkItem.node = &node;
+					newWorkItem.submissionID = node.submissionID;
+
+					newWorkItem.action =
+						[](FrameGraphNode& node,
+							FrameResources& resources,
+							IDirectContext& ctx,
+							iAllocator& tempAllocator)
+						{
+							ProfileFunction();
+
+							NodeData& data = *reinterpret_cast<NodeData*>(node.nodeData);
+
+							node.HandleBarriers(resources, ctx);
+
+							LocallyTrackedObjectList localTracking{ &tempAllocator };
+							localTracking = node.subNodeTracking;
+
+							ResourceHandler handler{ resources, localTracking };
+							data.draw(handler, ctx, tempAllocator);
+
+							node.RestoreResourceStates(ctx, resources, localTracking);
+						};
+
+					tasks_out.push_back(newWorkItem);
+				},
+				&data,
+				memory);
+
+			FrameGraphNodeBuilder builder(nodes, &resources, nodes[idx], directStateContext, memory);
+			builder.BuildNode(this);
+
+			pendingDirectNodes.push_back(&nodes[idx]);
+
+			return nodes[idx].handle;
 		}
 
 		template<typename TY_Shared, typename TY_Setup, typename TY_Creation, typename TY_Task>

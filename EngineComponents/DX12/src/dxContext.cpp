@@ -2084,18 +2084,18 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::ClearDepthBuffer(ResourceHandle depthBuffer, float clearDepth)
+	void dxDirectContext::ClearDepthBuffer(ResourceHandle resource, float clearDepth, uint32_t stencil)
 	{
 		UpdateResourceStates();
 
-		auto descriptor = _GetDepthDesciptor(depthBuffer);
-		PushDepthStencilArray(renderSystem, depthBuffer, 0, 0, descriptor);
+		auto descriptor = _GetDepthDesciptor(resource);
+		PushDepthStencilArray(renderSystem, resource, 0, 0, descriptor);
 
 		DeviceContext->ClearDepthStencilView(
 			D3D12_CPU_DESCRIPTOR_HANDLE{ descriptor.V1 },
 			D3D12_CLEAR_FLAG_DEPTH, clearDepth, 0, 0, nullptr);
 
-		renderSystem->Textures.MarkRTUsed(depthBuffer);
+		renderSystem->Textures.MarkRTUsed(resource);
 	}
 
 

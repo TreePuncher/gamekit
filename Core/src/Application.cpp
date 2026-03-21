@@ -2,10 +2,10 @@
 
 namespace FlexKit
 {
-	FKApplication::FKApplication(EngineMemory* IN_Memory, const CoreOptions& options) :
+	FKApplication::FKApplication(EngineMemory* IN_Memory, const CoreOptions& options, const FrameworkOptions& frameWorkOptions) :
 		Memory		{ IN_Memory },
 		Core		{ IN_Memory, options },
-		framework	{ Core } {}
+		framework	{ Core, frameWorkOptions } {}
 
 
 	/************************************************************************************************/

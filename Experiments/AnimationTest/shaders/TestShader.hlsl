@@ -1,12 +1,21 @@
+#define DEFINE_CBV(ID, A, B)
+
 [[fk::RootFlag(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
 [[fk::DescriptorSet(set=0,
-	CBV(num=1)
+	CBV(num=1),
+	SRVTexture(num=1)
 )]]
+
+
+[[fk::Texture2D(ID=diffuse, set=0, binding=1, type=float4)]];
+
 
 [[fk::CBV(binding=0, set=0)]]
 {
 	float time;
 };
+
+Texture2D<float4> texture : register(t1, space0);
 
 struct VIN
 {

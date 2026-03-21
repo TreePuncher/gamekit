@@ -964,7 +964,7 @@ namespace FlexKit
 
 	enum class DescriptorType
 	{
-	    UAV, SRV, CBV    
+	    UAVBuffer, UAVTexture, SRVBuffer, SRVTexture, CBV, AccellerationStructure
 	};
 
 	struct DescriptorTableEntry
@@ -2246,7 +2246,7 @@ namespace FlexKit
 		virtual void AddBufferBarrier			(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddBarriers				(std::span<const Barrier> barriers) IDIRECTCONTEXTDEBUGBODY;
 
-		virtual void ClearDepthBuffer			(ResourceHandle Texture, float ClearDepth = 0.0f) IDIRECTCONTEXTDEBUGBODY;
+		virtual void ClearDepthBuffer			(ResourceHandle resource, float clearDepth = 0.0f, uint32_t stencil = 0x00) IDIRECTCONTEXTDEBUGBODY;
 		virtual void ClearRenderTarget			(ResourceHandle Texture, float4 ClearColor = float4(0.0f)) IDIRECTCONTEXTDEBUGBODY;
 		virtual void ClearUAVTextureFloat		(ResourceHandle UAV, float4 clearColor = float4(0, 0, 0, 0)) IDIRECTCONTEXTDEBUGBODY;
 		virtual void ClearUAVTextureUint		(ResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 }) IDIRECTCONTEXTDEBUGBODY;

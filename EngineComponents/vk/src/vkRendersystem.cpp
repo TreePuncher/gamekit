@@ -158,17 +158,17 @@ namespace VK_internal
 			return {};
 
 		auto&& [offset, memory] = allocationRes.value();
-
+		
 	     // Create Buffer
 		VkBufferCreateInfo createBufferInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext					= nullptr,
-			.flags					= 0,			//VkBufferCreateFlags;
-			.size					= bufferSize,	//VkDeviceSize
+			.flags					= 0,			// VkBufferCreateFlags;
+			.size					= bufferSize,	// VkDeviceSize
 			.usage					= VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
-			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
+			.pQueueFamilyIndices	= nullptr		// const uint32_t*        
 		};
 
 		VkBuffer buffer;
@@ -180,6 +180,58 @@ namespace VK_internal
 					.buffer = buffer,
 					.memory = memory
 				};
+	}
+
+
+	std::optional<TextureAPIObject>	CreateTextureResource(vkRenderSystem& renderSystem, uint2 WH, DeviceFormat format)
+	{
+		VkImageCreateInfo createInfo{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+			.pNext					= nullptr,
+			.flags					= 0u,//VkImageCreateFlags
+			.imageType				= VkImageType::VK_IMAGE_TYPE_2D,
+			.format					= FormatToVK(format),
+			.extent					= VkExtent3D{},
+			.mipLevels				= 1,
+			.arrayLayers			= 1,
+			.samples				= {},
+			.tiling					= VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+			.usage					= VK_IMAGE_USAGE_SAMPLED_BIT,
+			.sharingMode			= VK_SHARING_MODE_EXCLUSIVE,
+			.queueFamilyIndexCount	= 0,
+			.pQueueFamilyIndices	= nullptr,
+			.initialLayout			= VkImageLayout::VK_IMAGE_LAYOUT_GENERAL,
+		};
+
+	    VkImage image;
+		if (auto res = vkCreateImage(renderSystem.device, &createInfo, nullptr, &image); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to create texture resource" };
+
+
+		VkImageMemoryRequirementsInfo2	requirements;
+		VkMemoryRequirements2			memoryRequirments;
+		vkGetImageMemoryRequirements2(renderSystem.device, &requirements, &memoryRequirments);
+
+		auto allocationRes =
+			renderSystem.memoryAllocator.Allocate(
+			    0,
+			    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			    memoryRequirments.memoryRequirements.size,
+			    memoryRequirments.memoryRequirements.alignment);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+		vkBindImageMemory(renderSystem.device, image, memory, offset);
+
+		return 
+	        TextureAPIObject{
+			    .image	= image,
+			    .memory = memory,
+			    .offset = offset,
+		};
 	}
 
 
@@ -1211,6 +1263,282 @@ namespace VK_internal
 		ULONG Release() { return 0; }
 	};
 
+
+	struct PreprocessorResult
+	{
+		Vector<ShaderAttribute>	attributes;
+		uint32_t				CBVcount	= 0;
+		uint32_t				tableCount	= 0;
+	};
+
+	PreprocessorResult VK_ShaderProprocess(std::string& shader, const SHADER_TYPE type)
+	{
+		PreprocessorResult result{
+			.attributes{ static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance()).allocator }
+		};
+
+		auto&& [attributes, CBVcount, tableCount] = result;
+
+		static const std::regex attributeRegex{ R"(\[\[fk::\w*\((\w*?|\n*?|\(|\)|\=|\s|\,|\")*?\)?\]\])" };
+
+		std::smatch base_match;
+		std::sregex_iterator itr = std::sregex_iterator(
+			shader.begin(),
+			shader.end(),
+			attributeRegex);
+
+		std::sregex_iterator end;
+
+		size_t shaderOffset = 0;
+
+		while (itr != end)
+		{
+			auto match = itr->str();
+
+			if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::CBV(set={}, binding={})]])"); res)
+			{
+				auto [set, binding] = res->values();
+
+				size_t pos = itr->position() + shaderOffset;
+
+				auto line = std::format("cbuffer constants_{0}_{1} : register(b{0}, space{1})", set, binding);
+				shader.replace(pos, itr->length(), line);
+
+				shaderOffset = pos + line.length();
+
+				itr = std::sregex_iterator(
+					shader.begin() + shaderOffset,
+					shader.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredRW(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::RWTexture2D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::RWTexture3D(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::CubeMap(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(set={}, binding={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(ID={}, set={}, binding={}, type={})]])"); res)
+			{
+				auto [ID, set, binding, type] = res->values();
+
+				size_t pos = itr->position() + shaderOffset;
+
+				auto line = std::format("Texture2D<{}> {} : register(s{}, space{})", type, ID, set, binding);
+				shader.replace(pos, itr->length(), line);
+
+				shaderOffset = pos + line.length();
+
+				itr = std::sregex_iterator(
+					shader.begin() + shaderOffset,
+					shader.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture3D(set={}, set={}, type={})]])"); res)
+			{
+				int x = 0;
+			}
+			else if (auto res = scn::scan<uint32_t, scn::regex_matches>(match, R"([[fk::DescriptorSet(set={}, {:/((\w)+\((\w|\=|\,|\s)*\)|(\s|\,)?)*/n})]])"); res)
+			{
+				auto [set, descriptors] = res->values();
+				uint32_t descriptorCount = 0;
+
+				if (descriptors.size())
+				{
+					auto str = descriptors.at(0).value().get();
+					auto itr = str.begin();
+
+					tableCount = Max(tableCount, set + 1);
+					ShaderAttributeDescriptorTable table{ .set = set };
+
+					while (itr != str.end())
+					{
+						if (std::isspace(*itr) || std::ispunct(*itr))
+							itr++;
+						else if (std::string_view{ itr, itr + 3 } == "CBV")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "CBV(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::CBV });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 10 } == "SRVTexture")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "SRVTexture(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::SRVTexture });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 12 } == "SRVStructure")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "SRVBuffer(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::SRVBuffer });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 3 } == "UAVTexture")
+						{
+							auto remaining = (str.end() - itr);
+							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "UAVTexture(num={})");
+							auto [num] = res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::UAVTexture });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else if (std::string_view{ itr, itr + 3 } == "UAVBuffer")
+						{
+							auto remaining	= (str.end() - itr);
+							auto res		= scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "UAVBuffer(num={})");
+							auto [num]		= res->values();
+							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::UAVBuffer });
+							itr += 3;
+
+							while (*itr != ')') itr++;
+							itr++;
+						}
+						else
+							itr++;
+					}
+
+					attributes.push_back(table);
+				}
+			}
+			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::CBV(set={})]])"); res)
+			{
+				size_t pos = itr->position() + shaderOffset;
+				auto [binding] = res->values();
+				std::string id = fmt::format("cb_{}", rand());
+				shader.replace(pos, itr->length(), std::format("cbuffer {} : register(b{})", id, binding));
+
+				attributes.push_back(
+					ShaderAttributePushCBV{
+						.binding		= (uint16_t)binding,
+						.pipelineStage	= (uint32_t)type,
+						.id = id
+					});
+
+				shaderOffset = pos;
+
+				itr = std::sregex_iterator(
+					shader.begin() + shaderOffset,
+					shader.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::CBV(binding={}, set={})]])"); res)
+			{
+				size_t pos = itr->position() + shaderOffset;
+				auto [binding, set] = res->values();
+				std::string id = fmt::format("cb_{}", rand());
+				shader.replace(pos, itr->length(), std::format("cbuffer {} : register(b{}, space{})", id, binding, set));
+
+				attributes.push_back(
+					ShaderAttributeCBV{
+						.binding = binding,
+						.set = set,
+						.pipelineStage = (uint32_t)type,
+						.id = id
+					});
+
+				shaderOffset = pos;
+
+				itr = std::sregex_iterator(
+					shader.begin() + shaderOffset,
+					shader.end(),
+					attributeRegex);
+
+				continue;
+			}
+			else if (auto res = scn::scan<scn::regex_matches, uint32_t>(match, R"([[fk::InlineValues(id="{:/(\w|\d)*/}", num={})]])"); res)
+			{
+				std::string type_id = std::format("type_{}", rand());
+
+				auto [id_match, num] = res->values();
+				auto id = id_match.at(0).and_then([](auto m) { return std::optional<std::string>{m.get()}; }).value_or(std::string{ "" });
+
+				attributes.push_back(
+					ShaderAttributeConstantValues{
+						.num			= num,
+						.pipelineStage	= (uint32_t)type,
+						.id				= id,
+					});
+
+				static const std::regex structRegex{ R"(\{(\w|\d|\s|\;)*\};)" };
+
+				std::string replacement = std::format("struct {}", type_id);
+				std::string insertLine = std::format("\n[[vk::push_constant]] {} {};", type_id, id);
+
+				auto structBlock = std::sregex_iterator(
+					shader.begin() + shaderOffset,
+					shader.end(),
+					structRegex);
+
+				auto pos = itr->position() + shaderOffset;
+				auto posEnd = itr->position() + shaderOffset + itr->length();
+				auto block = structBlock->position();
+
+				if (posEnd + 2 >= block)
+				{	// formatted correctly? Maybe?
+					shader.replace(pos, itr->length(), replacement);
+
+					auto offset = replacement.length() + structBlock->length() + 2;
+					shader.insert(pos + offset, insertLine);
+				}
+
+				shaderOffset = posEnd;
+
+				itr = std::sregex_iterator(
+					shader.begin() + posEnd,
+					shader.end(),
+					attributeRegex);
+
+				continue;
+			}
+
+			shader.erase(itr->position() + shaderOffset, itr->length());
+
+			shaderOffset += itr->position();
+			itr = std::sregex_iterator(
+				shader.begin() + shaderOffset,
+				shader.end(),
+				attributeRegex);
+		}
+
+		return result;
+	}
+
 	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
 	{
 		IDxcUtils*			hlslUtils			= nullptr;
@@ -1278,229 +1606,7 @@ namespace VK_internal
 		shaderStr.resize(size);
 		LoadFileIntoBuffer(filePath.string().c_str(), (std::byte*)shaderStr.data(), size);
 
-		static const std::regex attributeRegex{ R"(\[\[fk::\w*\((\w*?|\n*?|\(|\)|\=|\s|\,|\")*?\)?\]\])" };
-		
-		std::smatch base_match;
-		std::sregex_iterator itr = std::sregex_iterator(
-			shaderStr.begin(),
-			shaderStr.end(),
-			attributeRegex);
-
-		std::sregex_iterator end;
-		Vector<ShaderAttribute> attributes{ static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance()).allocator };
-
-		uint32_t CBVcount = 0;
-		uint32_t tableCount = 0;
-
-		size_t shaderOffset = 0;
-		while(itr != end)
-		{
-			auto match = itr->str();
-
-			if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::DescriptorSetCBV(set={}, set={})]])"); res)
-			{
-				auto [set, binding] = res->values();
-
-				size_t pos = itr->position() + shaderOffset;
-
-				auto line = std::format("cbuffer constants_{0}_{1} : register(b{0}, space{1})", set, binding);
-				shaderStr.replace(pos, itr->length(), line);
-
-				shaderOffset = pos + line.length();
-
-				itr = std::sregex_iterator(
-					shaderStr.begin() + shaderOffset,
-					shaderStr.end(),
-					attributeRegex);
-
-				continue;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructuredRW(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture2D(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetRWTexture3D(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetCubeMap(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetStructured(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture2D(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::DescriptorSetTexture3D(set={}, set={}, type={})]])"); res)
-			{
-				int x = 0;
-			}
-			else if (auto res = scn::scan<uint32_t, scn::regex_matches>(match, R"([[fk::DescriptorSet(set={}, {:/((\w)+\((\w|\=|\,|\s)*\)|(\s|\,)?)*/n})]])"); res)
-			{
-				auto [set, descriptors] = res->values();
-				uint32_t descriptorCount = 0;
-
-				if (descriptors.size())
-				{
-					auto str = descriptors.at(0).value().get();
-					auto itr = str.begin();
-
-					tableCount = Max(tableCount, set + 1);
-					ShaderAttributeDescriptorTable table{ .set = set };
-
-					while (itr != str.end())
-					{
-						if (std::isspace(*itr))
-							itr++;
-						else if (std::string_view{ itr, itr + 3 } == "CBV")
-						{
-							auto remaining = (str.end() - itr);
-							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "CBV(num={})");
-							auto [num] = res->values();
-							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::CBV });
-						    itr += 3;
-
-							while (*itr != ')') itr++;
-							itr++;
-						}
-						else if (std::string_view{ itr, itr + 3 } == "SRV")
-						{
-							auto remaining = (str.end() - itr);
-							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "SRV(num={})");
-							auto [num] = res->values();
-							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::SRV });
-							itr += 3;
-
-							while (*itr != ')') itr++;
-							itr++;
-						}
-						else if (std::string_view{ itr, itr + 3 } == "UAV")
-						{
-							auto remaining = (str.end() - itr);
-							auto res = scn::scan<uint32_t>(std::string_view{ itr, itr + remaining }, "UAV(num={})");
-							auto [num] = res->values();
-							table.entries.push_back(DescriptorTableEntry{ .num = num, .type = DescriptorType::UAV });
-							itr += 3;
-
-							while (*itr != ')') itr++;
-							itr++;
-						}
-						else
-							itr++;
-					}
-
-					attributes.push_back(table);
-				}
-			}
-			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::CBV(set={})]])"); res)
-			{
-				size_t pos = itr->position() + shaderOffset;
-				auto [binding] = res->values();
-				std::string id = fmt::format("cb_{}", rand());
-				shaderStr.replace(pos, itr->length(), std::format("cbuffer {} : register(b{})", id, binding));
-
-				attributes.push_back(
-					ShaderAttributePushCBV{
-						.binding		= (uint16_t)binding,
-						.pipelineStage	= (uint32_t)type,
-						.id				= id
-					});
-
-				shaderOffset = pos;
-
-				itr = std::sregex_iterator(
-					shaderStr.begin() + shaderOffset,
-					shaderStr.end(),
-					attributeRegex);
-
-				continue;
-			}
-			else if (auto res = scn::scan<uint32_t, uint32_t>(match, R"([[fk::CBV(binding={}, set={})]])"); res)
-			{
-				size_t pos = itr->position() + shaderOffset;
-				auto [binding, set] = res->values();
-				std::string id = fmt::format("cb_{}", rand());
-				shaderStr.replace(pos, itr->length(), std::format("cbuffer {} : register(b{}, space{})", id, binding, set));
-
-				attributes.push_back(
-					ShaderAttributeCBV{
-						.binding			= binding,
-						.set			= set,
-						.pipelineStage	= (uint32_t)type,
-						.id				= id
-					});
-
-				shaderOffset = pos;
-
-				itr = std::sregex_iterator(
-					shaderStr.begin() + shaderOffset,
-					shaderStr.end(),
-					attributeRegex);
-
-				continue;
-			}
-			else if (auto res = scn::scan<scn::regex_matches, uint32_t>(match, R"([[fk::InlineValues(id="{:/(\w|\d)*/}", num={})]])"); res)
-			{
-				std::string type_id = std::format("type_{}", rand());
-
-				auto [id_match, num] = res->values();
-				auto id = id_match.at(0).and_then([](auto m) { return std::optional<std::string>{m.get()}; }).value_or(std::string{""});
-
-				attributes.push_back(
-					ShaderAttributeConstantValues{
-						.num			= num,
-						.pipelineStage	= (uint32_t)type,
-						.id				= id,
-					});
-
-				static const std::regex structRegex{ R"(\{(\w|\d|\s|\;)*\};)" };
-
-				std::string replacement		= std::format("struct {}", type_id);
-				std::string insertLine		= std::format("\n[[vk::push_constant]] {} {};", type_id, id);
-
-				auto structBlock = std::sregex_iterator(
-					shaderStr.begin() + shaderOffset,
-					shaderStr.end(),
-					structRegex);
-				
-				auto pos	= itr->position() + shaderOffset;
-				auto posEnd = itr->position() + shaderOffset + itr->length();
-				auto block	= structBlock->position();
-
-				if (posEnd + 2 >= block)
-				{	// formatted correctly? Maybe?
-					shaderStr.replace(pos, itr->length(), replacement);
-
-					auto offset = replacement.length() + structBlock->length() + 2;
-					shaderStr.insert(pos + offset, insertLine);
-				}
-
-				shaderOffset = posEnd;
-
-				itr = std::sregex_iterator(
-					shaderStr.begin() + posEnd,
-					shaderStr.end(),
-					attributeRegex);
-
-				continue;
-			}
-
-			shaderStr.erase(itr->position() + shaderOffset, itr->length());
-
-			shaderOffset += itr->position();
-			itr = std::sregex_iterator(
-				shaderStr.begin() + shaderOffset,
-				shaderStr.end(),
-				attributeRegex);
-		}
+		auto&& [attributes, CBVcount, tableCount] = VK_ShaderProprocess(shaderStr, type);
 
 		IDxcBlobEncoding* blob;
 		auto HR1 = hlslUtils->CreateBlobFromPinned(shaderStr.data(), shaderStr.size(), DXC_CP_ACP, &blob);
@@ -1548,6 +1654,7 @@ namespace VK_internal
 		arguments.push_back(L"-spirv");
 		arguments.push_back(L"-E");
 		arguments.push_back(entryPointW);
+
 		//arguments.push_back(L"/T rootsig_1_1");
 		#else
 		arguments.push_back(L"-O3");
@@ -1737,7 +1844,8 @@ namespace VK_internal
 		    }	break;
 		case ResourceType::ShaderResource:
 		    {
-			    //FK_ASSERT(false);
+
+			    FK_ASSERT(false);
 		    }	break;
 		case ResourceType::RayTracingStructure:
 		    {

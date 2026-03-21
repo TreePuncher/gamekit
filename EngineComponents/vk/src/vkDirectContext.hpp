@@ -30,7 +30,7 @@ namespace VK_internal
 		void AddBufferBarrier(ResourceHandle Handle, DeviceAccessState, DeviceAccessState, DeviceSyncPoint, DeviceSyncPoint) final;
 		void AddBarriers(std::span<const Barrier> barriers) final;
 
-		void ClearDepthBuffer(ResourceHandle Texture, float ClearDepth);
+		void ClearDepthBuffer(ResourceHandle resource, float clearDepth, uint32_t stencil = 0x00);
 		void ClearRenderTarget(ResourceHandle Texture, float4 ClearColor);
 		void ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor);
 		void ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor);

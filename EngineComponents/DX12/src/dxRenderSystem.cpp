@@ -7666,22 +7666,21 @@ namespace dx_Internal
 
 	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
+		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {}; {
 			const auto mipCount     = RS->GetTextureMipCount(handle);
 			const auto arraySize    = RS->GetTextureArraySize(handle);
 
-			ViewDesc.Format                             = format;
-			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			ViewDesc.ViewDimension                      = arraySize > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D;
-			ViewDesc.Texture2DArray.MipLevels           = Max(mipCount, 1);
-			ViewDesc.Texture2DArray.MostDetailedMip     = 0;
-			ViewDesc.Texture2DArray.PlaneSlice          = 0;
-			ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
-			ViewDesc.Texture2DArray.ArraySize           = (UINT)arraySize;
+			viewDesc.Format                             = format;
+			viewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			viewDesc.ViewDimension                      = arraySize > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D;
+			viewDesc.Texture2DArray.MipLevels           = Max(mipCount, 1);
+			viewDesc.Texture2DArray.MostDetailedMip     = 0;
+			viewDesc.Texture2DArray.PlaneSlice          = 0;
+			viewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+			viewDesc.Texture2DArray.ArraySize           = (UINT)arraySize;
 		}
 
-		auto debug = RS->GetDeviceResource(handle);
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &ViewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &viewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
