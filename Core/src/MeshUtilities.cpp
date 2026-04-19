@@ -537,8 +537,12 @@ namespace FlexKit
 						char byteBuffer[bufferSize];
 						memcpy(byteBuffer, &temp, bufferSize);
 
-						for (auto byte : byteBuffer)
-							target.push_back(byte);
+						auto begin = target.size();
+						target.resize(target.size() + bufferSize);
+						memcpy(target.data() + begin, byteBuffer, bufferSize);
+
+						//for (auto byte : byteBuffer)
+						//	target.push_back(byte);
 					}
 				};
 

@@ -2249,6 +2249,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 		              virtual void						CreateTextureView(ResourceHandle, DescHeapPOS) final;
 
+		IVertexBufferSet&								CreateVertexBufferSet() final;
+
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;

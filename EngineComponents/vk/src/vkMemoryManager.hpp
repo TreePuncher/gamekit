@@ -51,11 +51,11 @@ namespace VK_internal
         vkMemoryAllocator(iAllocator& allocator);
 
         void                                            Init(vkRenderSystem& renderSystem);
-        std::expected<vkAllocation, AllocationError>    Allocate(uint32_t flags, uint32_t heapFlags, uint64_t size, uint8_t alignment = 16);
+        std::expected<vkAllocation, AllocationError>    Allocate(uint32_t flags, uint32_t heapFlags, uint64_t size, uint32_t alignment = 16);
         void                                            Release(VkDeviceMemory);
 
         void  CreateSlab(uint32_t flags, uint64_t size);
-        Slab* FindSlab(uint32_t heapFlags, uint64_t requiredSize);
+        Slab* FindSlab(uint32_t heapFlags, uint64_t requiredSize, uint32_t alignment = 1);
 
 
         Vector<Slab>                        slabs;

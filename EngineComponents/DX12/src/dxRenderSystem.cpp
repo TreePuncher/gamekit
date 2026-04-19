@@ -3733,6 +3733,17 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	IVertexBufferSet& CreateVertexBufferSet()
+	{
+		FK_LOG_ERROR("DX: CreateVertexBufferSet unimplemented!");
+
+		std::unreachable();
+	}
+
+
+	/************************************************************************************************/
+
+
 	SubAllocation dxRenderSystem::ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept
 	{
 		return ConstantBuffers.Reserve(CB, reserveSize);

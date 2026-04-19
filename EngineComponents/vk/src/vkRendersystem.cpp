@@ -8,6 +8,8 @@
 
 #include "vkPipelineBuilder.hpp"
 #include "vkDescriptorSet.hpp"
+#include "vkVertexBufferSet.hpp"
+#include "vkRenderDocDebug.hpp"
 
 #include <vulkan/vulkan.hpp>
 
@@ -39,6 +41,67 @@ namespace VK_internal
 	{
 		std::print("ERROR: {}", pCallbackData->pMessage);
 		return true;
+	}
+
+	void LabelQueue(VkQueue queue, VkDevice device, const char* label)
+	{
+#ifdef _DEBUG
+		if (vkSetDebugUtilsObjectName)
+		{
+			static int n = 0;
+
+			VkDebugUtilsObjectNameInfoEXT nameInfo{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				.pNext			= nullptr,
+				.objectType		= VkObjectType::VK_OBJECT_TYPE_QUEUE,
+				.objectHandle	= (uint64_t)queue,
+				.pObjectName	= label
+			};
+
+			vkSetDebugUtilsObjectName(device, &nameInfo);
+		}
+#endif
+	}
+
+
+	void LabelBuffer(VkBuffer buffer, VkDevice device, const char* label)
+	{
+#ifdef _DEBUG
+		if (vkSetDebugUtilsObjectName)
+		{
+			static int n = 0;
+
+			VkDebugUtilsObjectNameInfoEXT nameInfo{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				.pNext			= nullptr,
+				.objectType		= VkObjectType::VK_OBJECT_TYPE_BUFFER,
+				.objectHandle	= (uint64_t)buffer,
+				.pObjectName	= label
+			};
+
+			vkSetDebugUtilsObjectName(device, &nameInfo);
+		}
+#endif
+	}
+
+	void LabelSemaphore(VkSemaphore buffer, VkDevice device, const char* label)
+	{
+#ifdef _DEBUG
+		if (vkSetDebugUtilsObjectName)
+		{
+			static int n = 0;
+
+			VkDebugUtilsObjectNameInfoEXT nameInfo{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				.pNext			= nullptr,
+				.objectType		= VkObjectType::VK_OBJECT_TYPE_SEMAPHORE,
+				.objectHandle	= (uint64_t)buffer,
+				.pObjectName	= label
+			};
+
+			vkSetDebugUtilsObjectName(device, &nameInfo);
+		}
+#endif
 	}
 
 
@@ -148,17 +211,6 @@ namespace VK_internal
 
 	std::optional<BufferAPIObject> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize)
 	{
-		auto allocationRes = renderSystem.memoryAllocator.Allocate(
-			0,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			bufferSize
-		);
-
-		if (!allocationRes.has_value())
-			return {};
-
-		auto&& [offset, memory] = allocationRes.value();
-		
 	     // Create Buffer
 		VkBufferCreateInfo createBufferInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -171,14 +223,31 @@ namespace VK_internal
 			.pQueueFamilyIndices	= nullptr		// const uint32_t*        
 		};
 
+		VkMemoryRequirements memoryRequirements{};
+
 		VkBuffer buffer;
 		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
+		vkGetBufferMemoryRequirements(renderSystem.device, buffer, &memoryRequirements);
+
+		auto allocationRes = renderSystem.memoryAllocator.Allocate(
+			0,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+			memoryRequirements.size,
+			memoryRequirements.alignment);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+
 		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
 
 		return BufferAPIObject
 				{
 					.buffer = buffer,
-					.memory = memory
+					.memory = memory,
+					.byteOffset	= offset
 				};
 	}
 
@@ -240,7 +309,8 @@ namespace VK_internal
 	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
 			0,
 			GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			bufferSize
+			bufferSize,
+			0x10000
 		);
 
 		if (!allocationRes.has_value())
@@ -254,7 +324,7 @@ namespace VK_internal
 			.pNext					= nullptr,
 			.flags					= 0,			//VkBufferCreateFlags;
 			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
@@ -268,7 +338,7 @@ namespace VK_internal
 		        {
 			        .buffer		= buffer,
 			        .memory		= memory,
-					.offset		= offset
+					.byteOffset		= offset
 		        };
 	}
 
@@ -306,7 +376,7 @@ namespace VK_internal
 		        {
 			        .buffer		= buffer,
 			        .memory		= memory,
-					.offset		= offset
+					.byteOffset		= offset
 		        };
 	}
 
@@ -412,6 +482,7 @@ namespace VK_internal
             .descriptorType		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
             .pBufferInfo		= &bufferInfo
 		};
+
 		vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 	}
 
@@ -438,13 +509,14 @@ namespace VK_internal
 
 	vkRenderSystem::vkRenderSystem(ThreadManager* threads, iAllocator& IN_allocator) :
 	    allocator				{ IN_allocator },
+		copyContextTable		{ IN_allocator },
 		memoryAllocator			{ IN_allocator },
 		pendingDirectContexts	{ IN_allocator },
 		pipelineStates			{ threads, IN_allocator },
 	    resources				{ IN_allocator },
         vkAllocators			{ nullptr },
 		vertexPushBuffers		{ IN_allocator },
-		mappings				{ IN_allocator	},
+		mappings				{ IN_allocator },
 		constantPushBuffers		{ IN_allocator } {}
 
 
@@ -542,13 +614,17 @@ namespace VK_internal
 		auto devRequest = deviceBuilder.build();
 
 	    device = devRequest.value();
-		auto queueRequest = device.get_queue(vkb::QueueType::graphics);
-		if (!queueRequest.has_value())
-		{
-			return false;
-		}
+		auto graphicsQueueRequest = device.get_queue(vkb::QueueType::graphics);
+		auto transferQueueRequest = device.get_queue(vkb::QueueType::transfer);
+		auto computeQueueRequest  = device.get_queue(vkb::QueueType::compute);
 
-		auto queue = queueRequest.value();
+		if (!graphicsQueueRequest.has_value() || !transferQueueRequest.has_value() || !computeQueueRequest.has_value())
+			return false;
+
+
+		graphicsQueue	= graphicsQueueRequest.value();
+		transferQueue	= transferQueueRequest.value();
+		computeQueue	= computeQueueRequest.value();
 
 		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
 		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
@@ -563,6 +639,14 @@ namespace VK_internal
 		FK_ASSERT(vkCmdBindDescriptorBuffers != nullptr, "VK: Failed to get vkCmdBindDescriptorBuffersEXT");
 		FK_ASSERT(vkGetDescriptorSetLayoutBindingOffset != nullptr, "VK: Failed to get vkCmdBindDescriptorBuffersEXT");
 		FK_ASSERT(vkCmdSetDescriptorBufferOffsets != nullptr, "VK: Failed to get vkCmdSetDescriptorBufferOffsetsEXT");
+
+
+#ifdef _DEBUG
+		vkSetDebugUtilsObjectName = (PFN_vkSetDebugUtilsObjectNameEXT)vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT");
+
+		if(vkSetDebugUtilsObjectName == nullptr)
+			FK_LOG_WARNING("VK: Failed to get vkSetDebugUtilsObjectNameEXT");
+#endif
 
 		descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
 		descriptorBufferProperties.pNext = nullptr;
@@ -624,8 +708,25 @@ namespace VK_internal
             .flags = 0
 		};
 
+
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkDirectQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
+
+
+		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &transferQueueFence); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create fence for transfer queue!");
+
+
+		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkTransferQueueCounter); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create transfer timeline semaphore queue!");
+
+		RenderDocDebugUtils::Connect();
+
+		LabelQueue(graphicsQueue, device, "Graphics Queue");
+		LabelQueue(transferQueue, device, "Transfer Queue");
+		LabelQueue(computeQueue, device, "Compute Queue");
+		LabelSemaphore(vkDirectQueueCounter, device, "Direct Semaphore");
+		LabelSemaphore(vkTransferQueueCounter, device, "Transfer Semaphore");
 
 		return true;
 	}
@@ -691,7 +792,7 @@ namespace VK_internal
 
 		return SyncPoint{
 		    .syncCounter	= value,
-		    .fence			= directQueueFence };
+		    .fence			= vkDirectQueueCounter };
 	}
 
 
@@ -703,17 +804,15 @@ namespace VK_internal
 
 	SyncPoint vkRenderSystem::SyncUploadPoint()
 	{
-		DebugBreak();
-
-		return {};
+		const uint64_t counter = vkTransferQueueProgress;
+		return { counter, vkTransferQueueCounter };
 	}
 
 
 	SyncPoint vkRenderSystem::SyncUploadTicket()
 	{
-		DebugBreak();
-
-		return {};
+		const uint64_t counter = ++vkTransferQueueProgress;
+		return { counter, vkTransferQueueCounter };
 	}
 
 
@@ -750,21 +849,110 @@ namespace VK_internal
 	}
 
 
-	void vkRenderSystem::SubmitUploadQueues(CopyContextHandle* handle, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
+	void vkRenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count, std::optional<SyncPoint> syncBefore, std::optional<SyncPoint> syncAfter)
 	{
+		uint64_t submissionValue = 0;
 
+		Vector<VkCommandBufferSubmitInfo, 8>	cmdBufferSubmit	{ allocator };
+		Vector<SyncPoint, 8>					waits			{ allocator };
+		Vector<SyncPoint, 8>					signals			{ allocator };
+
+		if(syncBefore)
+			waits.push_back(syncBefore.value());
+
+		if (syncAfter)
+			signals.push_back(syncAfter.value());
+
+		for(size_t i = 0; i < count; i++)
+		{
+			const CopyContextHandle handle = handles[i];
+
+			auto res = copyContextTable.find(handle);
+			if (res != nullptr)
+			{
+				auto vkCL = static_cast<vkCopyContext*>(*res);
+				vkCL->Close();
+
+				VkCommandBufferSubmitInfo info{
+					.sType			= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+					.pNext			= nullptr,
+					.commandBuffer	= vkCL->cmdBuffer,
+					.deviceMask		= 0
+				};
+
+				cmdBufferSubmit.push_back(info);
+			}
+		}
+
+		Vector<VkSemaphoreSubmitInfo, 8> waitInfos		{ allocator };
+		for (auto waits : waits)
+		{
+			auto& [value, syncObject] = waits;
+
+			VkSemaphoreSubmitInfo infos{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext			= nullptr,
+				.semaphore		= syncObject.As_ptr<VkSemaphore>(),
+				.value			= value,
+				.stageMask		= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+				.deviceIndex	= 0
+			};
+
+			waitInfos.push_back(infos);
+		}
+
+		Vector<VkSemaphoreSubmitInfo, 8> signalInfos{ allocator };
+		for(auto signal : signals)
+		{
+			auto& [value, syncObject] = signal;
+
+			VkSemaphoreSubmitInfo infos{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext			= nullptr,
+				.semaphore		= syncObject.As_ptr<VkSemaphore>(),
+				.value			= value,
+				.stageMask		= VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+				.deviceIndex	= 0
+			};
+
+			signalInfos.push_back(infos);
+		}
+
+		const VkSubmitInfo2 submit{
+			.sType						= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+			.pNext						= nullptr,
+			.flags						= 0x0,
+			.waitSemaphoreInfoCount		= (uint32_t)waitInfos.size(),
+			.pWaitSemaphoreInfos		= waitInfos.data(),
+			.commandBufferInfoCount		= (uint32_t)cmdBufferSubmit.size(),
+			.pCommandBufferInfos		= cmdBufferSubmit.data(),
+			.signalSemaphoreInfoCount	= (uint32_t)signalInfos.size(),
+			.pSignalSemaphoreInfos		= signalInfos.data()
+		};
+
+		vkResetFences(device, 1, &transferQueueFence);
+
+		if (auto res = vkQueueSubmit2(transferQueue, 1, &submit, transferQueueFence); res != VK_SUCCESS)
+			throw std::runtime_error{ "VK: Failed to submit to Transfer Queue!" };
 	}
 
 
 	CopyContextHandle vkRenderSystem::OpenUploadQueue()
 	{
-		return FlexKit::InvalidHandle;
+		auto copyContextHandle{ rand() };
+		auto copyContext_ptr = &allocator->allocate<vkCopyContext>();
+		copyContextTable.insert(copyContextHandle, copyContext_ptr);
+
+		return copyContextHandle;
 	}
 
 
 	CopyContextHandle vkRenderSystem::GetImmediateCopyQueue()
 	{
-		return FlexKit::InvalidHandle;
+		if (immediateUploadQueue == InvalidHandle)
+			immediateUploadQueue = OpenUploadQueue();
+
+		return immediateUploadQueue;
 	}
 
 
@@ -796,18 +984,31 @@ namespace VK_internal
 
 	ICopyContext& vkRenderSystem::GetCopyContext(CopyContextHandle handle)
 	{
-		static vkCopyContext ctx;
-		return ctx;
+		auto res = copyContextTable.find(handle);
+		FK_ASSERT(res != nullptr);
+
+		return **res;
 	}
 
 
 	SyncPoint vkRenderSystem::Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync)
 	{
+		RenderDocDebugUtils::BeginFrame();
+
 		uint64_t submissionValue = 0;
 
-		Vector<VkCommandBufferSubmitInfo, 8>	cmdBufferSubmit{ allocator };
-		Vector<VkSemaphore, 8>					waits{ allocator };
-		Vector<VkSemaphore, 8>					signals{ allocator };
+		Vector<VkCommandBufferSubmitInfo, 8>	cmdBufferSubmit	{ allocator };
+		Vector<SyncPoint, 8>					waits			{ allocator };
+		Vector<SyncPoint, 8>					signals			{ allocator };
+
+		if (immediateUploadQueue != InvalidHandle)
+		{
+			auto transferCtx = std::exchange(immediateUploadQueue, InvalidHandle);
+			auto transferSyncPoint = SyncUploadTicket();
+
+			SubmitUploadQueues(&transferCtx, 1, {}, { transferSyncPoint });
+			waits.push_back(transferSyncPoint);
+		}
 
 		for (auto& cl : CLs)
 		{
@@ -817,9 +1018,10 @@ namespace VK_internal
 			VkCommandBufferSubmitInfo info{
 				.sType			= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
 				.pNext			= nullptr,
-				.commandBuffer	= vkCL->commandBuffer,
+				.commandBuffer	= vkCL->cmdBuffer,
 				.deviceMask		= 0
 			};
+
 			cmdBufferSubmit.push_back(info);
 			submissionValue = Max(submissionValue, vkCL->dispatchValue);
 
@@ -830,7 +1032,7 @@ namespace VK_internal
 				signals.push_back(sp);
 		}
 
-		auto waitsEnd = std::unique(waits.begin(), waits.end());
+		auto waitsEnd	= std::unique(waits.begin(), waits.end());
 		auto signalsEnd = std::unique(signals.begin(), signals.end());
 
 
@@ -840,9 +1042,22 @@ namespace VK_internal
 			VkSemaphoreSubmitInfo signalInfo{
 			    .sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
 	            .pNext		= nullptr,
-	            .semaphore	= syncObject,
-		        .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+	            .semaphore	= syncObject.fence.As_ptr<VkSemaphore>(),
+				.value		= syncObject.syncCounter,
+		        .stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR,
 		    };
+
+			waitInfos.push_back(signalInfo);
+		}
+
+		if (sync)
+		{
+			VkSemaphoreSubmitInfo signalInfo{
+				.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext		= nullptr,
+				.semaphore	= sync.value().fence.As_ptr<VkSemaphore>(),
+				.stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+			};
 
 			waitInfos.push_back(signalInfo);
 		}
@@ -851,22 +1066,15 @@ namespace VK_internal
 		for (auto& syncObject : std::span(signals.begin(), signalsEnd))
 		{
 			VkSemaphoreSubmitInfo signalInfo{
-				.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-				.pNext = nullptr,
-				.semaphore = syncObject,
-				.stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
+				.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+				.pNext		= nullptr,
+				.semaphore	= syncObject.fence.As_ptr<VkSemaphore>(),
+				.value		= syncObject.syncCounter,
+				.stageMask	= VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT_KHR
 			};
 
 			signalInfos.push_back(signalInfo);
 		}
-
-
-		VkTimelineSemaphoreSubmitInfoKHR  timelineSignal{
-				.sType						= VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR,
-				.pNext						= nullptr,
-				.signalSemaphoreValueCount	= 1,
-				.pSignalSemaphoreValues		= &vkDirectQueueProgress,
-		};
 
 		VkSemaphoreSubmitInfo timelineSignalInfo{
 				.sType		= VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -880,7 +1088,7 @@ namespace VK_internal
 
 		const VkSubmitInfo2 submit{
 			.sType						= VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-			.pNext						= nullptr, //&timelineSignal,
+			.pNext						= nullptr,
 			.flags						= 0x0,
             .waitSemaphoreInfoCount		= (uint32_t)waitInfos.size(), 
             .pWaitSemaphoreInfos		= waitInfos.data(),
@@ -891,15 +1099,18 @@ namespace VK_internal
 		};
 
 		vkResetFences(device, 1, &directQueueFence);
-		if (auto res = vkQueueSubmit2(device.get_queue(vkb::QueueType::graphics).value(), 1, &submit, directQueueFence); res != VK_SUCCESS)
+
+		if (auto res = vkQueueSubmit2(graphicsQueue, 1, &submit, directQueueFence); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to submit to Direct Command Queue!" };
 
 		for (auto cl : CLs)
 			pendingDirectContexts.push_back(static_cast<vkDirectContext*>(cl));
 
+		RenderDocDebugUtils::EndFrame();
+
 		return {
 			submissionValue,
-			directQueueFence
+			vkDirectQueueCounter
 		};
 	}
 
@@ -1933,6 +2144,12 @@ namespace VK_internal
 	}
 
 
+	IVertexBufferSet& vkRenderSystem::CreateVertexBufferSet()
+	{
+		return VK_internal::CreateVertexBufferSet(allocator);
+	}
+
+
 	const IPipelineInterface* vkRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
 	{
 		return nullptr;
@@ -2009,6 +2226,23 @@ namespace VK_internal
 		return device.get_queue(vkb::QueueType::graphics).value();
 	}
 
+	VkSemaphore	vkRenderSystem::GetSemaphore()
+	{
+		if (freeSemaphores.size())
+			return freeSemaphores.pop_back();
+
+		VkSemaphoreCreateInfo createInfo{
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0
+		};
+
+		VkSemaphore newSemaphore = nullptr;
+		if (auto res = vkCreateSemaphore(device, &createInfo, nullptr, &newSemaphore); res != VK_SUCCESS)
+			FK_LOG_INFO("VK: Failed to create semaphore!");
+
+		return newSemaphore;
+	}
 
 	std::byte* vkRenderSystem::MapDeviceAddress(VkDeviceMemory memory, uint32_t offset)
 	{

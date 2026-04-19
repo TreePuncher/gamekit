@@ -18,14 +18,15 @@ namespace VK_internal
         vkGetPhysicalDeviceMemoryProperties2(renderSystem.device.physical_device, &properties);
     }
 
-    std::expected<vkAllocation, AllocationError> vkMemoryAllocator::Allocate(uint32_t flags, uint32_t heapFlags, uint64_t size, uint8_t alignment)
+    std::expected<vkAllocation, AllocationError> vkMemoryAllocator::Allocate(uint32_t flags, uint32_t heapFlags, uint64_t size, uint32_t alignment)
     {
-        auto slab = FindSlab(heapFlags, size);
+        auto alignedSize = AlignedSize(size, alignment);
+
+        auto slab = FindSlab(heapFlags, alignedSize);
 
         // for now using linear allocators
         auto address        = slab->used;
         auto alignedOffset  = Align(address, alignment);
-        auto alignedSize    = AlignedSize(size);
         slab->used = alignedOffset + alignedSize;
 
         slab->allocations.push_back(SlabRange{
@@ -63,7 +64,7 @@ namespace VK_internal
         VkMemoryAllocateInfo allocateInfo{
             .sType              = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
             .pNext              = nullptr,
-            .allocationSize     = requiredSize,
+            .allocationSize     = size,
             .memoryTypeIndex    = -1u 
         };
 
@@ -94,16 +95,17 @@ namespace VK_internal
         });
     }
 
-    vkMemoryAllocator::Slab* vkMemoryAllocator::FindSlab(uint32_t heapFlags, uint64_t requiredSize)
+    vkMemoryAllocator::Slab* vkMemoryAllocator::FindSlab(uint32_t heapFlags, uint64_t requiredSize, uint32_t alignment)
     {
         for (auto& slab : slabs)
         {
-            if ((slab.flags & heapFlags) == heapFlags && slab.size - slab.used > requiredSize)
+            if ((slab.flags & heapFlags) == heapFlags && slab.size > AlignedSize(slab.used, alignment) + requiredSize)
                 return &slab;
         }
-
+        auto neededSize = Max(32 * MEGABYTE,  1 << ((uint64_t)(std::ceil(std::log2(requiredSize)))));
+        
         // if no slabs create one
-        CreateSlab(heapFlags, 32 * MEGABYTE);
+        CreateSlab(heapFlags, neededSize);
 
         // Try again
         return FindSlab(heapFlags, requiredSize);

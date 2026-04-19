@@ -7,6 +7,7 @@
 #include "vkPushBuffers.hpp"
 #include "vkDescriptorAllocator.hpp"
 #include "vkMemoryManager.hpp"
+#include "vkCopyContext.hpp"
 
 namespace VK_internal
 {
@@ -40,13 +41,18 @@ namespace VK_internal
 	inline vkCmdBindDescriptorBufferEmbeddedSamplersFNDef	vkCmdBindDescriptorBufferEmbeddedSamplers	= nullptr;
 	inline vkCmdBindDescriptorBuffersFNDef					vkCmdBindDescriptorBuffers					= nullptr;
 	inline vkCmdSetDescriptorBufferOffsetsFNDef				vkCmdSetDescriptorBufferOffsets				= nullptr;
+	inline PFN_vkSetDebugUtilsObjectNameEXT					vkSetDebugUtilsObjectName					= nullptr;
 
-	;
+	void LabelQueue(VkQueue queue, VkDevice device, const char* label);
+	void LabelBuffer(VkBuffer buffer, VkDevice device, const char* label);
+	void LabelSemaphore(VkSemaphore buffer, VkDevice device, const char* label);
+
+
 	struct BufferAPIObject
 	{
 		VkBuffer		buffer;
 		VkDeviceMemory	memory;
-		uint32_t		offset;
+		uint32_t		byteOffset;
 	};
 
 	struct TextureAPIObject
@@ -184,7 +190,7 @@ namespace VK_internal
 		SubAllocation		ReserveConstantBuffer	(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		SubAllocation		ReserveVertexBuffer		(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
 		UploadReservation	ReserveDirectUploadSpace(size_t size, size_t alignment)					noexcept final;
-		UploadReservation	ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)			noexcept final;
+		UploadReservation	ReserveUploadBuffer		(const size_t uploadSize, CopyContextHandle)	noexcept final;
 
 		// Shader
 		Shader								LoadShader(const char* entryPoint, const char* ShaderType, const char* file, const ShaderOptions& options = {}) final;
@@ -212,6 +218,7 @@ namespace VK_internal
 		void							CreateDescriptorSet(std::byte*, size_t) final;
 	    void							CreateTextureView(ResourceHandle, DescHeapPOS) final;
 
+		IVertexBufferSet&				CreateVertexBufferSet() final;
 
 		const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept final;
 		ResourceHandle				DefaultTexture() const noexcept;
@@ -233,7 +240,8 @@ namespace VK_internal
 
 		VkDevice	GetDevice();
 		VkQueue		GetQueue() const;
-
+		VkSemaphore	GetSemaphore();
+		VkSemaphore	GetTimelineSemaphore();
 
 		std::byte*	MapDeviceAddress(VkDeviceMemory, uint32_t offset);
 		void		UnMapDeviceAddress(VkDeviceMemory);
@@ -252,13 +260,17 @@ namespace VK_internal
 		vkMemoryAllocator			memoryAllocator;
 
 		// Synchronization
-		VkFence					directQueueFence = nullptr;
-		VkSemaphore				vkDirectQueueCounter;
-		uint64_t				vkDirectQueueProgress = 0;
+		VkFence					directQueueFence		= nullptr;
+		VkSemaphore				vkDirectQueueCounter	= nullptr;
+		uint64_t				vkDirectQueueProgress	= 0;
 
+		VkFence					transferQueueFence		= nullptr;
+		VkSemaphore				vkTransferQueueCounter	= nullptr;
+		uint64_t				vkTransferQueueProgress = 0;
 
 		std::atomic_uint64_t	directSubmissionCounter		= 0;
 		std::atomic_uint64_t	copySubmissionCounter		= 0;
+		std::atomic_uint64_t	computeSubmissionCounter	= 0;
 
 		struct DeviceMemoryMapping
 		{
@@ -268,12 +280,21 @@ namespace VK_internal
 
 		HashTable<DeviceMemoryMapping, VkDeviceMemory> mappings;
 
-		// Bookkeeping 
+		VkQueue graphicsQueue = nullptr;
+		VkQueue transferQueue = nullptr;
+		VkQueue computeQueue  = nullptr;
+
+		// Book keeping 
 		vkResourceTable						resources;
 		vkVertexPushBuffers					vertexPushBuffers;
 		vkConstantPushBuffers				constantPushBuffers;
 		Vector<struct vkDirectContext*>		pendingDirectContexts;
 		vkStateTable						pipelineStates;
+		Vector<VkSemaphore>					freeSemaphores;
+
+
+		CopyContextHandle									immediateUploadQueue = InvalidHandle;
+		HashTable<struct vkCopyContext*, CopyContextHandle>	copyContextTable;
 
 		VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties;
     };
