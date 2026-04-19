@@ -54,10 +54,7 @@ namespace VK_internal
 		allocator	{ IN_allocator },
 		stateObjects{ IN_allocator },
 		shaderStages{ IN_allocator },
-		shaders		{ IN_allocator }
-	{
-		int x = 0;
-	}
+		shaders		{ IN_allocator } {}
 
 
 	/************************************************************************************************/

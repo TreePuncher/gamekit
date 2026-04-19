@@ -21,20 +21,16 @@ namespace VK_internal
 
 		auto& [newBuffer, newMemory, offset] = res.value();
 
-		VkMemoryMapInfo memoryMapInfo{
-			.sType	= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-			.pNext	= nullptr,
-			.flags	= 0,
-			.memory = newMemory,
-			.offset = 0,
-			.size	= VK_WHOLE_SIZE
-		};
-
-		uint64_t cpuAddress;
-		vkMapMemory2(vkRS.device, &memoryMapInfo, (void**)&buffer);
-
+		auto mapped_ptr = vkRS.MapDeviceAddress(newMemory, offset);
 		deviceBuffer	= newBuffer;
 		memory			= newMemory;
+		buffer			= (char*)mapped_ptr;
+
+#ifdef _DEBUG
+		static int n = 0;
+		auto name = std::format("UploadBuffer_{}, offset:{}", n++, offset);
+		LabelBuffer(deviceBuffer, vkRS.device, name.c_str());
+#endif
 	}
 
 
@@ -106,8 +102,8 @@ namespace VK_internal
 			position = 0;
 
 		auto GetOffset = [&]() {
-			auto offset = alignment - (position & (alignment - 1));
-			return (offset == alignment) ? 0 : offset;
+				auto offset = alignment - (position & (alignment - 1));
+				return (offset == alignment) ? 0 : offset;
 			};
 
 		// buffer too Small
@@ -137,15 +133,15 @@ namespace VK_internal
 		{	// Safe, Do Upload
 			const auto alignmentOffset = GetOffset();
 
-			char*	alllocation = buffer + position + alignmentOffset;
+			char*	allocation	= buffer + position + alignmentOffset;
 			size_t	offset		= position + alignmentOffset;
 			position += reserveSize + alignmentOffset;
 
 			return UploadReservation{
-				.resource = deviceBuffer,
-				.size = reserveSize,
-				.offset = offset,
-				.buffer = alllocation,
+				.resource	= deviceBuffer,
+				.size		= reserveSize,
+				.offset		= offset,
+				.buffer		= allocation,
 			};
 		}
 
@@ -163,9 +159,9 @@ namespace VK_internal
 		if (deviceBuffer)
 		{
 			VkMemoryUnmapInfo unmapInfo{
-				.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
-				.pNext = nullptr,
-				.flags = 0,
+				.sType	= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO,
+				.pNext	= nullptr,
+				.flags	= 0,
 				.memory = memory,
 			};
 			vkUnmapMemory2(vkRenderSystem.device, &unmapInfo);

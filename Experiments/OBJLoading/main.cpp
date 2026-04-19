@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <ModifiableShape.hpp>
 #include <MeshUtilities.hpp>
+#include <TriMeshResource.hpp>
 
 #define USEVK 1
 
@@ -17,11 +18,9 @@
 
 using namespace FlexKit;
 
-FlexKit::ModifiableShape LoadObjIntoShape(std::filesystem::path p)
+FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 {
 	using namespace FlexKit;
-
-	FlexKit::ModifiableShape shape;
 
 	Vector<char> buffer{ SystemAllocator };
 	buffer.resize(std::filesystem::file_size(p));
@@ -30,9 +29,8 @@ FlexKit::ModifiableShape LoadObjIntoShape(std::filesystem::path p)
 	if (!Loaded)
 	{
 		printf("Failed To Load Obj\n");
-		return {};
+		return InvalidHandle;
 	}
-
 
 	MeshUtilityFunctions::OBJ_Tools::LoaderState	S;
 	MeshUtilityFunctions::TokenList					TL{ SystemAllocator };
@@ -57,18 +55,21 @@ FlexKit::ModifiableShape LoadObjIntoShape(std::filesystem::path p)
 		pos++;
 	}
 
+	struct Point {
+		float xyz[3];
+	};
 
-	/*
-		PointToken,
-		TextureCoordinateToken,
-		NormalToken,
-		TangentToken,
-		MaterialToken,
-		JointWeightToken,
-		JointIndexToken,
-		VertexToken,
-		MorphTargetVertexToken
-	*/
+	Vector<uint32_t>	indexes{ SystemAllocator };
+	Vector<float3>		points{ SystemAllocator };
+	Vector<float3>		normals{ SystemAllocator };
+	Vector<float2>		uvs{ SystemAllocator };
+
+	auto meshHandle = FlexKit::CreateMesh(123456789);
+	auto& mesh		= *FlexKit::GetMeshResource(meshHandle);
+	TriMesh::LOD_Runtime lod0;
+	lod0.bufferSet = &FlexKit::IRenderSystem::GetInstance().CreateVertexBufferSet();
+
+	AABB aabb;
 
 	for (const MeshToken& token : TL)
 	{
@@ -76,24 +77,78 @@ FlexKit::ModifiableShape LoadObjIntoShape(std::filesystem::path p)
 			Overloaded{
 			[&](const PointToken& point)
 			{
-				shape.AddVertex(point.xyz);
-			},
-			[&](const VertexToken& v)
-			{
-				static_vector<uint32_t, 32> indexes;
-				for (const auto& i : v.vertex)
-				{
-					if (i.type == i.Point)
-						indexes.push_back(i.idx);
-				}
+				Point p;
+				p.xyz[0] = point.xyz.x;
+				p.xyz[1] = point.xyz.y;
+				p.xyz[2] = point.xyz.z;
+				points.push_back(point.xyz);
 
-				shape.AddPolygon(indexes.data(), indexes.data() + indexes.size());
+				aabb += point.xyz;
 			},
 			[](auto&&) {} },
 			token);
 	}
 
-	return shape;;
+	auto kdbTree = MeshUtilityFunctions::MeshKDBTree{ TL };
+
+	MeshUtilityFunctions::OptimizedMesh       optimized;
+	MeshUtilityFunctions::LocalBlockContext   context{ kdbTree.mesh };
+
+	for (const auto& leaf : kdbTree)
+		for (auto I = leaf->begin; I < leaf->end; I++)
+			optimized.PushTri(kdbTree.mesh.tris[I], context, true);
+
+	MeshUtilityFunctions::OptimizedBuffer optimizedBuffer{ optimized };
+
+	size_t VertexBufferSize = optimizedBuffer.points.ByteSize() + sizeof(VertexBufferView);// pos
+	size_t NormalBufferSize = optimizedBuffer.normals.ByteSize() + sizeof(VertexBufferView);// Normal
+	size_t IndexBufferSize	= optimizedBuffer.indexes.ByteSize() + sizeof(VertexBufferView);// index
+
+	lod0.views[0] = CreateVertexBufferView(SystemAllocator, VertexBufferSize);
+	lod0.views[1] = CreateVertexBufferView(SystemAllocator, IndexBufferSize);
+	lod0.views[2] = CreateVertexBufferView(SystemAllocator, NormalBufferSize);
+
+	lod0.views[0]->Begin(VERTEXBUFFER_TYPE::POSITION, VERTEXBUFFER_FORMAT::R32G32B32);
+	lod0.views[1]->Begin(VERTEXBUFFER_TYPE::INDEX, VERTEXBUFFER_FORMAT::R32);
+	lod0.views[2]->Begin(VERTEXBUFFER_TYPE::NORMAL, VERTEXBUFFER_FORMAT::R32G32B32);
+
+	memcpy(lod0.views[0]->GetBuffer(), optimizedBuffer.points.data(), optimizedBuffer.points.ByteSize());
+	memcpy(lod0.views[1]->GetBuffer(), optimizedBuffer.indexes.data(), optimizedBuffer.indexes.ByteSize());
+	memcpy(lod0.views[2]->GetBuffer(), optimizedBuffer.normals.data(), optimizedBuffer.normals.ByteSize());
+
+	lod0.views[0]->MarkFull();
+	lod0.views[1]->MarkFull();
+	lod0.views[2]->MarkFull();
+
+	lod0.views[0]->End();
+	lod0.views[1]->End();
+	lod0.views[2]->End();
+
+	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::POSITION,	VERTEXBUFFER_FORMAT::R32G32B32,	optimizedBuffer.points.ByteSize());
+	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::INDEX,		VERTEXBUFFER_FORMAT::R32,		optimizedBuffer.indexes.ByteSize());
+	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::NORMAL,		VERTEXBUFFER_FORMAT::R32G32B32,	optimizedBuffer.normals.ByteSize());
+
+	mesh.aabb	= aabb;
+	mesh.bs		= float4{ aabb.MidPoint(), aabb.Span().magnitude() / 2.0f };
+
+	auto copyCtx = IRenderSystem::GetInstance().GetImmediateCopyQueue();
+
+	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(0), *lod0.views[0]);
+	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(1), *lod0.views[1]);
+	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(2), *lod0.views[2]);
+
+	SubMesh sm{
+		.BaseIndex		= 0,
+		.IndexCount		= (uint32_t)optimizedBuffer.IndexCount(),
+		.materialIndex	= 0,
+		.aabb			= aabb,
+	};
+
+	lod0.subMeshes.push_back(sm);
+	mesh.lods.push_back(lod0);
+	lod0.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+
+	return meshHandle;
 }
 
 struct TestState : FrameworkState
@@ -119,8 +174,8 @@ struct TestState : FrameworkState
 				builder.AddInputLayout({
 					.inputs = {
 						{
-							.name = "POSITION",
-							.index = 0,
+							.name	= "POSITION",
+							.index	= 0,
 							.format = DeviceFormat::R32G32B32_FLOAT,
 							.inputSlotClass = EInputClassification::PerVertex,
 						}},
@@ -130,8 +185,8 @@ struct TestState : FrameworkState
 				builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
 				builder.AddRasterizerState();
 				builder.AddRenderTargetState({
-						.targetCount = 1,
-						.targetFormats = { DeviceFormat::R8G8B8A8_UNORM },
+						.targetCount	= 1,
+						.targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
 					});
 
 				return builder.Build(renderSystem, allocator);
@@ -142,14 +197,7 @@ struct TestState : FrameworkState
 		vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
 		cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
 
-		auto shape = LoadObjIntoShape("Test.obj");
-
-		for (size_t faceIdx = 0; faceIdx < shape.wFaces.size(); faceIdx++)
-		{
-			auto tri = shape.GetFaceGeometry(faceIdx);
-			for(auto v : tri)
-				GetRenderSystem().VertexBufferPush(vBuffer, &v,sizeof(v));
-		}
+		shape = LoadObj("Test.obj");
 	}
 
 	~TestState()
@@ -243,12 +291,18 @@ struct TestState : FrameworkState
 				descriptorSet.SetCBV(ctx, 0, cb0Set);
 
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
-				ctx.SetVertexBuffers(static_vector<VertexBufferEntry, 1>{ VertexBufferEntry
-					                    {
-						                    .VertexBuffer	= vBuffer,
-		                                    .Stride			= 36,
-		                                    .Offset			= 0, 
-				                        } });
+				//ctx.SetVertexBuffers(static_vector<VertexBufferEntry, 1>{ VertexBufferEntry
+				//	                    {
+				//		                    .VertexBuffer	= vBuffer,
+		        //                            .Stride			= 36,
+		        //                            .Offset			= 0, 
+				//                        } });
+
+				auto mesh = GetMeshResource(shape);
+				auto& lod = mesh->lods[0];
+
+				ctx.AddVertexBuffers(mesh, 0, { VERTEXBUFFER_TYPE::POSITION });
+				ctx.AddIndexBuffer(mesh, 0);
 
 				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
@@ -258,7 +312,7 @@ struct TestState : FrameworkState
 
 				//ctx.SetGraphicsConstantBufferView(0, cBuffer, 0);
 
-				ctx.Draw(3);
+				ctx.DrawIndexed(lod.GetIndexCount());
 			});
 
 		PresentBackBuffer(frameGraph, *renderWindow);
@@ -273,10 +327,12 @@ struct TestState : FrameworkState
 	}
 
 	double					t				= 0.0;
+	size_t					vertexCount		= 0;
 	IRenderWindow*			renderWindow	= nullptr;
 	VertexBufferHandle		vBuffer			= InvalidHandle;
 	ConstantBufferHandle	cBuffer			= InvalidHandle;
 	UniqueResourceHandle	testTexture;
+	TriMeshHandle			shape			= InvalidHandle;
 };
 
 int main()

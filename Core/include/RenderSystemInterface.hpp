@@ -21,8 +21,8 @@ namespace FlexKit
 		TaggedVoidPtr(nullptr_t) : _ptr{ nullptr } {}
 		TaggedVoidPtr(const TaggedVoidPtr&) = default;
 
-		TaggedVoidPtr& operator = (auto IN_ptr) { _ptr = IN_ptr; return *this; }
-		TaggedVoidPtr& operator = (TaggedVoidPtr&) = default;
+		TaggedVoidPtr& operator = (auto IN_ptr) requires( std::is_pointer_v<decltype(IN_ptr)>) { _ptr = (void*)IN_ptr; return *this; }
+		TaggedVoidPtr& operator = (const TaggedVoidPtr& rhs) = default;
 
 		bool operator == (auto rhs) const noexcept { return rhs == _ptr; }
 		bool operator != (auto rhs) const noexcept { return rhs != _ptr; }
@@ -39,6 +39,12 @@ namespace FlexKit
 		TY* As() const noexcept
 		{
 			return reinterpret_cast<TY*>(_ptr);
+		}
+
+		template<typename TY>
+		TY As_ptr() noexcept
+		{
+			return reinterpret_cast<TY>(_ptr);
 		}
 
 		void* _ptr;
@@ -2591,7 +2597,14 @@ namespace FlexKit
 		virtual std::optional<uint32_t>		FindIdx			(VERTEXBUFFER_TYPE) const = 0;
 		virtual const VertexBuffer			operator []		(uint8_t idx) const = 0;
 		        const VertexBuffer			At				(uint8_t idx) const { return (*this)[idx]; }
-		virtual uint8_t						GetIndexBufferIndex() const = 0;
+				virtual uint8_t				GetIndexBufferIndex() const = 0;
+
+		virtual void CreateBuffer(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT, size_t byteSize) = 0;
+		virtual void ReleaseBuffer(VERTEXBUFFER_TYPE) = 0;
+
+		virtual void Release() = 0;
+
+		VertexBuffer GetIndexBuffer() const { return At(GetIndexBufferIndex()); }
 	};
 
 
@@ -2616,6 +2629,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	struct VertexBufferSetDescription
+	{
+
+	};
 
 	struct IRenderSystem
 	{
@@ -2780,6 +2798,9 @@ namespace FlexKit
 
 					  virtual void								SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
 	    [[nodiscard]] virtual std::pair<void*, size_t>			OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) { return {nullptr, 0}; }
+
+
+		[[nodiscard]] virtual IVertexBufferSet&					CreateVertexBufferSet() = 0;
 
 		virtual void CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer) {}
 	    virtual void FlushPendingReadBacks() {}

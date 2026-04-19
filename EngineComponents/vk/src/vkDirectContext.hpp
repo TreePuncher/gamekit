@@ -202,16 +202,16 @@ namespace VK_internal
 		bool					pendingTargetConfiguration		= false;
 		bool					pendingGraphicsDescriptorBind	= false;
 
-	    VkCommandPool				commandPool				= nullptr;
-		VkCommandBuffer				commandBuffer			= nullptr;
+	    VkCommandPool				cmdPool					= nullptr;
+		VkCommandBuffer				cmdBuffer				= nullptr;
 		const vkPipelineInterface*	currentGraphicsLayout	= nullptr;
 
 		uint64_t					dispatchValue			= 0;
 
 		Vector<Barrier>						pendingBarriers;
 		Vector<ResourceHandle>				resourcesUsed;
-		Vector<VkSemaphore>					waits;
-		Vector<VkSemaphore>					signals;
+		Vector<SyncPoint>					waits;
+		Vector<SyncPoint>					signals;
 		Vector<VkRenderingAttachmentInfo>	pendingAttachments;
 		Vector<VkViewport>					viewports;
 		Vector<VkRect2D>					scissors;

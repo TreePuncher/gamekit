@@ -1,5 +1,7 @@
+#pragma once
 #include <RenderSystemInterface.hpp>
 #include <vulkan/vulkan.hpp>
+#include <vkUploadBuffer.hpp>
 
 namespace VK_internal
 {
@@ -7,6 +9,7 @@ namespace VK_internal
 
 	struct vkCopyContext : public ICopyContext
 	{
+		vkCopyContext();
 		~vkCopyContext() final {}
 
 		void                Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after) final;
@@ -19,9 +22,14 @@ namespace VK_internal
 
 		bool				IsSubResourceTiled(ResourceHandle Resource, const size_t level) const final;
 
-		IRenderSystem&		GetRenderSystem() noexcept final;
 
-		VkCommandBuffer	cmdBuffer = nullptr;
+		void					Close() noexcept;
+		IRenderSystem&			GetRenderSystem() noexcept final;
+		class vkRenderSystem&	GetVkRenderSystem() noexcept;
+
+		vkUploadBuffer	copyBuffer;
+		VkCommandPool	commandPool = nullptr;
+		VkCommandBuffer	cmdBuffer	= nullptr;
 	};
 
     

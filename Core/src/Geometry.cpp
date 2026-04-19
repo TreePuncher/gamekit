@@ -362,4 +362,18 @@ namespace FlexKit
     }
 
 
+	void UploadVertexBuffer(CopyContextHandle copyContextHandle, const VertexBuffer& buffer, const struct VertexBufferView& view)
+	{
+		auto& copyCtx		= IRenderSystem::GetInstance().GetCopyContext(copyContextHandle);
+
+		copyCtx.CopyBuffer(
+			GPURange{
+				.devicePtr	= DevicePointer{ (uint64_t)buffer.resource._ptr },
+				.offset		= 0,
+				.size		= buffer.byteSize },
+			view.GetBuffer(),
+			view.GetBufferSizeRaw());
+	}
+
+
 }   /************************************************************************************************/

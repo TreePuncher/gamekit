@@ -4,6 +4,7 @@
 #include <VkBootstrapDispatch.h>
 #include <VkBootstrap.h>
 #include <vkPipelineLayout.hpp>
+#include <TriMeshResource.hpp>
 
 #include "PushBuffers.hpp"
 
@@ -17,8 +18,8 @@ namespace VK_internal
 		auto& renderSystem = (vkRenderSystem&)vkRenderSystem::GetInstance();
 		pendingBarriers		= Vector<Barrier>{ renderSystem.allocator };
 		resourcesUsed		= Vector<ResourceHandle>{ renderSystem.allocator };
-		waits				= Vector<VkSemaphore>{ renderSystem.allocator };
-		signals				= Vector<VkSemaphore>{ renderSystem.allocator };
+		waits				= Vector<SyncPoint>{ renderSystem.allocator };
+		signals				= Vector<SyncPoint>{ renderSystem.allocator };
 		pendingAttachments	= Vector<VkRenderingAttachmentInfo>{ renderSystem.allocator };
 		viewports			= Vector<VkViewport>{ renderSystem.allocator };
 		scissors			= Vector<VkRect2D>{ renderSystem.allocator };
@@ -30,18 +31,18 @@ namespace VK_internal
 				.queueFamilyIndex	= 0
 		};
 
-		if (auto res = vkCreateCommandPool(renderSystem.device, &createPoolDesc, nullptr, &commandPool); res != VK_SUCCESS)
+		if (auto res = vkCreateCommandPool(renderSystem.device, &createPoolDesc, nullptr, &cmdPool); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to create command pool!"};
 
         VkCommandBufferAllocateInfo createCommandBuffer{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 			.pNext					= nullptr,
-			.commandPool			= commandPool,
+			.commandPool			= cmdPool,
 			.level					= VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount		= 1,
 		};
 
-		if (auto res = vkAllocateCommandBuffers(renderSystem.device, &createCommandBuffer, &commandBuffer); res != VK_SUCCESS)
+		if (auto res = vkAllocateCommandBuffers(renderSystem.device, &createCommandBuffer, &cmdBuffer); res != VK_SUCCESS)
 			throw std::runtime_error{ "Failed to create command buffer" };
 	}
 
@@ -130,7 +131,7 @@ namespace VK_internal
 		pendingBarriers.clear();
 
 		vkCmdPipelineBarrier2(
-			commandBuffer,
+			cmdBuffer,
 			&dependencyInfo);
 	}
 
@@ -204,8 +205,9 @@ namespace VK_internal
 			if ((flags & ResourceFlags::SwapChain) != 0)
 			{
 				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(resource);
-				waits.push_back((VkSemaphore)semaphore[0]);
-				signals.push_back((VkSemaphore)semaphore[1]);
+
+				waits.push_back(	SyncPoint{ .syncCounter = -1u, .fence = semaphore[0] });
+				signals.push_back(	SyncPoint{ .syncCounter = -1u, .fence = semaphore[1] });
 			}
 		}
 
@@ -226,7 +228,7 @@ namespace VK_internal
 		};
 
 		vkCmdClearDepthStencilImage(
-			commandBuffer,
+			cmdBuffer,
 			apiResource.As<VkImage_T>(),
 			VK_IMAGE_LAYOUT_GENERAL,
 			&value, 1, &subresource);
@@ -243,8 +245,8 @@ namespace VK_internal
 			if ((flags & ResourceFlags::SwapChain) != 0)
 			{
 				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(texture);
-				waits.push_back((VkSemaphore)semaphore[0]);
-				signals.push_back((VkSemaphore)semaphore[1]);
+				waits.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[0] });
+				signals.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[1] });
 			}
 		}
 
@@ -260,7 +262,7 @@ namespace VK_internal
 		};
 
 		vkCmdClearColorImage(
-			commandBuffer,
+			cmdBuffer,
 			apiResource.As<VkImage_T>(),
 			VK_IMAGE_LAYOUT_GENERAL,
 			(VkClearColorValue*)&rgba, 1, &subresource);
@@ -318,7 +320,7 @@ namespace VK_internal
 		auto pso = RenderSystem().GetPSO(psoHandle, temp);
 
 		currentGraphicsLayout = static_cast<const vkPipelineInterface*>(pso->GetInterface());
-		vkCmdBindPipeline(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pso->GetDevicePipeState().As<VkPipeline_T>());
+		vkCmdBindPipeline(cmdBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, pso->GetDevicePipeState().As<VkPipeline_T>());
 
 		memset(graphicsDescriptorBuffer, 0x00, sizeof(graphicsDescriptorBuffer));
 	}
@@ -423,7 +425,7 @@ namespace VK_internal
 	void vkDirectContext::SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset)
 	{
 		vkCmdPushConstants(
-			commandBuffer,
+			cmdBuffer,
 			currentGraphicsLayout->layout,
 			currentGraphicsLayout->pushConstantFlags,
 			(uint32_t)offset, valueCount * 4, data_ptr);
@@ -530,7 +532,7 @@ namespace VK_internal
 		uint64_t offsets[16] = { implDH.bufferOffset };
 
 		vkCmdSetDescriptorBufferOffsets(
-			commandBuffer,
+			cmdBuffer,
 			VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
 			currentGraphicsLayout->layout,
 			idx, 1,
@@ -680,29 +682,89 @@ namespace VK_internal
     {}
 
 
-	void vkDirectContext::AddIndexBuffer(TriMesh* Mesh, uint32_t lod)
-    {}
+	void vkDirectContext::AddIndexBuffer(TriMesh* mesh, uint32_t lod)
+    {
+		auto buffer = mesh->lods[lod].bufferSet->GetIndexBuffer();
+
+		vkCmdBindIndexBuffer(
+			cmdBuffer,
+			buffer.resource.As_ptr<VkBuffer>(),
+			0,
+			VkIndexType::VK_INDEX_TYPE_UINT32);
+	}
 
 
 	void vkDirectContext::SetIndexBuffer(VertexBufferEntry buffer, DeviceFormat format)
-    {}
+    {
+		const vkVertexPushBuffers::APIObjects& apiOjbects =
+			RenderSystem().vertexPushBuffers.fields.Get<vkVertexPushBuffers::PushBufferFields::apiObjects>(buffer.VertexBuffer);
+
+		vkCmdBindIndexBuffer(
+			cmdBuffer,
+			apiOjbects.buffers[apiOjbects.current],
+			0,
+			VkIndexType::VK_INDEX_TYPE_UINT32);
+	}
 
 
-	void vkDirectContext::SetIndexBuffer(ResourceHandle, DeviceFormat format)
-    {}
+	void vkDirectContext::SetIndexBuffer(ResourceHandle handle, DeviceFormat format)
+    {
+		auto& vkRS		= RenderSystem();
+		auto resource	= vkRS.resources.Get<ResourceFieldID::APIHandle>(handle);
+
+		FK_ASSERT(resource.type == vkResourceEntry::Type::Buffer);
+
+		vkCmdBindIndexBuffer(
+			cmdBuffer,
+			resource.buffer,
+			0,
+			VkIndexType::VK_INDEX_TYPE_UINT32);
+	}
 
 
 	void vkDirectContext::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, const std::initializer_list<VERTEXBUFFER_TYPE>& buffers, VertexBufferList* InstanceBuffers)
-    {}
+    {
+		static_vector<VkBuffer, 16> apiBuffers;
+		static_vector<VkDeviceSize, 16> offsets;
+
+		for (auto& buff : buffers)
+		{
+			auto res = Mesh->lods[lod].bufferSet->Find(buff);
+			apiBuffers.push_back(res.value().resource.As_ptr<VkBuffer>());
+			offsets.push_back(0);
+		}
+
+		vkCmdBindVertexBuffers(
+			cmdBuffer,
+			0,
+			buffers.size(),
+			apiBuffers.data(),
+			offsets.data());
+	}
 
 
 	void vkDirectContext::AddVertexBuffers(TriMesh* Mesh, uint32_t lod, const std::span<const VERTEXBUFFER_TYPE> buffers, VertexBufferList* InstanceBuffers)
-    {}
+    {
+		static_vector<VkBuffer, 16> apiBuffers;
+
+		for (auto& buff : buffers)
+		{
+			auto res = Mesh->lods[lod].bufferSet->Find(buff);
+			apiBuffers.push_back(res.value().resource.As_ptr<VkBuffer>());
+		}
+
+		vkCmdBindVertexBuffers(
+			cmdBuffer,
+			0,
+			buffers.size(),
+			apiBuffers.data(),
+			nullptr);
+	}
 
 
-	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& span)
+	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferEntry>& list)
 	{
-		SetVertexBuffers(std::span(span));
+		SetVertexBuffers(std::span{ list });
 	}
     
 
@@ -722,20 +784,53 @@ namespace VK_internal
 			offsets[idx] = offset;
 		}
 
-		vkCmdBindVertexBuffers(commandBuffer, 0, span.size(), buffers, offsets);
+		vkCmdBindVertexBuffers(cmdBuffer, 0, span.size(), buffers, offsets);
 	}
 
 
-	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& span)
-    {}
+	void vkDirectContext::SetVertexBuffers(const std::initializer_list<VertexBufferResource>& list)
+    {
+		SetVertexBuffers(std::span{ list });
+	}
 
 
 	void vkDirectContext::SetVertexBuffers(const std::span<const VertexBufferResource> span)
-    {}
+    {
+		VkBuffer		buffers[16];
+		VkDeviceSize	offsets[16];
+
+		auto& vkRS = RenderSystem();
+		for (auto&& [idx, entry] : enumerate(span))
+		{
+			auto& [handle, stride, offset] = entry;
+			auto resource = vkRS.resources.Get<ResourceFieldID::APIHandle>(handle);
+
+			FK_ASSERT(resource.type == vkResourceEntry::Type::Buffer);
+
+			buffers[idx] = resource.buffer;
+			offsets[idx] = offset;
+		}
+
+		vkCmdBindVertexBuffers(cmdBuffer, 0, span.size(), buffers, offsets);
+	}
 
 
 	void vkDirectContext::SetVertexBuffers2(const std::span<const VBView> views, uint32_t offset)
-    {}
+    {
+		VkBuffer		buffers[16];
+		VkDeviceSize	offsets[16];
+
+		auto& vkRS = RenderSystem();
+		for (auto&& [idx, entry] : enumerate(views))
+		{
+			auto& [buffer, stride, offset] = entry;
+
+			buffers[idx] = (VkBuffer)buffer;
+			offsets[idx] = offset;
+		}
+
+		vkCmdBindVertexBuffers(cmdBuffer, 0, views.size(), buffers, offsets);
+	}
 
 
 	void vkDirectContext::Draw(const size_t vertexCount, const size_t baseVertex, const size_t baseIndex)
@@ -745,7 +840,7 @@ namespace VK_internal
 		ApplyPendingRasterizingStates();
 		ApplyGraphicsDescriptorSetBindings();
 
-	    vkCmdDraw(commandBuffer, vertexCount, 1, baseVertex, 0);
+	    vkCmdDraw(cmdBuffer, vertexCount, 1, baseVertex, 0);
 		pendingDraws = true;
 	}
 
@@ -757,7 +852,7 @@ namespace VK_internal
 		ApplyPendingRasterizingStates();
 		ApplyGraphicsDescriptorSetBindings();
 
-	    vkCmdDraw(commandBuffer, vertexCount, instanceCount, baseVertex, instanceOffset);
+	    vkCmdDraw(cmdBuffer, vertexCount, instanceCount, baseVertex, instanceOffset);
 		pendingDraws = true;
 	}
 
@@ -768,7 +863,7 @@ namespace VK_internal
 		ApplyPendingRasterizingStates();
 		ApplyGraphicsDescriptorSetBindings();
 
-	    vkCmdDrawIndexed(commandBuffer, indexCount, 1, baseVertex, baseVertex, 0);
+	    vkCmdDrawIndexed(cmdBuffer, indexCount, 1, baseVertex, baseVertex, 0);
 		pendingDraws = true;
 	}
 
@@ -779,7 +874,7 @@ namespace VK_internal
 		ApplyPendingRasterizingStates();
 		ApplyGraphicsDescriptorSetBindings();
 
-	    vkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, baseVertex, baseVertex, instanceOffset);
+	    vkCmdDrawIndexed(cmdBuffer, indexCount, instanceCount, baseVertex, baseVertex, instanceOffset);
 		pendingDraws = true;
 	}
 
@@ -848,10 +943,10 @@ namespace VK_internal
 	    VkCommandBufferSubmitInfo clInfo{
 			.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
 	        .pNext			= nullptr,
-	        .commandBuffer	= commandBuffer
+	        .commandBuffer	= cmdBuffer
 		};
 
-		if (auto res = vkEndCommandBuffer(commandBuffer); res != VK_SUCCESS)
+		if (auto res = vkEndCommandBuffer(cmdBuffer); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to close command buffer!" };
 	}
 
@@ -870,7 +965,7 @@ namespace VK_internal
 			.flags				= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
 			.pInheritanceInfo	= nullptr
 		};
-		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+		vkBeginCommandBuffer(cmdBuffer, &beginInfo);
 
 
 		VkBufferDeviceAddressInfo getAddressInfo{
@@ -888,13 +983,13 @@ namespace VK_internal
 				.usage		= VK_BUFFER_USAGE_2_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT,
 		};
 
-		vkCmdBindDescriptorBuffers(commandBuffer, 1, &bindingInfo);
+		vkCmdBindDescriptorBuffers(cmdBuffer, 1, &bindingInfo);
 	}
 
 
 	void vkDirectContext::Reset()
 	{
-		if (auto res = vkResetCommandBuffer(commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT); res != VK_SUCCESS)
+		if (auto res = vkResetCommandBuffer(cmdBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to reset commandbuffer!" };
 	}
 
@@ -912,7 +1007,7 @@ namespace VK_internal
 		if (!pendingDraws)
 			return;
 
-		vkCmdEndRendering(commandBuffer);
+		vkCmdEndRendering(cmdBuffer);
 
 		pendingDraws = false;
 		pendingAttachments.clear();
@@ -940,10 +1035,10 @@ namespace VK_internal
 		};
 
 
-		vkCmdSetScissorWithCount(commandBuffer, scissors.size(), scissors.data());
-		vkCmdSetViewportWithCount(commandBuffer, viewports.size(), viewports.data());
+		vkCmdSetScissorWithCount(cmdBuffer, scissors.size(), scissors.data());
+		vkCmdSetViewportWithCount(cmdBuffer, viewports.size(), viewports.data());
 
-		vkCmdBeginRendering(commandBuffer, &renderingInfo);
+		vkCmdBeginRendering(cmdBuffer, &renderingInfo);
 
 		pendingTargetConfiguration = false;
 	}
@@ -999,7 +1094,7 @@ namespace VK_internal
 			memcpy((void*)range.begin.V1.to_uint(), graphicsDescriptorBuffer, size);
 
 			vkCmdSetDescriptorBufferOffsets(
-				commandBuffer,
+				cmdBuffer,
 				VK_PIPELINE_BIND_POINT_GRAPHICS,
 				currentGraphicsLayout->layout,
 				currentGraphicsLayout->pushSet,

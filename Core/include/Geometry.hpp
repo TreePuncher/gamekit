@@ -432,6 +432,7 @@ namespace FlexKit
 
 
 	bool GenerateTangents(static_vector<VertexBufferView*>& buffers, iAllocator*);
+	void UploadVertexBuffer(CopyContextHandle, const VertexBuffer&, const struct VertexBufferView&);
 
 
 }	/************************************************************************************************/

@@ -34,8 +34,9 @@ target_sources(
         "src/vkRendersystem.cpp"
         "src/vkResourceTable.cpp"
 	    "src/vkUploadBuffer.cpp"
+        "src/vkVertexBufferSet.cpp"
         "src/vkWaylandSurface.cpp"
-)
+ "src/vkRenderDocDebug.cpp")
 
 if(WIN32)
     target_sources(
@@ -64,6 +65,7 @@ target_sources(
     "src/vkRenderSystem.hpp"
     "src/vkResourceTable.hpp"
     "src/vkUploadBuffer.hpp"
+    "src/vkVertexBufferSet.hpp"
 )
 
 if(WIN32)
