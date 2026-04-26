@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FASTMATH ON
 
-#ifdef COMPILE64 
+#ifdef COMPILE64
 #define X64EXE ON
 #define X86EXE OFF
 #else
@@ -121,6 +121,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FLEXKITINTERNAL
 
+#include <utility>
 
 #ifdef WIN32
 #include <assert.h>
@@ -219,7 +220,7 @@ inline void NullCheck(TY* _ptr)
 
 using std::size_t;
 static const size_t gCORECOUNT	= 4;
-static const size_t KILOBYTE	= 1024; 
+static const size_t KILOBYTE	= 1024;
 static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 

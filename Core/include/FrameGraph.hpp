@@ -1685,6 +1685,8 @@ namespace FlexKit
 		UpdateTask*				dependency	= nullptr;
 	};
 
+	template<class T>
+	concept is_not_void = (!std::is_same_v<T, void>);
 
 	class FrameGraph
 	{
@@ -1777,8 +1779,8 @@ namespace FlexKit
 			return data.fields;
 		}
 
-		template<typename SetupFN, typename DrawFN> requires !std::is_void_v<decltype(std::declval<SetupFN&>()(std::declval<FrameGraphNodeBuilder&>()))>
-		auto& AddNode2(SetupFN&& setup, DrawFN&& draw) 
+		template<typename SetupFN, typename DrawFN> 
+		auto& AddNode2(SetupFN&& setup, DrawFN&& draw) requires requires(SetupFN& s, class FrameGraphNodeBuilder& build) { { s(build) } -> is_not_void; }
 		{
 			using TY = decltype(setup(std::declval<FrameGraphNodeBuilder&>()));
 
@@ -1845,8 +1847,8 @@ namespace FlexKit
 			return data.fields;
 		}
 
-		template<typename SetupFN, typename DrawFN> requires std::is_void_v<decltype(std::declval<SetupFN&>()(std::declval<FrameGraphNodeBuilder&>()))>
-		auto AddNode2(SetupFN&& setup, DrawFN&& draw)
+		template<typename SetupFN, typename DrawFN> 
+		auto AddNode2(SetupFN&& setup, DrawFN&& draw) requires std::is_void_v<decltype(std::declval<SetupFN&>()(std::declval<FrameGraphNodeBuilder&>()))>
 		{
 			struct NodeData
 			{

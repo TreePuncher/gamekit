@@ -1,6 +1,7 @@
 #project root
 cmake_minimum_required(VERSION 3.23)
-project(FlexEngine  LANGUAGES CXX VERSION 0.0.1)
+
+project(FlexEngine  LANGUAGES CXX VERSION 0.1.1)
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 set(FLEX_ROOT ${PROJECT_SOURCE_DIR} CACHE STRING "FLEX ROOT")

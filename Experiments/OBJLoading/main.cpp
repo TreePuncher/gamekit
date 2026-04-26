@@ -217,7 +217,7 @@ struct TestState : FrameworkState
 		Win32UpdateInput();
 #endif
 #else
-		ProcessEvents(*renderWindow);
+		//ProcessEvents(*renderWindow);
 #endif
 	    return nullptr;
 	}
@@ -260,10 +260,9 @@ struct TestState : FrameworkState
 				    .renderTarget = builder.RenderTarget(renderTarget)
 			    };
 			},
-			[=](const DrawTrangle& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
+			[=, this](const DrawTrangle& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 			{
 				float fTime = (float)t;
-
 				
 				auto cb = resources.ReserveCB(512);
 				

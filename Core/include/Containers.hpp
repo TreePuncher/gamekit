@@ -18,6 +18,8 @@
 #include <type_traits>
 #include <concepts>
 
+#pragma clang diagnostic ignored "-Wuninitialized"
+
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -3164,7 +3166,7 @@ namespace FlexKit
 				if constexpr (!std::is_trivially_destructible_v<TY_value>)
 					values[idx].~TY_value();
 
-				memset(&keys[idx], 0xffffffffffffffff, sizeof(TY_key));
+				memset(&keys[idx], -1, sizeof(TY_key));
 				used--;
 				return true;
 			}

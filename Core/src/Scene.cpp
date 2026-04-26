@@ -1,3 +1,4 @@
+#include "BuildSettings.hpp"
 #include "Intersection.hpp"
 #include "Scene.hpp"
 
@@ -103,7 +104,7 @@ namespace FlexKit
 				view->Connect(AddedToSceneID, SceneChangedSlot);
 			});
 
-		
+
 		auto node = GetSceneNode(gameObject);
 
 		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
@@ -608,7 +609,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
+
 	BoundingSphere GetBoundingSphereFromMesh(GameObject& go)
 	{
 		const auto scale = GetScale(go).Max();
@@ -770,8 +771,8 @@ namespace FlexKit
 
 	void Scene::RemoveEntity(GameObject& go)
 	{
-		Apply(go, 
-		[&, allocator = this->allocator](SceneVisibilityView& vis) 
+		Apply(go,
+		[&, allocator = this->allocator](SceneVisibilityView& vis)
 		{
 			const auto handle = vis.visibility;
 			go.RemoveView(vis);
@@ -823,7 +824,7 @@ namespace FlexKit
 			[&](BrushView& brush) -> std::span<TriMeshHandle>
 			{
 				return brush.GetMeshes();
-			}, 
+			},
 			[]() -> std::span<TriMeshHandle>
 			{
 				return {};
@@ -1037,7 +1038,7 @@ namespace FlexKit
 			const auto highestLoadedLod     = mesh_ptr->GetHighestLoadedLodIdx();
 
 			/*
-			// Alternate, screen space size based LOD selection 
+			// Alternate, screen space size based LOD selection
 			const auto aabb = mesh->AABB;
 			const auto WT   = GetWT(e.Node);
 
@@ -1057,7 +1058,7 @@ namespace FlexKit
 			*/
 
 			const auto normalizedAdjustedDistance = pow((distanceFromView) / maxZ, 1.0f / 5.0f);
-			
+
 			const uint32_t requestedLodLevel    = uint32_t(normalizedAdjustedDistance * maxLod);
 			lodLevels.push_back(Max(requestedLodLevel, highestLoadedLod));
 		}
@@ -1095,14 +1096,14 @@ namespace FlexKit
 		{
 			const auto potentialVisible = Visibles[handle];
 
-			if(	potentialVisible.visable && 
+			if(	potentialVisible.visable &&
 				potentialVisible.entity->hasView(BrushComponent::GetComponentID()))
 			{
 				auto Ls	= GetLocalScale		(potentialVisible.node).x;
 				auto Pw	= GetPositionW		(potentialVisible.node);
 				auto Lq	= GetOrientation	(potentialVisible.node);
-				auto BS = BoundingSphere{ 
-					Lq * potentialVisible.boundingSphere.xyz() + Pw, 
+				auto BS = BoundingSphere{
+					Lq * potentialVisible.boundingSphere.xyz() + Pw,
 					Ls * potentialVisible.boundingSphere.w };
 
 				Apply(*potentialVisible.entity,
@@ -1282,7 +1283,7 @@ namespace FlexKit
 				char* buffer = (char*)R;
 
 				const auto blockCount = sceneBlob->blockCount;
-				
+
 				size_t						offset					= 0;
 				size_t						currentBlock			= 0;
 				SceneNodeBlock*				nodeBlock				= nullptr;
@@ -1740,7 +1741,7 @@ namespace FlexKit
 					threads.AddWork(task);
 
 				barrier.Join();
-				
+
 				auto& lights = LightComponent::GetComponent();
 
 				for (auto visableLight : visablePointLights)

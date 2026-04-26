@@ -20,23 +20,23 @@ target_link_libraries(vkBackend PRIVATE spirv-cross-util)
 target_compile_definitions(vkBackend PUBLIC SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
 target_sources(
-        vkBackend PRIVATE
-        vkBackend.cpp
-        "src/vkCopyContext.cpp"
-        "src/vkDescriptorSet.cpp"
-	    "src/vkDescriptorAllocator.cpp"
-        "src/vkDirectContext.cpp"
-        "src/vkMemoryManager.cpp"
-        "src/vkPipelineLayout.cpp"
-        "src/vkPipelineBuilder.cpp"
-        "src/vkPipelineState.cpp"
-        "src/vkPushBuffers.cpp"
-        "src/vkRendersystem.cpp"
-        "src/vkResourceTable.cpp"
-	    "src/vkUploadBuffer.cpp"
-        "src/vkVertexBufferSet.cpp"
-        "src/vkWaylandSurface.cpp"
- "src/vkRenderDocDebug.cpp")
+    vkBackend PRIVATE
+    vkBackend.cpp
+    "src/vkCopyContext.cpp"
+    "src/vkDescriptorSet.cpp"
+    "src/vkDescriptorAllocator.cpp"
+    "src/vkDirectContext.cpp"
+    "src/vkMemoryManager.cpp"
+    "src/vkPipelineLayout.cpp"
+    "src/vkPipelineBuilder.cpp"
+    "src/vkPipelineState.cpp"
+    "src/vkPushBuffers.cpp"
+    "src/vkRendersystem.cpp"
+    "src/vkResourceTable.cpp"
+    "src/vkUploadBuffer.cpp"
+    "src/vkVertexBufferSet.cpp"
+    "src/vkWaylandSurface.cpp"
+    "src/vkRenderDocDebug.cpp")
 
 if(WIN32)
     target_sources(
@@ -69,25 +69,25 @@ target_sources(
 )
 
 if(WIN32)
-target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
-target_link_libraries(vkBackend PRIVATE Microsoft::DXIL)
+    target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
+    target_link_libraries(vkBackend PRIVATE Microsoft::DXIL)
 
-#find_library(spirvReflect spirv-reflect-static.lib)
-#find_library(spirv_cross_core spirv-cross-core.lib)
-#find_library(spirv_cross_cpp spirv-cross-cpp.lib)
-#find_library(spirv_cross_reflect unofficial::spirv-reflect)
+    #find_library(spirvReflect spirv-reflect-static.lib)
+    #find_library(spirv_cross_core spirv-cross-core.lib)
+    #find_library(spirv_cross_cpp spirv-cross-cpp.lib)
+    #find_library(spirv_cross_reflect unofficial::spirv-reflect)
 
-target_link_libraries(vkBackend PRIVATE ${spirvReflect})
-#target_link_libraries(vkBackend PRIVATE ${spirv_cross_cpp})
-#target_link_libraries(vkBackend PRIVATE ${spirv_cross_reflect})
-
+    target_link_libraries(vkBackend PRIVATE ${spirvReflect})
+    #target_link_libraries(vkBackend PRIVATE ${spirv_cross_cpp})
+    #target_link_libraries(vkBackend PRIVATE ${spirv_cross_reflect})
 endif(WIN32)
 
 if(UNIX)
     target_sources(
-            vkBackend PUBLIC
-            "src/xdg-shell-protocol.cpp"
+        vkBackend PUBLIC
+        "src/xdg-shell-protocol.cpp"
     )
+
 
     find_library (dxc_lib_dir libdxcompiler.so)
     find_library (dxil_lib_dir libdxil.so)
@@ -98,6 +98,7 @@ if(UNIX)
     target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WAYLAND_KHR=1)
     target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_XCB_KHR=1)
     target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_XLIB_KHR=1)
+    target_compile_definitions(vkBackend PRIVATE __LINUX__=1)
 
 endif(UNIX)
 

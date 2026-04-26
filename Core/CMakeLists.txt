@@ -175,7 +175,7 @@ if(WIN32)
 
     message(${SIMDE_INCLUDE_DIRS})
 
-    ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+	ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
     target_link_libraries(flex PUBLIC ZLIB-NG)
@@ -183,7 +183,7 @@ if(WIN32)
     target_compile_definitions(flex PUBLIC WIN32)
     target_compile_definitions(flex PUBLIC WIN32_LEAN_AND_MEAN)
 
-    #target_link_libraries(flex PRIVATE WINPIX) 
+    #target_link_libraries(flex PRIVATE WINPIX)
     #target_link_libraries(flex PRIVATE Microsoft::DirectX-Headers Microsoft::DirectX-Guids Microsoft::DirectX12-Agility)
 
     target_compile_definitions(flex PUBLIC UNICODE)
@@ -197,10 +197,14 @@ if(WIN32)
 endif(WIN32)
 
 if(UNIX)
-    ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
-    SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/libz-ng.a)
-    target_link_libraries(flex PUBLIC ZLIB-NG)
+    #ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+    #SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/libz-ng.a)
+    #target_link_libraries(flex PUBLIC ZLIB-NG)
+
+    find_package(zlib-ng CONFIG REQUIRED)
+    target_link_libraries(flex PRIVATE zlib-ng::zlib)
 endif(UNIX)
+
 set_target_properties(flex PROPERTIES UNITY_BUILD ON)
 
 install(TARGETS flex DESTINATION lib)

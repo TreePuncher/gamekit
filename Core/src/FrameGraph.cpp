@@ -2,6 +2,7 @@
 #include "Brush.hpp"
 #include "CameraComponent.hpp"
 #include "FrameGraph.hpp"
+#include "MathUtilities.hpp"
 #include "Logging.hpp"
 #include <fmt/core.h>
 #include <ranges>
