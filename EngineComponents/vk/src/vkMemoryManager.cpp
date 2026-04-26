@@ -57,8 +57,13 @@ namespace VK_internal
         auto*       types       = properties.memoryProperties.memoryTypes;
 
         unsigned long index;
-        _BitScanReverse64(&index, requiredSize);
 
+        #if WIN32
+        _BitScanReverse64(&index, requiredSize);
+        #else
+        FK_ASSERT("NEED PLATFORM BITSCANREVERSE");
+        #endif
+        
         uint64_t size = 0x1 << (index + 2);
 
         VkMemoryAllocateInfo allocateInfo{

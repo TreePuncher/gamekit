@@ -1,69 +1,72 @@
 {
-  "name": "flexkit",
-  "version-string": "0.0.1",
-  "supports": "!x86 & windows",
-  "dependencies": [
-    {
-      "name": "angelscript",
-      "features": [
-        "addons"
-      ]
-    },
-    "boost-interprocess",
-    "boost-process",
-    "directx-dxc",
-    {
-      "name": "directxtk12",
-      "platform": "windows"
-    },
-    {
-      "name": "directx12-agility",
-      "platform": "windows"
-    },
-    "directxmesh",
-    {
-      "name": "directxtex",
-      "features": [
-        "dx12",
-        "openexr"
-      ]
-    },
-    "fmt",
-    "fp16",
-    "imgui",
-    "imguizmo",
-    "implot",
-    "loguru",
-    "ois",
-    "physx",
-    {
-      "name": "qtbase",
-      "platform": "windows"
-    },
-    "range-v3",
-    "recastnavigation",
-    "rmlui",
-    "scnlib",
-    "simde",
-    "stb",
-    "tinygltf",
-    {
-      "name": "usd",
-      "platform": "windows"
-    },
-    "zlib-ng",
-    "vulkan",
-    "vk-bootstrap",
-    "vulkan-loader",
-    "vulkan-tools",
-    "vulkan-validationlayers",
-    "vulkan-utility-libraries",
-    "vulkan-extensionlayer",
-    "vulkan-sdk-components",
-    {
-      "name": "wayland",
-      "platform": "linux"
+    "name": "flexkit",
+    "version-string": "0.0.1",
+    "supports": "!x86 & windows & linux",
+    "dependencies": [
+        {
+            "name": "angelscript",
+            "features": [
+                "addons"
+            ]
+        },
+        "boost-interprocess",
+        "boost-regex",
+        "boost-process",
+        "directx-dxc",
+        {
+            "name": "directxtk12",
+            "platform": "windows"
+        },
+        {
+            "name": "directx12-agility",
+            "platform": "windows"
+        },
+        "directxmesh",
+        {
+            "name": "directxtex",
+            "features": [
+                "dx12",
+                "openexr"
+            ]
+        },
+        "fmt",
+        "fp16",
+        "imgui",
+        "imguizmo",
+        "implot",
+        "loguru",
+        "ois",
+        "physx",
+        {
+            "name": "qtbase",
+            "platform": "windows"
+        },
+        "range-v3",
+        "recastnavigation",
+        "rmlui",
+        "scnlib",
+        "simde",
+        "stb",
+        "tinygltf",
+        {
+            "name": "usd",
+            "platform": "windows"
+        },
+        "zlib-ng",
+        "vulkan",
+        "vk-bootstrap",
+        "vulkan-loader",
+        "vulkan-validationlayers",
+        "vulkan-utility-libraries",
+        "vulkan-extensionlayer",
+        "vulkan-sdk-components",
+        {
+            "name": "wayland",
+            "platform": "linux"
+        }
+    ],
+    "builtin-baseline": "0804e3b55b7e435c593707071052363fa876f170",
+    "configuration": {
+        "overlay-ports": [ "overlay-ports/dbus" ]
     }
-  ],
-  "builtin-baseline": "0804e3b55b7e435c593707071052363fa876f170"
 }

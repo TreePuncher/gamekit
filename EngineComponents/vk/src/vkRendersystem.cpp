@@ -1444,7 +1444,6 @@ namespace VK_internal
 		return {};
 	}
 
-
 	struct IncludeHandler : public IDxcIncludeHandler
 	{
 		HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
@@ -1462,7 +1461,7 @@ namespace VK_internal
 			return handler->LoadSource(fileW, ppIncludeSource);
 		}
 
-		HRESULT IUnknown::QueryInterface(const IID&, void**)
+		HRESULT QueryInterface(const IID&, void**) override
 		{
 			return 0;
 		}
@@ -1473,7 +1472,6 @@ namespace VK_internal
 		ULONG AddRef() { return 0; }
 		ULONG Release() { return 0; }
 	};
-
 
 	struct PreprocessorResult
 	{
@@ -1826,6 +1824,7 @@ namespace VK_internal
 
 		if (FAILED(HR1))
 		{
+#if WIN32
 			LPSTR string = nullptr;
 
 			const auto msgLen = FormatMessageA(
@@ -1842,7 +1841,7 @@ namespace VK_internal
 			FK_LOG_ERROR(converted.c_str());
 
 			LocalFree(string);
-
+#endif
 			return {};
 		}
 
@@ -1853,7 +1852,7 @@ namespace VK_internal
 
 		IDxcCompiler2* debugCompiler = nullptr;
 		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
-
+		
 		static_vector<LPCWSTR> arguments;
 
 #if USING(DEBUGSHADERS)
@@ -1885,17 +1884,22 @@ namespace VK_internal
 		};
 
 		int _;
-		blob->GetEncoding(&_, &buffer.Encoding);
+
+#if WIN32
+			blob->GetEncoding(&_, &buffer.Encoding);
+#endif
 
 		HRESULT HR2;
 		try
 		{
+			#if WIN32
 			HR2 = hlslCompiler->Compile(
 				&buffer,
 				arguments.data(),
 				arguments.size(),
                 &includeHandler,
 				IID_PPV_ARGS(&result));
+			#endif
 		}
 		catch (...)
 		{
@@ -1938,14 +1942,16 @@ namespace VK_internal
 				errors->Release();
 				IDxcResult* compileResult = nullptr;
 
-				HR2 = hlslCompiler->Compile(
-					&buffer,
-					arguments.data(),
-					(UINT)arguments.size(),
-					&includeHandler,
-					IID_PPV_ARGS(&result));
+				#if WIN32
+					HR2 = hlslCompiler->Compile(
+						&buffer,
+						arguments.data(),
+						(UINT)arguments.size(),
+						&includeHandler,
+						IID_PPV_ARGS(&result));
 
-				result->GetStatus(&status);
+					result->GetStatus(&status);
+				#endif
 			}
 
 
@@ -2296,7 +2302,7 @@ namespace VK_internal
 		}
 	}
 
-	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept
+	uint64_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept
 	{
 		VkPipelineStageFlags out = 0;
 
@@ -2318,7 +2324,7 @@ namespace VK_internal
 	}
 
 
-	uint32_t AccessToVK(DeviceAccessState access) noexcept
+	uint64_t AccessToVK(DeviceAccessState access) noexcept
 	{
         switch (access)
         {
@@ -2395,7 +2401,7 @@ namespace VK_internal
 	}
 
 
-	uint32_t LayoutToVK(DeviceLayout layout) noexcept
+	uint64_t LayoutToVK(DeviceLayout layout) noexcept
     {
 		switch (layout)
 	    {
@@ -2490,7 +2496,7 @@ namespace VK_internal
 		case VK_FORMAT_R16G16B16_UINT:
 		case VK_FORMAT_R16G16B16_UNORM:
 		case VK_FORMAT_R16G16B16_USCALED:
-			return sizeof(uint16_t[2]);
+			return sizeof(uint16_t[3]);
 		case VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16:
 			return 64;
 		case VK_FORMAT_A2R10G10B10_SINT_PACK32:

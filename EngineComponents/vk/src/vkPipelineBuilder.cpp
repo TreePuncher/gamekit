@@ -7,7 +7,6 @@
 #endif
 
 #include <directx-dxc/dxcapi.h>
-#include <directx-dxc/d3d12shader.h>
 #include <spirv/unified1/spirv.hpp>
 
 namespace VK_internal

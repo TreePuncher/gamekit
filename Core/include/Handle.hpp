@@ -52,7 +52,7 @@ namespace FlexKit
 		constexpr Handle_t(const TY in)					noexcept : INDEX{ (InternalType)in } {}
 		constexpr Handle_t(_InvalidHandle_t)
 		{
-			INDEX = static_cast<InternalType>(0xffffffffffffffff);
+			INDEX = (HandleSize >= (sizeof(InternalType) * 8) ? -1 : (InternalType(1) << (HandleSize - 1)) - 1) & (0xffffffffffffffff);
 		}
 
 		//operator uint32_t() const { return to_uint(); }
@@ -85,7 +85,7 @@ namespace FlexKit
 
 		Handle_t<HandleSize, ID> operator = (_InvalidHandle_t) noexcept
 		{
-			INDEX = static_cast<InternalType>(0xffffffffffffffff);
+			INDEX = (HandleSize >= (sizeof(InternalType) * 8) ? -1 : (InternalType(1) << (HandleSize - 1)) - 1) & (0xffffffffffffffff);
 			return {};
 		}
 

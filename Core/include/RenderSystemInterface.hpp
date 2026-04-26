@@ -6,6 +6,7 @@
 
 #include <expected>
 #include <variant>
+#include <cstdint>
 
 namespace FlexKit
 {
@@ -18,7 +19,7 @@ namespace FlexKit
 	{
 		TaggedVoidPtr() = default;
 		TaggedVoidPtr(auto IN_ptr) : _ptr{ IN_ptr } {}
-		TaggedVoidPtr(nullptr_t) : _ptr{ nullptr } {}
+		TaggedVoidPtr(std::nullptr_t) : _ptr{ nullptr } {}
 		TaggedVoidPtr(const TaggedVoidPtr&) = default;
 
 		TaggedVoidPtr& operator = (auto IN_ptr) requires( std::is_pointer_v<decltype(IN_ptr)>) { _ptr = (void*)IN_ptr; return *this; }
@@ -616,9 +617,8 @@ namespace FlexKit
 	};
 
 
-	enum class ReserveErrors
+	enum class ReserveErrors : uint8_t
 	{
-		Success,
 		OutOfSpace,
 		Unknown
 	};

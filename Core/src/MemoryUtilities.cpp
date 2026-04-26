@@ -412,7 +412,7 @@ namespace FlexKit
 				if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
 				{
 					std::cout << "Block: " << I << " : " << LB[I].AllocationSize << "\n";
-					if (LB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
+					if ((uint32_t)LB[I].state & (uint32_t)FlexKit::MediumBlockAllocator::BlockData::Aligned)
 						std::cout << " Aligned\n";
 					else
 						std::cout << " Allocated\n";

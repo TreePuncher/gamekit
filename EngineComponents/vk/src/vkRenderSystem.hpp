@@ -15,9 +15,9 @@ namespace VK_internal
 
     struct vkRenderSystem;
 
-	uint32_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept;
-	uint32_t AccessToVK(DeviceAccessState access) noexcept;
-	uint32_t LayoutToVK(DeviceLayout layout) noexcept;
+	uint64_t SyncPointToVK(DeviceSyncPoint pipeline) noexcept;
+	uint64_t AccessToVK(DeviceAccessState access) noexcept;
+	uint64_t LayoutToVK(DeviceLayout layout) noexcept;
 	uint32_t GetFormatElementSize(VkFormat format);
 	VkFormat FormatToVK(DeviceFormat format);
 

@@ -444,7 +444,7 @@ namespace FlexKit
 			allocator	{ IN_allocator		},
 			Callback	{ FNIN				} {}
 
-		void Release() noexcept
+		void Release() noexcept override
 		{
 			auto temp = allocator;
 			this->~LambdaWork();
@@ -528,7 +528,7 @@ namespace FlexKit
 
 
 	template<typename TY_FN>
-	[[nodiscard]] iWork& CreateWorkItem(
+	[[nodiscard]] auto& CreateWorkItem(
 		const TY_FN& FNIN, 
 		iAllocator* objectAllocator,
 		iAllocator* workitemAllocator)
@@ -538,7 +538,7 @@ namespace FlexKit
 
 
 	template<typename TY_FN>
-	[[nodiscard]] iWork& CreateWorkItem(
+	[[nodiscard]] auto& CreateWorkItem(
 		const TY_FN&	FNIN,
 		iAllocator*		allocator = SystemAllocator)
 	{
