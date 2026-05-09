@@ -12,7 +12,7 @@ namespace VK_internal
 {
 	namespace RenderDocDebugUtils
 	{
-		RENDERDOC_API_1_1_2* rdoc_api = NULL;
+		RENDERDOC_API_1_1_2* rdoc_api = nullptr;
 
 #ifdef WIN32
 		bool ConnectWin32()
@@ -39,6 +39,8 @@ namespace VK_internal
 #ifdef WIN32
 			return ConnectWin32();
 #endif
+			rdoc_api = nullptr;
+			return false;
 		}
 
 		bool Connected()

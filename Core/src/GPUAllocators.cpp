@@ -1,5 +1,5 @@
 #include <GPUAllocators.hpp>
-
+#include <RenderSystemInterface.hpp>
 
 namespace FlexKit
 {	/************************************************************************************************/

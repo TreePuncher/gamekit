@@ -61,16 +61,16 @@ namespace FlexKit
 
 	struct MaterialTextureEntry
 	{
-		uint32_t		refCount;
-		ResourceHandle	texture;
-		GUID_t			assetID;
+		mutable uint32_t	refCount;
+		ResourceHandle		texture;
+		GUID_t				assetID;
 	};
 
 
 	/************************************************************************************************/
 
 
-	struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
+	struct MaterialComponent final : public Component<MaterialComponent, MaterialComponentID>
 	{
 		MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE = &NullTextureManager) :
 			textureManager	{ IN_TSE },
@@ -86,7 +86,7 @@ namespace FlexKit
 
 		virtual ~MaterialComponent() {}
 
-		void FreeComponentView(void* _ptr) { static_cast<MaterialView*>(_ptr)->Release(); }
+		void FreeComponentView(void* _ptr) final { static_cast<MaterialView*>(_ptr)->Release(); }
 
 
 		MaterialComponentData operator [](const MaterialHandle handle) const;

@@ -1,18 +1,25 @@
 {
     "name": "flexkit",
     "version-string": "0.0.1",
-    "supports": "!x86 & windows & linux",
+    "supports": "!x86 & windows & linux & android",
     "dependencies": [
         {
             "name": "angelscript",
             "features": [
                 "addons"
-            ]
+            ],
+             "version>=": "2.38.0"
         },
         "boost-interprocess",
         "boost-regex",
-        "boost-process",
-        "directx-dxc",
+        {
+            "name": "boost-process",
+            "platform": "!android"
+        },
+        {
+            "name": "directx-dxc",
+            "platform": "!android"
+        },
         {
             "name": "directxtk12",
             "platform": "windows"
@@ -21,13 +28,17 @@
             "name": "directx12-agility",
             "platform": "windows"
         },
-        "directxmesh",
+        {
+            "name": "directxmesh",
+            "platform": "!android"
+        },
         {
             "name": "directxtex",
             "features": [
                 "dx12",
                 "openexr"
-            ]
+            ],
+            "platform": "!android"
         },
         "fmt",
         "fp16",
@@ -35,8 +46,14 @@
         "imguizmo",
         "implot",
         "loguru",
-        "ois",
-        "physx",
+        {
+            "name": "ois",
+            "platform": "!android"
+        },
+        {
+            "name": "physx",
+            "platform": "!android"
+        },        
         {
             "name": "qtbase",
             "platform": "windows"
@@ -46,6 +63,7 @@
         "rmlui",
         "scnlib",
         "simde",
+        "spirv-cross",
         "stb",
         "tinygltf",
         {
@@ -53,13 +71,29 @@
             "platform": "windows"
         },
         "zlib-ng",
-        "vulkan",
+        {
+            "name": "vulkan",
+            "platform": "!android"
+        },
         "vk-bootstrap",
-        "vulkan-loader",
+        {
+            "name": "vulkan-loader",
+            "platform": "!android"
+        },
         "vulkan-validationlayers",
-        "vulkan-utility-libraries",
-        "vulkan-extensionlayer",
-        "vulkan-sdk-components",
+        {
+            "name": "vulkan-utility-libraries",
+            "platform": "!android"
+        },
+        {
+            "name": "vulkan-extensionlayer",
+            "platform": "!android"
+
+        },
+        {
+            "name": "vulkan-sdk-components",
+            "platform": "!android"
+        },
         {
             "name": "wayland",
             "platform": "linux"

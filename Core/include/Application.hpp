@@ -68,6 +68,9 @@ namespace FlexKit
 		IRenderSystem&	GetRenderSystem()	{ return framework.GetRenderSystem(); }
 
 		bool running() { return framework.Running();  }
+
+		bool Wait();
+		
 	private:
 		EngineMemory*	Memory;
 		EngineCore		Core;

@@ -1030,7 +1030,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddRootSignature(const IPipelineInterface* pipelineInterface)
+	IPipelineBuilder& PipelineBuilderImpl::AddRootSignature(const IPipelineInterface* pipelineInterface)
 	{
 		auto IN_rootSig = static_cast<const RootSignature*>(pipelineInterface);
 		rootSig = IN_rootSig;
@@ -1044,7 +1044,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		/*
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
@@ -1067,7 +1067,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1082,7 +1082,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddWorkGraph(const WorkGraph_Desc& work_desc)
+	IPipelineBuilder& PipelineBuilderImpl::AddWorkGraph(const WorkGraph_Desc& work_desc)
 	{
 		struct {
 			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH;
@@ -1107,7 +1107,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1122,7 +1122,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1137,7 +1137,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1152,7 +1152,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1167,7 +1167,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1182,7 +1182,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1197,7 +1197,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1209,7 +1209,7 @@ namespace dx_Internal
 	}
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const Shader& shader)
+	IPipelineBuilder& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const Shader& shader)
 	{
 		shaders.emplace_back(shader);
 		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
@@ -1225,7 +1225,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddInputLayout(const InputLayoutState& state)
+	IPipelineBuilder& PipelineBuilderImpl::AddInputLayout(const InputLayoutState& state)
 	{
 		if (inputElements)
 			return *this;
@@ -1264,7 +1264,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddInputTopology(const ETopology topology)
+	IPipelineBuilder& PipelineBuilderImpl::AddInputTopology(const ETopology topology)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY dxTopolgy{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
 		hash = FNVa62((const char*)&dxTopolgy, sizeof(dxTopolgy), hash);
@@ -1277,7 +1277,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddRasterizerState(const RasterizerState& state)
+	IPipelineBuilder& PipelineBuilderImpl::AddRasterizerState(const RasterizerState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER2 rasterizerState;
 		memset(&rasterizerState, 0, sizeof(CD3DX12_RASTERIZER_DESC2));
@@ -1304,7 +1304,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddDepthStencilState(const DepthStencilState& inputState)
+	IPipelineBuilder& PipelineBuilderImpl::AddDepthStencilState(const DepthStencilState& inputState)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL depthStencil{};
 		CD3DX12_DEPTH_STENCIL_DESC& state = depthStencil;
@@ -1336,7 +1336,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddBlendState(const BlendState& state)
+	IPipelineBuilder& PipelineBuilderImpl::AddBlendState(const BlendState& state)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
 		CD3DX12_BLEND_DESC& desc = blendState;
@@ -1354,7 +1354,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddRenderTargetState(const RenderTargetState& state)
+	IPipelineBuilder& PipelineBuilderImpl::AddRenderTargetState(const RenderTargetState& state)
 	{
 		CD3DX12_RT_FORMAT_ARRAY formats{};
 		memset(&formats, 0, sizeof(formats));
@@ -1374,7 +1374,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& PipelineBuilderImpl::AddDepthStencilFormat(const DeviceFormat format)
+	IPipelineBuilder& PipelineBuilderImpl::AddDepthStencilFormat(const DeviceFormat format)
 	{
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT dxDepthFormat{ TextureFormat2DXGIFormat(format) };
 		hash = FNVa62((const char*)&dxDepthFormat, sizeof(dxDepthFormat), hash);

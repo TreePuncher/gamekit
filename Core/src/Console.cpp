@@ -102,7 +102,7 @@ namespace FlexKit
 		ImGui::BeginChild("", {});
 
 		for(auto& line : lines)
-			ImGui::Text(line.Str);
+			ImGui::Text("%s", line.Str);
 
 		ImGui::EndChild();
 

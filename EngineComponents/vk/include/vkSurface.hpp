@@ -8,7 +8,7 @@ namespace FlexKit
 	void vkWin32UpdateInput();
 #endif
 
-	IRenderWindow* CreateWaylandSurface(IRenderSystem&, uint2 WH, DeviceFormat);
+	//IRenderWindow* CreateWaylandSurface(IRenderSystem&, uint2 WH, DeviceFormat);
 	void ProcessEvents(IRenderWindow&);
 
 

@@ -22,7 +22,11 @@
 #include "Unknwnbase.h"
 #endif
 
+#ifdef ANDROID
+#else
 #include <directx-dxc/dxcapi.h>
+#endif
+
 #include <iostream>
 #include <scn/xchar.h>
 #include <scn/scan.h>
@@ -522,32 +526,59 @@ namespace VK_internal
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
+		FK_LOG_0(
+			"VK: Vulkan SDK VERSION: %i\n", VK_HEADER_VERSION);
+
+		#ifdef ANDROID
+		FK_LOG_0("VK: Android Detected!");
+		#endif
+
 		allocator = desc.Memory;
 		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
-			VK_KHR_DISPLAY_EXTENSION_NAME,
+			"VK_KHR_android_surface",
+#ifdef ANDROID
+#endif
 #ifdef WIN32
-			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+			//VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+			//VK_KHR_DISPLAY_EXTENSION_NAME,
 #endif
 #ifdef __linux__
 			//VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
 			//VK_KHR_XCB_SURFACE_EXTENSION_NAME,
 			//VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+			//VK_KHR_DISPLAY_EXTENSION_NAME,
 #endif
 		};
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
-		    .require_api_version(1, 4, 304)
+		    .require_api_version(1, 4, 0)
 			.request_validation_layers()
 			.set_headless()
 		    .enable_extensions(std::size(extensions), extensions)
-			.use_default_debug_messenger()
+			//.use_default_debug_messenger()
+			.set_debug_callback (
+				[] (VkDebugUtilsMessageSeverityFlagBitsEXT 		messageSeverity,
+					VkDebugUtilsMessageTypeFlagsEXT 			messageType,
+					const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+					void*										pUserData)
+					-> VkBool32 
+					{
+						auto severity = vkb::to_string_message_severity(messageSeverity);
+						auto type = vkb::to_string_message_type(messageType);
+
+						auto message = std::format("Severity: {}, Type: {}, Message: {}", severity, type, pCallbackData->pMessage);
+						FK_LOG_INFO(message.c_str());
+					})
+
 			.build();
 
 		if (!instReq)
+		{
+			FK_LOG_ERROR("VK:vkRenderSystem::Initiate Missing Instance Extension!");
 			return false;
-
+		}
 
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
@@ -568,6 +599,8 @@ namespace VK_internal
             .bufferDeviceAddressCaptureReplay	= false,
             .bufferDeviceAddressMultiDevice		= false
 		};
+
+		FK_LOG_0("VK: Selecting Device!");
 
 		auto physRequest = selector
 	        .set_minimum_version(1, 4)
@@ -613,19 +646,25 @@ namespace VK_internal
 		vkb::DeviceBuilder deviceBuilder{ res.back() };
 		auto devRequest = deviceBuilder.build();
 
+		FK_LOG_0("VK: Getting Queues!");
+
 	    device = devRequest.value();
 		auto graphicsQueueRequest = device.get_queue(vkb::QueueType::graphics);
 		auto transferQueueRequest = device.get_queue(vkb::QueueType::transfer);
 		auto computeQueueRequest  = device.get_queue(vkb::QueueType::compute);
 
 		if (!graphicsQueueRequest.has_value() || !transferQueueRequest.has_value() || !computeQueueRequest.has_value())
+		{
+			FK_LOG_ERROR("VK: Failed Getting Queues!");
 			return false;
+		}
 
 
 		graphicsQueue	= graphicsQueueRequest.value();
 		transferQueue	= transferQueueRequest.value();
 		computeQueue	= computeQueueRequest.value();
 
+		FK_LOG_0("VK: Getting Extension functions!");
 		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
 		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
 		vkCmdBindDescriptorBufferEmbeddedSamplers	= (vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
@@ -648,6 +687,7 @@ namespace VK_internal
 			FK_LOG_WARNING("VK: Failed to get vkSetDebugUtilsObjectNameEXT");
 #endif
 
+		FK_LOG_0("VK: Initializing Memory Allocator!");
 		descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
 		descriptorBufferProperties.pNext = nullptr;
 
@@ -655,7 +695,7 @@ namespace VK_internal
 		deviceProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
 		deviceProperties.pNext = &descriptorBufferProperties;
 		vkGetPhysicalDeviceProperties2(device.physical_device, &deviceProperties);
-
+		
 		memoryAllocator.Init(*this);
 
 		auto descriptorHeapBufferAllocation = memoryAllocator.Allocate(0,
@@ -665,6 +705,8 @@ namespace VK_internal
 		if (!descriptorHeapBufferAllocation)
 			throw std::runtime_error{ "VK: Failed to allocate descriptor heap buffer!" };
 
+
+		FK_LOG_0("VK: Creating descriptor buffer!");
 		descriptorPool = CreateDescriptorBuffer(device, 1000000u, descriptorHeapBufferAllocation.value());
 
 		auto [offset, memory] = descriptorHeapBufferAllocation.value();
@@ -683,9 +725,11 @@ namespace VK_internal
 			.buffer		= descriptorPool.buffer
 		};
 
+		FK_LOG_0("VK: Allocating Descriptor Heap!");
 	    heapAllocator.Initialize(heapAllocDesc, allocator);
 
 
+		FK_LOG_0("VK: Creating Fences!");
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 			.pNext = nullptr,
@@ -709,6 +753,7 @@ namespace VK_internal
 		};
 
 
+		FK_LOG_0("VK: Creating Semaphores!");
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkDirectQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
 
@@ -722,15 +767,37 @@ namespace VK_internal
 
 		RenderDocDebugUtils::Connect();
 
+		FK_LOG_0("VK: Labeling Objects!");
 		LabelQueue(graphicsQueue, device, "Graphics Queue");
 		LabelQueue(transferQueue, device, "Transfer Queue");
 		LabelQueue(computeQueue, device, "Compute Queue");
 		LabelSemaphore(vkDirectQueueCounter, device, "Direct Semaphore");
 		LabelSemaphore(vkTransferQueueCounter, device, "Transfer Semaphore");
+		
+		FK_LOG_0("VK: Feature Querying!");
+		availableFeatures.RT_Level 			= AvailableFeatures::RT_FeatureLevel_NOTAVAILABLE;
+		availableFeatures.conservativeRast 	= AvailableFeatures::ConservativeRast_NOTAVAILABLE;
+		
+		#ifdef ANDROID
+		availableFeatures.Compiler = AvailableFeatures::HLSL_CompilerDisabled;
+		#else
+		availableFeatures.Compiler = AvailableFeatures::HLSL_CompilerEnabled;
+		#endif
+
+		availableFeatures.workGraph 		= AvailableFeatures::WorkGraphs_NOTAVAILABLE;
+		availableFeatures.indirectLevel 	= AvailableFeatures::IndirectLevel_1;
+		availableFeatures.resourceHeapTier	= ResourceHeapTier::HeapTier1;
+
+		FK_LOG_0("VK: Initialization Success!");
 
 		return true;
 	}
 
+
+	FlexKit::AvailableFeatures vkRenderSystem::GetFeatures() const noexcept
+	{
+		return availableFeatures;
+	}
 
 	void vkRenderSystem::BuildLibrary(PSOHandle State, const PipelineStateLibraryDesc)
 	{
@@ -1444,6 +1511,7 @@ namespace VK_internal
 		return {};
 	}
 
+#ifndef ANDROID
 	struct IncludeHandler : public IDxcIncludeHandler
 	{
 		HRESULT STDMETHODCALLTYPE LoadSource(LPCWSTR pFilename, IDxcBlob** ppIncludeSource) override
@@ -1472,6 +1540,7 @@ namespace VK_internal
 		ULONG AddRef() { return 0; }
 		ULONG Release() { return 0; }
 	};
+#endif
 
 	struct PreprocessorResult
 	{
@@ -1750,6 +1819,8 @@ namespace VK_internal
 
 	Shader vkRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
 	{
+#ifndef ANDROID
+
 		IDxcUtils*			hlslUtils			= nullptr;
 		IDxcIncludeHandler* hlslIncludeHandler	= nullptr;
 		IDxcCompiler3*		hlslCompiler		= nullptr;
@@ -1970,6 +2041,13 @@ namespace VK_internal
 
 			return out;
 		}
+
+		return out;
+		#else
+		FK_LOG_ERROR("NO SHADER COMPILATION ON ANDROID!");
+		#endif
+
+		return {};
 	}
 
 
@@ -2256,17 +2334,8 @@ namespace VK_internal
 
 		if (!res)
 		{
-		    VkMemoryMapInfo memoryMapInfo{
-			    .sType	= VkStructureType::VK_STRUCTURE_TYPE_MEMORY_MAP_INFO,
-			    .pNext	= nullptr,
-			    .flags	= 0,
-			    .memory = memory,
-			    .offset	= 0,
-			    .size	= VK_WHOLE_SIZE
-		    };
-
 			std::byte* mappedAddress = nullptr;
-			if (auto res = vkMapMemory2(device, &memoryMapInfo, (void**)&mappedAddress); res != VK_SUCCESS)
+			if (auto res = vkMapMemory(device, memory, 0, VK_WHOLE_SIZE, 0, (void**)&mappedAddress); res != VK_SUCCESS)
 			{
 				FK_LOG_ERROR("VK: Failed to map memory!");
 				return nullptr;

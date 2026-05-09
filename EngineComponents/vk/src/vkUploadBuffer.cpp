@@ -11,7 +11,7 @@ namespace VK_internal
 
 
 	vkUploadBuffer::vkUploadBuffer() :
-		size			{ MEGABYTE * 64 }
+		size{ MEGABYTE * 64 }
 	{
 		auto& vkRS = static_cast<vkRenderSystem&>(IRenderSystem::GetInstance());
 		auto res = CreateUploadBuffer(vkRS, size);
@@ -46,10 +46,10 @@ namespace VK_internal
 		//deviceBuffer->Unmap(0, nullptr);
 		//deviceBuffer->Release();
 
-		position = 0;
-		size = 0;
-		deviceBuffer = nullptr;
-		buffer = nullptr;
+		position 		= 0;
+		size 			= 0;
+		deviceBuffer 	= nullptr;
+		buffer 			= nullptr;
 	}
 
 
@@ -164,7 +164,7 @@ namespace VK_internal
 				.flags	= 0,
 				.memory = memory,
 			};
-			vkUnmapMemory2(vkRenderSystem.device, &unmapInfo);
+			//vkUnmapMemory2(vkRenderSystem.device, &unmapInfo);
 		}
 
 		auto previousBuffer = deviceBuffer;
@@ -192,7 +192,7 @@ namespace VK_internal
 		};
 
 		uint64_t cpuAddress;
-		vkMapMemory2(vkRenderSystem.device, &memoryMapInfo, (void**)&cpuAddress);
+		//vkMapMemory2(vkRenderSystem.device, &memoryMapInfo, (void**)&cpuAddress);
 
 		return previousBuffer;
 	}

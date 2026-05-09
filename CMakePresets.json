@@ -72,6 +72,31 @@
                     "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
                 }
             }
+        }, 
+        {
+            "name": "android-debug",
+            "displayName": "Android Debug",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "VCPKG_TARGET_TRIPLET": "arm64-android",
+                "ANDROID_ABI": "arm64-v8a",
+                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported",
+                "CMAKE_TOOLCHAIN_FILE": "~/repos/vcpkg/scripts/buildsystems/vcpkg.cmake",
+                "VCPKG_CHAINLOAD_TOOLCHAIN_FILE":  "~/bin/android-ndk-r29/build/cmake/android.toolchain.cmake",
+                "ANDROID_PLATFORM": "35",
+                "VCPKG_CRT_LINKAGE": "dynamic",
+                "VCPKG_LIBRARY_LINKAGE": "dynamic",
+				"VERBOSE": "ON"
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+                    "sourceDir": "$ENV{HOME}/.vs/$ms{projectDirName}"
+                }
+            }
         }
     ]
 }

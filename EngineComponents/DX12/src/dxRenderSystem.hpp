@@ -2533,37 +2533,37 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	struct PipelineBuilderImpl : IPipelineBuilderImpl
+	struct PipelineBuilderImpl : IPipelineBuilder
 	{
 		PipelineBuilderImpl(iAllocator& allocator);
 		~PipelineBuilderImpl();
 
-		IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig) final;
+		IPipelineBuilder& AddRootSignature	(const IPipelineInterface* rootSig) final;
 
-		IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {}) final;
+		IPipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {}) final;
 
-		IPipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
 
-		IPipelineBuilderImpl& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
 
-		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const Shader&) final;
+		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
+		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const Shader&) final;
 
-		IPipelineBuilderImpl& SetDebugName			(const char* name) { debugName = name; return *this; }
+		IPipelineBuilder& SetDebugName			(const char* name) { debugName = name; return *this; }
 
-		IPipelineBuilderImpl& AddInputLayout		(const InputLayoutState&	state = {});
-		IPipelineBuilderImpl& AddInputTopology		(const ETopology			topology);
-		IPipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {});
-		IPipelineBuilderImpl& AddRasterizerState	(const RasterizerState&		state = {});
-		IPipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {});
-		IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
+		IPipelineBuilder& AddInputLayout		(const InputLayoutState&	state = {});
+		IPipelineBuilder& AddInputTopology		(const ETopology			topology);
+		IPipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {});
+		IPipelineBuilder& AddRasterizerState	(const RasterizerState&		state = {});
+		IPipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {});
+		IPipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		IPipelineBuilder& AddBlendState			(const BlendState&			state = {});
 
 		LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator) final;
 		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size) final;

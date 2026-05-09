@@ -1,6 +1,7 @@
 #include "BuildSettings.hpp"
 #include "AnimationUtilities.hpp"
 #include "AnimationRuntimeUtilities.hpp"
+#include "Transforms.hpp"
 
 namespace FlexKit
 {   /************************************************************************************************/

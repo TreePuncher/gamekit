@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	struct FLEXKITAPI Event
+	struct Event
 	{
 		Event& operator = (const Event& rhs)
 		{
@@ -51,7 +51,8 @@ namespace FlexKit
 			iObject,
 			Property,
 			Net,
-			World
+			World, 
+			System
 		} mType;
 
 		enum InputType

@@ -160,7 +160,7 @@ namespace FlexKit
 				}   break;
 				case VertexField::FieldType::JointWeight:
 				{
-					res &= jointWeights[lhsVertexField[I].idx] == jointWeights[rhsVertexField[I].idx];
+					//res &= jointWeights[lhsVertexField[I].idx] == jointWeights[rhsVertexField[I].idx];
 				}   break;
 				case VertexField::FieldType::Material:
 					break;

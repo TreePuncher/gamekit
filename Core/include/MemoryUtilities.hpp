@@ -66,9 +66,6 @@ namespace FlexKit
 		template<typename T>
 		void release(T& _ref)
 		{
-			if (&_ref == nullptr)
-				return;
-
 			std::destroy_at(std::addressof(_ref));
 			free(&_ref);
 		}

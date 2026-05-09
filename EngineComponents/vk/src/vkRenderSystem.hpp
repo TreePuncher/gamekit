@@ -1,3 +1,4 @@
+#pragma once
 #include <RenderSystemInterface.hpp>
 #include <VkBootstrap.h>
 #include <vkResourceTable.hpp>
@@ -73,6 +74,7 @@ namespace VK_internal
         vkRenderSystem(ThreadManager* threads, iAllocator& allocator);
 
         bool													Initiate(Graphics_Desc& desc) final;
+		FlexKit::AvailableFeatures								GetFeatures() const noexcept override;
 
 		void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) final;
 		void													RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) final;
@@ -212,7 +214,7 @@ namespace VK_internal
 		SOResourceHandle				CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) final;
 		QueryHandle						CreateSOQuery(size_t SOIndex, size_t count) final;
 		QueryHandle						CreateTimeStampQuery(size_t count) final;
-		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
+		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr) final;
 		ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) final;
 		bool							CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) final;
 		void							CreateDescriptorSet(std::byte*, size_t) final;
@@ -221,7 +223,7 @@ namespace VK_internal
 		IVertexBufferSet&				CreateVertexBufferSet() final;
 
 		const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept final;
-		ResourceHandle				DefaultTexture() const noexcept;
+		ResourceHandle				DefaultTexture() const noexcept final;
 
 		// Resetable resources
 		void ResetConstantBuffer(ConstantBufferHandle constant) final;
@@ -296,7 +298,8 @@ namespace VK_internal
 		CopyContextHandle									immediateUploadQueue = InvalidHandle;
 		HashTable<struct vkCopyContext*, CopyContextHandle>	copyContextTable;
 
-		VkPhysicalDeviceDescriptorBufferPropertiesEXT descriptorBufferProperties;
+		VkPhysicalDeviceDescriptorBufferPropertiesEXT	descriptorBufferProperties;
+		AvailableFeatures 								availableFeatures;
     };
 }
 

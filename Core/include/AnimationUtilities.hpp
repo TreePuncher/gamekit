@@ -62,7 +62,6 @@ namespace FlexKit
 
 			char ID[FlexKit::ID_LENGTH];
 
-
 			size_t JointCount;
 		} header;
 
