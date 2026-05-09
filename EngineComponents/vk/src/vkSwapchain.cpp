@@ -84,18 +84,18 @@ namespace VK_internal
 		};
 
         FK_LOG_0("VK: Creating Semaphores!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &semaphores[0]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 0); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &semaphores[1]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 1); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &semaphores[2]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 2); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
 
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &presentSemaphores[0]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 0); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore queue!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &presentSemaphores[1]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 1); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, &presentSemaphores[2]); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 2); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
 
         FK_LOG_0("VK: Creating Fences!");
@@ -106,8 +106,9 @@ namespace VK_internal
 			.flags = 0
 		};
 
-		if (auto res = vkCreateFence(vkRS.device, &createFenceInfo, nullptr, &windowFence); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create fence for direct queue!");
+        for(size_t i = 0; i < 3; i++)
+		    if (auto res = vkCreateFence(vkRS.device, &createFenceInfo, nullptr, windowFences + i); res != VK_SUCCESS)
+			    throw std::runtime_error("VK: Failed to create fence for direct queue!");
 
 		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags, ResourceFieldID::View, ResourceFieldID::XYZW>(
 			    renderTarget,
@@ -133,10 +134,11 @@ namespace VK_internal
         layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);;
 
         auto wait = semaphores[imageIndex];
+        auto fence = windowFences[imageIndex];
 
         FK_LOG_0("VK: Acquiring Next Image!");
 
-        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, wait, nullptr, &imageIndex); res != VK_SUCCESS)
+        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, wait, fence, &imageIndex); res != VK_SUCCESS)
             throw std::runtime_error("Failed to get next image!");
 
         auto signal = presentSemaphores[imageIndex];
@@ -166,10 +168,6 @@ namespace VK_internal
         FK_LOG_0("VK: Presenting Swapchain!");
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
-
-        auto test0 = renderSystem.GetCurrentCounter();
-        auto test1 = renderSystem.GetCurrentProgress();
-
 
         vkWaitForFences(renderSystem.device, 1, &renderSystem.directQueueFence, true, 100000000);
 
