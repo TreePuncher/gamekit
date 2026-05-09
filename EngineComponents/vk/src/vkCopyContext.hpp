@@ -7,7 +7,7 @@ namespace VK_internal
 {
     using namespace FlexKit;
 
-	struct vkCopyContext : public ICopyContext
+	struct vkCopyContext final : public ICopyContext
 	{
 		vkCopyContext();
 		~vkCopyContext() final {}

@@ -8,7 +8,7 @@ namespace VK_internal
 {
 	using namespace FlexKit;
 
-	struct vkPipelineInterface : IPipelineInterface, NoCopy
+	struct vkPipelineInterface final : IPipelineInterface, NoCopy
 	{
 		vkPipelineInterface(iAllocator& allocator);
 		virtual ~vkPipelineInterface() final;

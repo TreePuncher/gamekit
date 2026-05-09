@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.23)
 project(FlexEngine LANGUAGES CXX VERSION 0.0.1)
 
+if(DEFINED ANDROID_PLATFORM)
+    add_subdirectory(Android)
+else()
+endif()
+
 add_subdirectory(AnimationTest)
 add_subdirectory(HairRendering)
 add_subdirectory(MergePathSortTest)

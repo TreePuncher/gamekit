@@ -88,7 +88,7 @@ namespace FlexKit
 		GetImpl().Release();
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddRootSignature(const IPipelineInterface* rootSig)
+	IPipelineBuilder& PipelineBuilder::AddRootSignature(const IPipelineInterface* rootSig)
 	{
 		auto& impl = GetImpl();
 
@@ -96,7 +96,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -104,7 +104,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddShaderLibrary(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddShaderLibrary(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -112,7 +120,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& desc)
+	IPipelineBuilder& PipelineBuilder::AddComputeShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddComputeShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& desc)
 	{
 		auto& impl = GetImpl();
 
@@ -120,7 +136,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -128,7 +144,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddVertexShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddVertexShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -136,7 +160,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddDomainShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddDomainShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -144,7 +176,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddHullShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddHullShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -152,7 +192,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddGeometryShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddGeometryShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -160,7 +208,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddAmplificationShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddGeometryShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -168,7 +224,15 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& PipelineBuilder::AddMeshShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddMeshShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
 
@@ -177,7 +241,15 @@ namespace FlexKit
 
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::SetDebugName(const char* name)
+	IPipelineBuilder& PipelineBuilder::AddPixelShader(GUID_t guid)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddPixelShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::SetDebugName(const char* name)
 	{
 		auto& impl = GetImpl();
 
@@ -185,7 +257,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddInputLayout(const InputLayoutState& state)
+	IPipelineBuilder& PipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
 		auto& impl = GetImpl();
 
@@ -193,7 +265,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddInputTopology(const ETopology topology)
+	IPipelineBuilder& PipelineBuilder::AddInputTopology(const ETopology topology)
 	{
 		auto& impl = GetImpl();
 
@@ -201,7 +273,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddDepthStencilState(const DepthStencilState& state)
+	IPipelineBuilder& PipelineBuilder::AddDepthStencilState(const DepthStencilState& state)
 	{
 		auto& impl = GetImpl();
 
@@ -209,7 +281,7 @@ namespace FlexKit
 		return impl;
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddRasterizerState(const RasterizerState& state)
+	IPipelineBuilder& PipelineBuilder::AddRasterizerState(const RasterizerState& state)
 	{
 		auto& impl = GetImpl();
 		impl.AddRasterizerState(state);
@@ -217,7 +289,7 @@ namespace FlexKit
 
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
+	IPipelineBuilder& PipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
 		auto& impl = GetImpl();
 
@@ -226,7 +298,7 @@ namespace FlexKit
 
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
+	IPipelineBuilder& PipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
 	{
 		auto& impl = GetImpl();
 
@@ -235,7 +307,7 @@ namespace FlexKit
 
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::AddBlendState(const BlendState& state)
+	IPipelineBuilder& PipelineBuilder::AddBlendState(const BlendState& state)
 	{
 		auto& impl = GetImpl();
 
@@ -255,9 +327,9 @@ namespace FlexKit
 		return impl.BuildStream(renderSystem, buffer, size);
 	}
 
-	IPipelineBuilderImpl& PipelineBuilder::GetImpl()
+	IPipelineBuilder& PipelineBuilder::GetImpl()
 	{
-		return *std::launder<IPipelineBuilderImpl>((IPipelineBuilderImpl*)implSpace);
+		return *std::launder<IPipelineBuilder>((IPipelineBuilder*)implSpace);
 	}
 
 

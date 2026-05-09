@@ -1,6 +1,4 @@
 #src
-
-
 project(flex)
 include(FetchContent)
 
@@ -17,6 +15,8 @@ set(SCN_REGEX_BACKEND "Boost")
 
 FetchContent_MakeAvailable(scn)
 
+message(${ANDROID_ABI})
+
 find_package(Angelscript CONFIG REQUIRED)
 find_package(Boost COMPONENTS Boost::regex)
 find_package(fmt CONFIG REQUIRED)
@@ -30,10 +30,10 @@ find_package(PkgConfig)
 
 set(SCN_REGEX_BACKEND "Boost")
 
-add_library(AngelScriptComponents
-    "src/AngelScriptAddons.cpp")
+#add_library(AngelScriptComponents
+#    "src/AngelScriptAddons.cpp")
 
-target_link_libraries(AngelScriptComponents PUBLIC Angelscript::angelscript)
+#target_link_libraries(AngelScriptComponents PUBLIC Angelscript::angelscript)
 
 add_library(flex
     "src/AnimationComponents.cpp"
@@ -155,9 +155,9 @@ target_include_directories(flex
     )
 
 
-target_link_libraries(flex PUBLIC fmt::fmt)
+target_link_libraries(flex PUBLIC fmt::fmt-header-only)
 target_link_libraries(flex PUBLIC range-v3::meta range-v3::concepts range-v3::range-v3)
-target_link_libraries(flex PRIVATE AngelScriptComponents)
+#target_link_libraries(flex PRIVATE AngelScriptComponents)
 target_link_libraries(flex PUBLIC imgui::imgui)
 target_link_libraries(flex PUBLIC imguizmo::imguizmo)
 target_link_libraries(flex PUBLIC Angelscript::angelscript)
@@ -196,6 +196,12 @@ if(WIN32)
     file(COPY ${D3D12LAYERS_LOCATION} DESTINATION ${CMAKE_BINARY_DIR})
 endif(WIN32)
 
+
+if(DEFINED ANDROID_PLATFORM)
+    message("ANDROID BUILD!!")
+    target_compile_options(flex PUBLIC -std=c++23)
+endif()
+
 if(UNIX)
     #ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
     #SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/libz-ng.a)
@@ -205,7 +211,7 @@ if(UNIX)
     target_link_libraries(flex PRIVATE zlib-ng::zlib)
 endif(UNIX)
 
-set_target_properties(flex PROPERTIES UNITY_BUILD ON)
+#set_target_properties(flex PROPERTIES UNITY_BUILD ON)
 
 install(TARGETS flex DESTINATION lib)
 install(TARGETS flex FILE_SET flex_headers)

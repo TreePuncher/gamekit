@@ -6,7 +6,10 @@
 #include "Unknwnbase.h"
 #endif
 
+#ifndef ANDROID
 #include <directx-dxc/dxcapi.h>
+#endif
+
 #include <spirv/unified1/spirv.hpp>
 
 namespace VK_internal
@@ -77,7 +80,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddRootSignature(const IPipelineInterface* rootSig)
+	IPipelineBuilder& vkPipelineBuilder::AddRootSignature(const IPipelineInterface* rootSig)
 	{
 		return *this;
 	}
@@ -86,7 +89,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddShaderLibrary(const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
@@ -94,16 +97,8 @@ namespace VK_internal
 
 	/************************************************************************************************/
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilderImpl& vkPipelineBuilder::AddWorkGraph(const WorkGraph_Desc& desc)
+	
+	IPipelineBuilder& vkPipelineBuilder::AddShaderLibrary(GUID_t)
 	{
 		return *this;
 	}
@@ -112,7 +107,34 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddWorkGraph(const WorkGraph_Desc& desc)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 		auto shader = vkRS.LoadShader(entryPoint, "vs_6_6", file, options);
@@ -128,7 +150,17 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(GUID_t)
+	{
+		return *this;
+	}
+
+	
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
@@ -137,7 +169,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddDomainShader(GUID_t)
 	{
 		return *this;
 	}
@@ -146,7 +178,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
@@ -155,7 +187,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddHullShader(GUID_t)
 	{
 		return *this;
 	}
@@ -164,7 +196,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
 	}
@@ -173,7 +205,52 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	IPipelineBuilder& vkPipelineBuilder::AddGeometryShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddAmplificationShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddMeshShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
@@ -193,7 +270,16 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const Shader& shader)
+	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const Shader& shader)
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
@@ -212,7 +298,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::SetDebugName(const char* name)
+	IPipelineBuilder& vkPipelineBuilder::SetDebugName(const char* name)
 	{
 		return *this;
 	}
@@ -221,7 +307,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddInputLayout(const InputLayoutState& state)
+	IPipelineBuilder& vkPipelineBuilder::AddInputLayout(const InputLayoutState& state)
 	{
 		VertexStateObject& inputLayout = [this]() -> VertexStateObject&
 			{
@@ -290,7 +376,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddInputTopology(const ETopology topology)
+	IPipelineBuilder& vkPipelineBuilder::AddInputTopology(const ETopology topology)
 	{
 		VkPipelineInputAssemblyStateCreateInfo& inputLayout = [this]() -> VkPipelineInputAssemblyStateCreateInfo&
 			{
@@ -320,7 +406,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddDepthStencilState(const DepthStencilState& state)
+	IPipelineBuilder& vkPipelineBuilder::AddDepthStencilState(const DepthStencilState& state)
 	{
 		return *this;
 	}
@@ -329,7 +415,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddRasterizerState(const RasterizerState& state)
+	IPipelineBuilder& vkPipelineBuilder::AddRasterizerState(const RasterizerState& state)
 	{
 		VkPipelineRasterizationStateCreateInfo* info = [this]()
 			{
@@ -394,7 +480,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
+	IPipelineBuilder& vkPipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
 		VkPipelineViewportStateCreateInfo& viewport = [this]() -> VkPipelineViewportStateCreateInfo&
 			{
@@ -428,7 +514,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
+	IPipelineBuilder& vkPipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
 	{
 		return *this;
 	}
@@ -437,7 +523,7 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilderImpl& vkPipelineBuilder::AddBlendState(const BlendState& state)
+	IPipelineBuilder& vkPipelineBuilder::AddBlendState(const BlendState& state)
 	{
 		return *this;
 	}

@@ -159,7 +159,7 @@ struct TestState : FrameworkState
 #if WIN32
 		renderWindow	= CreateWin32VKSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #else
-		renderWindow	= CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+		//renderWindow	= CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 #else
 		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);

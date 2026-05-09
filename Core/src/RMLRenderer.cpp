@@ -8,7 +8,10 @@
 #include <filesystem>
 #include <fp16.h>
 #include <span>
+
+#ifdef WIN32
 #include <stacktrace>
+#endif
 
 #undef GetNextSibling
 

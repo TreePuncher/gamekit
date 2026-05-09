@@ -639,7 +639,7 @@ namespace FlexKit
 		}
 
 
-		HWND						WindowHandle() const { return hWindow; }
+		HWND WindowHandle() const { return hWindow; }
 
 
 		dxRenderSystem*		renderSystem	= nullptr;

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "ThreadUtilities.hpp"
 #include <atomic>
 #include <chrono>
@@ -120,6 +118,8 @@ namespace FlexKit
 
 	void _WorkerThread::_Run()
 	{
+		using namespace std::chrono_literals;
+
 		Running.store(true);
 
 		EXITSCOPE({
@@ -128,8 +128,12 @@ namespace FlexKit
 
 		while (true)
 		{
+			#if X64
 			size_t waitTime = 4000;
-
+			#else
+			auto waitTime = std::chrono::microseconds{4};
+			#endif
+			
 			for(size_t I = 0; I < 10; I++)
 			{
 				EXITSCOPE({
@@ -149,10 +153,19 @@ namespace FlexKit
 				}
 				else if(I > 1) // Reduce thread contention a little
 				{
-					const auto begin = __rdtsc();
+					auto GetTime = []()
+						{
+							#if X64
+								return __rdtsc();
+							#else
+								return std::chrono::high_resolution_clock::now();
+							#endif
+						};
+
+					const auto begin = GetTime(); 
 					while (true)
 					{
-						const auto current	= __rdtsc();
+						const auto current	= GetTime();
 						const auto duration = current - begin;
 
 						if (duration >= waitTime)

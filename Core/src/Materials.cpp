@@ -403,7 +403,7 @@ namespace FlexKit
 	bool MaterialComponent::MaterialView::Shared() const
 	{
 		const auto& material		= GetComponent()[handle];
-		const auto& refCount_ref	= material.refCount;
+		auto& refCount_ref			= const_cast<uint32_t&>(material.refCount);
 		return std::atomic_ref(refCount_ref).load(std::memory_order_acquire) > 1;
 	}
 

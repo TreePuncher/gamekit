@@ -22,12 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifdef _WIN32
 #pragma once
-#endif
-
-#ifndef CTHREAD_H
-#define CTHREAD_H
 
 	// includes
 #include "Containers.hpp"
@@ -714,9 +709,7 @@ namespace FlexKit
 
 
 		SynchronizedOperation(SynchronizedOperation&& rhs) :
-			operation		{ std::move(rhs.operation) },
-			criticalSection	{ std::move(rhs.criticalSection) } {}
-
+			operation		{ std::move(rhs.operation) } {}
 
 		SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
 		{
@@ -914,5 +907,3 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }	// namespace FlexKit
-
-#endif

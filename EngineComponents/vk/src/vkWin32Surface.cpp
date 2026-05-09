@@ -7,6 +7,7 @@
 #include "timeapi.h"
 #include <vulkan/vulkan.hpp>
 #include <vkRenderSystem.hpp>
+#include <vkSwapchain.hpp>
 
 #pragma comment(lib, "Winmm.lib")
 
@@ -368,109 +369,19 @@ namespace FlexKit
 
 	struct vkRenderWindow : IRenderWindow
 	{
-		~vkRenderWindow() final { Release(); }
+		vkRenderWindow(VkSurfaceKHR IN_surface, uint2 IN_WH, DeviceFormat format) : 
+			swapchain{ IN_surface, IN_WH, format } {}
 
-		virtual ResourceHandle GetBackBuffer() const
-		{
-			return resource;
-		}
+		~vkRenderWindow() final 					{ Release(); }
+		ResourceHandle GetBackBuffer() const final	{ return swapchain.GetBackBuffer(); }
+		uint2 GetWH() const final 					{ return swapchain.GetWH(); }
 
-		void UpdateBufferIdx()
-		{
-			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
-
-			layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);;
-
-			auto wait = semaphores[imageIndex];
-
-			if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, wait, nullptr, &imageIndex); res != VK_SUCCESS)
-				throw std::exception("Failed to get next image!");
-
-			auto signal = presentSemaphores[imageIndex];
-
-			renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout, ResourceFieldID::View>(
-				resource,
-				vkResourceEntry{
-				    .type	= vkResourceEntry::Type::RenderTarget,
-					.image	= images[imageIndex]
-				},
-				layout[imageIndex],
-				vkResourceViews{ .imageView = views[imageIndex] });
-
-			current[0] = wait;
-			current[1] = signal;
-		}
-
-
-		uint2 GetWH() const final
-		{
-			return vkRenderSystem::GetInstance().GetTextureTilingWH(resource, 0);
-		}
-
-		bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) final
-		{
-			auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
-
-			auto test0 = renderSystem.GetCurrentCounter();
-			auto test1 = renderSystem.GetCurrentProgress();
-
-
-			vkWaitForFences(renderSystem.device, 1, &renderSystem.directQueueFence, true, 100000000);
-
-			VkPresentInfoKHR presentInfo = {
-				.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-				.pNext				= nullptr,
-
-				.waitSemaphoreCount	= 1,
-				.pWaitSemaphores	= &GetNextSemaphore(),
-
-				.swapchainCount		= 1,
-				.pSwapchains		= &swapchain,
-
-				.pImageIndices		= &imageIndex,
-				.pResults			= nullptr
-			};
-
-			auto res = vkQueuePresentKHR(renderSystem.GetQueue(), &presentInfo) == VK_SUCCESS;
-
-			UpdateBufferIdx();
-
-			return res;
-		}
-
-		void Resize(const uint2 WH) final
-		{
-		    
-		}
-
-		void Release() final
-		{
-			vkRenderSystem::GetInstance().ReleaseResource(resource);
-		}
-
-		VkSemaphore& GetSemaphore() 
-		{
-			return current[0];
-		}
-
-		VkSemaphore& GetNextSemaphore() 
-		{
-			return current[1];
-		}
+		bool Present(const uint32_t syncInternal, const uint32_t flags) final 	{ return swapchain.Present(syncInternal, flags); }
+		void Resize(const uint2 WH) final 										{ return swapchain.Resize(WH); }
+		void Release() final 													{ swapchain.Release(); }
 
 		VkSurfaceKHR	surface		= nullptr;
-		VkSwapchainKHR	swapchain	= nullptr;
-		VkFence			windowFence;
-		VkSemaphore		semaphores[3];
-		VkSemaphore		presentSemaphores[3];
-
-	    ResourceHandle	resource	= InvalidHandle;
-		VkImage			images[3];
-		VkImageView		views[3]	= { nullptr, nullptr, nullptr };
-		DeviceLayout	layout[3]	= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
-		uint32_t		imageIndex;
-
-		VkSemaphore		current[2];
+		vkSwapchain		swapchain;
 	};
 
 
@@ -530,117 +441,7 @@ namespace FlexKit
 			return nullptr;
 		}
 
-		VkSurfaceCapabilitiesKHR capabilities;
-		uint32_t surfaceCount = 0;
-		VkSurfaceFormatKHR formats[128];
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkRS.device.physical_device, surface, &capabilities);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, nullptr);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, formats);
-
-
-		VkSwapchainCreateInfoKHR createSwapChainInfo{
-		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-            .pNext					= 0,
-            .flags					= 0,
-            .surface				= surface,
-            .minImageCount			= 3,
-            .imageFormat			= VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
-            .imageColorSpace		= VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .imageExtent			= { .width = capabilities.maxImageExtent.width, .height = capabilities.maxImageExtent.height },
-            .imageArrayLayers		= 1,
-            .imageUsage				= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-            .imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE,
-            .queueFamilyIndexCount	= 0,
-            .pQueueFamilyIndices	= nullptr,
-            .preTransform			= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-            .compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            .presentMode			= VK_PRESENT_MODE_FIFO_KHR,
-            .clipped				= false,
-            .oldSwapchain			= nullptr
-		};
-
-		VkSwapchainKHR swapchain = nullptr;
-		if (auto res = vkCreateSwapchainKHR(device, &createSwapChainInfo, nullptr, &swapchain); res != VK_SUCCESS)
-		{
-			FK_LOG_ERROR("Failed to create vulkan swapchain");
-			return nullptr;
-		}
-
-		auto desc			= GPUResourceDesc::RenderTarget(WH, format);
-		desc._ptr			= swapchain;
-		desc.initialLayout	= DeviceLayout::Undefined;
-
-
-		auto renderTarget = renderSystem.CreateGPUResource(desc);
-		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>();
-
-		uint imageCount;
-		vkGetSwapchainImagesKHR(device, swapchain, &imageCount, newRenderWindow.images);
-
-		VkImageViewCreateInfo createInfo{};
-		createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		createInfo.viewType							= VK_IMAGE_VIEW_TYPE_2D;
-		createInfo.format							= createSwapChainInfo.imageFormat;
-		createInfo.components.r						= VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g						= VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b						= VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a						= VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
-		createInfo.subresourceRange.baseMipLevel	= 0;
-		createInfo.subresourceRange.levelCount		= 1;
-		createInfo.subresourceRange.baseArrayLayer	= 0;
-		createInfo.subresourceRange.layerCount		= 1;
-
-		for (size_t i = 0; i < 3; i++)
-		{
-			createInfo.image = newRenderWindow.images[i];
-			if (auto res = vkCreateImageView(device, &createInfo, nullptr, &newRenderWindow.views[i]); res != VK_SUCCESS)
-				FK_LOG_ERROR("VK: Failed to create swapchain image view");
-		}
-
-		VkSemaphoreCreateInfo createSemaphoreInfo{
-			.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0
-		};
-
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[0]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[1]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.semaphores[2]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[0]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[1]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-		if (auto res = vkCreateSemaphore(device, &createSemaphoreInfo, nullptr, &newRenderWindow.presentSemaphores[2]); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create timeline semaphore queue!");
-
-
-		VkFenceCreateInfo createFenceInfo{
-			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0
-		};
-
-		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &newRenderWindow.windowFence); res != VK_SUCCESS)
-			throw std::runtime_error("Failed to create fence for direct queue!");
-
-		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags, ResourceFieldID::View, ResourceFieldID::XYZW>(
-			    renderTarget,
-			    (void*)newRenderWindow.current,
-			    ResourceFlags::SwapChain | ResourceFlags::RenderTarget,
-			    vkResourceViews{ .imageView = newRenderWindow.views[0] },
-                uint4{ createSwapChainInfo.imageExtent.width, createSwapChainInfo.imageExtent.height }
-		);
-
-		newRenderWindow.resource	= renderTarget;
-		newRenderWindow.swapchain	= swapchain;
-		newRenderWindow.surface		= surface;
-
-		newRenderWindow.UpdateBufferIdx();
+		auto& newRenderWindow = static_cast<vkRenderSystem&>(renderSystem).allocator->allocate<vkRenderWindow>(surface, WH, format);
 
 		return &newRenderWindow;
 	}

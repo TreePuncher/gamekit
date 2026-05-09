@@ -6,7 +6,10 @@
 #include <loguru/loguru.hpp>
 #include <stdarg.h>
 #include <string>
+
+#ifdef WIN32
 #include <stacktrace>
+#endif
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -144,6 +147,8 @@ namespace FlexKit
 			else if (description.size() <= strackDescriptionMaxLength)
 				traceMessage += " \t..." + description.substr(description.size() - strackDescriptionMaxLength, strackDescriptionMaxLength) + "\n ";
 		}
+#else
+		traceMessage += "Trace not available!";
 #endif
 
 		return traceMessage;

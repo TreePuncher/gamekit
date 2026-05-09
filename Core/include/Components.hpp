@@ -1044,8 +1044,9 @@ namespace FlexKit
 	{
 		using Type			= StringIDView&;
 		using ValueType		= StringIDView;
+		
 		static constexpr bool IsConst() { return false; }
-		const std::regex& pattern;
+		const std::regex& pattern	= std::regex{ "" };
 
 		StringPatternQuery() = default;
 

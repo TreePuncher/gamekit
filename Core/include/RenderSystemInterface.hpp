@@ -837,7 +837,7 @@ namespace FlexKit
 
 	struct AvailableFeatures
 	{
-		enum struct Raytracing
+		enum Raytracing
 		{
 			RT_FeatureLevel_NOTAVAILABLE,
 			RT_FeatureLevel_1,
@@ -850,7 +850,7 @@ namespace FlexKit
 			ConservativeRast_NOTAVAILABLE,
 		} conservativeRast = ConservativeRast_NOTAVAILABLE;
 
-		enum struct HLSLCompiler
+		enum HLSLCompiler
 		{
 			HLSL_CompilerEnabled,
 			HLSL_CompilerDisabled
@@ -1190,7 +1190,7 @@ namespace FlexKit
 
 			return {};
 		}
-
+		
 		template<typename TY_fn>
 		void ForEachDescriptorSetAttribute(TY_fn fn) requires( std::is_invocable_r_v<void, TY_fn, const ShaderAttributeDescriptorTable&>)
 		{
@@ -1220,6 +1220,37 @@ namespace FlexKit
 		SHADER_TYPE		type		= SHADER_TYPE::Unknown;
 		ShaderExtra*	extra		= nullptr;
 		iAllocator*		allocator	= nullptr;
+	};
+
+	struct ShaderResourceBlob
+	{
+		static const size_t ID_LENGTH = 64;
+
+		struct ShaderAttributeBlob
+		{
+			ShaderAttribute attribute;
+		};
+
+		struct Header
+		{
+			size_t			ResourceSize;
+			uint32_t		Type;
+			size_t			GUID;
+			size_t			Pad;
+
+			char ID[ID_LENGTH];
+
+			uint32_t attributeCount;
+			uint32_t byteCodeByteSize;
+			uint32_t byteCodeOffset;
+			uint32_t byteCodeAttributeOffset;
+		} header;
+
+		size_t 						GetAttributeCount	(uint32_t idx) const noexcept { return 0u; }
+		const ShaderAttributeBlob* 	GetShaderAttribute	(uint32_t idx) const noexcept { return nullptr; }
+		
+		const char*	GetByteCode() 	const noexcept { return nullptr; }
+		size_t	GetByteCodeSize	() 	const noexcept { return 0u; }
 	};
 
 
@@ -1545,7 +1576,7 @@ namespace FlexKit
 		ResourceType			type;
 		TextureDimension		Dimensions		= TextureDimension::Texture2D;
 		ResourceAllocationType	allocationType	= ResourceAllocationType::Committed;
-		DeviceFormat			format;
+		DeviceFormat			format			= DeviceFormat::UNKNOWN;
 		DeviceLayout			initialLayout	= DeviceLayout::Common;
 
 		// Dimensions
@@ -2138,37 +2169,46 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct IPipelineBuilderImpl : NoCopy
+	struct IPipelineBuilder : NoCopy
 	{
-		virtual ~IPipelineBuilderImpl() {}
+		virtual ~IPipelineBuilder() {}
 		virtual void Release() = 0;
 
-		virtual IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig) = 0;
+		virtual IPipelineBuilder& AddRootSignature	(const IPipelineInterface* rootSig) = 0;
 
-		virtual IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {}) = 0;
+		virtual IPipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddShaderLibrary	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddComputeShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {}) = 0;
 
-		virtual IPipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddVertexShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddDomainShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddHullShader		(GUID_t) = 0;
+		virtual IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddGeometryShader	(GUID_t) = 0;
 
-		virtual IPipelineBuilderImpl& AddAmplificationShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddAmplificationShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddAmplificationShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddMeshShader				(GUID_t) = 0;
 
-		virtual IPipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
-		virtual IPipelineBuilderImpl& AddPixelShader			(const char* entryPoint, const Shader&) = 0;
+		virtual IPipelineBuilder& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
+		virtual IPipelineBuilder& AddPixelShader			(GUID_t) = 0;
+		virtual IPipelineBuilder& AddPixelShader			(const char* entryPoint, const Shader& shader) = 0;
 
-		virtual IPipelineBuilderImpl& SetDebugName(const char* name) = 0;
+		virtual IPipelineBuilder& SetDebugName(const char* name) = 0;
 
-		virtual IPipelineBuilderImpl& AddInputLayout		(const InputLayoutState&	state = {}) = 0;
-		virtual IPipelineBuilderImpl& AddInputTopology		(const ETopology			topology) = 0;
-		virtual IPipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {})= 0;
-		virtual IPipelineBuilderImpl& AddRasterizerState	(const RasterizerState&		state = {})= 0;
-		virtual IPipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {})= 0;
-		virtual IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT) = 0;
-		virtual IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {}) = 0;
+		virtual IPipelineBuilder& AddInputLayout		(const InputLayoutState&	state = {}) = 0;
+		virtual IPipelineBuilder& AddInputTopology		(const ETopology			topology) = 0;
+		virtual IPipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {})= 0;
+		virtual IPipelineBuilder& AddRasterizerState	(const RasterizerState&		state = {})= 0;
+		virtual IPipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {})= 0;
+		virtual IPipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT) = 0;
+		virtual IPipelineBuilder& AddBlendState			(const BlendState&			state = {}) = 0;
 
 		virtual LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator) = 0;
 		virtual LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size) = 0;
@@ -2180,39 +2220,48 @@ namespace FlexKit
 	    PipelineBuilder(IRenderSystem&, iAllocator& allocator);
 		~PipelineBuilder();
 
-		IPipelineBuilderImpl& AddRootSignature	(const IPipelineInterface* rootSig);
+		IPipelineBuilder& AddRootSignature	(const IPipelineInterface* rootSig);
 
-		IPipelineBuilderImpl& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddWorkGraph		(const WorkGraph_Desc& desc = {});
+		IPipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddShaderLibrary	(GUID_t);
+		IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddComputeShader	(GUID_t);
+		IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {});
 
-		IPipelineBuilderImpl& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddVertexShader	(GUID_t);
+		IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddDomainShader	(GUID_t);
+		IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddHullShader		(GUID_t);
+		IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddGeometryShader	(GUID_t);
 
-		IPipelineBuilderImpl& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddAmplificationShader(GUID_t);
+		IPipelineBuilder& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddMeshShader			(GUID_t);
 
-		IPipelineBuilderImpl& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
-		IPipelineBuilderImpl& AddPixelShader		(Shader);
+		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
+		IPipelineBuilder& AddPixelShader		(GUID_t);
+		IPipelineBuilder& AddPixelShader		(Shader);
 
-		IPipelineBuilderImpl& SetDebugName			(const char* name) ;
+		IPipelineBuilder& SetDebugName			(const char* name) ;
 
-		IPipelineBuilderImpl& AddInputLayout		(const InputLayoutState&	state = {});
-		IPipelineBuilderImpl& AddInputTopology		(const ETopology			topology);
-		IPipelineBuilderImpl& AddDepthStencilState	(const DepthStencilState&	state = {});
-		IPipelineBuilderImpl& AddRasterizerState	(const RasterizerState&		state = {});
-		IPipelineBuilderImpl& AddRenderTargetState	(const RenderTargetState&	state = {});
-		IPipelineBuilderImpl& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		IPipelineBuilderImpl& AddBlendState			(const BlendState&			state = {});
+		IPipelineBuilder& AddInputLayout		(const InputLayoutState&	state = {});
+		IPipelineBuilder& AddInputTopology		(const ETopology			topology);
+		IPipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {});
+		IPipelineBuilder& AddRasterizerState	(const RasterizerState&		state = {});
+		IPipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {});
+		IPipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
+		IPipelineBuilder& AddBlendState			(const BlendState&			state = {});
 
 		LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator);
 		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size);
 
 
 	private:
-		IPipelineBuilderImpl& GetImpl();
+		IPipelineBuilder& GetImpl();
 		std::byte implSpace[128];
 	};
 
@@ -2651,13 +2700,14 @@ namespace FlexKit
 		}
 
 		virtual bool													Initiate(Graphics_Desc& desc) = 0;
+		virtual AvailableFeatures										GetFeatures() const noexcept = 0;
 
-		virtual void													BuildLibrary			(PSOHandle State, const PipelineStateLibraryDesc) = 0;
-		virtual void													RegisterPSOLoader		(PSOHandle State, LOADSTATE_FN FN) = 0;
-		virtual void													LoadPSOIfRequired		(PSOHandle State) = 0;
-		virtual void													QueuePSOLoad			(PSOHandle State) = 0;
+		virtual void													BuildLibrary			(PSOHandle state, const PipelineStateLibraryDesc) = 0;
+		virtual void													RegisterPSOLoader		(PSOHandle state, LOADSTATE_FN FN) = 0;
+		virtual void													LoadPSOIfRequired		(PSOHandle state) = 0;
+		virtual void													QueuePSOLoad			(PSOHandle state) = 0;
 
-		virtual const IPipelineState*									GetPSO					(PSOHandle State, iAllocator& temp) = 0;
+		virtual const IPipelineState*									GetPSO					(PSOHandle state, iAllocator& temp) = 0;
 		virtual const IPipelineInterface* const 						GetPSORootSignature		(PSOHandle state) const = 0;
 		virtual std::tuple<IPipelineState*, const IPipelineInterface*>	GetPSOAndRootSignature	(PSOHandle stateID, iAllocator& temp) const = 0;
 
@@ -2687,15 +2737,15 @@ namespace FlexKit
 
 		virtual SyncPoint	Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync = {})	= 0;
 
-		virtual void		EndFrame()																	= 0;
-		virtual void		Signal(SyncPoint)															= 0;
+		virtual void		EndFrame()			= 0;
+		virtual void		Signal(SyncPoint) 	= 0;
 
 		virtual void		WaitForGPU()				= 0;
-		virtual void		WaitFor(const uint64_t)	= 0;
+		virtual void		WaitFor(const uint64_t)		= 0;
 		virtual void		WaitFor(const SyncPoint&)	= 0;
 
 		// Debug
-		virtual void		SetDebugName(ResourceHandle, const char*)		= 0;
+		virtual void		SetDebugName(ResourceHandle, const char*)	= 0;
 		virtual void		SetDebugName(DeviceHeapHandle, const char*)	= 0;
 
 
@@ -2725,7 +2775,7 @@ namespace FlexKit
 		virtual size_t					GetResourceSize			(ResourceHandle desc)			const noexcept = 0;
 
 		virtual size_t					GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
-		virtual size_t					GetAllocationSize		(GPUResourceDesc desc) const noexcept = 0; // Includes padding and alignment
+		virtual size_t					GetAllocationSize		(GPUResourceDesc desc) 	const noexcept = 0; // Includes padding and alignment
 
 		virtual size_t					GetTextureElementSize	(ResourceHandle   Handle) const = 0;
 		virtual uint2					GetTextureWH			(ResourceHandle   Handle) const = 0;
@@ -3076,7 +3126,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2025 Robert May
+Copyright (c) 2025-2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

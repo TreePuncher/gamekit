@@ -634,10 +634,10 @@ namespace FlexKit
 					return Qlerp(A, B, I);
 				};
 
-			const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
-			const auto defaultPose  = res->sk->JointPoses[joint];
+			//const auto value        = range.begin->Begin == range.end->Begin ? range.begin->Value : interpolate();
+			//const auto defaultPose  = res->sk->JointPoses[joint];
 
-			res->jointPose[joint].r *= Quaternion{ value[0], value[1], value[2], value[3] };
+			//res->jointPose[joint].r *= Quaternion{ value[0], value[1], value[2], value[3] };
 		}
 	}
 
@@ -1100,7 +1100,8 @@ namespace FlexKit
 								else
 								{
 									JointHandle itr = IKController.endEffector;
-									while (GetParentJoint(itr) != InvalidHandle, itr = GetParentJoint(itr));
+									for (;GetParentJoint(itr) != InvalidHandle; itr = GetParentJoint(itr));
+
 									return (poseState->CurrentPose[itr] * float4{ 0, 0, 0, 1 }).xyz();
 								}
 							};
@@ -1328,6 +1329,8 @@ namespace FlexKit
 
 						RunCtx(ctx);
 					}	break;
+					default:
+						break;
 					}
 
 					evt.Clear();

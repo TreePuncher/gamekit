@@ -24,14 +24,20 @@
 #include <simde/arm/neon.h>
 #endif
 
-#ifdef __clang__
-#include <range/v3/view/iota.hpp>
-#include <range/v3/view/zip.hpp>
-using ranges::zip_view;
-using ranges::iota_view;
-#else
 using std::views::iota;
 using std::views::zip;
+
+#ifdef __clang__
+using std::views::iota;
+using std::views::zip;
+
+auto enumerate(auto&& container)
+{
+	return zip(iota(0), container);
+}
+
+#else
+
 using std::views::enumerate;
 #endif
 
@@ -2731,7 +2737,7 @@ namespace FlexKit
 		constexpr const Vect<Width, Ty>		GetRow(const size_t rowIdx)	const noexcept
 		{	
 			Vect<Width, Ty> out;
-			for (auto [idx, s] : zip(iota(0), matrix[rowIdx]))
+			for (auto [idx, s] : enumerate(matrix[rowIdx]))
 				out[idx] = s;
 
 			return out;
@@ -2741,7 +2747,7 @@ namespace FlexKit
 		{
 			if (std::is_constant_evaluated())
 			{
-				for (auto [idx, s] : zip(iota(0), v))
+				for (auto [idx, s] : enumerate(v))
 					matrix[rowIdx][idx] = s;
 			}
 			else
@@ -2877,8 +2883,8 @@ namespace FlexKit
 	{
 		float4x4 Out = float4x4::Identity();
 
-		for (const auto [i, v] : enumerate(POS))
-			Out(3, i) = v;
+		//for (const auto [i, v] : zip(iota(0), POS))
+		//	Out(3, i) = v;
 
 		return Out;
 	}

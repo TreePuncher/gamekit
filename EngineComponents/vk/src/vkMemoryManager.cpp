@@ -61,7 +61,7 @@ namespace VK_internal
         #if WIN32
         _BitScanReverse64(&index, requiredSize);
         #else
-        FK_ASSERT("NEED PLATFORM BITSCANREVERSE");
+        index = ceil(log2(requiredSize));
         #endif
         
         uint64_t size = 0x1 << (index + 2);
@@ -88,7 +88,8 @@ namespace VK_internal
         VkDeviceMemory memory;
         if (auto res = vkAllocateMemory(device, &allocateInfo, nullptr, &memory); res != VK_SUCCESS)
         {
-            int x = 0;
+            FK_LOG_ERROR("VK: Failed to allocate memory! Size: %uz", requiredSize);
+            throw std::runtime_error{ "VK: Failed to to allocate memory" };
         }
 
         slabs.push_back(Slab{
