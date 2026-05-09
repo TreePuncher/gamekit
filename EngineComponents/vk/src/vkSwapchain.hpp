@@ -20,16 +20,16 @@ namespace VK_internal
 		VkSemaphore& GetNextSemaphore();
 
 
-        VkSwapchainKHR	swapchain	= nullptr;
-		VkFence			windowFence;
+        VkSwapchainKHR	swapchain = nullptr;
 		VkSemaphore		semaphores[3];
 		VkSemaphore		presentSemaphores[3];
 
 	    ResourceHandle	resource	= InvalidHandle;
 		VkImage			images[3];
+		VkFence			windowFences[3];
 		VkImageView		views[3]	= { nullptr, nullptr, nullptr };
 		DeviceLayout	layout[3]	= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
-		uint32_t		imageIndex;
+		uint32_t		imageIndex	= 0;
 		VkSemaphore		current[2];
     };
 }   // namespace VK_internal

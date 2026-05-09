@@ -15,8 +15,6 @@ set(SCN_REGEX_BACKEND "Boost")
 
 FetchContent_MakeAvailable(scn)
 
-message(${ANDROID_ABI})
-
 find_package(Angelscript CONFIG REQUIRED)
 find_package(Boost COMPONENTS Boost::regex)
 find_package(fmt CONFIG REQUIRED)

@@ -526,8 +526,7 @@ namespace VK_internal
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
-		FK_LOG_0(
-			"VK: Vulkan SDK VERSION: %i\n", VK_HEADER_VERSION);
+		FK_LOG_0("VK: Vulkan SDK VERSION: %i\n", VK_HEADER_VERSION);
 
 		#ifdef ANDROID
 		FK_LOG_0("VK: Android Detected!");
@@ -536,12 +535,12 @@ namespace VK_internal
 		allocator = desc.Memory;
 		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
-			"VK_KHR_android_surface",
+			VK_KHR_DISPLAY_EXTENSION_NAME,
 #ifdef ANDROID
+			"VK_KHR_android_surface",
 #endif
 #ifdef WIN32
-			//VK_KHR_WIN32_SURFACE_EXTENSION_NAME
-			//VK_KHR_DISPLAY_EXTENSION_NAME,
+			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 #ifdef __linux__
 			//VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
@@ -553,11 +552,10 @@ namespace VK_internal
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("Hello Vulkan")
-		    .require_api_version(1, 4, 0)
+		    .require_api_version(1, 4, VK_HEADER_VERSION)
 			.request_validation_layers()
 			.set_headless()
 		    .enable_extensions(std::size(extensions), extensions)
-			//.use_default_debug_messenger()
 			.set_debug_callback (
 				[] (VkDebugUtilsMessageSeverityFlagBitsEXT 		messageSeverity,
 					VkDebugUtilsMessageTypeFlagsEXT 			messageType,
@@ -565,18 +563,19 @@ namespace VK_internal
 					void*										pUserData)
 					-> VkBool32 
 					{
-						auto severity = vkb::to_string_message_severity(messageSeverity);
-						auto type = vkb::to_string_message_type(messageType);
+						auto severity	= vkb::to_string_message_severity(messageSeverity);
+						auto type		= vkb::to_string_message_type(messageType);
 
-						auto message = std::format("Severity: {}, Type: {}, Message: {}", severity, type, pCallbackData->pMessage);
+						auto message = std::format("VK: Validation Error! Severity: {}, Type: {}, Message: {}", severity, type, pCallbackData->pMessage);
 						FK_LOG_INFO(message.c_str());
+						return false;
 					})
 
 			.build();
 
 		if (!instReq)
 		{
-			FK_LOG_ERROR("VK:vkRenderSystem::Initiate Missing Instance Extension!");
+			FK_LOG_ERROR("VK:vkRenderSystem::Initiate(...): Missing Instance Extension!");
 			return false;
 		}
 
@@ -1821,9 +1820,9 @@ namespace VK_internal
 	{
 #ifndef ANDROID
 
-		IDxcUtils*			hlslUtils			= nullptr;
-		IDxcIncludeHandler* hlslIncludeHandler	= nullptr;
-		IDxcCompiler3*		hlslCompiler		= nullptr;
+		IDxcUtils* hlslUtils = nullptr;
+		IDxcIncludeHandler* hlslIncludeHandler = nullptr;
+		IDxcCompiler3* hlslCompiler = nullptr;
 
 		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslUtils))))
 			throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
@@ -1835,12 +1834,12 @@ namespace VK_internal
 
 		EXITSCOPE({
 			if (hlslUtils) hlslUtils->Release();
-		    if (hlslIncludeHandler) hlslIncludeHandler->Release();
-		    if (hlslCompiler) hlslCompiler->Release();
-		});
+			if (hlslIncludeHandler) hlslIncludeHandler->Release();
+			if (hlslCompiler) hlslCompiler->Release();
+			});
 
 
-        std::filesystem::path filePath{ file };
+		std::filesystem::path filePath{ file };
 		auto parentPath = filePath.parent_path();
 
 		wchar_t entryPointW[64];
@@ -1917,13 +1916,13 @@ namespace VK_internal
 		}
 
 		IncludeHandler includeHandler;
-		includeHandler.includePath      = parentPath;
-		includeHandler.handler          = hlslIncludeHandler;
+		includeHandler.includePath = parentPath;
+		includeHandler.handler = hlslIncludeHandler;
 
 
 		IDxcCompiler2* debugCompiler = nullptr;
 		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
-		
+
 		static_vector<LPCWSTR> arguments;
 
 #if USING(DEBUGSHADERS)
@@ -1937,11 +1936,11 @@ namespace VK_internal
 		arguments.push_back(entryPointW);
 
 		//arguments.push_back(L"/T rootsig_1_1");
-		#else
+#else
 		arguments.push_back(L"-O3");
 #endif
 
-		if(options.enable16BitTypes)
+		if (options.enable16BitTypes)
 			arguments.push_back(L"-enable-16bit-types");
 
 		if (options.hlsl2021)
@@ -1957,20 +1956,20 @@ namespace VK_internal
 		int _;
 
 #if WIN32
-			blob->GetEncoding(&_, &buffer.Encoding);
+		blob->GetEncoding(&_, &buffer.Encoding);
 #endif
 
 		HRESULT HR2;
 		try
 		{
-			#if WIN32
+#if WIN32
 			HR2 = hlslCompiler->Compile(
 				&buffer,
 				arguments.data(),
 				arguments.size(),
-                &includeHandler,
+				&includeHandler,
 				IID_PPV_ARGS(&result));
-			#endif
+#endif
 		}
 		catch (...)
 		{
@@ -1979,7 +1978,7 @@ namespace VK_internal
 
 		if (FAILED(HR2))
 		{
-			if(result)
+			if (result)
 				result->Release();
 
 			return {};
@@ -2013,16 +2012,16 @@ namespace VK_internal
 				errors->Release();
 				IDxcResult* compileResult = nullptr;
 
-				#if WIN32
-					HR2 = hlslCompiler->Compile(
-						&buffer,
-						arguments.data(),
-						(UINT)arguments.size(),
-						&includeHandler,
-						IID_PPV_ARGS(&result));
+#if WIN32
+				HR2 = hlslCompiler->Compile(
+					&buffer,
+					arguments.data(),
+					(UINT)arguments.size(),
+					&includeHandler,
+					IID_PPV_ARGS(&result));
 
-					result->GetStatus(&status);
-				#endif
+				result->GetStatus(&status);
+#endif
 			}
 
 
@@ -2034,7 +2033,7 @@ namespace VK_internal
 			byteCodeBlob->Release();
 
 			if (attributes.size())
-			    out.GetExtra().attributes = std::move(attributes);
+				out.GetExtra().attributes = std::move(attributes);
 
 			out.type = type;
 			result->Release();
@@ -2042,7 +2041,7 @@ namespace VK_internal
 			return out;
 		}
 
-		return out;
+		return {};
 		#else
 		FK_LOG_ERROR("NO SHADER COMPILATION ON ANDROID!");
 		#endif

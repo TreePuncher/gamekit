@@ -373,7 +373,7 @@ namespace FlexKit
 			swapchain{ IN_surface, IN_WH, format } {}
 
 		~vkRenderWindow() final 					{ Release(); }
-		ResourceHandle GetBackBuffer() const final	{ return swapchain.GetBackBuffer(); }
+		ResourceHandle GetBackBuffer() const final	{ return swapchain.resource; }
 		uint2 GetWH() const final 					{ return swapchain.GetWH(); }
 
 		bool Present(const uint32_t syncInternal, const uint32_t flags) final 	{ return swapchain.Present(syncInternal, flags); }

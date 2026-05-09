@@ -519,7 +519,7 @@ namespace FlexKit
 	{
 		FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
 #if _DEBUG
-		std::chrono::system_clock Clock;
+		std::chrono::steady_clock Clock;
 		auto Before = Clock.now();
 		FINALLY
 			auto After = Clock.now();

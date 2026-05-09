@@ -137,7 +137,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool FKApplication::Wait()
+	void FKApplication::Wait()
 	{
 		while(framework.Running());
 	}

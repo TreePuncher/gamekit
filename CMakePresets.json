@@ -94,7 +94,7 @@
             },
             "vendor": {
                 "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
-                    "sourceDir": "$ENV{HOME}/.vs/$ms{projectDirName}"
+                    "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
                 }
             }
         }

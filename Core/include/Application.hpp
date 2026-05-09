@@ -69,7 +69,7 @@ namespace FlexKit
 
 		bool running() { return framework.Running();  }
 
-		bool Wait();
+		void Wait();
 		
 	private:
 		EngineMemory*	Memory;
