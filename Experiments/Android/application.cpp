@@ -20,7 +20,7 @@ struct TestState final : public FrameworkState
 
     UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT) final 
     { 
-        std::this_thread::sleep_for(1000ms);
+        std::this_thread::sleep_for(1ms);
 
         return nullptr; 
     }
@@ -33,7 +33,11 @@ struct TestState final : public FrameworkState
         
         ClearBackBuffer(
             frameGraph, renderWindow->GetBackBuffer(), 
-            toggle ? float4{ 0, 0, 1, 1 } : float4{ 1, 0, 0, 1 });
+            float4{ 
+                (float)sinf(t) / 2.0f + 0.5f, 
+                (float)sinf(t * 3.0f) / 2.0f + 0.5f, 
+                (float)sinf(t * 7.0f) / 2.0f + 0.5f, 
+                0.0f });
 
         toggle = !toggle;
 
@@ -44,6 +48,7 @@ struct TestState final : public FrameworkState
     void PostDrawUpdate(EngineCore&, double dT) final 
     {
         renderWindow->Present(1, 0);
+        t += dT;
     }
 
 
@@ -58,7 +63,8 @@ struct TestState final : public FrameworkState
         return true;	
     }
 
-    IRenderWindow* renderWindow = nullptr;
+    IRenderWindow*  renderWindow = nullptr;
+    double          t = 0.0;
 };
 
 void SetupApplication(FKApplication& app, IRenderWindow* renderWindow)

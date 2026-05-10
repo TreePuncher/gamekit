@@ -10,11 +10,13 @@ namespace VK_internal
         FK_LOG_0("VK: Querying surface capabilities!");
 
         VkSurfaceCapabilitiesKHR capabilities;
-		uint32_t surfaceCount = 0;
 		VkSurfaceFormatKHR formats[128];
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkRS.device.physical_device, surface, &capabilities);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, nullptr);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &surfaceCount, formats);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &swapchainCount, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &swapchainCount, formats);
+
+        auto message = std::format("VK: Swapchain Count: {}", swapchainCount);
+        FK_LOG_0(message.c_str());
 
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
 		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -70,7 +72,7 @@ namespace VK_internal
 
         FK_LOG_0("VK: Getting Images Views!");
 
-		for (size_t i = 0; i < 3; i++)
+		for (size_t i = 0; i < swapchainCount; i++)
 		{
 			createInfo.image = images[i];
 			if (auto res = vkCreateImageView(vkRS.device, &createInfo, nullptr, &views[i]); res != VK_SUCCESS)
@@ -84,19 +86,13 @@ namespace VK_internal
 		};
 
         FK_LOG_0("VK: Creating Semaphores!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 0); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 1); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 2); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore!");
-
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 0); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore queue!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 1); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 2); res != VK_SUCCESS)
-			throw std::runtime_error("VK: Failed to create binary semaphore!");
+        for(size_t i = 0; i < swapchainCount; i++)
+		    if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + i); res != VK_SUCCESS)
+			    throw std::runtime_error("VK: Failed to create binary semaphore!");
+            
+        for(size_t i = 0; i < swapchainCount; i++)
+            if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + i); res != VK_SUCCESS)
+                throw std::runtime_error("VK: Failed to create binary semaphore queue!");
 
         FK_LOG_0("VK: Creating Fences!");
 
@@ -106,7 +102,7 @@ namespace VK_internal
 			.flags = 0
 		};
 
-        for(size_t i = 0; i < 3; i++)
+        for(size_t i = 0; i < swapchainCount; i++)
 		    if (auto res = vkCreateFence(vkRS.device, &createFenceInfo, nullptr, frameFences + i); res != VK_SUCCESS)
 			    throw std::runtime_error("VK: Failed to create fence for direct queue!");
 
@@ -136,14 +132,17 @@ namespace VK_internal
         auto acquireWait        = GetAcquireWait();
         auto renderFinishSignal = GetSubmitSignal();
 
-        FK_LOG_0("VK: Acquiring Next Image!");
-
         if (const uint64_t submissionID = frameSubmissionIDs[frameIndex]; submissionID > 0)
-            vkWaitForFences(renderSystem.device, 1, &GetFrameFence(), true, 10000000000000);
-
+        {
+            FK_LOG_INFO("VK:vkSwapChain::UpdateBufferIdx(): Waiting for frame!");
+            if(auto HR = vkWaitForFences(renderSystem.device, 1, &GetFrameFence(), true, 10000000000000); HR != VK_SUCCESS)
+                FK_LOG_ERROR("VK:vkSwapChain::UpdateBufferIdx(): Failed To Wait for fence! EC: %u", HR);
+        }
         if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 10000000000000, acquireWait, nullptr, &imageIndex); res != VK_SUCCESS)
+        {
+            FK_LOG_ERROR("VK:vkSwapChain::UpdateBufferIdx(): Failed To Acquire Next Image!");
             throw std::runtime_error("Failed to get next image!");
-
+        }
         renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout, ResourceFieldID::View>(
             resource,
             vkResourceEntry{
@@ -155,8 +154,6 @@ namespace VK_internal
 
         current[0] = acquireWait;
         current[1] = renderFinishSignal;
-
-        FK_LOG_0("VK: Finished Updating Image Index!");
     }
 
     uint2 vkSwapchain::GetWH() const
@@ -196,7 +193,7 @@ namespace VK_internal
         vkResetFences(renderSystem.device, 1, &fence);
         auto res = vkQueuePresentKHR(renderSystem.GetQueue(), &presentInfo) == VK_SUCCESS;
 
-        frameIndex = ++frameIndex % 3;
+        frameIndex = ++frameIndex % swapchainCount;
         UpdateBufferIdx();
 
         FK_LOG_0("VK: Finished Presenting Swapchain!");

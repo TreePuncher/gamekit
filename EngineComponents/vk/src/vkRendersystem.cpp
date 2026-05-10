@@ -575,26 +575,33 @@ namespace VK_internal
 		allocator = desc.Memory;
 		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
-			VK_KHR_DISPLAY_EXTENSION_NAME,
-			VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
-			VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
+
 #ifdef ANDROID
-			VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
+			"VK_KHR_android_surface",
 #endif
 #ifdef WIN32
+			VK_KHR_DISPLAY_EXTENSION_NAME,
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 #endif
 #ifdef __linux__
+			//VK_KHR_DISPLAY_EXTENSION_NAME,
 			//VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
 			//VK_KHR_XCB_SURFACE_EXTENSION_NAME,
 			//VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
 			//VK_KHR_DISPLAY_EXTENSION_NAME,
 #endif
+
+			VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+			VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
 		};
 
 	    vkb::InstanceBuilder builder;
 		auto instReq = builder.set_app_name("FlexKit")
+#ifdef ANDROID
+		    .require_api_version(1, 4, 0)
+#else	
 		    .require_api_version(1, 4, VK_HEADER_VERSION)
+#endif
 			.request_validation_layers()
 			.set_headless()
 		    .enable_extensions(std::size(extensions), extensions)
@@ -620,6 +627,9 @@ namespace VK_internal
 			FK_LOG_ERROR("VK:vkRenderSystem::Initiate(...): Missing Instance Extension!");
 			return false;
 		}
+		else 
+			FK_LOG_INFO("VK:vkRenderSystem::Initiate(...): Instance Created!");
+
 
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };

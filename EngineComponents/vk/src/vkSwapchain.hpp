@@ -24,17 +24,18 @@ namespace VK_internal
 
 
         VkSwapchainKHR	swapchain = nullptr;
-		VkSemaphore		acquireWait[3];
-		VkSemaphore		renderingSignal[3];
+		VkSemaphore		acquireWait[10];
+		VkSemaphore		renderingSignal[10];
 
 	    ResourceHandle	resource				= InvalidHandle;
-		VkImage			images[3]				= { nullptr, nullptr, nullptr };
-		VkFence			frameFences[3]			= { nullptr, nullptr, nullptr };
-		VkImageView		views[3]				= { nullptr, nullptr, nullptr };
-		DeviceLayout	layout[3]				= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
+		VkImage			images[10]				= { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		VkFence			frameFences[10]			= { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		VkImageView		views[10]				= { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		DeviceLayout	layout[10]				= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
 		uint32_t		imageIndex				= 0;
 		uint32_t		frameIndex				= 0;
-		uint64_t		frameSubmissionIDs[3]	= { 0u, 0u, 0u };
+		uint32_t		swapchainCount			= 0;
+		uint64_t		frameSubmissionIDs[10]	= { 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u };
 		VkSemaphore		current[2];
 
 		Extra_SignalBlock	signaling;

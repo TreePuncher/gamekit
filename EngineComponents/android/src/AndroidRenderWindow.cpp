@@ -38,7 +38,7 @@ struct AndroidRenderWindow : public FlexKit::IRenderWindow
 
 FlexKit::ResourceHandle AndroidRenderWindow::GetBackBuffer() const
 {
-    return swapchain.resource;
+    return swapchain.Resource();
 }
 
 
@@ -71,25 +71,46 @@ FlexKit::DeviceFormat AHardwareFormat2DeviceFormat(int32_t IN_format)
     switch(IN_format)
     {
         case AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM:
+            return FlexKit::DeviceFormat::R8G8B8A8_UNORM;
         case AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM:
+            return FlexKit::DeviceFormat::R8G8B8X8_UNORM;
         case AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM:
+            return FlexKit::DeviceFormat::R8G8B8_UNORM;
         case AHARDWAREBUFFER_FORMAT_R5G6B5_UNORM:
+            return FlexKit::DeviceFormat::R5G6B5_UNORM;
         case AHARDWAREBUFFER_FORMAT_R16G16B16A16_FLOAT:
+            return FlexKit::DeviceFormat::R16G16B16A16_FLOAT;
         case AHARDWAREBUFFER_FORMAT_R10G10B10A2_UNORM:
+            return FlexKit::DeviceFormat::R10G10B10A2_UNORM;
         case AHARDWAREBUFFER_FORMAT_BLOB:
+            return FlexKit::DeviceFormat::UNKNOWN;
         case AHARDWAREBUFFER_FORMAT_D16_UNORM:
+            return FlexKit::DeviceFormat::D16_UNORM;
         case AHARDWAREBUFFER_FORMAT_D24_UNORM:
+            return FlexKit::DeviceFormat::D24_UNORM;
         case AHARDWAREBUFFER_FORMAT_D24_UNORM_S8_UINT:
+            return FlexKit::DeviceFormat::D24_UNORM_S8_UINT;
         case AHARDWAREBUFFER_FORMAT_D32_FLOAT:
+            return FlexKit::DeviceFormat::D32_FLOAT;
         case AHARDWAREBUFFER_FORMAT_D32_FLOAT_S8_UINT:
+            return FlexKit::DeviceFormat::D32_FLOAT_S8_UINT;
         case AHARDWAREBUFFER_FORMAT_S8_UINT:
+            return FlexKit::DeviceFormat::S8_UINT;
         case AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420:
+            return FlexKit::DeviceFormat::Y8Cb8Cr8_420;
         case AHARDWAREBUFFER_FORMAT_YCbCr_P010:
+            return FlexKit::DeviceFormat::YCbCr_P010;
         case AHARDWAREBUFFER_FORMAT_YCbCr_P210:
+            return FlexKit::DeviceFormat::YCbCr_P210;
         case AHARDWAREBUFFER_FORMAT_R8_UNORM:
+            return FlexKit::DeviceFormat::R8_UNORM;
         case AHARDWAREBUFFER_FORMAT_R16_UINT:
+            return FlexKit::DeviceFormat::R16_UINT;
         case AHARDWAREBUFFER_FORMAT_R16G16_UINT:
+            return FlexKit::DeviceFormat::R16G16_UINT;
         case AHARDWAREBUFFER_FORMAT_R10G10B10A10_UNORM:
+            return FlexKit::DeviceFormat::R10G10B10A10_UNORM;
+        default:
             return FlexKit::DeviceFormat::UNKNOWN;
     }
 }
