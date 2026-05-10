@@ -107,7 +107,7 @@ namespace VK_internal
 		};
 
         for(size_t i = 0; i < 3; i++)
-		    if (auto res = vkCreateFence(vkRS.device, &createFenceInfo, nullptr, windowFences + i); res != VK_SUCCESS)
+		    if (auto res = vkCreateFence(vkRS.device, &createFenceInfo, nullptr, frameFences + i); res != VK_SUCCESS)
 			    throw std::runtime_error("VK: Failed to create fence for direct queue!");
 
 		vkRS.resources.Set<ResourceFieldID::Extra, ResourceFieldID::Flags, ResourceFieldID::View, ResourceFieldID::XYZW>(
@@ -138,23 +138,10 @@ namespace VK_internal
 
         FK_LOG_0("VK: Acquiring Next Image!");
 
+        if (const uint64_t submissionID = frameSubmissionIDs[frameIndex]; submissionID > 0)
+            vkWaitForFences(renderSystem.device, 1, &GetFrameFence(), true, 10000000000000);
 
-        uint64_t submissionID = frameSubmissionIDs[frameIndex];
-        if (frameIndex > 0 && submissionID > 0)
-        {
-
-            VkSemaphoreWaitInfoKHR wait_info{ VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR };
-            wait_info.pSemaphores       = &renderSystem.vkDirectQueueCounter;
-            wait_info.semaphoreCount    = 1;
-            wait_info.pValues           = &submissionID;
-            if (auto HR = vkWaitSemaphores(renderSystem.device, &wait_info, UINT64_MAX); HR != VK_SUCCESS)
-            {
-                // TODO: Handle failure cases
-                FK_ASSERT(false);
-            }
-        }
-
-        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, acquireWait, nullptr, &imageIndex); res != VK_SUCCESS)
+        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 10000000000000, acquireWait, nullptr, &imageIndex); res != VK_SUCCESS)
             throw std::runtime_error("Failed to get next image!");
 
         renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout, ResourceFieldID::View>(
@@ -182,12 +169,19 @@ namespace VK_internal
         FK_LOG_0("VK: Presenting Swapchain!");
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
-
         frameSubmissionIDs[frameIndex] = renderSystem.directSubmissionCounter;
+        const auto fence = GetFrameFence();
+
+        VkSwapchainPresentFenceInfoEXT presentFence{
+            .sType          = VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT,
+            .pNext          = nullptr,
+            .swapchainCount = 1,
+            .pFences        = &fence
+        };
 
         VkPresentInfoKHR presentInfo = {
             .sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-            .pNext				= nullptr,
+            .pNext				= &presentFence,
 
             .waitSemaphoreCount	= 1,
             .pWaitSemaphores	= &GetSubmitSignal(),
@@ -199,6 +193,7 @@ namespace VK_internal
             .pResults			= nullptr
         };
 
+        vkResetFences(renderSystem.device, 1, &fence);
         auto res = vkQueuePresentKHR(renderSystem.GetQueue(), &presentInfo) == VK_SUCCESS;
 
         frameIndex = ++frameIndex % 3;
@@ -232,5 +227,10 @@ namespace VK_internal
     VkSemaphore& vkSwapchain::GetSubmitSignal() 
     {
         return renderingSignal[frameIndex];
+    }
+
+    VkFence& vkSwapchain::GetFrameFence()
+    {
+        return frameFences[frameIndex];
     }
 }

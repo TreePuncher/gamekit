@@ -206,8 +206,11 @@ namespace VK_internal
 			{
 				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(resource);
 
-				waits.push_back(	SyncPoint{ .syncCounter = -1u, .fence = semaphore[0] });
-				signals.push_back(	SyncPoint{ .syncCounter = -1u, .fence = semaphore[1] });
+				if(semaphore[0])
+					waits.push_back(SyncPoint{ .syncCounter = -1u, .fence = semaphore[0] });
+
+				if(semaphore[1])
+				signals.push_back(SyncPoint{ .syncCounter = -1u, .fence = semaphore[1] });
 			}
 		}
 
@@ -245,8 +248,12 @@ namespace VK_internal
 			if ((flags & ResourceFlags::SwapChain) != 0)
 			{
 				VkSemaphore* semaphore = (VkSemaphore*)RenderSystem().resources.Get<ResourceFieldID::Extra>(texture);
-				waits.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[0] });
-				signals.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[1] });
+
+				if (semaphore && semaphore[0])
+					waits.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[0] });
+
+				if (semaphore && semaphore[1])
+					signals.push_back(	SyncPoint{ .syncCounter = -1u, .fence = (VkSemaphore)semaphore[1] });
 			}
 		}
 

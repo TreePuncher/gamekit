@@ -60,7 +60,7 @@
                 "VCPKG_INSTALL_OPTIONS": "--allow-unsupported",
                 "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/triplets",
                 "CMAKE_TOOLCHAIN_FILE": "~/repos/vcpkg/scripts/buildsystems/vcpkg.cmake",
-				"VERBOSE": "ON"
+                "VCPKG_INSTALL_OPTIONS": "--allow-unsupported"
             },
             "condition": {
                 "type": "equals",

@@ -46,6 +46,7 @@ namespace VK_internal
 
 	void LabelQueue(VkQueue queue, VkDevice device, const char* label);
 	void LabelBuffer(VkBuffer buffer, VkDevice device, const char* label);
+	void LabelImage(VkImage image, VkDevice device, const char* label);
 	void LabelSemaphore(VkSemaphore buffer, VkDevice device, const char* label);
 
 
@@ -64,7 +65,7 @@ namespace VK_internal
 	};
 
     std::optional<BufferAPIObject>	CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize);
-	std::optional<BufferAPIObject>	CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
+	std::optional<BufferAPIObject>	CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident, uint32_t extraFlags = 0);
 	std::optional<BufferAPIObject>	CreateConstantBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident);
 	std::optional<TextureAPIObject>	CreateTextureResource(vkRenderSystem& renderSystem, uint2 WH, DeviceFormat format);
 
@@ -262,13 +263,30 @@ namespace VK_internal
 		vkMemoryAllocator			memoryAllocator;
 
 		// Synchronization
+		struct Frame
+		{
+			VkFence		fence;
+			uint64_t	frameIdx;
+
+			Vector<struct vkDirectContext*>		contexts;
+		};
+
 		VkFence					directQueueFence		= nullptr;
 		VkSemaphore				vkDirectQueueCounter	= nullptr;
 		uint64_t				vkDirectQueueProgress	= 0;
+		Vector<Frame>			directFramesInFlight;
 
 		VkFence					transferQueueFence		= nullptr;
 		VkSemaphore				vkTransferQueueCounter	= nullptr;
 		uint64_t				vkTransferQueueProgress = 0;
+		Vector<Frame>			transfersInFlight;
+
+		VkFence					computeQueueFence		= nullptr;
+		VkSemaphore				vkComputeQueueCounter	= nullptr;
+		uint64_t				vkComputeQueueProgress	= 0;
+		Vector<Frame>			computesInFlight;
+
+		Vector<VkFence>			freeFences;
 
 		std::atomic_uint64_t	directSubmissionCounter		= 0;
 		std::atomic_uint64_t	copySubmissionCounter		= 0;
@@ -290,7 +308,7 @@ namespace VK_internal
 		vkResourceTable						resources;
 		vkVertexPushBuffers					vertexPushBuffers;
 		vkConstantPushBuffers				constantPushBuffers;
-		Vector<struct vkDirectContext*>		pendingDirectContexts;
+		Vector<struct vkDirectContext*>		freeDirectContexts;
 		vkStateTable						pipelineStates;
 		Vector<VkSemaphore>					freeSemaphores;
 

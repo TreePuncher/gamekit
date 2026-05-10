@@ -18,8 +18,9 @@ namespace VK_internal
 		ResourceHandle Resource() const noexcept;
 
 	private:
-		VkSemaphore& GetAcquireWait();
-		VkSemaphore& GetSubmitSignal();
+		VkSemaphore&	GetAcquireWait();
+		VkSemaphore&	GetSubmitSignal();
+		VkFence&		GetFrameFence();
 
 
         VkSwapchainKHR	swapchain = nullptr;
@@ -28,7 +29,7 @@ namespace VK_internal
 
 	    ResourceHandle	resource				= InvalidHandle;
 		VkImage			images[3]				= { nullptr, nullptr, nullptr };
-		VkFence			windowFences[3]			= { nullptr, nullptr, nullptr };
+		VkFence			frameFences[3]			= { nullptr, nullptr, nullptr };
 		VkImageView		views[3]				= { nullptr, nullptr, nullptr };
 		DeviceLayout	layout[3]				= { DeviceLayout::Undefined, DeviceLayout::Undefined, DeviceLayout::Undefined };
 		uint32_t		imageIndex				= 0;

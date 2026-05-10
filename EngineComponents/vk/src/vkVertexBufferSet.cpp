@@ -97,7 +97,16 @@ namespace VK_internal
 	void vkVertexBufferSet::CreateBuffer(VERTEXBUFFER_TYPE type, VERTEXBUFFER_FORMAT format, size_t byteSize)
 	{
 		auto& vkRS = static_cast<vkRenderSystem&>(IRenderSystem::GetInstance());
-		auto res = CreateVertexBuffer(vkRS, byteSize, true);
+		const uint32_t flags = [&] () -> uint32_t {
+			switch (type) {
+			case VERTEXBUFFER_TYPE::INDEX:
+				return VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT;
+			default:
+				return 0;
+			};
+
+			}();
+		auto res = CreateVertexBuffer(vkRS, byteSize, true, flags);
 
 		if (res.has_value())
 		{

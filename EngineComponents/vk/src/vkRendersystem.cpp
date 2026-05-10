@@ -88,6 +88,26 @@ namespace VK_internal
 #endif
 	}
 
+	void LabelImage(VkImage image, VkDevice device, const char* label)
+	{
+#ifdef _DEBUG
+		if (vkSetDebugUtilsObjectName)
+		{
+			static int n = 0;
+
+			VkDebugUtilsObjectNameInfoEXT nameInfo{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				.pNext			= nullptr,
+				.objectType		= VkObjectType::VK_OBJECT_TYPE_IMAGE,
+				.objectHandle	= (uint64_t)image,
+				.pObjectName	= label
+			};
+
+			vkSetDebugUtilsObjectName(device, &nameInfo);
+		}
+#endif
+	}
+
 	void LabelSemaphore(VkSemaphore semaphore, VkDevice device, const char* label)
 	{
 #ifdef _DEBUG
@@ -327,7 +347,7 @@ namespace VK_internal
 	}
 
 
-	std::optional<BufferAPIObject> CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident)
+	std::optional<BufferAPIObject> CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident, uint32_t extraFlags)
 	{
 	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
 			0,
@@ -534,13 +554,14 @@ namespace VK_internal
 	    allocator				{ IN_allocator },
 		copyContextTable		{ IN_allocator },
 		memoryAllocator			{ IN_allocator },
-		pendingDirectContexts	{ IN_allocator },
+		directFramesInFlight	{ IN_allocator },
 		pipelineStates			{ threads, IN_allocator },
 	    resources				{ IN_allocator },
         vkAllocators			{ nullptr },
 		vertexPushBuffers		{ IN_allocator },
 		mappings				{ IN_allocator },
-		constantPushBuffers		{ IN_allocator } {}
+		constantPushBuffers		{ IN_allocator },
+		freeFences				{ IN_allocator } {}
 
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
@@ -555,8 +576,10 @@ namespace VK_internal
 		const char* extensions[] = {
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_DISPLAY_EXTENSION_NAME,
+			VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+			VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
 #ifdef ANDROID
-			"VK_KHR_android_surface",
+			VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
 #endif
 #ifdef WIN32
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
@@ -570,7 +593,7 @@ namespace VK_internal
 		};
 
 	    vkb::InstanceBuilder builder;
-		auto instReq = builder.set_app_name("Hello Vulkan")
+		auto instReq = builder.set_app_name("FlexKit")
 		    .require_api_version(1, 4, VK_HEADER_VERSION)
 			.request_validation_layers()
 			.set_headless()
@@ -601,9 +624,16 @@ namespace VK_internal
 		instance = instReq.value();
 		vkb::PhysicalDeviceSelector selector{ instance };
 
+
+		VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1FeatureEnable{
+			.sType					= VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
+			.pNext					= nullptr,
+			.swapchainMaintenance1	= true
+		};
+
 		VkPhysicalDeviceDescriptorBufferFeaturesEXT descriptorBufferFeature{
 			.sType								= VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT,
-	        .pNext								= nullptr, 
+	        .pNext								= &swapchainMaintenance1FeatureEnable,
 	        .descriptorBuffer					= true,
 	        .descriptorBufferCaptureReplay		= false,
 	        .descriptorBufferImageLayoutIgnored	= true,
@@ -631,6 +661,7 @@ namespace VK_internal
 			.add_required_extension("VK_KHR_timeline_semaphore")
 			.add_required_extension("VK_KHR_spirv_1_4")
 			.add_required_extension("VK_EXT_descriptor_buffer")
+			.add_required_extension("VK_EXT_swapchain_maintenance1")
 		    //.add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
 			.set_required_features({
                     .fullDrawIndexUint32	= true,
@@ -676,7 +707,6 @@ namespace VK_internal
 			FK_LOG_ERROR("VK: Failed Getting Queues!");
 			return false;
 		}
-
 
 		graphicsQueue	= graphicsQueueRequest.value();
 		transferQueue	= transferQueueRequest.value();
@@ -783,6 +813,9 @@ namespace VK_internal
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkTransferQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create transfer timeline semaphore queue!");
 
+		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkComputeQueueCounter); res != VK_SUCCESS)
+			throw std::runtime_error("Failed to create compute timeline semaphore queue!");
+
 		RenderDocDebugUtils::Connect();
 
 		FK_LOG_0("VK: Labeling Objects!");
@@ -791,6 +824,7 @@ namespace VK_internal
 		LabelQueue(computeQueue, device, "Compute Queue");
 		LabelSemaphore(vkDirectQueueCounter, device, "Direct Semaphore");
 		LabelSemaphore(vkTransferQueueCounter, device, "Transfer Semaphore");
+		LabelSemaphore(vkComputeQueueCounter, device, "Compute Semaphore");
 		
 		FK_LOG_0("VK: Feature Querying!");
 		availableFeatures.RT_Level 			= AvailableFeatures::RT_FeatureLevel_NOTAVAILABLE;
@@ -807,6 +841,8 @@ namespace VK_internal
 		availableFeatures.resourceHeapTier	= ResourceHeapTier::HeapTier1;
 
 		FK_LOG_0("VK: Initialization Success!");
+
+		VkSemaphore				vkComputeQueueCounter = nullptr;
 
 		return true;
 	}
@@ -1047,15 +1083,32 @@ namespace VK_internal
 		vkGetSemaphoreCounterValue(device, vkDirectQueueCounter, &current);
 
 		vkDirectContext* ctx = nullptr;
-		for (auto& pendingCtx : pendingDirectContexts)
+
+		if (freeDirectContexts.size())
 		{
-		    if (pendingCtx->dispatchValue < current)
-		    {
-				ctx = pendingCtx;
-				pendingCtx->Reset();
-				pendingDirectContexts.remove_unstable(&ctx);
-				break;
-		    }
+			ctx = freeDirectContexts.pop_back();
+			ctx->Reset();
+		}
+		else
+		{
+			for (auto& pendingFrame : directFramesInFlight)
+			{
+				auto status = vkGetFenceStatus(device, pendingFrame.fence);
+
+				if (status == VK_SUCCESS)
+				{
+					ctx = pendingFrame.contexts.pop_back();
+					ctx->Reset();
+
+					while (pendingFrame.contexts.size())
+						freeDirectContexts.push_back(pendingFrame.contexts.pop_back());
+
+					freeFences.push_back(pendingFrame.fence);
+
+					directFramesInFlight.remove_unstable(&pendingFrame);
+					break;
+				}
+			}
 		}
 
 		if (ctx == nullptr)
@@ -1078,8 +1131,6 @@ namespace VK_internal
 
 	SyncPoint vkRenderSystem::Submit(std::span<IDirectContext*> CLs, std::optional<SyncPoint> sync)
 	{
-		RenderDocDebugUtils::BeginFrame();
-
 		uint64_t submissionValue = 0;
 
 		Vector<VkCommandBufferSubmitInfo, 8>	cmdBufferSubmit	{ allocator };
@@ -1183,15 +1234,43 @@ namespace VK_internal
             .pSignalSemaphoreInfos		= signalInfos.data()
 		};
 
-		vkResetFences(device, 1, &directQueueFence);
 
-		if (auto res = vkQueueSubmit2(graphicsQueue, 1, &submit, directQueueFence); res != VK_SUCCESS)
+		auto fence = [&]{
+			if (freeFences.size())
+			{
+				auto fence = freeFences.pop_back();
+				vkResetFences(device, 1, &fence);
+				return fence;
+			}
+			else
+			{
+				VkFenceCreateInfo createFenceInfo{
+					.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+					.pNext = nullptr,
+					.flags = 0
+				};
+
+				VkFence newFence;
+				if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &newFence); res != VK_SUCCESS)
+					throw std::runtime_error("Failed to create fence for direct queue!");
+
+				return newFence;
+			}
+			}();
+
+		if (auto res = vkQueueSubmit2(graphicsQueue, 1, &submit, fence); res != VK_SUCCESS)
 			throw std::runtime_error{ "VK: Failed to submit to Direct Command Queue!" };
 
-		for (auto cl : CLs)
-			pendingDirectContexts.push_back(static_cast<vkDirectContext*>(cl));
+		Frame newFrame{ .contexts{ allocator } };
 
-		RenderDocDebugUtils::EndFrame();
+		for (auto cl : CLs)
+		{
+			auto vkCL		= static_cast<vkDirectContext*>(cl);
+			newFrame.fence	= fence;
+			newFrame.contexts.push_back(vkCL);
+		}
+
+		directFramesInFlight.push_back(newFrame);
 
 		return {
 			submissionValue,

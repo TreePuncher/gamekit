@@ -25,8 +25,9 @@ namespace FlexKit
 		TaggedVoidPtr& operator = (auto IN_ptr) requires( std::is_pointer_v<decltype(IN_ptr)>) { _ptr = (void*)IN_ptr; return *this; }
 		TaggedVoidPtr& operator = (const TaggedVoidPtr& rhs) = default;
 
-		bool operator == (auto rhs) const noexcept { return rhs == _ptr; }
-		bool operator != (auto rhs) const noexcept { return rhs != _ptr; }
+		bool operator == (const TaggedVoidPtr rhs) const noexcept { return _ptr == rhs._ptr; }
+		bool operator == (const auto rhs) const noexcept requires(std::is_pointer_v<decltype(rhs)> ) { return rhs == _ptr; }
+		bool operator != (const auto rhs) const noexcept requires(std::is_pointer_v<decltype(rhs)> ) { return rhs != _ptr; }
 
 		operator bool() { return _ptr != nullptr; }
 
@@ -1923,16 +1924,8 @@ namespace FlexKit
 		uint64_t		syncCounter = 0;
 		DeviceFence_ptr	fence = nullptr;
 
-		operator bool() const noexcept
-		{
-			auto res = fence != nullptr;
-			return res;
-		}
-
-		bool operator == (const SyncPoint& rhs) const noexcept
-		{
-			return (syncCounter == rhs.syncCounter) && (rhs.fence._ptr == fence._ptr);
-		}
+		bool operator == (const SyncPoint& rhs) const noexcept { return rhs.fence == fence && rhs.syncCounter == syncCounter; }
+		explicit operator bool() const noexcept { return fence != nullptr; }
 	};
 
 	
