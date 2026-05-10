@@ -84,18 +84,18 @@ namespace VK_internal
 		};
 
         FK_LOG_0("VK: Creating Semaphores!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 0); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 0); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 1); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 1); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, semaphores + 2); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + 2); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
 
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 0); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 0); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore queue!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 1); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 1); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
-		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, presentSemaphores + 2); res != VK_SUCCESS)
+		if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + 2); res != VK_SUCCESS)
 			throw std::runtime_error("VK: Failed to create binary semaphore!");
 
         FK_LOG_0("VK: Creating Fences!");
@@ -133,15 +133,29 @@ namespace VK_internal
 
         layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);;
 
-        auto wait = semaphores[imageIndex];
-        auto fence = windowFences[imageIndex];
+        auto acquireWait        = GetAcquireWait();
+        auto renderFinishSignal = GetSubmitSignal();
 
         FK_LOG_0("VK: Acquiring Next Image!");
 
-        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, wait, fence, &imageIndex); res != VK_SUCCESS)
-            throw std::runtime_error("Failed to get next image!");
 
-        auto signal = presentSemaphores[imageIndex];
+        uint64_t submissionID = frameSubmissionIDs[frameIndex];
+        if (frameIndex > 0 && submissionID > 0)
+        {
+
+            VkSemaphoreWaitInfoKHR wait_info{ VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO_KHR };
+            wait_info.pSemaphores       = &renderSystem.vkDirectQueueCounter;
+            wait_info.semaphoreCount    = 1;
+            wait_info.pValues           = &submissionID;
+            if (auto HR = vkWaitSemaphores(renderSystem.device, &wait_info, UINT64_MAX); HR != VK_SUCCESS)
+            {
+                // TODO: Handle failure cases
+                FK_ASSERT(false);
+            }
+        }
+
+        if (auto res = vkAcquireNextImageKHR(renderSystem.device, swapchain, 1000000000, acquireWait, nullptr, &imageIndex); res != VK_SUCCESS)
+            throw std::runtime_error("Failed to get next image!");
 
         renderSystem.resources.Set<ResourceFieldID::APIHandle, ResourceFieldID::Layout, ResourceFieldID::View>(
             resource,
@@ -152,8 +166,8 @@ namespace VK_internal
             layout[imageIndex],
             vkResourceViews{ .imageView = views[imageIndex] });
 
-        current[0] = wait;
-        current[1] = signal;
+        current[0] = acquireWait;
+        current[1] = renderFinishSignal;
 
         FK_LOG_0("VK: Finished Updating Image Index!");
     }
@@ -169,14 +183,14 @@ namespace VK_internal
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
-        vkWaitForFences(renderSystem.device, 1, &renderSystem.directQueueFence, true, 100000000);
+        frameSubmissionIDs[frameIndex] = renderSystem.directSubmissionCounter;
 
         VkPresentInfoKHR presentInfo = {
             .sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .pNext				= nullptr,
 
             .waitSemaphoreCount	= 1,
-            .pWaitSemaphores	= &GetNextSemaphore(),
+            .pWaitSemaphores	= &GetSubmitSignal(),
 
             .swapchainCount		= 1,
             .pSwapchains		= &swapchain,
@@ -187,6 +201,7 @@ namespace VK_internal
 
         auto res = vkQueuePresentKHR(renderSystem.GetQueue(), &presentInfo) == VK_SUCCESS;
 
+        frameIndex = ++frameIndex % 3;
         UpdateBufferIdx();
 
         FK_LOG_0("VK: Finished Presenting Swapchain!");
@@ -204,13 +219,18 @@ namespace VK_internal
         vkRenderSystem::GetInstance().ReleaseResource(resource);
     }
 
-    VkSemaphore& vkSwapchain::GetSemaphore() 
+    ResourceHandle vkSwapchain::Resource() const noexcept
     {
-        return current[0];
+        return resource;
     }
 
-    VkSemaphore& vkSwapchain::GetNextSemaphore() 
+    VkSemaphore& vkSwapchain::GetAcquireWait() 
     {
-        return current[1];
+        return acquireWait[frameIndex];
+    }
+
+    VkSemaphore& vkSwapchain::GetSubmitSignal() 
+    {
+        return renderingSignal[frameIndex];
     }
 }

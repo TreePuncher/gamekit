@@ -88,7 +88,7 @@ namespace VK_internal
 #endif
 	}
 
-	void LabelSemaphore(VkSemaphore buffer, VkDevice device, const char* label)
+	void LabelSemaphore(VkSemaphore semaphore, VkDevice device, const char* label)
 	{
 #ifdef _DEBUG
 		if (vkSetDebugUtilsObjectName)
@@ -99,7 +99,7 @@ namespace VK_internal
 				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
 				.pNext			= nullptr,
 				.objectType		= VkObjectType::VK_OBJECT_TYPE_SEMAPHORE,
-				.objectHandle	= (uint64_t)buffer,
+				.objectHandle	= (uint64_t)semaphore,
 				.pObjectName	= label
 			};
 
@@ -108,6 +108,25 @@ namespace VK_internal
 #endif
 	}
 
+	void LabelFence(VkFence* fence, VkDevice device, const char* label)
+	{
+#ifdef _DEBUG
+		if (vkSetDebugUtilsObjectName)
+		{
+			static int n = 0;
+
+			VkDebugUtilsObjectNameInfoEXT nameInfo{
+				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+				.pNext			= nullptr,
+				.objectType		= VkObjectType::VK_OBJECT_TYPE_FENCE,
+				.objectHandle	= (uint64_t)fence,
+				.pObjectName	= label
+			};
+
+			vkSetDebugUtilsObjectName(device, &nameInfo);
+		}
+#endif
+	}
 
 	VkDescriptorPool CreateDescriptorHeap(VkDevice device, size_t numDescriptors)
 	{
@@ -328,7 +347,7 @@ namespace VK_internal
 			.pNext					= nullptr,
 			.flags					= 0,			//VkBufferCreateFlags;
 			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT,
+			.usage					= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_2_TRANSFER_DST_BIT | VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		//const uint32_t*        

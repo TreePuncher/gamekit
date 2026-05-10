@@ -1923,7 +1923,16 @@ namespace FlexKit
 		uint64_t		syncCounter = 0;
 		DeviceFence_ptr	fence = nullptr;
 
-		operator bool() const noexcept { return fence != nullptr; }
+		operator bool() const noexcept
+		{
+			auto res = fence != nullptr;
+			return res;
+		}
+
+		bool operator == (const SyncPoint& rhs) const noexcept
+		{
+			return (syncCounter == rhs.syncCounter) && (rhs.fence._ptr == fence._ptr);
+		}
 	};
 
 	
