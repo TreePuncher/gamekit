@@ -48,6 +48,20 @@ namespace VK_internal
         Extra       = 8
     };
 
+    enum class ExtraBlockType
+    {
+        SignalBlock
+    };
+
+    struct Extra_SignalBlock
+    {
+        ExtraBlockType  type;
+        VkSemaphore     wait    = nullptr;
+        VkSemaphore     signal  = nullptr;
+        VkFence         fence   = nullptr;
+        void*           next    = nullptr;
+    };
+
 
     struct vkResourceTable
     {

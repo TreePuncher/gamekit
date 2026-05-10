@@ -18,7 +18,9 @@
 #include <type_traits>
 #include <concepts>
 
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wuninitialized"
+#endif
 
 namespace FlexKit
 {   /************************************************************************************************/
