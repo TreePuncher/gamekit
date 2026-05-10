@@ -7,7 +7,7 @@ namespace VK_internal
     {
         auto& vkRS = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
-        FK_LOG_0("VK: Querying surface capabilities!");
+        FK_LOG_9("VK: Querying surface capabilities!");
 
         VkSurfaceCapabilitiesKHR capabilities;
 		VkSurfaceFormatKHR formats[128];
@@ -16,7 +16,7 @@ namespace VK_internal
 		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &swapchainCount, formats);
 
         auto message = std::format("VK: Swapchain Count: {}", swapchainCount);
-        FK_LOG_0(message.c_str());
+        FK_LOG_9(message.c_str());
 
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
 		    .sType					= VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
@@ -39,7 +39,7 @@ namespace VK_internal
             .oldSwapchain			= nullptr
 		};
 
-        FK_LOG_0("VK: Creating Swapchain!");
+        FK_LOG_9("VK: Creating Swapchain!");
 		if (auto res = vkCreateSwapchainKHR(vkRS.device, &createSwapChainInfo, nullptr, &swapchain); res != VK_SUCCESS)
 		{
 			FK_LOG_ERROR("VK: Failed to create vulkan swapchain");
@@ -52,7 +52,7 @@ namespace VK_internal
 
 		auto renderTarget = vkRS.CreateGPUResource(desc);
 
-        FK_LOG_0("VK: Getting Swapchain Images!");
+        FK_LOG_9("VK: Getting Swapchain Images!");
 		uint imageCount;
 		vkGetSwapchainImagesKHR(vkRS.device, swapchain, &imageCount, images);
 
@@ -70,7 +70,7 @@ namespace VK_internal
 		createInfo.subresourceRange.baseArrayLayer	= 0;
 		createInfo.subresourceRange.layerCount		= 1;
 
-        FK_LOG_0("VK: Getting Images Views!");
+        FK_LOG_9("VK: Getting Images Views!");
 
 		for (size_t i = 0; i < swapchainCount; i++)
 		{
@@ -85,7 +85,7 @@ namespace VK_internal
             .flags = 0
 		};
 
-        FK_LOG_0("VK: Creating Semaphores!");
+        FK_LOG_9("VK: Creating Semaphores!");
         for(size_t i = 0; i < swapchainCount; i++)
 		    if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, acquireWait + i); res != VK_SUCCESS)
 			    throw std::runtime_error("VK: Failed to create binary semaphore!");
@@ -94,7 +94,7 @@ namespace VK_internal
             if (auto res = vkCreateSemaphore(vkRS.device, &createSemaphoreInfo, nullptr, renderingSignal + i); res != VK_SUCCESS)
                 throw std::runtime_error("VK: Failed to create binary semaphore queue!");
 
-        FK_LOG_0("VK: Creating Fences!");
+        FK_LOG_9("VK: Creating Fences!");
 
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -118,12 +118,12 @@ namespace VK_internal
 
 		UpdateBufferIdx();
 
-        FK_LOG_0("VK: Finished Creating Swapchain!");
+        FK_LOG_9("VK: Finished Creating Swapchain!");
     }
 
     void vkSwapchain::UpdateBufferIdx()
     {
-        FK_LOG_0("VK: Updating Swapchain Buffer Index!");
+        FK_LOG_9("VK: Updating Swapchain Buffer Index!");
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
@@ -134,7 +134,7 @@ namespace VK_internal
 
         if (const uint64_t submissionID = frameSubmissionIDs[frameIndex]; submissionID > 0)
         {
-            FK_LOG_INFO("VK:vkSwapChain::UpdateBufferIdx(): Waiting for frame!");
+            FK_LOG_9("VK:vkSwapChain::UpdateBufferIdx(): Waiting for frame!");
             if(auto HR = vkWaitForFences(renderSystem.device, 1, &GetFrameFence(), true, 10000000000000); HR != VK_SUCCESS)
                 FK_LOG_ERROR("VK:vkSwapChain::UpdateBufferIdx(): Failed To Wait for fence! EC: %u", HR);
         }
@@ -163,7 +163,7 @@ namespace VK_internal
 
     bool vkSwapchain::Present(const uint32_t syncInternal, const uint32_t flag)
     {
-        FK_LOG_0("VK: Presenting Swapchain!");
+        FK_LOG_9("VK: Presenting Swapchain!");
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
         frameSubmissionIDs[frameIndex] = renderSystem.directSubmissionCounter;
@@ -196,7 +196,7 @@ namespace VK_internal
         frameIndex = ++frameIndex % swapchainCount;
         UpdateBufferIdx();
 
-        FK_LOG_0("VK: Finished Presenting Swapchain!");
+        FK_LOG_9("VK: Finished Presenting Swapchain!");
 
         return res;
     }

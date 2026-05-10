@@ -566,10 +566,10 @@ namespace VK_internal
 
 	bool vkRenderSystem::Initiate(Graphics_Desc& desc)
 	{
-		FK_LOG_0("VK: Vulkan SDK VERSION: %i\n", VK_HEADER_VERSION);
+		FK_LOG_9("VK: Vulkan SDK VERSION: %i\n", VK_HEADER_VERSION);
 
 		#ifdef ANDROID
-		FK_LOG_0("VK: Android Detected!");
+		FK_LOG_9("VK: Android Detected!");
 		#endif
 
 		allocator = desc.Memory;
@@ -628,7 +628,7 @@ namespace VK_internal
 			return false;
 		}
 		else 
-			FK_LOG_INFO("VK:vkRenderSystem::Initiate(...): Instance Created!");
+			FK_LOG_9("VK:vkRenderSystem::Initiate(...): Instance Created!");
 
 
 		instance = instReq.value();
@@ -658,10 +658,14 @@ namespace VK_internal
             .bufferDeviceAddressMultiDevice		= false
 		};
 
-		FK_LOG_0("VK: Selecting Device!");
+		FK_LOG_9("VK: Selecting Device!");
 
 		auto physRequest = selector
+#ifdef ANDROID
+	        .set_minimum_version(1, 3)
+#else
 	        .set_minimum_version(1, 4)
+#endif
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
 			//.add_required_extension("VK_NV_descriptor_pool_overallocation")
 			.add_required_extension("VK_KHR_depth_stencil_resolve")
@@ -705,7 +709,7 @@ namespace VK_internal
 		vkb::DeviceBuilder deviceBuilder{ res.back() };
 		auto devRequest = deviceBuilder.build();
 
-		FK_LOG_0("VK: Getting Queues!");
+		FK_LOG_9("VK: Getting Queues!");
 
 	    device = devRequest.value();
 		auto graphicsQueueRequest = device.get_queue(vkb::QueueType::graphics);
@@ -722,7 +726,7 @@ namespace VK_internal
 		transferQueue	= transferQueueRequest.value();
 		computeQueue	= computeQueueRequest.value();
 
-		FK_LOG_0("VK: Getting Extension functions!");
+		FK_LOG_9("VK: Getting Extension functions!");
 		vkGetDescriptorSetLayoutSize				= (vkGetDescriptorSetLayoutSizeFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorSetLayoutSizeEXT");
 		vkGetDescriptor								= (vkGetDescriptorFNDef)vkGetDeviceProcAddr(device, "vkGetDescriptorEXT");
 		vkCmdBindDescriptorBufferEmbeddedSamplers	= (vkCmdBindDescriptorBufferEmbeddedSamplersFNDef)vkGetDeviceProcAddr(device, "vkCmdBindDescriptorBufferEmbeddedSamplersEXT");
@@ -745,7 +749,7 @@ namespace VK_internal
 			FK_LOG_WARNING("VK: Failed to get vkSetDebugUtilsObjectNameEXT");
 #endif
 
-		FK_LOG_0("VK: Initializing Memory Allocator!");
+		FK_LOG_9("VK: Initializing Memory Allocator!");
 		descriptorBufferProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
 		descriptorBufferProperties.pNext = nullptr;
 
@@ -764,7 +768,7 @@ namespace VK_internal
 			throw std::runtime_error{ "VK: Failed to allocate descriptor heap buffer!" };
 
 
-		FK_LOG_0("VK: Creating descriptor buffer!");
+		FK_LOG_9("VK: Creating descriptor buffer!");
 		descriptorPool = CreateDescriptorBuffer(device, 1000000u, descriptorHeapBufferAllocation.value());
 
 		auto [offset, memory] = descriptorHeapBufferAllocation.value();
@@ -783,11 +787,11 @@ namespace VK_internal
 			.buffer		= descriptorPool.buffer
 		};
 
-		FK_LOG_0("VK: Allocating Descriptor Heap!");
+		FK_LOG_9("VK: Allocating Descriptor Heap!");
 	    heapAllocator.Initialize(heapAllocDesc, allocator);
 
 
-		FK_LOG_0("VK: Creating Fences!");
+		FK_LOG_9("VK: Creating Fences!");
 		VkFenceCreateInfo createFenceInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
 			.pNext = nullptr,
@@ -811,14 +815,12 @@ namespace VK_internal
 		};
 
 
-		FK_LOG_0("VK: Creating Semaphores!");
+		FK_LOG_9("VK: Creating Semaphores!");
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkDirectQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create timeline semaphore queue!");
 
-
 		if (auto res = vkCreateFence(device, &createFenceInfo, nullptr, &transferQueueFence); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create fence for transfer queue!");
-
 
 		if (auto res = vkCreateSemaphore(device, &createTimelineSemaphoreInfo, nullptr, &vkTransferQueueCounter); res != VK_SUCCESS)
 			throw std::runtime_error("Failed to create transfer timeline semaphore queue!");
@@ -828,7 +830,7 @@ namespace VK_internal
 
 		RenderDocDebugUtils::Connect();
 
-		FK_LOG_0("VK: Labeling Objects!");
+		FK_LOG_9("VK: Labeling Objects!");
 		LabelQueue(graphicsQueue, device, "Graphics Queue");
 		LabelQueue(transferQueue, device, "Transfer Queue");
 		LabelQueue(computeQueue, device, "Compute Queue");
@@ -836,7 +838,7 @@ namespace VK_internal
 		LabelSemaphore(vkTransferQueueCounter, device, "Transfer Semaphore");
 		LabelSemaphore(vkComputeQueueCounter, device, "Compute Semaphore");
 		
-		FK_LOG_0("VK: Feature Querying!");
+		FK_LOG_9("VK: Feature Querying!");
 		availableFeatures.RT_Level 			= AvailableFeatures::RT_FeatureLevel_NOTAVAILABLE;
 		availableFeatures.conservativeRast 	= AvailableFeatures::ConservativeRast_NOTAVAILABLE;
 		
@@ -850,9 +852,9 @@ namespace VK_internal
 		availableFeatures.indirectLevel 	= AvailableFeatures::IndirectLevel_1;
 		availableFeatures.resourceHeapTier	= ResourceHeapTier::HeapTier1;
 
-		FK_LOG_0("VK: Initialization Success!");
+		FK_LOG_9("VK: Initialization Success!");
 
-		VkSemaphore				vkComputeQueueCounter = nullptr;
+		VkSemaphore	vkComputeQueueCounter = nullptr;
 
 		return true;
 	}
