@@ -117,8 +117,10 @@ namespace FlexKit
 		FILE* file = fopen(strLoc, "rb");
 
 		if (!file)
+		{
+			FK_LOG_ERROR("LoadFileIntoBuffer: Failed to open file!");
 			return false;
-
+		}
 		auto res = fread(buffer, 1, bufferSize, file);
 
 		return true;

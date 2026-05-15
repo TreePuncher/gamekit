@@ -67,7 +67,7 @@ struct TestState final : public FrameworkState
     double          t = 0.0;
 };
 
-void SetupApplication(FKApplication& app, IRenderWindow* renderWindow)
+void SetupApplication(FKApplication& app, IRenderWindow* renderWindow, struct android_app*)
 {
     __android_log_write(ANDROID_LOG_VERBOSE, "FlexKit", "SetupApplication(): Created Application!");
 

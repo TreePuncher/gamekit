@@ -583,7 +583,7 @@ namespace FlexKit
 		{
 			if (Max < newSize)
 				reserve(newSize);
-
+			
 			if (newSize > size()) {
 				auto I = newSize - size();
 				while (I--)
