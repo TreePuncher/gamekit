@@ -8,7 +8,35 @@
 #include <type_traits>
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
+		
+	constexpr size_t AlignedSize(const size_t unalignedSize, const size_t alignment = 256)
+	{
+		const auto mask             = alignment - 1;
+		const auto offset           = unalignedSize & mask;
+		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
+
+		return unalignedSize + adjustedOffset;
+	}
+
+
+	template<typename TY>
+	constexpr size_t AlignedSize()
+	{
+		return AlignedSize(sizeof(TY));
+	}
+
+
+	constexpr auto Align(size_t x, const size_t alignment)
+	{
+		size_t adjustment = alignment - x % alignment;
+		adjustment = adjustment == alignment ? 0 : adjustment;
+
+		return x += adjustment;
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -150,7 +178,7 @@ namespace FlexKit
 #ifdef WIN32
 			return ::_aligned_malloc(n, A);
 #else
-			return nullptr;
+			return aligned_alloc(A, AlignedSize(n, A));
 #endif
 		}
 
@@ -1103,35 +1131,6 @@ namespace FlexKit
 		TY* operator -> ()	{ return _ptr; }
 		TY& operator * ()	{ return *_ptr; }
 	};
-
-
-	
-	/************************************************************************************************/
-
-		
-	constexpr size_t AlignedSize(const size_t unalignedSize, const size_t alignment = 256)
-	{
-		const auto mask             = alignment - 1;
-		const auto offset           = unalignedSize & mask;
-		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
-
-		return unalignedSize + adjustedOffset;
-	}
-
-	template<typename TY>
-	constexpr size_t AlignedSize()
-	{
-		return AlignedSize(sizeof(TY));
-	}
-
-
-	constexpr auto Align(size_t x, const size_t alignment)
-	{
-		size_t adjustment = alignment - x % alignment;
-		adjustment = adjustment == alignment ? 0 : adjustment;
-
-		return x += adjustment;
-	}
 
 
 }	/************************************************************************************************/

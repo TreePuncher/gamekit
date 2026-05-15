@@ -514,7 +514,7 @@ struct ModifiableShape
                 if (edges.size() > 2)
                 {
                     for (auto& edge : shape->wEdges)
-                        if (edge.twin = 0xffffffff)
+                        if (edge.twin == 0xffffffff)
                             return true;
                 }
                 else

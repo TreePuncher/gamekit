@@ -11,11 +11,12 @@ namespace VK_internal
 
         VkSurfaceCapabilitiesKHR capabilities;
 		VkSurfaceFormatKHR formats[128];
+        uint32_t formatCount = 0;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkRS.device.physical_device, surface, &capabilities);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &swapchainCount, nullptr);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &swapchainCount, formats);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &formatCount, nullptr);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(vkRS.device.physical_device, surface, &formatCount, formats);
 
-        auto message = std::format("VK: Swapchain Count: {}", swapchainCount);
+        auto message = std::format("VK: Swapchain format Count: {}", formatCount);
         FK_LOG_9(message.c_str());
 
 		VkSwapchainCreateInfoKHR createSwapChainInfo{
@@ -53,8 +54,8 @@ namespace VK_internal
 		auto renderTarget = vkRS.CreateGPUResource(desc);
 
         FK_LOG_9("VK: Getting Swapchain Images!");
-		uint imageCount;
-		vkGetSwapchainImagesKHR(vkRS.device, swapchain, &imageCount, images);
+        vkGetSwapchainImagesKHR(vkRS.device, swapchain, &swapchainCount, nullptr);
+        vkGetSwapchainImagesKHR(vkRS.device, swapchain, &swapchainCount, images);
 
 		VkImageViewCreateInfo createInfo{};
 		createInfo.sType							= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -127,7 +128,7 @@ namespace VK_internal
 
         auto& renderSystem = static_cast<vkRenderSystem&>(vkRenderSystem::GetInstance());
 
-        layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);;
+        layout[imageIndex] = renderSystem.resources.Get<ResourceFieldID::Layout>(resource);
 
         auto acquireWait        = GetAcquireWait();
         auto renderFinishSignal = GetSubmitSignal();

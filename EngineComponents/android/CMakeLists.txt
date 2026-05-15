@@ -16,6 +16,7 @@ add_library(androidglue
     src/game-activity/native_app_glue/android_native_app_glue.cpp
     src/game-text-input/gametextinput.cpp
     src/AndroidRenderWindow.cpp
+    src/AndroidIOHelpers.cpp
 )
 
 target_sources(
@@ -34,6 +35,7 @@ target_sources(
     "include/GameActivity.h"
     "include/GameActivityEvents.h"
     "include/GameActivityLog.h"
+    "include/AndroidIOHelpers.hpp"
 )
 
 target_link_libraries(androidglue PRIVATE android log vkBackend flex vkHeaders)

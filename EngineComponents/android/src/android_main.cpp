@@ -3,7 +3,9 @@
 #include <vkBackend.hpp>
 #include <Application.hpp>
 #include <Logging.hpp>
+#include <filesystem>
 
+#include "AndroidIOHelpers.hpp"
 #include "AndroidRenderWindow.hpp"
 #include "native_app_glue/android_native_app_glue.h"
 #include "game-activity/GameActivity.h"
@@ -29,7 +31,7 @@ struct UserApplication
     }
 };
 
-extern void             SetupApplication(FlexKit::FKApplication& app, FlexKit::IRenderWindow* renderWindow);
+extern void             SetupApplication(FlexKit::FKApplication& app, FlexKit::IRenderWindow* renderWindow, struct android_app *pApp);
 FlexKit::IRenderWindow* CreateAndroidRenderWindow(FlexKit::IRenderSystem& rendersystem, android_app *pApp);
 
 
@@ -140,7 +142,8 @@ extern "C"
 
                 SetupApplication(
                     *userApp->app.get(), 
-                    userApp->renderWindow);
+                    userApp->renderWindow, 
+                    pApp);
 
             }   break;
             case APP_CMD_TERM_WINDOW:
@@ -185,6 +188,7 @@ extern "C"
  */
     void android_main(struct android_app *pApp) 
     {
+        using namespace std::filesystem;
         __android_log_write(ANDROID_LOG_INFO, "FlexKit", "android_main: initializing");
 
         // Register an event handler for Android events
