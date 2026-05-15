@@ -14,5 +14,6 @@ add_library(
 )
 
 target_link_libraries(AndroidTest "$<LINK_LIBRARY:WHOLE_ARCHIVE,androidglue>" flex vkBackend)
+set_target_properties(AndroidTest PROPERTIES OUTPUT_NAME "main")
 
 

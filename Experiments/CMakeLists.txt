@@ -4,6 +4,7 @@ project(FlexEngine LANGUAGES CXX VERSION 0.0.1)
 
 if(DEFINED ANDROID_PLATFORM)
     add_subdirectory(Android)
+    add_subdirectory(AndroidIO)
 else()
 endif()
 
