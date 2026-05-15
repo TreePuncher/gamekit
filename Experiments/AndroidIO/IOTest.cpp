@@ -269,6 +269,8 @@ struct TestState final : public FrameworkState
                 (float)sinf(t * 7.0f) / 2.0f + 0.5f, 
                 0.0f });
 
+		PresentBackBuffer(frameGraph, renderWindow->GetBackBuffer());
+
         toggle = !toggle;
 
         return nullptr;
