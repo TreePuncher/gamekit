@@ -106,7 +106,7 @@ namespace FlexKit
 /************************************************************************************************/
 	
 // Generic Utiliteies
-	bool LoadFileIntoBuffer(const char* strLoc, std::byte* buffer, size_t bufferSize, bool TextFile )
+	bool LoadFileIntoBuffer(const char* strLoc, std::byte* buffer, size_t bufferSize, bool TextFile)
 	{
 #if 1
 		// Use cstdlib

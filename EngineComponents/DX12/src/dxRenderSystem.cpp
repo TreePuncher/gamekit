@@ -4377,7 +4377,7 @@ namespace dx_Internal
 			return handler->LoadSource(fileW, ppIncludeSource);
 		}
 
-		HRESULT IUnknown::QueryInterface(const IID&, void**)
+		HRESULT QueryInterface(const IID&, void**)
 		{
 			return 0;
 		}

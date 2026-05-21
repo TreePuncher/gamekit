@@ -24,7 +24,7 @@ namespace VK_internal
             .pNext					= 0,
             .flags					= 0,
             .surface				= surface,
-            .minImageCount			= 3,
+            .minImageCount			= capabilities.minImageCount,
             .imageFormat			= VkFormat::VK_FORMAT_R8G8B8A8_UNORM,
             .imageColorSpace		= VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
             .imageExtent			= { .width = capabilities.maxImageExtent.width, .height = capabilities.maxImageExtent.height },
