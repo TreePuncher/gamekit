@@ -9,6 +9,7 @@ set(FLEX_ROOT ${PROJECT_SOURCE_DIR} CACHE STRING "FLEX ROOT")
 option(BuildExamples "Build Examples" ON)
 option(BuildExperiments "Build Experiments" ON)
 option(BuildEditor "Build Editor" ON)
+option(BuildTools "Build Tools" ON)
 
 add_subdirectory(Core)
 add_subdirectory(Components)
@@ -39,6 +40,10 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
         message("Building Experiments")
         add_subdirectory(Experiments)
     endif()
+endif()
+
+if(BuildTools)
+	add_subdirectory(Tools)
 endif()
 
 #Install

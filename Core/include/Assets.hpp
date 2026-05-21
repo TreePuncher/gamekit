@@ -25,7 +25,7 @@ namespace FlexKit
 	struct TriMesh;
 	struct TextureSet;
 
-	enum EResourceType : size_t
+	enum EResourceType : uint64_t
 	{
 		EResource_Animation,
 		EResource_ByteCode,
@@ -45,6 +45,9 @@ namespace FlexKit
 
 	struct Resource
 	{
+		Resource() = default;
+		Resource(const Resource& rhs) = default;
+
 		size_t			ResourceSize;
 		EResourceType	Type;
 
@@ -63,9 +66,6 @@ namespace FlexKit
 		uint32_t		RefCount;
 
 		char	ID[ID_LENGTH];
-
-	protected:
-		Resource() = default;
 	};
 
 
@@ -76,7 +76,7 @@ namespace FlexKit
 	{
 		GUID_t					GUID;
 		size_t					ResourcePosition;
-		char*					ResouceLOC; // Not Used in File
+		const char*				ResouceLOC; // Not Used in File
 		EResourceType			Type;
 		char					ID[ID_LENGTH];
 	};

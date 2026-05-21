@@ -27,27 +27,40 @@ namespace VK_internal
 
 		IPipelineBuilder& AddShaderLibrary		(const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddShaderLibrary		(GUID_t) override;
+
 		IPipelineBuilder& AddComputeShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddComputeShader		(GUID_t) override;
+		IPipelineBuilder& AddComputeShader		(const char* assetID) override;
+
 		IPipelineBuilder& AddWorkGraph			(const WorkGraph_Desc& desc = {}) override;
 
 		IPipelineBuilder& AddVertexShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddVertexShader		(GUID_t) override;
+		IPipelineBuilder& AddVertexShader		(const char* assetID) override;
 		IPipelineBuilder& AddDomainShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddDomainShader		(GUID_t) override;
+		IPipelineBuilder& AddDomainShader		(const char* assetID) override;
 		IPipelineBuilder& AddHullShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddHullShader			(GUID_t) override;
+		IPipelineBuilder& AddHullShader			(const char* assetID) override;
 		IPipelineBuilder& AddGeometryShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddGeometryShader		(GUID_t) override;
+		IPipelineBuilder& AddGeometryShader		(const char* assetID) override;
 
 		IPipelineBuilder& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddAmplificationShader(GUID_t) override;
+		IPipelineBuilder& AddAmplificationShader(const char* assetID) override;
 		IPipelineBuilder& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddMeshShader			(GUID_t) override;
+		IPipelineBuilder& AddMeshShader			(const char* assetID) override;
 
 		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) override;
 		IPipelineBuilder& AddPixelShader		(GUID_t) override;
         IPipelineBuilder& AddPixelShader		(const char* entryPoint, const Shader&) override;
+		IPipelineBuilder& AddPixelShader		(const char* assetID) override;
+
+		void LoadShaderAsset(GUID_t, VkShaderStageFlagBits);
+		void LoadShaderAsset(const char* assetID, VkShaderStageFlagBits);
 
 		IPipelineBuilder& SetDebugName			(const char* name) override;
 
@@ -61,6 +74,7 @@ namespace VK_internal
 
 		LoadPipelineStateRes Build					(IRenderSystem& renderSystem, iAllocator& tempAllocator) override;
 		LoadPipelineStateRes BuildStream			(IRenderSystem& renderSystem, void* buffer, const size_t size) override;
+
 
 		struct VertexStateObject*				GetVertexInputState() const;
 		VkPipelineInputAssemblyStateCreateInfo* GetInputAssemblyState() const;
