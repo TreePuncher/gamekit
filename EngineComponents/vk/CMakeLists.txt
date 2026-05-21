@@ -99,7 +99,7 @@ target_sources(
 
 if(WIN32)
     target_compile_definitions(vkBackend PRIVATE VK_USE_PLATFORM_WIN32_KHR=1)
-    target_link_libraries(vkBackend PRIVATE Microsoft::DXIL)
+    target_link_libraries(vkBackend PRIVATE Microsoft::DXIL shaderpreprocessor)
 
     #find_library(spirvReflect spirv-reflect-static.lib)
     #find_library(spirv_cross_core spirv-cross-core.lib)

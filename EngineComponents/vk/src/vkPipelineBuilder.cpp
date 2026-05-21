@@ -1,5 +1,6 @@
 #include "vkPipelineBuilder.hpp"
 #include "vkRenderSystem.hpp"
+#include <assets.hpp>
 #include <spirv_cross/spirv_cross.hpp>
 
 #ifdef WIN32
@@ -109,6 +110,11 @@ namespace VK_internal
 
 	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
+		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		auto shader = vkRS.LoadShader(entryPoint, "cs_6_6", file, options);
+		shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT, .shader = std::move(shader) });
+
 		return *this;
 	}
 
@@ -116,8 +122,21 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(GUID_t)
+	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(GUID_t guid)
 	{
+		LoadShaderAsset(guid, VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT);
+
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddComputeShader(const char* assetID)
+	{
+		LoadShaderAsset(assetID, VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT);
+
 		return *this;
 	}
 
@@ -137,8 +156,8 @@ namespace VK_internal
 	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
 		auto shader = vkRS.LoadShader(entryPoint, "vs_6_6", file, options);
-		auto	idx = shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, .shader = std::move(shader) });
 
 		AddInputLayout({});
 		AddInputTopology({});
@@ -150,12 +169,30 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(GUID_t)
+	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(GUID_t guid)
 	{
+		LoadShaderAsset(guid, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
+
+		AddInputLayout({});
+		AddInputTopology({});
+
 		return *this;
 	}
 
-	
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddVertexShader(const char* assetID)
+	{
+		LoadShaderAsset(assetID, VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT);
+
+		AddInputLayout({});
+		AddInputTopology({});
+
+		return *this;
+	}
+
 
 	/************************************************************************************************/
 
@@ -170,6 +207,15 @@ namespace VK_internal
 
 
 	IPipelineBuilder& vkPipelineBuilder::AddDomainShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddDomainShader(const char* assetID)
 	{
 		return *this;
 	}
@@ -196,6 +242,15 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
+	IPipelineBuilder& vkPipelineBuilder::AddHullShader(const char* assetID)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
 	IPipelineBuilder& vkPipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
@@ -206,6 +261,15 @@ namespace VK_internal
 
 
 	IPipelineBuilder& vkPipelineBuilder::AddGeometryShader(GUID_t)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddGeometryShader(const char* assetID)
 	{
 		return *this;
 	}
@@ -232,6 +296,14 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
+	IPipelineBuilder& vkPipelineBuilder::AddAmplificationShader(const char* assetID)
+	{
+		return *this;
+	}
+
+	/************************************************************************************************/
+
+
 	IPipelineBuilder& vkPipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		return *this;
@@ -250,12 +322,21 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
+	IPipelineBuilder& vkPipelineBuilder::AddMeshShader(const char* assetID)
+	{
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
 	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
-		auto	shader = vkRS.LoadShader(entryPoint, "ps_6_6", file, options);
-		auto	idx = shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, .shader = std::move(shader) });
+		auto shader = vkRS.LoadShader(entryPoint, "ps_6_6", file, options);
+		shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, .shader = std::move(shader) });
 
 		AddRenderTargetState({});
 		AddRasterizerState({});
@@ -270,8 +351,15 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(GUID_t)
+	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(GUID_t guid)
 	{
+		LoadShaderAsset(guid, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
+
+		AddRenderTargetState({});
+		AddRasterizerState({});
+
+		auto rasterizerState = GetRasterizationState();
+		rasterizerState->rasterizerDiscardEnable = false;
 		return *this;
 	}
 
@@ -283,7 +371,7 @@ namespace VK_internal
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
-		const auto idx = shaders.push_back({ .entryPoint = entryPoint, .shader = shader });
+		shaders.push_back({ .entryPoint = entryPoint, .shader = shader });
 
 		AddRenderTargetState({});
 		AddRasterizerState({});
@@ -292,6 +380,62 @@ namespace VK_internal
 		rasterizerState->rasterizerDiscardEnable = false;
 
 		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
+	IPipelineBuilder& vkPipelineBuilder::AddPixelShader(const char* assetID)
+	{
+		LoadShaderAsset(assetID, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
+
+		AddRenderTargetState({});
+		AddRasterizerState({});
+
+		auto rasterizerState = GetRasterizationState();
+		rasterizerState->rasterizerDiscardEnable = false;
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+	
+
+	void vkPipelineBuilder::LoadShaderAsset(GUID_t assetUID, VkShaderStageFlagBits shaderStage)
+	{
+		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		auto shaderAsset = FlexKit::LoadGameAsset(assetUID);
+		ShaderResourceBlob* asset_ptr = (ShaderResourceBlob*)FlexKit::GetAsset(shaderAsset);
+
+		if (asset_ptr->header.Type != EResourceType::EResource_Shader)
+			FK_LOG_ERROR("VK: Failed to load shader resource!: assetUID: {}", assetUID);
+
+		auto spirv = asset_ptr->GetByteCode();
+		auto spirvSize = asset_ptr->GetByteCodeSize();
+
+		Shader shader{ spirv, spirvSize, vkRS.allocator };
+		shaders.push_back({ .entryPoint = nullptr, .stage = shaderStage, .shader = std::move(shader) });
+	}
+
+
+	void vkPipelineBuilder::LoadShaderAsset(const char* assetID, VkShaderStageFlagBits shaderStage)
+	{
+		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
+
+		auto shaderAsset = FlexKit::LoadGameAsset(assetID);
+		ShaderResourceBlob* asset_ptr = (ShaderResourceBlob*)FlexKit::GetAsset(shaderAsset);
+
+		if (asset_ptr->header.Type != EResourceType::EResource_Shader)
+			FK_LOG_ERROR("VK: Failed to load shader resource!: assetID: {}", assetID);
+
+		auto spirv = asset_ptr->GetByteCode();
+		auto spirvSize = asset_ptr->GetByteCodeSize();
+
+		Shader shader{ spirv, spirvSize, vkRS.allocator };
+		shaders.push_back({ .entryPoint = nullptr, .stage = shaderStage, .shader = std::move(shader) });
 	}
 
 
@@ -625,11 +769,22 @@ namespace VK_internal
 			spirv_cross::Compiler compiler((uint32_t*)shaderRec.shader.buffer, shaderRec.shader.bufferSize / 4);
 			auto shaderResources = compiler.get_shader_resources();
 
+			if (shaderRec.entryPoint == nullptr)
+			{
+				auto entryPoints = compiler.get_entry_points_and_stages();
+				const std::string name = entryPoints[0].name;
+
+				char* nameStr = (char*)tempAllocator.malloc(name.size() + 1);
+				strncpy(nameStr, name.data(), name.size() + 1);
+
+				shaderRec.entryPoint = nameStr;
+			}
+
 			shaderRec.shader.ForEachDescriptorSetAttribute(
 				[&](const ShaderAttributeDescriptorTable& descriptorTable)
 			    {
 					uint32_t bindingCounter = 0;
-					for (const DescriptorTableEntry& entry : descriptorTable.entries)
+					for (const ShaderAttributeDescriptorTableEntry& entry : descriptorTable.entries)
 					{
 						std::span spanDescriptors{ descriptors.begin(), descriptors.end() };
 
@@ -651,15 +806,15 @@ namespace VK_internal
 								{
 									switch (entry.type)
 									{
-									case DescriptorType::SRVBuffer:
+									case ShaderResourceType::SRVBuffer:
 										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-									case DescriptorType::SRVTexture:
+									case ShaderResourceType::SRVTexture:
 										return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-									case DescriptorType::CBV:
+									case ShaderResourceType::CBV:
 										return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-									case DescriptorType::UAVBuffer:
+									case ShaderResourceType::UAVBuffer:
 										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-									case DescriptorType::UAVTexture:
+									case ShaderResourceType::UAVTexture:
 										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
 									}
 								};
@@ -690,7 +845,7 @@ namespace VK_internal
 				auto ranges = compiler.get_active_buffer_ranges(constant.id);
 				if (auto res = shaderRec.shader.FindCBVAttribute(id); res)
 				{
-					const ShaderAttributeCBV& attribute = res.value();
+					const ShaderAttributeResource& attribute = res.value();
 
 					auto descriptor =
 						std::find_if(
@@ -714,7 +869,7 @@ namespace VK_internal
 				}
 				else if (auto res = shaderRec.shader.FindCBVPushAttribute(id); res)
 				{
-					const ShaderAttributePushCBV& attribute = res.value();
+					const ShaderAttributeConstantValues& attribute = res.value();
 
 					if (auto res = std::ranges::find_if(
 						pushDescriptorLayout,
@@ -746,10 +901,10 @@ namespace VK_internal
 						}); res == std::end(descriptors))
 					{
 						descriptors.push_back({
-							.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-							.binding = (uint16_t)binding,
-							.set = (uint16_t)set,
-							.stages = (uint32_t)shaders[idx].stage,
+							.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+							.binding	= (uint16_t)binding,
+							.set		= (uint16_t)set,
+							.stages		= (uint32_t)shaders[idx].stage,
 							});
 					}
 					else

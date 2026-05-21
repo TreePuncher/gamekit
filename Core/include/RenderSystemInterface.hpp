@@ -978,64 +978,114 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	enum class ShaderResourceType
+	{
+		UAVBuffer, UAVTexture, SRVBuffer, SRVTexture, CBV, ConstantValues, AccellerationStructure, Unknown
+	};
+
+	enum class AttributeType
+	{
+		RootSignatureFlag, DescriptorTable, Resource, ConstantValues, Sampler, Unknown
+	};
+
+
+	struct ShaderAttributeBlockHeader
+	{
+		AttributeType	type;
+		uint32_t		blockSize;
+	};
+
+
 	struct ShaderAttributeConstantValues
 	{
-		uint32_t num;
-		uint32_t pipelineStage;
+		uint32_t	num;
+		uint32_t	binding;
+		uint32_t	pipelineStage;
 		std::string id;
 	};
 
-	enum class DescriptorType
+
+	struct ShaderAttributeAS
 	{
-	    UAVBuffer, UAVTexture, SRVBuffer, SRVTexture, CBV, AccellerationStructure
+		uint32_t	pipelineStage;
+		std::string id;
 	};
 
-	struct DescriptorTableEntry
+
+	struct ShaderAttributeDescriptorTableEntry
 	{
-		uint32_t		num;
-		DescriptorType	type;
+		uint32_t			num		= 0;
+		ShaderResourceType	type	= ShaderResourceType::Unknown;
 	};
+
 
 	struct ShaderAttributeDescriptorTable
 	{
-		uint32_t							set;
-		std::vector<DescriptorTableEntry>	entries;
+		uint32_t											set;
+		std::vector<ShaderAttributeDescriptorTableEntry>	entries;
+
+		ShaderAttributeDescriptorTableEntry ReadDescriptor(uint32_t idx) { return ShaderAttributeDescriptorTableEntry{}; }
 	};
+
+
+	struct ShaderAttributeConstantValuesBlock
+	{
+		ShaderAttributeBlockHeader	header;
+		uint32_t					num;
+		uint32_t					binding;
+		uint32_t					pipelineStage;
+		uint16_t					stringSize;
+	};
+
+
+	struct ShaderAttributeDescriptorTableBlock
+	{
+		ShaderAttributeBlockHeader	header;
+		uint32_t					set;
+		uint32_t					count;
+	};
+
 
 	struct ShaderAttributeFlag
 	{
 		uint32_t flag;
 	};
 
-	struct ShaderAttributeCBV
+
+	struct ShaderAttributeFlagBlock
 	{
-		uint32_t	binding;
-		uint32_t	set;
-		uint32_t	pipelineStage;
+		ShaderAttributeBlockHeader	header;
+		uint32_t					flag;
+	};
+
+
+	struct ShaderAttributeResource
+	{
+		ShaderResourceType	type;
+		uint32_t			binding;
+		uint32_t			set;
+		uint32_t			pipelineStage;
+
 		std::string id;
 	};
 
-	struct ShaderAttributePushCBV
+
+	struct ShaderAttributeResourceBlock
 	{
-		uint32_t	binding;
-		uint32_t	pipelineStage;
-		std::string id;
+		ShaderAttributeBlockHeader header;
+
+		ShaderResourceType	type;
+		uint32_t			binding;
+		uint32_t			set;
+		uint32_t			pipelineStage;
+		uint16_t			stringSize;
+
+		std::string_view GetID() const { return {}; }
 	};
 
-	struct ShaderAttributeSRV
-	{
-	};
 
-	struct ShaderAttributeUAV
-	{
-	};
-
-	struct ShaderAttributeSampler{};
-
-
-	using ShaderAttribute = std::variant<
-		ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, 
-        ShaderAttributeCBV, ShaderAttributeSRV, ShaderAttributeUAV, ShaderAttributeSampler, ShaderAttributePushCBV>;
+	using ShaderAttribute =
+		std::variant<ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, ShaderAttributeResource>;
 
 
 	struct ShaderExtra
@@ -1043,12 +1093,13 @@ namespace FlexKit
 		Vector<ShaderAttribute> attributes;
 	};
 
+
 	struct Shader
 	{
 		Shader() = default;
 
 
-		Shader(char* IN_buffer, size_t IN_bufferSize, iAllocator* IN_allocator) :
+		Shader(const char* IN_buffer, size_t IN_bufferSize, iAllocator* IN_allocator) :
 			buffer		{ (char*)IN_allocator->malloc(IN_bufferSize) },
 			bufferSize	{ (uint32_t)IN_bufferSize },
 			allocator	{ IN_allocator	}
@@ -1129,7 +1180,7 @@ namespace FlexKit
 			return *extra;
 		}
 
-		std::optional<ShaderAttributeCBV> FindCBVAttribute(uint32_t reg) const noexcept
+		std::optional<ShaderAttributeResource> FindCBVAttribute(uint32_t reg) const noexcept
 		{
 			if (!extra)
 				return {};
@@ -1138,10 +1189,9 @@ namespace FlexKit
 			{
 				bool result = std::visit(
 					Overloaded{
-						[&](const ShaderAttributeCBV& attribute)
+						[&](const ShaderAttributeResource& attribute)
 						{
-							int x = 0;
-							return attribute.binding == reg;
+							return attribute.type == ShaderResourceType::CBV && attribute.binding == reg;
 						},
 						[](auto&& attribute)
 						{
@@ -1150,13 +1200,13 @@ namespace FlexKit
 					}, attrib);
 
 				if (result)
-					return std::get<ShaderAttributeCBV>(attrib);
+					return std::get<ShaderAttributeResource>(attrib);
 			}
 
 			return {};
 		}
 		
-		std::optional<ShaderAttributePushCBV> FindCBVPushAttribute(std::string_view id) const noexcept
+		std::optional<ShaderAttributeConstantValues> FindCBVPushAttribute(std::string_view id) const noexcept
 		{
 			if (!extra)
 				return {};
@@ -1165,7 +1215,7 @@ namespace FlexKit
 			{
 				bool result = std::visit(
 					Overloaded{
-						[&](const ShaderAttributePushCBV& attribute)
+						[&](const ShaderAttributeConstantValues& attribute)
 						{
 							return attribute.id == id;
 						},
@@ -1176,13 +1226,13 @@ namespace FlexKit
 					}, attrib);
 
 				if (result)
-					return std::get<ShaderAttributePushCBV>(attrib);
+					return std::get<ShaderAttributeConstantValues>(attrib);
 			}
 
 			return {};
 		}
 
-	    std::optional<ShaderAttributeCBV> FindCBVAttribute(std::string_view id) const noexcept
+	    std::optional<ShaderAttributeResource> FindCBVAttribute(std::string_view id) const noexcept
 		{
 			if (!extra)
 				return {};
@@ -1191,9 +1241,9 @@ namespace FlexKit
 			{
 				bool result = std::visit(
 					Overloaded{
-						[&](const ShaderAttributeCBV& attribute)
+						[&](const ShaderAttributeResource& attribute)
 						{
-							return attribute.id == id;
+							return attribute.type == ShaderResourceType::CBV && attribute.id == id;
 						},
 						[](auto&& attribute)
 						{
@@ -1202,7 +1252,7 @@ namespace FlexKit
 					}, attrib);
 
 				if (result)
-					return std::get<ShaderAttributeCBV>(attrib);
+					return std::get<ShaderAttributeResource>(attrib);
 			}
 
 			return {};
@@ -1232,42 +1282,61 @@ namespace FlexKit
 			GetExtra().attributes.push_back(attribute);
 		}
 
-		char*			buffer		= nullptr;
+		void*			buffer		= nullptr;
 		uint32_t		bufferSize	= 0;
 		SHADER_TYPE		type		= SHADER_TYPE::Unknown;
 		ShaderExtra*	extra		= nullptr;
 		iAllocator*		allocator	= nullptr;
 	};
 
+
 	struct ShaderResourceBlob
 	{
 		static const size_t ID_LENGTH = 64;
 
-		struct ShaderAttributeBlob
+		enum class ShaderAPI
 		{
-			ShaderAttribute attribute;
+			HLSL,
+			SPIRV
 		};
+
+
+		struct ShaderAttributeHeader
+		{
+			uint16_t		size;
+			AttributeType	type;
+
+			const ShaderAttributeHeader* Next() { return (const ShaderAttributeHeader*)(((const char*)this) + size); }
+		};
+
 
 		struct Header
 		{
-			size_t			ResourceSize;
-			uint32_t		Type;
-			size_t			GUID;
-			size_t			Pad;
+			size_t		ResourceSize;
+			uint64_t	Type;
+
+			GUID_t		GUID;
+			uint32_t	State;
+			uint32_t	RefCount;
 
 			char ID[ID_LENGTH];
 
-			uint32_t attributeCount;
-			uint32_t byteCodeByteSize;
-			uint32_t byteCodeOffset;
-			uint32_t byteCodeAttributeOffset;
+			ShaderAPI	api;
+			uint32_t	attributeCount;
+			uint32_t	byteCodeByteSize;
+			uint32_t	byteCodeOffset;
+			uint32_t	attributeOffset;
+			uint32_t	attributeByteSize;
+
+			const ShaderAttributeHeader* AttributeBegin()	const { return reinterpret_cast<ShaderAttributeHeader*>(((char*)this) + attributeOffset); }
+			const ShaderAttributeHeader* AttributeEnd()		const { return reinterpret_cast<ShaderAttributeHeader*>(((char*)this) + attributeOffset + attributeByteSize); }
 		} header;
 
 		size_t 						GetAttributeCount	(uint32_t idx) const noexcept { return 0u; }
-		const ShaderAttributeBlob* 	GetShaderAttribute	(uint32_t idx) const noexcept { return nullptr; }
+		const ShaderAttribute 		GetShaderAttribute	(uint32_t idx) const noexcept { return {}; }
 		
-		const char*	GetByteCode() 	const noexcept { return nullptr; }
-		size_t	GetByteCodeSize	() 	const noexcept { return 0u; }
+		const char*	GetByteCode() 	const noexcept { return ((const char*)this) + header.byteCodeOffset; }
+		size_t	GetByteCodeSize	() 	const noexcept { return header.byteCodeByteSize; }
 	};
 
 
@@ -2141,7 +2210,7 @@ namespace FlexKit
 	struct RootSignatureHeapEntry
 	{
 		size_t					idx;
-		DescriptorHeapLayout		Heap;
+		DescriptorHeapLayout	Heap;
 	};
 
 
@@ -2198,25 +2267,33 @@ namespace FlexKit
 		virtual IPipelineBuilder& AddShaderLibrary	(GUID_t) = 0;
 		virtual IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddComputeShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddComputeShader	(const char* assetID) = 0;
 		virtual IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {}) = 0;
 
 		virtual IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddVertexShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddVertexShader	(const char* assetID) = 0;
 		virtual IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddDomainShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddDomainShader	(const char* assetID) = 0;
 		virtual IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddHullShader		(GUID_t) = 0;
+		virtual IPipelineBuilder& AddHullShader		(const char* assetID) = 0;
 		virtual IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddGeometryShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddGeometryShader	(const char* assetID) = 0;
 
 		virtual IPipelineBuilder& AddAmplificationShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddAmplificationShader	(GUID_t) = 0;
+		virtual IPipelineBuilder& AddAmplificationShader	(const char* assetID) = 0;
 		virtual IPipelineBuilder& AddMeshShader				(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddMeshShader				(GUID_t) = 0;
+		virtual IPipelineBuilder& AddMeshShader				(const char* assetID) = 0;
 
 		virtual IPipelineBuilder& AddPixelShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) = 0;
 		virtual IPipelineBuilder& AddPixelShader			(GUID_t) = 0;
 		virtual IPipelineBuilder& AddPixelShader			(const char* entryPoint, const Shader& shader) = 0;
+		virtual IPipelineBuilder& AddPixelShader			(const char* assetID) = 0;
 
 		virtual IPipelineBuilder& SetDebugName(const char* name) = 0;
 
@@ -2244,25 +2321,34 @@ namespace FlexKit
 		IPipelineBuilder& AddShaderLibrary	(GUID_t);
 		IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddComputeShader	(GUID_t);
+		IPipelineBuilder& AddComputeShader	(const char* assetID);
+
 		IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {});
 
 		IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddVertexShader	(GUID_t);
+		IPipelineBuilder& AddVertexShader	(const char* assetID);
 		IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddDomainShader	(GUID_t);
+		IPipelineBuilder& AddDomainShader	(const char* assetID);
 		IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddHullShader		(GUID_t);
+		IPipelineBuilder& AddHullShader		(const char* assetID);
 		IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddGeometryShader	(GUID_t);
+		IPipelineBuilder& AddGeometryShader	(const char* assetID);
 
 		IPipelineBuilder& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddAmplificationShader(GUID_t);
+		IPipelineBuilder& AddAmplificationShader(const char* assetID);
 		IPipelineBuilder& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddMeshShader			(GUID_t);
+		IPipelineBuilder& AddMeshShader			(const char* assetID);
 
 		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {});
 		IPipelineBuilder& AddPixelShader		(GUID_t);
 		IPipelineBuilder& AddPixelShader		(Shader);
+		IPipelineBuilder& AddPixelShader		(const char* assetID);
 
 		IPipelineBuilder& SetDebugName			(const char* name) ;
 

@@ -8,6 +8,7 @@
 #include <ModifiableShape.hpp>
 #include <MeshUtilities.hpp>
 #include <TriMeshResource.hpp>
+#include <Type.hpp>
 
 #define USEVK 1
 
@@ -25,7 +26,7 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 	Vector<char> buffer{ SystemAllocator };
 	buffer.resize(std::filesystem::file_size(p));
 
-	bool Loaded = FlexKit::LoadFileIntoBuffer(p.string().c_str(), (std::byte*)buffer.data(), buffer.size());// TODO: Make Thread Safe
+	bool Loaded = LoadFileIntoBuffer(p.string().c_str(), (std::byte*)buffer.data(), buffer.size());// TODO: Make Thread Safe
 	if (!Loaded)
 	{
 		printf("Failed To Load Obj\n");
@@ -64,10 +65,10 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 	Vector<float3>		normals{ SystemAllocator };
 	Vector<float2>		uvs{ SystemAllocator };
 
-	auto meshHandle = FlexKit::CreateMesh(123456789);
-	auto& mesh		= *FlexKit::GetMeshResource(meshHandle);
+	auto meshHandle = CreateMesh(123456789);
+	auto& mesh		= *GetMeshResource(meshHandle);
 	TriMesh::LOD_Runtime lod0;
-	lod0.bufferSet = &FlexKit::IRenderSystem::GetInstance().CreateVertexBufferSet();
+	lod0.bufferSet = &IRenderSystem::GetInstance().CreateVertexBufferSet();
 
 	AABB aabb;
 
@@ -101,41 +102,47 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 	MeshUtilityFunctions::OptimizedBuffer optimizedBuffer{ optimized };
 
 	size_t VertexBufferSize = optimizedBuffer.points.ByteSize() + sizeof(VertexBufferView);// pos
-	size_t NormalBufferSize = optimizedBuffer.normals.ByteSize() + sizeof(VertexBufferView);// Normal
 	size_t IndexBufferSize	= optimizedBuffer.indexes.ByteSize() + sizeof(VertexBufferView);// index
 
 	lod0.views[0] = CreateVertexBufferView(SystemAllocator, VertexBufferSize);
 	lod0.views[1] = CreateVertexBufferView(SystemAllocator, IndexBufferSize);
-	lod0.views[2] = CreateVertexBufferView(SystemAllocator, NormalBufferSize);
+
 
 	lod0.views[0]->Begin(VERTEXBUFFER_TYPE::POSITION, VERTEXBUFFER_FORMAT::R32G32B32);
 	lod0.views[1]->Begin(VERTEXBUFFER_TYPE::INDEX, VERTEXBUFFER_FORMAT::R32);
-	lod0.views[2]->Begin(VERTEXBUFFER_TYPE::NORMAL, VERTEXBUFFER_FORMAT::R32G32B32);
+
 
 	memcpy(lod0.views[0]->GetBuffer(), optimizedBuffer.points.data(), optimizedBuffer.points.ByteSize());
 	memcpy(lod0.views[1]->GetBuffer(), optimizedBuffer.indexes.data(), optimizedBuffer.indexes.ByteSize());
-	memcpy(lod0.views[2]->GetBuffer(), optimizedBuffer.normals.data(), optimizedBuffer.normals.ByteSize());
 
 	lod0.views[0]->MarkFull();
 	lod0.views[1]->MarkFull();
-	lod0.views[2]->MarkFull();
 
 	lod0.views[0]->End();
 	lod0.views[1]->End();
-	lod0.views[2]->End();
 
 	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::POSITION,	VERTEXBUFFER_FORMAT::R32G32B32,	optimizedBuffer.points.ByteSize());
 	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::INDEX,		VERTEXBUFFER_FORMAT::R32,		optimizedBuffer.indexes.ByteSize());
-	lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::NORMAL,		VERTEXBUFFER_FORMAT::R32G32B32,	optimizedBuffer.normals.ByteSize());
-
-	mesh.aabb	= aabb;
-	mesh.bs		= float4{ aabb.MidPoint(), aabb.Span().magnitude() / 2.0f };
 
 	auto copyCtx = IRenderSystem::GetInstance().GetImmediateCopyQueue();
 
 	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(0), *lod0.views[0]);
 	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(1), *lod0.views[1]);
-	UploadVertexBuffer(copyCtx, lod0.bufferSet->At(2), *lod0.views[2]);
+
+	if (optimizedBuffer.normals.size())
+	{
+		size_t NormalBufferSize = optimizedBuffer.normals.ByteSize() + sizeof(VertexBufferView);// Normal
+		lod0.views[2] = CreateVertexBufferView(SystemAllocator, NormalBufferSize);
+		lod0.views[2]->Begin(VERTEXBUFFER_TYPE::NORMAL, VERTEXBUFFER_FORMAT::R32G32B32);
+		memcpy(lod0.views[2]->GetBuffer(), optimizedBuffer.normals.data(), optimizedBuffer.normals.ByteSize());
+		lod0.views[2]->MarkFull();
+		lod0.views[2]->End();
+		lod0.bufferSet->CreateBuffer(VERTEXBUFFER_TYPE::NORMAL, VERTEXBUFFER_FORMAT::R32G32B32, optimizedBuffer.normals.ByteSize());
+		UploadVertexBuffer(copyCtx, lod0.bufferSet->At(2), *lod0.views[2]);
+	}
+
+	mesh.aabb	= aabb;
+	mesh.bs		= float4{ aabb.MidPoint(), aabb.Span().magnitude() / 2.0f };
 
 	SubMesh sm{
 		.BaseIndex		= 0,
@@ -150,6 +157,9 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 
 	return meshHandle;
 }
+
+constexpr GUID_t VertexShaderAssetID	= GetCRCGUID(VertexShader);
+constexpr GUID_t PixelShaderAssetID		= GetCRCGUID(PixelShader);
 
 struct TestState : FrameworkState
 {
@@ -167,6 +177,8 @@ struct TestState : FrameworkState
 
 		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::ShaderResource({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
 
+		FlexKit::AddAssetFile("assets\\shaderpack.gameres");
+
 		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
 			{
@@ -174,15 +186,17 @@ struct TestState : FrameworkState
 				builder.AddInputLayout({
 					.inputs = {
 						{
-							.name	= "POSITION",
-							.index	= 0,
-							.format = DeviceFormat::R32G32B32_FLOAT,
+							.name			= "POSITION",
+							.index			= 0,
+							.format			= DeviceFormat::R32G32B32_FLOAT,
 							.inputSlotClass = EInputClassification::PerVertex,
 						}},
 					.count = 1
 					});
-				builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl");
-				builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
+				builder.AddVertexShader("VMain");
+				builder.AddPixelShader("PMain");
+				//builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl");
+				//builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
 				builder.AddRasterizerState();
 				builder.AddRenderTargetState({
 						.targetCount	= 1,

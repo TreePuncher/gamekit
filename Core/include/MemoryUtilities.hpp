@@ -15,7 +15,7 @@ namespace FlexKit
 	{
 		const auto mask             = alignment - 1;
 		const auto offset           = unalignedSize & mask;
-		const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
+		const auto adjustedOffset   = offset != 0 ? alignment - offset : 0;
 
 		return unalignedSize + adjustedOffset;
 	}

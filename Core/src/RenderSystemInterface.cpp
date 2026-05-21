@@ -128,6 +128,14 @@ namespace FlexKit
 		return impl;
 	}
 
+	IPipelineBuilder& PipelineBuilder::AddComputeShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddComputeShader(assetID);
+		return impl;
+	}
+
 	IPipelineBuilder& PipelineBuilder::AddWorkGraph(const WorkGraph_Desc& desc)
 	{
 		auto& impl = GetImpl();
@@ -152,6 +160,14 @@ namespace FlexKit
 		return impl;
 	}
 
+	IPipelineBuilder& PipelineBuilder::AddVertexShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddVertexShader(assetID);
+		return impl;
+	}
+
 	IPipelineBuilder& PipelineBuilder::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
@@ -165,6 +181,14 @@ namespace FlexKit
 		auto& impl = GetImpl();
 
 		impl.AddDomainShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddDomainShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddDomainShader(assetID);
 		return impl;
 	}
 
@@ -184,6 +208,14 @@ namespace FlexKit
 		return impl;
 	}
 
+	IPipelineBuilder& PipelineBuilder::AddHullShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddHullShader(assetID);
+		return impl;
+	}
+
 	IPipelineBuilder& PipelineBuilder::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
@@ -197,6 +229,14 @@ namespace FlexKit
 		auto& impl = GetImpl();
 
 		impl.AddGeometryShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddGeometryShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddGeometryShader(assetID);
 		return impl;
 	}
 
@@ -216,6 +256,14 @@ namespace FlexKit
 		return impl;
 	}
 
+	IPipelineBuilder& PipelineBuilder::AddAmplificationShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddAmplificationShader(assetID);
+		return impl;
+	}
+
 	IPipelineBuilder& PipelineBuilder::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
 	{
 		auto& impl = GetImpl();
@@ -229,6 +277,14 @@ namespace FlexKit
 		auto& impl = GetImpl();
 
 		impl.AddMeshShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddMeshShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddMeshShader(assetID);
 		return impl;
 	}
 
@@ -246,6 +302,14 @@ namespace FlexKit
 		auto& impl = GetImpl();
 
 		impl.AddPixelShader(guid);
+		return impl;
+	}
+
+	IPipelineBuilder& PipelineBuilder::AddPixelShader(const char* assetID)
+	{
+		auto& impl = GetImpl();
+
+		impl.AddPixelShader(assetID);
 		return impl;
 	}
 
