@@ -11,19 +11,19 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc_ST(const size_t size, uint64_t completedIdx) noexcept
+	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc_ST(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept
 	{
-		return Alloc2_ST(size, completedIdx).and_then([](auto res) { return std::optional{ res.range }; });
+		return Alloc2_ST(size, completedIdx, alignment).and_then([](auto res) { return std::optional{ res.range }; });
 	}
 
 
 	/************************************************************************************************/
 
 
-	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2_ST(const size_t size, uint64_t completedIdx) noexcept
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2_ST(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept
 	{
 		auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
-		const size_t blockCount = AlignedSize(size, 64) / 64;
+		const size_t blockCount = AlignedSize(size, alignment) / alignment;
 
 		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less);
 		else
@@ -112,24 +112,24 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc(const size_t size, uint64_t completedIdx) noexcept
+	std::optional<DescriptorRange> vkDescriptorHeapAllocator::Alloc(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept
 	{
 		std::scoped_lock lock{ mutex };
 
-		return Alloc_ST(size, completedIdx);
+		return Alloc_ST(size, completedIdx, alignment);
 	}
 
-	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2(const size_t size, uint64_t completedIdx) noexcept
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept
 	{
 		std::scoped_lock lock{ mutex };
-		return Alloc2_ST(size, completedIdx);
+		return Alloc2_ST(size, completedIdx, alignment);
 	}
 
 
 	/************************************************************************************************/
 
 
-	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp_ST(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp_ST(const size_t size, uint64_t completedIdx, uint64_t lockIdx, uint32_t alignment) noexcept
 	{
 	    auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
 		const size_t blockCount = AlignedSize(size, 64) / 64;
@@ -225,10 +225,10 @@ namespace VK_internal
 	}
 
 
-	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp(const size_t size, uint64_t completedIdx, uint64_t lockIdx) noexcept
+	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp(const size_t size, uint64_t completedIdx, uint64_t lockIdx, uint32_t alignment) noexcept
 	{
 		std::scoped_lock lock{ mutex };
-		return Alloc2Temp_ST(size, completedIdx, lockIdx);
+		return Alloc2Temp_ST(size, completedIdx, lockIdx, alignment);
 	}
 
 

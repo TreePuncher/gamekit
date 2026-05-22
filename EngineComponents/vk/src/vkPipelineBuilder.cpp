@@ -1,7 +1,8 @@
 #include "vkPipelineBuilder.hpp"
 #include "vkRenderSystem.hpp"
-#include <assets.hpp>
+#include <Assets.hpp>
 #include <spirv_cross/spirv_cross.hpp>
+#include <format>
 
 #ifdef WIN32
 #include "Unknwnbase.h"
@@ -339,6 +340,7 @@ namespace VK_internal
 		shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, .shader = std::move(shader) });
 
 		AddRenderTargetState({});
+		AddBlendState({});
 		AddRasterizerState({});
 
 		auto rasterizerState = GetRasterizationState();
@@ -356,6 +358,7 @@ namespace VK_internal
 		LoadShaderAsset(guid, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		AddRenderTargetState({});
+		AddBlendState({});
 		AddRasterizerState({});
 
 		auto rasterizerState = GetRasterizationState();
@@ -374,6 +377,7 @@ namespace VK_internal
 		shaders.push_back({ .entryPoint = entryPoint, .shader = shader });
 
 		AddRenderTargetState({});
+		AddBlendState({});
 		AddRasterizerState({});
 
 		auto rasterizerState = GetRasterizationState();
@@ -391,6 +395,7 @@ namespace VK_internal
 		LoadShaderAsset(assetID, VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT);
 
 		AddRenderTargetState({});
+		AddBlendState({});
 		AddRasterizerState({});
 
 		auto rasterizerState = GetRasterizationState();
@@ -626,30 +631,39 @@ namespace VK_internal
 
 	IPipelineBuilder& vkPipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
-		VkPipelineViewportStateCreateInfo& viewport = [this]() -> VkPipelineViewportStateCreateInfo&
+		VkPipelineRenderingCreateInfoKHR& renderTarget = [this]() -> VkPipelineRenderingCreateInfoKHR&
 			{
-				auto viewport = GetViewportState();
-				if (viewport == nullptr)
+				VkPipelineRenderingCreateInfoKHR* renderTarget = GetRenderTargetState();
+				if (renderTarget == nullptr)
 				{
-					viewport = &allocator.allocate<VkPipelineViewportStateCreateInfo>();
-					viewport->sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-					viewport->pNext = nullptr;
-					viewport->flags = 0;
-					viewport->viewportCount = 0;
-					viewport->pViewports = nullptr;
-					viewport->scissorCount = 0;
-					viewport->pScissors = nullptr;
+					renderTarget = &allocator.allocate<VkPipelineRenderingCreateInfoKHR>();
+					renderTarget->pColorAttachmentFormats = (VkFormat*)allocator.malloc(sizeof(VkFormat[8]));
+
+					VkFormat format = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
+
+					VkPipelineRenderingCreateInfoKHR pipeline_create{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+					renderTarget->sType						= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+					renderTarget->pNext						= VK_NULL_HANDLE;
+					renderTarget->colorAttachmentCount		= 0;
+					renderTarget->depthAttachmentFormat		= VK_FORMAT_UNDEFINED;
+					renderTarget->stencilAttachmentFormat	= VK_FORMAT_UNDEFINED;
+					renderTarget->viewMask					= 0;
 
 					stateObjects.push_back({
 						.type = InfoType::Viewport,
-						._ptr = viewport
+						._ptr = renderTarget
 						});
 				}
 
-				return *viewport;
+				return *renderTarget;
 			}();
 
+		VkFormat* formats = (VkFormat*)renderTarget.pColorAttachmentFormats;
 
+		for(size_t i = 0; i < state.targetCount; i++)
+			formats[i] = FormatToVK(state.targetFormats[i]);
+
+		renderTarget.colorAttachmentCount = state.targetCount;
 
 		return *this;
 	}
@@ -660,6 +674,14 @@ namespace VK_internal
 
 	IPipelineBuilder& vkPipelineBuilder::AddDepthStencilFormat(const DeviceFormat format)
 	{
+		auto renderTargetState = GetRenderTargetState();
+		if (!renderTargetState)
+		{
+			AddRenderTargetState();
+			renderTargetState = GetRenderTargetState();
+		}
+
+		renderTargetState->depthAttachmentFormat = FormatToVK(format);
 		return *this;
 	}
 
@@ -669,6 +691,46 @@ namespace VK_internal
 
 	IPipelineBuilder& vkPipelineBuilder::AddBlendState(const BlendState& state)
 	{
+		VkPipelineColorBlendStateCreateInfo& blendState = [&, this]() -> VkPipelineColorBlendStateCreateInfo&
+			{
+				auto blendState = GetBlendState();
+				if (blendState == nullptr)
+				{
+					VkPipelineColorBlendAttachmentState* attachmentBlendStates = (VkPipelineColorBlendAttachmentState*)allocator.malloc(sizeof(VkPipelineColorBlendAttachmentState[8]));
+					blendState = &allocator.allocate<VkPipelineColorBlendStateCreateInfo>();
+
+					blendState->sType			= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+					blendState->pNext			= nullptr;
+					blendState->flags			= 0; //VkPipelineColorBlendStateCreateFlagBits;
+					blendState->logicOpEnable	= false;
+					blendState->attachmentCount = 0;
+					blendState->pAttachments	= attachmentBlendStates;
+
+					blendState->blendConstants[0] = 1;
+					blendState->blendConstants[1] = 1;
+					blendState->blendConstants[2] = 1;
+					blendState->blendConstants[3] = 1;
+
+					for (size_t i = 0; i < 8; i++) {
+						attachmentBlendStates[i].blendEnable			= state.renderTarget[i].blendEnable;
+						attachmentBlendStates[i].srcColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlend);
+						attachmentBlendStates[i].dstColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlend);
+						attachmentBlendStates[i].colorBlendOp			= BlendOpToVk(state.renderTarget[i].blendOp);
+						attachmentBlendStates[i].srcAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlendAlpha);
+						attachmentBlendStates[i].dstAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlendAlpha);
+						attachmentBlendStates[i].alphaBlendOp			= BlendOpToVk(state.renderTarget[i].blendOpAlpha);
+						attachmentBlendStates[i].colorWriteMask			= (VkColorComponentFlags)state.renderTarget[i].renderTargetWriteMask;
+					}
+
+					stateObjects.push_back({
+						.type = InfoType::ColorBlend,
+						._ptr = blendState
+						});
+				}
+
+				return *blendState;
+			}();
+
 		return *this;
 	}
 
@@ -1164,8 +1226,8 @@ namespace VK_internal
 
 		VkGraphicsPipelineCreateInfo createInfo{
 			.sType = VkStructureType::VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,//VkPipelineCreateFlagBits::,
+			.pNext = GetRenderTargetState(),
+			.flags = VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
 			.stageCount = shaderStages.size(),
 			.pStages = shaderStages.data(),
 			.pVertexInputState = [&] { auto res = GetVertexInputState(); return res ? &res->info : nullptr; }(),
@@ -1183,6 +1245,12 @@ namespace VK_internal
 			.basePipelineHandle = nullptr,
 			.basePipelineIndex = 0
 		};
+
+		if (createInfo.pViewportState != nullptr)
+		{
+			auto debugMessage = std::format("Create pipeline state with {} viewports", createInfo.pViewportState->viewportCount);
+			FK_LOG_INFO(debugMessage.c_str());
+		}
 
 		VkPipeline pipeline;
 		if (auto res = vkCreateGraphicsPipelines(vkRS.device, nullptr, 1, &createInfo, nullptr, &pipeline); res != VK_SUCCESS)
@@ -1267,6 +1335,21 @@ namespace VK_internal
 		{
 			if (obj.type == InfoType::Viewport)
 				return reinterpret_cast<VkPipelineViewportStateCreateInfo*>(obj._ptr);
+		}
+
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	VkPipelineRenderingCreateInfoKHR* vkPipelineBuilder::GetRenderTargetState() const
+	{
+		for (auto& obj : stateObjects)
+		{
+			if (obj.type == InfoType::RenderTarget)
+				return reinterpret_cast<VkPipelineRenderingCreateInfoKHR*>(obj._ptr);
 		}
 
 		return nullptr;

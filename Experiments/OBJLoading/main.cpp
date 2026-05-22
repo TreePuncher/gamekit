@@ -300,7 +300,7 @@ struct TestState : FrameworkState
 				//const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
 
 				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
-				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator};
+				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator };
 				descriptorSet.SetCBV(ctx, 0, cb0Set);
 
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);

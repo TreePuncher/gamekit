@@ -668,7 +668,6 @@ namespace VK_internal
 	        .set_minimum_version(1, 4)
 #endif
 			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-			//.add_required_extension("VK_NV_descriptor_pool_overallocation")
 			.add_required_extension("VK_KHR_depth_stencil_resolve")
 		    .add_required_extension("VK_KHR_dynamic_rendering")
 			.add_required_extension("VK_KHR_maintenance3")
@@ -677,7 +676,6 @@ namespace VK_internal
 			.add_required_extension("VK_KHR_spirv_1_4")
 			.add_required_extension("VK_EXT_descriptor_buffer")
 			.add_required_extension("VK_EXT_swapchain_maintenance1")
-		    //.add_required_extension("VK_EXT_present_mode_fifo_latest_ready")
 			.set_required_features({
                     .fullDrawIndexUint32	= true,
 				    .imageCubeArray			= true,
@@ -1900,7 +1898,11 @@ namespace VK_internal
 
 	std::optional<DescriptorRange> vkRenderSystem::CreateDescriptorRange(const uint32_t descriptorCount)
 	{
-		auto allocation = heapAllocator.Alloc2Temp(descriptorCount, GetCurrentProgress(), 0xffffffffffffffff);
+		auto allocation =
+			heapAllocator.Alloc2Temp(
+				descriptorCount, GetCurrentProgress(), 0xffffffffffffffff,
+				descriptorBufferProperties.descriptorBufferOffsetAlignment);
+
 		if (!allocation)
 		{
 			FK_LOG_ERROR("VK: allocation failed : Failed to bind inline descriptor set!");
@@ -2045,6 +2047,7 @@ namespace VK_internal
 
 	bool vkRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator)
 	{
+		FK_ASSERT(bufferSize >= sizeof(vkPipelineBuilder));
 		std::construct_at((vkPipelineBuilder*)_ptr, *this, tempAllocator);
 		return false;
 	}
@@ -2504,6 +2507,69 @@ namespace VK_internal
 		}
 
 		std::unreachable();
+	}
+
+
+	VkBlendFactor BlendFactorToVk(FlexKit::EBlend blend)
+	{
+		switch (blend)
+		{
+		case FlexKit::EBlend::ALPHA_FACTOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_CONSTANT_ALPHA;
+		case FlexKit::EBlend::BLEND_FACTOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_CONSTANT_COLOR;
+		case FlexKit::EBlend::DEST_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_DST_ALPHA;
+		case FlexKit::EBlend::DEST_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_DST_COLOR;
+		case FlexKit::EBlend::INV_ALPHA_FACTOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+		case FlexKit::EBlend::INV_BLEND_FACTOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+		case FlexKit::EBlend::INV_DEST_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+		case FlexKit::EBlend::INV_DEST_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+		case FlexKit::EBlend::INV_SRC_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		case FlexKit::EBlend::INV_SRC1_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+		case FlexKit::EBlend::INV_SRC_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+		case FlexKit::EBlend::INV_SRC1_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+		case FlexKit::EBlend::ONE:
+			return VkBlendFactor::VK_BLEND_FACTOR_ONE;
+		case FlexKit::EBlend::SRC_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA;
+		case FlexKit::EBlend::SRC1_ALPHA:
+			return VkBlendFactor::VK_BLEND_FACTOR_SRC1_ALPHA;
+		case FlexKit::EBlend::SRC_ALPHA_SAT:
+			return VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+		case FlexKit::EBlend::SRC_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_SRC_COLOR;
+		case FlexKit::EBlend::SRC1_COLOR:
+			return VkBlendFactor::VK_BLEND_FACTOR_SRC1_COLOR;
+		case FlexKit::EBlend::ZERO:
+			return VkBlendFactor::VK_BLEND_FACTOR_ZERO;
+		}
+	}
+
+	VkBlendOp BlendOpToVk(FlexKit::EBlendOP blendOp)
+	{
+		switch (blendOp)
+		{
+			case FlexKit::EBlendOP::ADD:
+				return VkBlendOp::VK_BLEND_OP_ADD;
+			case FlexKit::EBlendOP::SUBTRACT:
+				return VkBlendOp::VK_BLEND_OP_SUBTRACT;
+			case FlexKit::EBlendOP::REV_SUBTRACT:
+				return VkBlendOp::VK_BLEND_OP_REVERSE_SUBTRACT;
+			case FlexKit::EBlendOP::MIN:
+				return VkBlendOp::VK_BLEND_OP_MIN;
+			case FlexKit::EBlendOP::MAX:
+				return VkBlendOp::VK_BLEND_OP_MAX;
+		}
 	}
 }
 
