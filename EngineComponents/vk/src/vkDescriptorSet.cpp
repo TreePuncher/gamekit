@@ -28,7 +28,7 @@ namespace VK_internal
         
         vkGetDescriptorSetLayoutSize(vkRS.device, apiLayout, &size);
 
-        auto res = vkRS.heapAllocator.Alloc2Temp(static_cast<uint32_t>(size), vkRS.GetCurrentProgress(), vkCtx.dispatchValue);
+        auto res = vkRS.heapAllocator.Alloc2Temp(static_cast<uint32_t>(size), vkRS.GetCurrentProgress(), vkCtx.dispatchValue, vkRS.descriptorBufferProperties.descriptorBufferOffsetAlignment);
         if (!res)
         {
             FK_LOG_ERROR("VK: Failed to allocate descriptor range! size %u", size);

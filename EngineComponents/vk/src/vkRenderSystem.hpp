@@ -22,6 +22,10 @@ namespace VK_internal
 	uint32_t GetFormatElementSize(VkFormat format);
 	VkFormat FormatToVK(DeviceFormat format);
 
+	VkBlendFactor	BlendFactorToVk(FlexKit::EBlend);
+	VkBlendOp		BlendOpToVk(FlexKit::EBlendOP);
+
+
 	struct vkDescriptorHeap
 	{
 		vkAllocation	allocation;

@@ -79,6 +79,7 @@ namespace VK_internal
 		struct VertexStateObject*				GetVertexInputState() const;
 		VkPipelineInputAssemblyStateCreateInfo* GetInputAssemblyState() const;
 		VkPipelineTessellationStateCreateInfo*	GetTessellationState() const;
+		VkPipelineRenderingCreateInfoKHR*		GetRenderTargetState() const;
 		VkPipelineViewportStateCreateInfo*		GetViewportState() const;
 		VkPipelineRasterizationStateCreateInfo* GetRasterizationState() const;
 		VkPipelineMultisampleStateCreateInfo*	GetMultiSampleState() const;
@@ -91,6 +92,7 @@ namespace VK_internal
 			InputAssembly,
 			Tessellation,
 			Viewport,
+			RenderTarget,
 			RasterizationState,
 			MultiSample,
 			DepthStencil,
@@ -114,6 +116,7 @@ namespace VK_internal
 		Vector<StateObject, 0, uint8_t>							stateObjects;
 		Vector<VkPipelineShaderStageCreateInfo, 0, uint8_t>		shaderStages;
 		Vector<LoadedShader, 0, uint8_t>						shaders;
+		Vector<VkViewport, 0, uint8_t>							viewports;
 		iAllocator&												allocator;
     };
 }

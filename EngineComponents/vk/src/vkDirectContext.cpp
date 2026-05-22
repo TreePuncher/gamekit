@@ -1081,12 +1081,18 @@ namespace VK_internal
 	{
 		if (pendingGraphicsDescriptorBind && currentGraphicsLayout->pushLayout)
 		{
-			auto& renderSystem = RenderSystem();
+			auto& vkRS = RenderSystem();
 
 			size_t size;
-			vkGetDescriptorSetLayoutSize(renderSystem.device, currentGraphicsLayout->pushLayout, &size);
+			vkGetDescriptorSetLayoutSize(vkRS.device, currentGraphicsLayout->pushLayout, &size);
 
-			auto allocation = renderSystem.heapAllocator.Alloc2Temp(size, renderSystem.GetCurrentProgress(), dispatchValue);
+			auto allocation =
+				vkRS.heapAllocator.Alloc2Temp(
+					size,
+					vkRS.GetCurrentProgress(),
+					dispatchValue,
+					vkRS.descriptorBufferProperties.descriptorBufferOffsetAlignment);
+
 			if (!allocation)
 			{
 				FK_LOG_ERROR("VK: allocation failed : Failed to bind inline descriptor set!");
