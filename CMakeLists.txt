@@ -42,8 +42,11 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     endif()
 endif()
 
+
+if(NOT ANDROID)
 if(BuildTools)
 	add_subdirectory(Tools)
+endif()
 endif()
 
 #Install

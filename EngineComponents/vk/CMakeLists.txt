@@ -34,6 +34,7 @@ add_library(vkBackend)
 target_link_libraries(vkBackend PRIVATE flex)
 target_link_libraries(vkBackend PRIVATE vk-bootstrap::vk-bootstrap)
 target_link_libraries(vkBackend PRIVATE Vulkan::Vulkan)
+target_link_libraries(vkBackend PRIVATE shaderpreprocessor)
 
 if(DEFINED ANDROID_PLATFORM)
     target_compile_definitions(vkBackend PUBLIC ANDROID)

@@ -73,7 +73,7 @@ namespace VK_internal
 
 				node->free = false;
 
-				const auto offset = node->begin * 64;
+				const auto offset = node->begin * blockSize;
 
 				if (blockCount == 0)
 					DebugBreak();
@@ -145,7 +145,7 @@ namespace VK_internal
 			{
 				auto node = freeNode;
 				node->lockUntil = lockIdx;
-				const auto offset = node->begin * 64;
+				const auto offset = node->begin * blockSize;
 
 				if (blockCount == 0)
 					DebugBreak();
@@ -204,7 +204,7 @@ namespace VK_internal
 				node->lockUntil = lockIdx;
 				freeList.push_back(node);
 
-				const auto offset = node->begin * 64;
+				const auto offset = node->begin * blockSize;
 
 				if (blockCount == 0)
 					DebugBreak();

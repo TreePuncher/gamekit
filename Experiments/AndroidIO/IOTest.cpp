@@ -23,67 +23,6 @@ using std::filesystem::path;
 using namespace FlexKit;
 using namespace std::chrono_literals;
 
-
-void Test_PushBack(FlexKit::Vector<char>& vector, char val)
-{
-    FK_LOG_INFO("1");
-
-    if (vector.Size + 1 > vector.Max)
-    {// Increase Size
-#ifdef _DEBUG
-        FK_ASSERT(vector.Allocator);
-#endif			
-        auto NewSize = ((vector.Max < 1) ? 2 : (2 * vector.Max));
-        char* NewMem = (char*)vector.Allocator->_aligned_malloc(sizeof(char) * NewSize);
-        {
-            std::string msg = std::format("NewSize: {}, NewMem1: {}", NewSize, (uint64_t)(NewMem));
-            FK_LOG_INFO(msg.c_str());
-        }
-
-        const size_t End = vector.Size;
-        for (size_t itr = 0; itr < End; ++itr)
-            new(NewMem + itr) char();
-
-#ifdef _DEBUG
-        FK_ASSERT(NewMem != nullptr);
-        if (vector.Size)
-            FK_ASSERT(NewMem != A);
-#endif
-
-        FK_LOG_INFO("2");
-
-        if (vector.A)
-        {
-            size_t itr = 0;
-            size_t End = vector.Size;
-            for (; itr < End; ++itr)
-                NewMem[itr] = std::move(vector.A[itr]);
-
-            if(vector.A != vector.internalBuffer.GetBuffer())
-                vector.Allocator->_aligned_free(vector.A);
-        }
-
-        FK_LOG_INFO("3");
-
-        {
-            std::string msg = std::format("NewMem2: {}", (uint64_t)(NewMem));
-            FK_LOG_INFO(msg.c_str());
-        }
-
-        vector.A   = NewMem;
-        vector.Max = NewSize;
-    }
-
-    FK_LOG_INFO("4");
-
-	const size_t idx = vector.Size++;
-    std::string msg = std::format("vector.A: {}", (uint64_t)(vector.A + idx));
-    FK_LOG_INFO(msg.c_str());
-
-    std::construct_at<char>(vector.A + idx, val);
-    FK_LOG_INFO("5");
-}
-
 TriMeshHandle LoadObj(std::filesystem::path p)
 {
 	using namespace FlexKit;
@@ -244,7 +183,36 @@ struct TestState final : public FrameworkState
         assetPath       { p },
         renderWindow    { IN_renderWindow   } 
         {
-            LoadObj( path{ p.string() + "/suzanne.obj" });
+			GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
+				[](IRenderSystem& renderSystem, iAllocator& allocator)
+				{
+					PipelineBuilder builder(renderSystem, allocator);
+					builder.AddInputLayout({
+						.inputs = {
+							{
+								.name			= "POSITION",
+								.index			= 0,
+								.format			= DeviceFormat::R32G32B32_FLOAT,
+								.inputSlotClass = EInputClassification::PerVertex,
+							}},
+						.count = 1
+						});
+					builder.AddVertexShader("VMain");
+					builder.AddPixelShader("PMain");
+					builder.AddRasterizerState();
+					builder.AddRenderTargetState({
+							.targetCount = 1,
+							.targetFormats = { DeviceFormat::R8G8B8A8_UNORM },
+						});
+
+					return builder.Build(renderSystem, allocator);
+				});
+
+			meshResource = LoadObj(path{ p.string() + "/suzanne.obj" });
+			AddAssetFile((p.string() + "/shaderpack.gameres").c_str());
+
+			vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
+			cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
         }
 
 
@@ -259,15 +227,74 @@ struct TestState final : public FrameworkState
     UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher&, double dT, FrameGraph& frameGraph) final
     { 
         static bool toggle = false;
-        frameGraph.AddOutput(renderWindow->GetBackBuffer());
-        
+		auto renderTarget = renderWindow->GetBackBuffer();
+        frameGraph.AddOutput(renderTarget);
+
+		float g = (float)sinf(t) / 2.0f + 0.5f;
+
         ClearBackBuffer(
-            frameGraph, renderWindow->GetBackBuffer(), 
+            frameGraph, 
+			renderTarget, 
             float4{ 
-                (float)sinf(t) / 2.0f + 0.5f, 
-                (float)sinf(t * 3.0f) / 2.0f + 0.5f, 
-                (float)sinf(t * 7.0f) / 2.0f + 0.5f, 
+                g,
+                g,
+                g,
                 0.0f });
+
+		struct DrawTrangle
+		{
+			FrameResourceHandle renderTarget;
+		};
+
+		frameGraph.AddNode2(
+			[&](FrameGraphNodeBuilder& builder) -> DrawTrangle
+			{
+				return DrawTrangle{
+					.renderTarget = builder.RenderTarget(renderTarget)
+				};
+			},
+			[=, this](const DrawTrangle& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
+			{
+				float fTime = (float)t;
+
+				auto cb = resources.ReserveCB(512);
+
+				struct
+				{
+					float time;
+				} constants0{
+					.time = fTime,
+				};
+
+				struct
+				{
+					float4 xyz;
+					float4 uvw;
+				} constants1{
+					.xyz = float4{ 0.0f, 1.0f, 0.0f, 0.0f },
+					.uvw = float4{ 1.0f, 0.0f, 0.0f, 0.0f },
+				};
+
+				const auto cb0Set = ConstantBufferDataSet{ constants0, cb };
+
+				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
+				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator };
+				descriptorSet.SetCBV(ctx, 0, cb0Set);
+
+				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
+
+				auto mesh = GetMeshResource(meshResource);
+				auto& lod = mesh->lods[0];
+
+				ctx.AddVertexBuffers(mesh, 0, { VERTEXBUFFER_TYPE::POSITION });
+				ctx.AddIndexBuffer(mesh, 0);
+
+				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
+				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
+				ctx.SetGraphicsDescriptorTable(0, descriptorSet);
+
+				ctx.DrawIndexed(lod.GetIndexCount());
+			});
 
 		PresentBackBuffer(frameGraph, renderWindow->GetBackBuffer());
 
@@ -277,9 +304,10 @@ struct TestState final : public FrameworkState
     }
 
 
-    void PostDrawUpdate(EngineCore&, double dT) final 
+    void PostDrawUpdate(EngineCore& core, double dT) final 
     {
         renderWindow->Present(1, 0);
+		core.RenderSystem->ResetVertexBuffer(vBuffer);
         t += dT;
     }
 
@@ -295,10 +323,12 @@ struct TestState final : public FrameworkState
         return true;	
     }
 
-    path            assetPath;
-    TriMeshHandle   mesh;
-    IRenderWindow*  renderWindow = nullptr;
-    double          t = 0.0;
+    path					assetPath;
+    TriMeshHandle			meshResource;
+    IRenderWindow*			renderWindow	= nullptr;
+	VertexBufferHandle		vBuffer			= InvalidHandle;
+	ConstantBufferHandle	cBuffer			= InvalidHandle;
+    double					t = 0.0;
 };
 
 void SetupApplication(FKApplication& app, IRenderWindow* renderWindow, struct android_app *pApp)
@@ -306,6 +336,5 @@ void SetupApplication(FKApplication& app, IRenderWindow* renderWindow, struct an
     __android_log_write(ANDROID_LOG_VERBOSE, "FlexKit", "SetupApplication(): Created Application!");
 
     auto assetPath = GetGameAssetPath(pApp);
-    
     app.PushState<TestState>(renderWindow, assetPath);
 }
