@@ -34,7 +34,7 @@ namespace VK_internal
             .queueFamilyIndexCount	= 0,
             .pQueueFamilyIndices	= nullptr,
             .preTransform			= VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR,
-            .compositeAlpha			= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .compositeAlpha			= VkCompositeAlphaFlagBitsKHR(0x1 << std::countr_zero(capabilities.supportedCompositeAlpha)),
             .presentMode			= VK_PRESENT_MODE_FIFO_KHR,
             .clipped				= false,
             .oldSwapchain			= nullptr
