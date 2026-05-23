@@ -360,6 +360,7 @@ namespace VK_internal
 		AddRenderTargetState({});
 		AddBlendState({});
 		AddRasterizerState({});
+		CreateViewportState();
 
 		auto rasterizerState = GetRasterizationState();
 		rasterizerState->rasterizerDiscardEnable = false;
@@ -379,6 +380,7 @@ namespace VK_internal
 		AddRenderTargetState({});
 		AddBlendState({});
 		AddRasterizerState({});
+		CreateViewportState();
 
 		auto rasterizerState = GetRasterizationState();
 		rasterizerState->rasterizerDiscardEnable = false;
@@ -397,6 +399,7 @@ namespace VK_internal
 		AddRenderTargetState({});
 		AddBlendState({});
 		AddRasterizerState({});
+		CreateViewportState();
 
 		auto rasterizerState = GetRasterizationState();
 		rasterizerState->rasterizerDiscardEnable = false;
@@ -540,8 +543,8 @@ namespace VK_internal
 					inputLayout->primitiveRestartEnable = false;
 
 					stateObjects.push_back({
-						.type = InfoType::InputAssembly,
-						._ptr = inputLayout
+							.type = InfoType::InputAssembly,
+							._ptr = inputLayout
 						});
 				}
 
@@ -1264,6 +1267,13 @@ namespace VK_internal
 			.basePipelineIndex = 0
 		};
 
+
+		if(createInfo.pViewportState)
+		{
+			FK_LOG_ERROR("Viewport create info present");
+		}
+
+
 		VkPipeline pipeline;
 		if (auto res = vkCreateGraphicsPipelines(vkRS.device, nullptr, 1, &createInfo, nullptr, &pipeline); res != VK_SUCCESS)
 		{
@@ -1297,24 +1307,23 @@ namespace VK_internal
 	{
 		auto viewportState = GetViewportState();
 
-		if (!viewportState)
+		if (viewportState)
 			return viewportState;
 
 		viewportState =
 			[this]() -> VkPipelineViewportStateCreateInfo*
 			{
 				auto info = &allocator.allocate<VkPipelineViewportStateCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO);
-				info->pNext = nullptr;
-				info->flags = 0;
-
+				info->pNext			= nullptr;
+				info->flags			= 0;
 				info->viewportCount	= 0;
 				info->pViewports	= 0;
 				info->scissorCount	= 0;
 				info->pScissors		= 0;
 
 				stateObjects.push_back({
-					.type = InfoType::Viewport,
-					._ptr = info
+						.type = InfoType::Viewport,
+						._ptr = info
 					});
 
 				return info;

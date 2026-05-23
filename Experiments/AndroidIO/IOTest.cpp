@@ -229,6 +229,7 @@ struct TestState final : public FrameworkState
         static bool toggle = false;
 		auto renderTarget = renderWindow->GetBackBuffer();
         frameGraph.AddOutput(renderTarget);
+		frameGraph.AddConstantBuffer(cBuffer);
 
 		float g = (float)sinf(t) / 2.0f + 0.5f;
 
