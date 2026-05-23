@@ -787,7 +787,7 @@ namespace VK_internal
 		};
 
 		FK_LOG_9("VK: Allocating Descriptor Heap!");
-	    heapAllocator.Initialize(heapAllocDesc, allocator);
+	    heapAllocator.Initialize(heapAllocDesc, descriptorBufferProperties.descriptorBufferOffsetAlignment, allocator);
 
 
 		FK_LOG_9("VK: Creating Fences!");

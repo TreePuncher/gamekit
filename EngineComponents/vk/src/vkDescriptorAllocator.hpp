@@ -28,7 +28,7 @@ namespace VK_internal
 	public:
 		~vkDescriptorHeapAllocator();
 
-		void							Initialize	(const HeapAllocatorDescription& description, iAllocator* IN_allocator);
+		void							Initialize	(const HeapAllocatorDescription& description, uint32_t blockSize, iAllocator* IN_allocator);
 
 		std::optional<DescriptorRange>	Alloc_ST	(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept;
 		std::optional<DescriptorRange>	Alloc		(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept;
@@ -71,6 +71,7 @@ namespace VK_internal
 		Node* LocateNode(size_t offset);
 
 		Node						root;
+		uint32_t					blockSize;
 		Vector<Node*>				freeList;
 		iAllocator*					allocator;
 		std::mutex					mutex;

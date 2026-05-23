@@ -23,7 +23,7 @@ namespace VK_internal
 	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2_ST(const size_t size, uint64_t completedIdx, uint32_t alignment) noexcept
 	{
 		auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
-		const size_t blockCount = AlignedSize(size, alignment) / alignment;
+		const size_t blockCount = AlignedSize(size, alignment) / blockSize;
 
 		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less);
 		else
@@ -98,9 +98,10 @@ namespace VK_internal
 	/************************************************************************************************/
 
 
-	void vkDescriptorHeapAllocator::Initialize(const HeapAllocatorDescription& IN_Description, FlexKit::iAllocator* IN_allocator)
+	void vkDescriptorHeapAllocator::Initialize(const HeapAllocatorDescription& IN_Description, uint32_t IN_blockSize, FlexKit::iAllocator* IN_allocator)
 	{
-		root = Node{ .begin = 0, .end = IN_Description.size / 64 };
+		blockSize = IN_blockSize;
+		root = Node{ .begin = 0, .end = IN_Description.size / IN_blockSize };
 		freeList = Vector<Node*>{ IN_allocator };
 		allocator = IN_allocator;
 
@@ -132,7 +133,7 @@ namespace VK_internal
 	std::optional<Alloc2Res> vkDescriptorHeapAllocator::Alloc2Temp_ST(const size_t size, uint64_t completedIdx, uint64_t lockIdx, uint32_t alignment) noexcept
 	{
 	    auto cmp_less = [](Node* lhs, Node* rhs) { return lhs->BlockCount() < rhs->BlockCount(); };
-		const size_t blockCount = AlignedSize(size, 64) / 64;
+		const size_t blockCount = AlignedSize(size, alignment) / blockSize;
 
 		if (freeList.size() > 64) std::ranges::partial_sort(freeList, freeList.begin() + 32, cmp_less);
 		else

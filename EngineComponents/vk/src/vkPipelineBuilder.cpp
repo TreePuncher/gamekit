@@ -374,7 +374,7 @@ namespace VK_internal
 	{
 		auto& vkRS = (vkRenderSystem&)vkRenderSystem::GetInstance();
 
-		shaders.push_back({ .entryPoint = entryPoint, .shader = shader });
+		shaders.push_back({ .entryPoint = entryPoint, .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, .shader = shader });
 
 		AddRenderTargetState({});
 		AddBlendState({});
@@ -631,26 +631,22 @@ namespace VK_internal
 
 	IPipelineBuilder& vkPipelineBuilder::AddRenderTargetState(const RenderTargetState& state)
 	{
-		VkPipelineRenderingCreateInfoKHR& renderTarget = [this]() -> VkPipelineRenderingCreateInfoKHR&
+		VkPipelineRenderingCreateInfoKHR& renderTarget =
+			[this]() -> VkPipelineRenderingCreateInfoKHR&
 			{
 				VkPipelineRenderingCreateInfoKHR* renderTarget = GetRenderTargetState();
 				if (renderTarget == nullptr)
 				{
-					renderTarget = &allocator.allocate<VkPipelineRenderingCreateInfoKHR>();
-					renderTarget->pColorAttachmentFormats = (VkFormat*)allocator.malloc(sizeof(VkFormat[8]));
-
-					VkFormat format = VkFormat::VK_FORMAT_R8G8B8A8_UNORM;
-
-					VkPipelineRenderingCreateInfoKHR pipeline_create{ VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
-					renderTarget->sType						= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-					renderTarget->pNext						= VK_NULL_HANDLE;
+					renderTarget = &allocator.allocate<VkPipelineRenderingCreateInfoKHR>(VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR);
+					renderTarget->pColorAttachmentFormats	= (VkFormat*)allocator.malloc(sizeof(VkFormat[8]));
+					renderTarget->pNext						= nullptr;
 					renderTarget->colorAttachmentCount		= 0;
 					renderTarget->depthAttachmentFormat		= VK_FORMAT_UNDEFINED;
 					renderTarget->stencilAttachmentFormat	= VK_FORMAT_UNDEFINED;
 					renderTarget->viewMask					= 0;
 
 					stateObjects.push_back({
-						.type = InfoType::Viewport,
+						.type = InfoType::RenderTarget,
 						._ptr = renderTarget
 						});
 				}
@@ -664,6 +660,26 @@ namespace VK_internal
 			formats[i] = FormatToVK(state.targetFormats[i]);
 
 		renderTarget.colorAttachmentCount = state.targetCount;
+
+		auto msg = std::format("attachmentCount: {}", state.targetCount);
+		FK_LOG_INFO(msg.c_str());
+
+		auto blendState = GetBlendState();
+		if (!blendState)
+		{
+			AddBlendState();
+			blendState = GetBlendState();
+		}
+		blendState->attachmentCount = state.targetCount;
+
+		auto rasterizerState = GetRasterizationState();
+		if (!rasterizerState)
+		{
+			AddRasterizerState();
+			rasterizerState = GetRasterizationState();
+		}
+
+		rasterizerState->rasterizerDiscardEnable = false;
 
 		return *this;
 	}
@@ -697,9 +713,7 @@ namespace VK_internal
 				if (blendState == nullptr)
 				{
 					VkPipelineColorBlendAttachmentState* attachmentBlendStates = (VkPipelineColorBlendAttachmentState*)allocator.malloc(sizeof(VkPipelineColorBlendAttachmentState[8]));
-					blendState = &allocator.allocate<VkPipelineColorBlendStateCreateInfo>();
-
-					blendState->sType			= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+					blendState = &allocator.allocate<VkPipelineColorBlendStateCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO);
 					blendState->pNext			= nullptr;
 					blendState->flags			= 0; //VkPipelineColorBlendStateCreateFlagBits;
 					blendState->logicOpEnable	= false;
@@ -711,16 +725,6 @@ namespace VK_internal
 					blendState->blendConstants[2] = 1;
 					blendState->blendConstants[3] = 1;
 
-					for (size_t i = 0; i < 8; i++) {
-						attachmentBlendStates[i].blendEnable			= state.renderTarget[i].blendEnable;
-						attachmentBlendStates[i].srcColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlend);
-						attachmentBlendStates[i].dstColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlend);
-						attachmentBlendStates[i].colorBlendOp			= BlendOpToVk(state.renderTarget[i].blendOp);
-						attachmentBlendStates[i].srcAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlendAlpha);
-						attachmentBlendStates[i].dstAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlendAlpha);
-						attachmentBlendStates[i].alphaBlendOp			= BlendOpToVk(state.renderTarget[i].blendOpAlpha);
-						attachmentBlendStates[i].colorWriteMask			= (VkColorComponentFlags)state.renderTarget[i].renderTargetWriteMask;
-					}
 
 					stateObjects.push_back({
 						.type = InfoType::ColorBlend,
@@ -730,6 +734,20 @@ namespace VK_internal
 
 				return *blendState;
 			}();
+
+		auto attachmentBlendStates = (VkPipelineColorBlendAttachmentState*)blendState.pAttachments;
+		for (size_t i = 0; i < 8; i++)
+		{
+			attachmentBlendStates[i].blendEnable			= state.renderTarget[i].blendEnable;
+			attachmentBlendStates[i].srcColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlend);
+			attachmentBlendStates[i].dstColorBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlend);
+			attachmentBlendStates[i].colorBlendOp			= BlendOpToVk(state.renderTarget[i].blendOp);
+			attachmentBlendStates[i].srcAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].srcBlendAlpha);
+			attachmentBlendStates[i].dstAlphaBlendFactor	= BlendFactorToVk(state.renderTarget[i].dstBlendAlpha);
+			attachmentBlendStates[i].alphaBlendOp			= BlendOpToVk(state.renderTarget[i].blendOpAlpha);
+			attachmentBlendStates[i].colorWriteMask			= (VkColorComponentFlags)state.renderTarget[i].renderTargetWriteMask;
+		}
+
 
 		return *this;
 	}
@@ -818,10 +836,10 @@ namespace VK_internal
 			Vector<ShaderRecord, 3>		shaderRecords;
 		};
 
-		Vector<VkDescriptorSetLayout>	descriptorLayouts	{ vkRS.allocator };
+		Vector<VkDescriptorSetLayout>	descriptorLayouts{ vkRS.allocator };
 		Vector<PushDescriptor>			pushDescriptorLayout{ vkRS.allocator };
-		Vector<VkPushConstantRange>		pushConstantRanges	{ tempAllocator };
-		Vector<Descriptor>				descriptors			{ tempAllocator };
+		Vector<VkPushConstantRange>		pushConstantRanges{ tempAllocator };
+		Vector<Descriptor>				descriptors{ tempAllocator };
 
 		uint32_t pushConstantFlags = 0;
 		uint32_t pushConstantsSize = 0;
@@ -844,7 +862,7 @@ namespace VK_internal
 
 			shaderRec.shader.ForEachDescriptorSetAttribute(
 				[&](const ShaderAttributeDescriptorTable& descriptorTable)
-			    {
+				{
 					uint32_t bindingCounter = 0;
 					for (const ShaderAttributeDescriptorTableEntry& entry : descriptorTable.entries)
 					{
@@ -865,38 +883,38 @@ namespace VK_internal
 							else
 							{
 								const auto getType = [&]() -> VkDescriptorType
-								{
-									switch (entry.type)
 									{
-									case ShaderResourceType::SRVBuffer:
-										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-									case ShaderResourceType::SRVTexture:
-										return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-									case ShaderResourceType::CBV:
-										return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-									case ShaderResourceType::UAVBuffer:
-										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-									case ShaderResourceType::UAVTexture:
-										return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-									}
-								};
+										switch (entry.type)
+										{
+										case ShaderResourceType::SRVBuffer:
+											return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+										case ShaderResourceType::SRVTexture:
+											return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+										case ShaderResourceType::CBV:
+											return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+										case ShaderResourceType::UAVBuffer:
+											return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+										case ShaderResourceType::UAVTexture:
+											return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+										}
+									};
 
-								
+
 								descriptors.push_back(
 									Descriptor
 									{
-										.type		= getType(),
-										.binding	= (uint16_t)bindingCounter,
-										.set		= (uint16_t)descriptorTable.set,
-										.stages		= (uint32_t)shaderRec.stage
+										.type = getType(),
+										.binding = (uint16_t)bindingCounter,
+										.set = (uint16_t)descriptorTable.set,
+										.stages = (uint32_t)shaderRec.stage
 									});
 							}
 
 							bindingCounter++;
 						}
-						
+
 					}
-			    });
+				});
 
 			for (auto constant : shaderResources.uniform_buffers)
 			{
@@ -921,10 +939,10 @@ namespace VK_internal
 						descriptors.push_back(
 							Descriptor
 							{
-								.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-								.binding	= (uint16_t)attribute.binding,
-								.set		= (uint16_t)attribute.set,
-								.stages		= attribute.pipelineStage | shaderRec.stage
+								.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+								.binding = (uint16_t)attribute.binding,
+								.set = (uint16_t)attribute.set,
+								.stages = attribute.pipelineStage | shaderRec.stage
 							});
 					else
 						descriptor->stages |= shaderRec.stage;
@@ -941,11 +959,11 @@ namespace VK_internal
 						}); res == std::end(pushDescriptorLayout))
 					{
 						pushDescriptorLayout.push_back(PushDescriptor{
-								.type			= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-								.binding		= (uint16_t)binding,
-								.set			= (uint16_t)set,
-								.stages			= (uint32_t)shaders[idx].stage,
-								.shaderRecords	= { vkRS.allocator }
+								.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+								.binding = (uint16_t)binding,
+								.set = (uint16_t)set,
+								.stages = (uint32_t)shaders[idx].stage,
+								.shaderRecords = { vkRS.allocator }
 							});
 
 						pushDescriptorLayout.back().shaderRecords.push_back(ShaderRecord{ .id = constant.id, .shader = (uint32_t)idx });
@@ -963,10 +981,10 @@ namespace VK_internal
 						}); res == std::end(descriptors))
 					{
 						descriptors.push_back({
-							.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-							.binding	= (uint16_t)binding,
-							.set		= (uint16_t)set,
-							.stages		= (uint32_t)shaders[idx].stage,
+							.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+							.binding = (uint16_t)binding,
+							.set = (uint16_t)set,
+							.stages = (uint32_t)shaders[idx].stage,
 							});
 					}
 					else
@@ -1002,10 +1020,10 @@ namespace VK_internal
 					}); res == std::end(descriptors))
 				{
 					descriptors.push_back({
-						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-						.binding	= (uint16_t)binding,
-						.set		= (uint16_t)set,
-						.stages		= (uint32_t)shaders[idx].stage,
+						.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+						.binding = (uint16_t)binding,
+						.set = (uint16_t)set,
+						.stages = (uint32_t)shaders[idx].stage,
 						});
 				}
 				else
@@ -1025,10 +1043,10 @@ namespace VK_internal
 					}); res == std::end(descriptors))
 				{
 					descriptors.push_back({
-						.type		= VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
-						.binding	= (uint16_t)binding,
-						.set		= (uint16_t)set,
-						.stages		= (uint32_t)shaders[idx].stage,
+						.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER,
+						.binding = (uint16_t)binding,
+						.set = (uint16_t)set,
+						.stages = (uint32_t)shaders[idx].stage,
 						});
 				}
 				else
@@ -1067,8 +1085,8 @@ namespace VK_internal
 
 		for (size_t i = 0; i < setCount; i++)
 		{
-			auto begin	= std::lower_bound(descriptors.begin(), descriptors.end(), i, [](const Descriptor& lhs, const auto& v) { return lhs.set < v; });
-			auto end	= std::upper_bound(descriptors.begin(), descriptors.end(), i, [](const auto& v, const Descriptor& rhs) { return v < rhs.set; });
+			auto begin = std::lower_bound(descriptors.begin(), descriptors.end(), i, [](const Descriptor& lhs, const auto& v) { return lhs.set < v; });
+			auto end = std::upper_bound(descriptors.begin(), descriptors.end(), i, [](const auto& v, const Descriptor& rhs) { return v < rhs.set; });
 
 			Vector<VkDescriptorSetLayoutBinding> bindings{ allocator };
 			auto span = std::span(begin, end);
@@ -1076,20 +1094,20 @@ namespace VK_internal
 			for (auto& desc : span)
 			{
 				bindings.push_back(VkDescriptorSetLayoutBinding{
-					.binding			= desc.binding,
-					.descriptorType		= desc.type,
-					.descriptorCount	= 1,
-					.stageFlags			= desc.stages,
+					.binding = desc.binding,
+					.descriptorType = desc.type,
+					.descriptorCount = 1,
+					.stageFlags = desc.stages,
 					.pImmutableSamplers = samplers
 					});
 			}
 
 			VkDescriptorSetLayoutCreateInfo createInfo{
-				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext			= nullptr,
-				.flags			= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-				.bindingCount	= (uint32_t)bindings.size(),
-				.pBindings		= bindings.data()
+				.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+				.bindingCount = (uint32_t)bindings.size(),
+				.pBindings = bindings.data()
 			};
 
 			VkDescriptorSetLayout layout;
@@ -1117,20 +1135,20 @@ namespace VK_internal
 			{
 				bindings.push_back(
 					VkDescriptorSetLayoutBinding{
-					    .binding			= pushDesc.binding,
-					    .descriptorType		= pushDesc.type,
-					    .descriptorCount	= 1,
-					    .stageFlags			= pushDesc.stages,
-					    .pImmutableSamplers = nullptr
+						.binding = pushDesc.binding,
+						.descriptorType = pushDesc.type,
+						.descriptorCount = 1,
+						.stageFlags = pushDesc.stages,
+						.pImmutableSamplers = nullptr
 					});
 			}
 
 			VkDescriptorSetLayoutCreateInfo createInfo{
-				.sType			= VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext			= nullptr,
-				.flags			= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
-				.bindingCount	= (uint32_t)bindings.size(),
-				.pBindings		= bindings.data()
+				.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT,
+				.bindingCount = (uint32_t)bindings.size(),
+				.pBindings = bindings.data()
 			};
 
 			if (auto res = vkCreateDescriptorSetLayout(vkRS.device, &createInfo, nullptr, &pushLayout); res != VK_SUCCESS)
@@ -1154,10 +1172,10 @@ namespace VK_internal
 
 		if (pushConstantsSize > 0)
 			pushConstantRanges.push_back(
-			    VkPushConstantRange{
-				    .stageFlags = pushConstantFlags,
-				    .offset		= 0,
-				    .size		= pushConstantsSize
+				VkPushConstantRange{
+					.stageFlags = pushConstantFlags,
+					.offset = 0,
+					.size = pushConstantsSize
 				});
 
 
@@ -1178,12 +1196,12 @@ namespace VK_internal
 			}
 
 			VkPipelineShaderStageCreateInfo stage{
-				.sType		= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-				.pNext		= nullptr,
-				.flags		= 0,
-				.stage		= shaderRec.stage,
-				.module		= shaderModule,
-				.pName		= shaderRec.entryPoint,
+				.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.stage = shaderRec.stage,
+				.module = shaderModule,
+				.pName = shaderRec.entryPoint,
 				.pSpecializationInfo = nullptr
 			};
 
@@ -1191,13 +1209,13 @@ namespace VK_internal
 		}
 
 		VkPipelineLayoutCreateInfo layoutCreateInfo{
-			.sType					= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-			.pNext					= nullptr,
-			.flags					= 0,
-			.setLayoutCount			= (uint32_t)descriptorLayouts.size(),
-			.pSetLayouts			= descriptorLayouts.data(),
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.setLayoutCount = (uint32_t)descriptorLayouts.size(),
+			.pSetLayouts = descriptorLayouts.data(),
 			.pushConstantRangeCount = (uint32_t)pushConstantRanges.size(),
-			.pPushConstantRanges	= pushConstantRanges.data()
+			.pPushConstantRanges = pushConstantRanges.data()
 		};
 
 		VkPipelineLayout pipelineLayout;
@@ -1217,11 +1235,11 @@ namespace VK_internal
 		};
 
 		static const VkPipelineDynamicStateCreateInfo dynamicInfo{
-			.sType				= VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-			.pNext				= nullptr,
-			.flags				= 0,
-			.dynamicStateCount	= 2,
-			.pDynamicStates		= dynamicStates,
+			.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = 0,
+			.dynamicStateCount = 2,
+			.pDynamicStates = dynamicStates,
 		};
 
 		VkGraphicsPipelineCreateInfo createInfo{
@@ -1245,12 +1263,6 @@ namespace VK_internal
 			.basePipelineHandle = nullptr,
 			.basePipelineIndex = 0
 		};
-
-		if (createInfo.pViewportState != nullptr)
-		{
-			auto debugMessage = std::format("Create pipeline state with {} viewports", createInfo.pViewportState->viewportCount);
-			FK_LOG_INFO(debugMessage.c_str());
-		}
 
 		VkPipeline pipeline;
 		if (auto res = vkCreateGraphicsPipelines(vkRS.device, nullptr, 1, &createInfo, nullptr, &pipeline); res != VK_SUCCESS)
@@ -1278,6 +1290,37 @@ namespace VK_internal
 	LoadPipelineStateRes vkPipelineBuilder::BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size)
 	{
 		return {};
+	}
+
+
+	VkPipelineViewportStateCreateInfo* vkPipelineBuilder::CreateViewportState()
+	{
+		auto viewportState = GetViewportState();
+
+		if (!viewportState)
+			return viewportState;
+
+		viewportState =
+			[this]() -> VkPipelineViewportStateCreateInfo*
+			{
+				auto info = &allocator.allocate<VkPipelineViewportStateCreateInfo>(VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO);
+				info->pNext = nullptr;
+				info->flags = 0;
+
+				info->viewportCount	= 0;
+				info->pViewports	= 0;
+				info->scissorCount	= 0;
+				info->pScissors		= 0;
+
+				stateObjects.push_back({
+					.type = InfoType::Viewport,
+					._ptr = info
+					});
+
+				return info;
+			}();
+
+		return viewportState;
 	}
 
 

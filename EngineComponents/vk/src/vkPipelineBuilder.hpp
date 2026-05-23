@@ -76,6 +76,8 @@ namespace VK_internal
 		LoadPipelineStateRes BuildStream			(IRenderSystem& renderSystem, void* buffer, const size_t size) override;
 
 
+		VkPipelineViewportStateCreateInfo*		CreateViewportState();
+
 		struct VertexStateObject*				GetVertexInputState() const;
 		VkPipelineInputAssemblyStateCreateInfo* GetInputAssemblyState() const;
 		VkPipelineTessellationStateCreateInfo*	GetTessellationState() const;
