@@ -664,9 +664,6 @@ namespace VK_internal
 
 		renderTarget.colorAttachmentCount = state.targetCount;
 
-		auto msg = std::format("attachmentCount: {}", state.targetCount);
-		FK_LOG_INFO(msg.c_str());
-
 		auto blendState = GetBlendState();
 		if (!blendState)
 		{
@@ -1266,13 +1263,6 @@ namespace VK_internal
 			.basePipelineHandle = nullptr,
 			.basePipelineIndex = 0
 		};
-
-
-		if(createInfo.pViewportState)
-		{
-			FK_LOG_ERROR("Viewport create info present");
-		}
-
 
 		VkPipeline pipeline;
 		if (auto res = vkCreateGraphicsPipelines(vkRS.device, nullptr, 1, &createInfo, nullptr, &pipeline); res != VK_SUCCESS)

@@ -206,46 +206,49 @@ namespace VK_internal
 	}
 
 
-	VkBuffer CreateConstantBuffer(VkDevice device, size_t bufferSize)
+	vkDescriptorHeap CreateDescriptorBuffer(vkRenderSystem& renderSystem, size_t descriptorCount)
 	{
+		FK_LOG_9("VK: Allocate Descriptor Buffer");
+
 	    // Create Buffer
 		VkBufferCreateInfo createBufferInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext					= nullptr,
 			.flags					= 0,			//VkBufferCreateFlags;
-			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			.size					= descriptorCount * 64,	//VkDeviceSize
+			.usage					= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,//,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
 		};
 
 		VkBuffer buffer;
-		vkCreateBuffer(device, &createBufferInfo, nullptr, &buffer);
-		return buffer;
-	}
+		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
 
+		VkMemoryRequirements memoryRequirements{};
+		vkGetBufferMemoryRequirements(renderSystem.device, buffer, &memoryRequirements);
 
-	vkDescriptorHeap CreateDescriptorBuffer(VkDevice device, size_t bufferSize, const vkAllocation& allocation)
-	{
-	    // Create Buffer
-		VkBufferCreateInfo createBufferInfo{
-			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext					= nullptr,
-			.flags					= 0,			//VkBufferCreateFlags;
-			.size					= bufferSize,	//VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
-			.queueFamilyIndexCount	= 0,			// uint32_t               
-			.pQueueFamilyIndices	= nullptr		//const uint32_t*        
-		};
+		auto allocationRes =
+			renderSystem.memoryAllocator.Allocate2(
+				memoryRequirements.memoryTypeBits,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				memoryRequirements.size,
+				memoryRequirements.alignment);
 
-		VkBuffer buffer;
-		vkCreateBuffer(device, &createBufferInfo, nullptr, &buffer);
-		vkBindBufferMemory(device, buffer, allocation.memory, allocation.offset);
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+		if (auto res = vkBindBufferMemory(renderSystem.device, buffer, memory, offset); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateDescriptorBuffer: Failed to bind descriptor buffer memory!");
+			renderSystem.memoryAllocator.Release(memory);
+			return {};
+		}
 
 		vkDescriptorHeap heap{
-			.allocation	= allocation,
+			.allocation	= allocationRes.value(),
 			.buffer		= buffer,
 		};
 
@@ -255,37 +258,48 @@ namespace VK_internal
 
 	std::optional<BufferAPIObject> CreateUploadBuffer(vkRenderSystem& renderSystem, size_t bufferSize)
 	{
+		FK_LOG_9("VK: Allocate Upload Buffer");
+
 	     // Create Buffer
 		VkBufferCreateInfo createBufferInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext					= nullptr,
 			.flags					= 0,			// VkBufferCreateFlags;
 			.size					= bufferSize,	// VkDeviceSize
-			.usage					= VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			.usage					= VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
 			.sharingMode			= VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount	= 0,			// uint32_t               
 			.pQueueFamilyIndices	= nullptr		// const uint32_t*        
 		};
 
-		VkMemoryRequirements memoryRequirements{};
 
 		VkBuffer buffer;
-		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
+		if (auto res = vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateUploadBuffer: Failed to create buffer view!");
+			return {};
+		}
+
+		VkMemoryRequirements memoryRequirements{};
 		vkGetBufferMemoryRequirements(renderSystem.device, buffer, &memoryRequirements);
 
-		auto allocationRes = renderSystem.memoryAllocator.Allocate(
-			0,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			memoryRequirements.size,
-			memoryRequirements.alignment);
+		auto allocationRes =
+			renderSystem.memoryAllocator.Allocate2(
+				memoryRequirements.memoryTypeBits,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+				memoryRequirements.size,
+				memoryRequirements.alignment);
 
 		if (!allocationRes.has_value())
 			return {};
 
 		auto&& [offset, memory] = allocationRes.value();
-
-
-		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+		if (auto res = vkBindBufferMemory(renderSystem.device, buffer, memory, offset); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateUploadBuffer: Failed to bind upload buffer!");
+			renderSystem.memoryAllocator.Release(memory);
+			return {};
+		}
 
 		return BufferAPIObject
 				{
@@ -298,6 +312,8 @@ namespace VK_internal
 
 	std::optional<TextureAPIObject>	CreateTextureResource(vkRenderSystem& renderSystem, uint2 WH, DeviceFormat format)
 	{
+		FK_LOG_9("VK: Allocate Texture Buffer");
+
 		VkImageCreateInfo createInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.pNext					= nullptr,
@@ -318,16 +334,15 @@ namespace VK_internal
 
 	    VkImage image;
 		if (auto res = vkCreateImage(renderSystem.device, &createInfo, nullptr, &image); res != VK_SUCCESS)
-			throw std::runtime_error{ "VK: Failed to create texture resource" };
-
+			throw std::runtime_error{ "VK: Failed to create texture resource view" };
 
 		VkImageMemoryRequirementsInfo2	requirements;
 		VkMemoryRequirements2			memoryRequirments;
 		vkGetImageMemoryRequirements2(renderSystem.device, &requirements, &memoryRequirments);
 
 		auto allocationRes =
-			renderSystem.memoryAllocator.Allocate(
-			    0,
+			renderSystem.memoryAllocator.Allocate2(
+				memoryRequirments.memoryRequirements.memoryTypeBits,
 			    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 			    memoryRequirments.memoryRequirements.size,
 			    memoryRequirments.memoryRequirements.alignment);
@@ -337,7 +352,12 @@ namespace VK_internal
 
 		auto&& [offset, memory] = allocationRes.value();
 
-		vkBindImageMemory(renderSystem.device, image, memory, offset);
+		if (auto res = vkBindImageMemory(renderSystem.device, image, memory, offset); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateTextureResource: Failed to Bind Image Memory");
+			renderSystem.memoryAllocator.Release(memory);
+			return {};
+		}
 
 		return 
 	        TextureAPIObject{
@@ -350,19 +370,9 @@ namespace VK_internal
 
 	std::optional<BufferAPIObject> CreateVertexBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident, uint32_t extraFlags)
 	{
-	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
-			0,
-			GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			bufferSize,
-			0x10000
-		);
+		FK_LOG_9("VK: Allocate Vertex Buffer");
 
-		if (!allocationRes.has_value())
-			return {};
-
-		auto&& [offset, memory] = allocationRes.value();
-
-	     // Create Buffer
+		// Create Buffer
 		VkBufferCreateInfo createBufferInfo{
 			.sType					= VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.pNext					= nullptr,
@@ -375,30 +385,46 @@ namespace VK_internal
 		};
 
 		VkBuffer buffer;
-		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
-		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+		if (auto res = vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateVertexBuffer: Failed to create buffer view!");
+			return {};
+		}
+
+		VkMemoryRequirements requirements;
+		vkGetBufferMemoryRequirements(renderSystem.GetDevice(), buffer, &requirements);
+
+		auto allocationRes =
+			renderSystem.memoryAllocator.Allocate2(
+				requirements.memoryTypeBits,
+				GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+				requirements.size,
+				requirements.alignment
+			);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+		if (auto res = vkBindBufferMemory(renderSystem.device, buffer, memory, offset); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateVertexBuffer: Failed to bind memory!");
+			renderSystem.memoryAllocator.Release(memory);
+			return {};
+		}
 
 		return BufferAPIObject
 		        {
 			        .buffer		= buffer,
 			        .memory		= memory,
-					.byteOffset		= offset
+					.byteOffset	= offset
 		        };
 	}
 
 
     std::optional<BufferAPIObject> CreateConstantBuffer(vkRenderSystem& renderSystem, size_t bufferSize, bool GPUResident)
 	{
-	    auto allocationRes = renderSystem.memoryAllocator.Allocate(
-			0,
-			GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-			bufferSize
-		);
-
-		if (!allocationRes.has_value())
-			return {};
-
-		auto&& [offset, memory] = allocationRes.value();
+		FK_LOG_9("VK: Allocate Constant Buffer");
 
 	     // Create Buffer
 		VkBufferCreateInfo createBufferInfo{
@@ -413,8 +439,34 @@ namespace VK_internal
 		};
 
 		VkBuffer buffer;
-		vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer);
-		vkBindBufferMemory(renderSystem.device, buffer, memory, offset);
+		if (auto res = vkCreateBuffer(renderSystem.device, &createBufferInfo, nullptr, &buffer); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateConstantBuffer: Failed to create buffer view!");
+			return {};
+		}
+
+		VkMemoryRequirements requirements;
+		vkGetBufferMemoryRequirements(renderSystem.GetDevice(), buffer, &requirements);
+
+		auto allocationRes =
+			renderSystem.memoryAllocator.Allocate2(
+				requirements.memoryTypeBits,
+				GPUResident ? VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT : VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+				requirements.size,
+				requirements.alignment
+			);
+
+		if (!allocationRes.has_value())
+			return {};
+
+		auto&& [offset, memory] = allocationRes.value();
+
+		if (auto res = vkBindBufferMemory(renderSystem.device, buffer, memory, offset); res != VK_SUCCESS)
+		{
+			FK_LOG_ERROR("VK:CreateConstantBuffer: Failed to bind vertex buffer memory!");
+			renderSystem.memoryAllocator.Release(memory);
+			return {};
+		}
 
 		return BufferAPIObject
 		        {
@@ -759,20 +811,10 @@ namespace VK_internal
 		
 		memoryAllocator.Init(*this);
 
-		auto descriptorHeapBufferAllocation = memoryAllocator.Allocate(0,
-			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-			64 * KILOBYTE);
-		
-		if (!descriptorHeapBufferAllocation)
-			throw std::runtime_error{ "VK: Failed to allocate descriptor heap buffer!" };
-
-
 		FK_LOG_9("VK: Creating descriptor buffer!");
-		descriptorPool = CreateDescriptorBuffer(device, 1000000u, descriptorHeapBufferAllocation.value());
+		descriptorPool = CreateDescriptorBuffer(*this, 1000000u);
 
-		auto [offset, memory] = descriptorHeapBufferAllocation.value();
-
-		uint64_t cpuAddress = (uint64_t)MapDeviceAddress(memory, offset);
+		uint64_t cpuAddress = (uint64_t)MapDeviceAddress(descriptorPool.allocation.memory, descriptorPool.allocation.offset);
 
 		VkBufferDeviceAddressInfoKHR address_info{ VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR };
 		address_info.buffer = descriptorPool.buffer;
