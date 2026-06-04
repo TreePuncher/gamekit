@@ -17,7 +17,7 @@ namespace dx_Internal
 		FK_ASSERT(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
-		descriptorHeap	= ctx._ReserveSRV(EntryCount).value();
+		descriptorHeap	= ctx.ReserveSRV(EntryCount).value();
 		Layout			= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -66,7 +66,7 @@ namespace dx_Internal
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount	= Layout_IN.size();
-		descriptorHeap			= ctx._ReserveSRV(EntryCount).value();
+		descriptorHeap			= ctx.ReserveSRV(EntryCount).value();
 		Layout					= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -85,7 +85,7 @@ namespace dx_Internal
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size() * reserveCount;
-		descriptorHeap = ctx._ReserveSRV(EntryCount).value();
+		descriptorHeap = ctx.ReserveSRV(EntryCount).value();
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -103,7 +103,7 @@ namespace dx_Internal
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory, reserveCount);
 
-		descriptorHeap = ctx._ReserveSRV(reserveCount).value();
+		descriptorHeap = ctx.ReserveSRV(reserveCount).value();
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < reserveCount; I++)

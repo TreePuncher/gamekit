@@ -22,7 +22,6 @@ namespace VK_internal
 		void AddAliasingBarrier(ResourceHandle before, ResourceHandle after) final;
 		void AddUAVBarrier(ResourceHandle Handle, uint32_t subresource, DeviceLayout layout, DeviceSyncPoint src, DeviceSyncPoint dst) final;
 		void AddPresentBarrier(ResourceHandle Handle, DeviceAccessState Before) final;
-		void AddStreamOutBarrier(SOResourceHandle, DeviceAccessState Before, DeviceAccessState State) final;
 		void AddCopyResourceBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) final;
 
 		void AddGlobalBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter) final;

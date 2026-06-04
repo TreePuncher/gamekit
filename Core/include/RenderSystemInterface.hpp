@@ -371,7 +371,7 @@ namespace FlexKit
 		DescriptorHeap,
 		ConstantBuffer,
 		StructuredBuffer,
-		UnorderedAcess,
+		UnorderedAccess,
 		UINT,
 		Error
 	};
@@ -1407,7 +1407,7 @@ namespace FlexKit
 	struct RasterizerState
 	{
 		EFillMode		fill						= EFillMode::SOLID;
-		ECullMode		CullMode					= ECullMode::BACK;
+		ECullMode		CullMode					= ECullMode::NONE;
 		bool			frontCounterClockWise		= false;
 		bool			depthClipEnable				= true;
 		bool			multisampleEnable			= false;
@@ -2397,7 +2397,6 @@ namespace FlexKit
 		virtual void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) IDIRECTCONTEXTDEBUGBODY;
-		virtual void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) IDIRECTCONTEXTDEBUGBODY;
 		virtual void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter) IDIRECTCONTEXTDEBUGBODY;
@@ -2423,13 +2422,6 @@ namespace FlexKit
 
 		virtual void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) IDIRECTCONTEXTDEBUGBODY;
-
-#if 0
-		virtual void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetViewports				(std::span<const D3D12_VIEWPORT>	VPs) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetScissorRects			(static_vector<D3D12_RECT, 16>		Rects) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetScissorRects			(std::span<const D3D12_RECT>		Rects) IDIRECTCONTEXTDEBUGBODY;
-#endif
 
 		virtual void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0) IDIRECTCONTEXTDEBUGBODY;
@@ -2745,6 +2737,8 @@ namespace FlexKit
 
 	struct IVertexBufferSet
 	{
+		virtual ~IVertexBufferSet() {}
+
 		virtual void						Clear() = 0;
 		virtual std::optional<VertexBuffer> Find			(VERTEXBUFFER_TYPE) const = 0;
 		virtual std::optional<uint32_t>		FindIdx			(VERTEXBUFFER_TYPE) const = 0;

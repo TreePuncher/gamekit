@@ -1,0 +1,100 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"Components/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 20,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 21,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"Components/flex_optional.lib"
+			],
+			"targetId" : "flex_optional::@cfa59656ef7ed4991838",
+			"targetIndex" : 51,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "flex_optional::@cfa59656ef7ed4991838",
+				"index" : 51
+			},
+			"destination" : "lib",
+			"type" : "cxxModuleBmi"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"Components/flex_optional.lib"
+			],
+			"targetId" : "flex_optional::@cfa59656ef7ed4991838",
+			"targetIndex" : 51,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"fileSetDirectories" : 
+			[
+				"Components"
+			],
+			"fileSetName" : "flex_optional_headers",
+			"fileSetTarget" : 
+			{
+				"id" : "flex_optional::@cfa59656ef7ed4991838",
+				"index" : 51
+			},
+			"fileSetType" : "HEADERS",
+			"paths" : 
+			[
+				"Components/GameplayComponents.hpp"
+			],
+			"type" : "fileSet"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "Components",
+		"source" : "Components"
+	}
+}

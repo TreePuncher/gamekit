@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"E:/repos/gamekit/out/build/x64-debug/_deps/fast_float-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

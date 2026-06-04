@@ -1,0 +1,10 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+includedir=${prefix}/include
+libdir=${exec_prefix}/lib
+
+Name: FlexEngine
+Description: A very minimalist game engine
+Version: 0.1.1
+Libs: -L${libdir} -lhouse
+Cflags: -I${includedir}

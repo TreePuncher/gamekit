@@ -6,12 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(dxBackend
 	"src/DDSUtilities.cpp"
 	"src/dxBackend.cpp"
+	"src/dxPipelineBuilder.cpp"
 	"src/dxContext.cpp"
     "src/dxDescriptorSet.cpp"
 	"src/dxRenderSystem.cpp"
     "src/dxUpload.cpp"
-	"src/PipelineState.cpp"
-    "src/VertexBufferSet.cpp"
+	"src/dxPipelineState.cpp"
+    "src/dxVertexBufferSet.cpp"
 	"src/Win32Graphics.cpp"
 )
 
@@ -24,17 +25,18 @@ target_sources(
     "include/Win32Graphics.hpp"
 
     "src/DDSUtilities.hpp"
-	"src/dxContext.hpp"
+	"src/dxPipelineBuilder.hpp"
+    "src/dxContext.hpp"
     "src/dxDescriptorSet.hpp"
     "src/dxIndirectLayout.hpp"
     "src/dxFrameBufferedObjects.hpp"
     "src/dxRenderSystem.hpp"
     "src/dxUpload.hpp"
-    "src/VertexBufferSet.hpp"
-    "src/PipelineState.hpp"
+    "src/dxVertexBufferSet.hpp"
+    "src/dxPipelineState.hpp"
 )
 
-target_link_libraries(dxBackend PRIVATE flex BackendShared)
+target_link_libraries(dxBackend PRIVATE flex BackendShared shaderpreprocessor)
 
 target_include_directories(dxBackend
     PUBLIC

@@ -10,7 +10,7 @@
 #include <TriMeshResource.hpp>
 #include <Type.hpp>
 
-#define USEVK 1
+#define USEVK 0
 
 #if !USEVK
 #include <Win32Graphics.hpp>
@@ -19,7 +19,7 @@
 
 using namespace FlexKit;
 
-FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
+TriMeshHandle LoadObj(std::filesystem::path p)
 {
 	using namespace FlexKit;
 
@@ -172,12 +172,14 @@ struct TestState : FrameworkState
 		//renderWindow	= CreateWaylandSurface(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 #else
-		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
+		Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 800, 600 });
+
+		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
 #endif
 
 		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::ShaderResource({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
 
-		FlexKit::AddAssetFile("assets\\shaderpack.gameres");
+		//FlexKit::AddAssetFile("assets\\shaderpack.gameres");
 
 		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
@@ -193,10 +195,10 @@ struct TestState : FrameworkState
 						}},
 					.count = 1
 					});
-				builder.AddVertexShader("VMain");
-				builder.AddPixelShader("PMain");
-				//builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl");
-				//builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
+				//builder.AddVertexShader("VMain");
+				//builder.AddPixelShader("PMain");
+				builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl");
+				builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl");
 				builder.AddRasterizerState();
 				builder.AddRenderTargetState({
 						.targetCount	= 1,
@@ -239,8 +241,7 @@ struct TestState : FrameworkState
 
 	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
 	{
-		auto renderTarget = renderWindow->GetBackBuffer();
-		frameGraph.AddOutput(renderTarget);
+		
 
 		struct
 		{
@@ -253,7 +254,10 @@ struct TestState : FrameworkState
 
 		GetRenderSystem().VertexBufferPush(vBuffer, triangle, sizeof(triangle));
 
-		ClearBackBuffer(frameGraph, renderTarget, { 0, 0, 0, 1 });
+		auto renderTarget = renderWindow->GetBackBuffer();
+		frameGraph.AddOutput(renderTarget);
+
+		ClearBackBuffer(frameGraph, renderTarget, { sinf(t) * 0.5f + 0.5f, cosf(t * 5.0f) * 0.5f + 0.5f, tanf(t * 10.0f) * 0.5f + 0.5f, 1 });
 
 		struct DrawTrangle
 		{
@@ -269,7 +273,9 @@ struct TestState : FrameworkState
 		frameGraph.AddNode2(
 			[&](FrameGraphNodeBuilder& builder) -> DrawTrangle
 			{
+				builder.Requires(GetTypeGUID(Trangle));
 				builder.AddNodeDependency(node);
+
 			    return DrawTrangle{
 				    .renderTarget = builder.RenderTarget(renderTarget)
 			    };
@@ -287,43 +293,21 @@ struct TestState : FrameworkState
 					.time = fTime,
 				};
 
-			    struct
-				{
-					float4 xyz;
-					float4 uvw;
-				} constants1{
-					.xyz = float4{ 0.0f, 1.0f, 0.0f, 0.0f },
-					.uvw = float4{ 1.0f, 0.0f, 0.0f, 0.0f },
-				};
-
-				const auto cb0Set = ConstantBufferDataSet{ constants0, cb };
-				//const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
-
 				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
-				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator };
-				descriptorSet.SetCBV(ctx, 0, cb0Set);
 
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
-				//ctx.SetVertexBuffers(static_vector<VertexBufferEntry, 1>{ VertexBufferEntry
-				//	                    {
-				//		                    .VertexBuffer	= vBuffer,
-		        //                            .Stride			= 36,
-		        //                            .Offset			= 0, 
-				//                        } });
 
 				auto mesh = GetMeshResource(shape);
 				auto& lod = mesh->lods[0];
 
+				ctx.SetInputPrimitive(EInputPrimitive::INPUTPRIMITIVETRIANGLELIST);
 				ctx.AddVertexBuffers(mesh, 0, { VERTEXBUFFER_TYPE::POSITION });
 				ctx.AddIndexBuffer(mesh, 0);
 
 				ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
-				//ctx.SetGraphicsConstantValue(0, 8, &constants0);
-				//ctx.SetGraphicsConstantBufferView(0, cb1Set);
-				ctx.SetGraphicsDescriptorTable(0, descriptorSet);
+				ctx.SetGraphicsConstantValue(0, 1, &constants0);
 
-				//ctx.SetGraphicsConstantBufferView(0, cBuffer, 0);
 
 				ctx.DrawIndexed(lod.GetIndexCount());
 			});
@@ -335,7 +319,7 @@ struct TestState : FrameworkState
 
 	void PostDrawUpdate(FlexKit::EngineCore& core, double dT) override
 	{
-		bool res = renderWindow->Present();
+		renderWindow->Present();
 		core.RenderSystem->ResetVertexBuffer(vBuffer);
 	}
 

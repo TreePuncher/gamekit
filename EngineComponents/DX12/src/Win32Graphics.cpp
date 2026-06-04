@@ -507,7 +507,7 @@ namespace FlexKit
 				swapChain   = nullptr;
 				hWindow     = 0;
 
-				static_cast<dx_Internal::dxRenderSystem&>(IRenderSystem::GetInstance()).Memory->release(*this);
+				static_cast<dx_Internal::dxRenderSystem&>(IRenderSystem::GetInstance()).allocator->release(*this);
 			}
 		}
 
@@ -667,7 +667,7 @@ namespace FlexKit
 	};
 
 
-	Win32RenderWindowDesc DefaultWindowDesc(uint2 WH, bool fullscreen)
+	Win32RenderWindowDesc DefaultWindowDesc(uint2 WH, DeviceFormat format, bool fullscreen)
 	{
 		return {
 			fullscreen,
@@ -680,6 +680,7 @@ namespace FlexKit
 			1,
 			0,
 			0,
+			format,
 			"RenderWindow"
 		};
 	}
@@ -703,7 +704,7 @@ namespace FlexKit
 			}();
 
 
-		Win32RenderWindow& renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
+		Win32RenderWindow& renderWindow = renderSystem.allocator->allocate<Win32RenderWindow>();
 		renderWindow.Handler.SetSource(&renderWindow);
 
 		static size_t Window_Count = 0;
@@ -763,7 +764,7 @@ namespace FlexKit
 		SwapChainDesc.Scaling			= DXGI_SCALING::DXGI_SCALING_NONE;
 		SwapChainDesc.Width				= renderWindowDesc.width;
 		SwapChainDesc.Height			= renderWindowDesc.height;
-		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
+		SwapChainDesc.Format			= TextureFormat2DXGIFormat(renderWindowDesc.format),// DXGI_FORMAT_R16G16B16A16_FLOAT;
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
@@ -811,7 +812,7 @@ namespace FlexKit
 			for (auto& b : buffer)
 				b.As<ID3D12Resource>()->Release();
 
-			newSwapChainPtr->ResizeBuffers(3, internal_WH[0], internal_WH[1], DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+			newSwapChainPtr->ResizeBuffers(3, internal_WH[0], internal_WH[1], SwapChainDesc.Format, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
 			renderWindow.WH = internal_WH;
 
 			for (UINT I = 0; I < SwapChainDesc.BufferCount; ++I)
@@ -828,7 +829,7 @@ namespace FlexKit
 		renderWindow.backBuffer = renderSystem.CreateGPUResource(
 			GPUResourceDesc::SwapChain(
 				{ SwapChainDesc.Width, SwapChainDesc.Height },
-				DeviceFormat::R16G16B16A16_FLOAT,
+				renderWindowDesc.format,
 				buffer, 3));
 
 		renderSystem.SetDebugName(renderWindow.backBuffer, "BackBuffer");
@@ -847,7 +848,7 @@ namespace FlexKit
 	IRenderWindow* CreateWin32RenderWindowFromHWND(IRenderSystem& irenderSystem, uint64_t hwnd)
 	{
 		dxRenderSystem&		renderSystem = static_cast<dxRenderSystem&>(irenderSystem);
-		Win32RenderWindow&	renderWindow = renderSystem.Memory->allocate<Win32RenderWindow>();
+		Win32RenderWindow&	renderWindow = renderSystem.allocator->allocate<Win32RenderWindow>();
 
 		RECT rect;
 		GetWindowRect((HWND)hwnd, &rect);

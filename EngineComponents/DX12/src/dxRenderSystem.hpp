@@ -4,7 +4,6 @@
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
 
-#include "PipelineState.hpp"
 
 #include <BuildSettings.hpp>
 #include <Containers.hpp>
@@ -20,6 +19,7 @@
 
 #include "dxContext.hpp"
 #include "dxIndirectLayout.hpp"
+#include "dxPipelineState.hpp"
 
 #include <algorithm>
 #include <string>
@@ -823,89 +823,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	DevicePointer GetDevicePointer(const VertexBuffer& vb_ref) noexcept;
 
 
-	typedef static_vector<D3D12_INPUT_ELEMENT_DESC, 16> InputDescription;
-
-	struct TriangleMeshMetaData
-	{
-		D3D12_INPUT_ELEMENT_DESC	InputLayout[16];
-		size_t						InputElementCount;
-		size_t						IndexBuffer_Index;
-	};
-
-
-	struct VertexBufferSet : IVertexBufferSet
-	{
-		struct BuffEntry
-		{
-			ID3D12Resource*		apiResource;
-			uint32_t			bufferSizeInBytes;
-			uint32_t			bufferStride;
-			VERTEXBUFFER_TYPE	type;
-
-			size_t Size() const { return bufferSizeInBytes / bufferStride; }
-
-			DevicePointer		GetDevicePointer()			const noexcept { return { apiResource->GetGPUVirtualAddress() }; }
-			DeviceResource_ptr	GetDeviceResourcePointer()	const noexcept { return { apiResource }; }
-
-			operator bool() const noexcept			{ return apiResource != nullptr; }
-			operator DeviceResource_ptr const ()	{ return apiResource; }
-		};
-
-
-		virtual std::optional<VertexBuffer> Find(const VERTEXBUFFER_TYPE type) const final
-		{
-			auto res = std::find_if(
-				buffers.begin(),
-				buffers.end(),
-				[&](auto& buffer)
-				{
-					return buffer.type == type;
-				});
-
-			if (res != buffers.end())
-			{
-				VertexBuffer out{
-					.byteSize	= res->bufferSizeInBytes,
-					.byteStride	= res->bufferStride,
-					.resource	= res->apiResource,
-					.type		= res->type
-				};
-
-				return out;
-			}
-
-			return {};
-		}
-
-
-		virtual uint8_t	GetIndexBufferIndex() const final
-		{
-			return MD.IndexBuffer_Index;
-		}
-
-
-		virtual const VertexBuffer operator []	(uint8_t idx) const final
-		{
-			auto& buffer = buffers[idx];
-			return {
-				.byteSize	= buffer.bufferSizeInBytes,
-				.byteStride = buffer.bufferStride,
-				.resource	= buffer.apiResource,
-				.type		= buffer.type 
-			};
-		}
-
-		virtual void Clear() final { buffers.clear(); }
-
-
-		//ID3D12Resource*	operator[](size_t idx)	{ return buffers[idx].apiResource; }
-
-		static_vector<BuffEntry, 16>	buffers;
-		TriangleMeshMetaData			MD;
-	};
-
-
-
 	/************************************************************************************************/
 
 
@@ -1027,8 +944,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	public:
 		RootSignature(ID3D12RootSignature* rootSignature, Vector<RootSignatureHeapEntry>&& IN_heaps, iAllocator* IN_allocator) :
 			allocator	{ IN_allocator	},
-			Signature	{ rootSignature },
-			Heaps		{ std::move(IN_heaps) },
+			signature	{ rootSignature },
+			heaps		{ std::move(IN_heaps) },
 			slots		{ IN_allocator } {}
 
 
@@ -1037,14 +954,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			Release();
 		}
 
-		operator ID3D12RootSignature* ()	const { return Signature; }
-		ID3D12RootSignature* Get_ptr()		const { return Signature; };
+		operator ID3D12RootSignature* ()	const { return signature; }
+		ID3D12RootSignature* Get_ptr()		const { return signature; };
 
 		void Release();
 
 		virtual const DescriptorHeapLayout&	GetDescHeap(uint32_t idx) const noexcept final
 		{
-			return Heaps[idx].heap;
+			return heaps[idx].heap;
 		}
 
 		virtual DeviceRootSignature_ptr		GetAPIObject() const noexcept final
@@ -1089,9 +1006,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		}
 
 
-		ID3D12RootSignature*			Signature = nullptr;
+		ID3D12RootSignature*			signature = nullptr;
 		iAllocator*						allocator = nullptr;
-		Vector<RootSignatureHeapEntry>	Heaps;
+		Vector<RootSignatureHeapEntry>	heaps;
 		Vector<SlotType>				slots;
 
 #ifdef _DEBUG
@@ -1734,16 +1651,16 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			uint32_t	WidthHeightDepth[3];
 		}resourceSize;
 
-		float4				clearColor;
-		uint64_t			flags					= 0;
-		uint16_t			mipLevels				= 0;
-		BufferDimension		dimensions				= BufferDimension::ByteBuffer;
+		float4					clearColor;
+		uint64_t				flags					= 0;
+		uint16_t				mipLevels				= 0;
+		BufferDimension			dimensions				= BufferDimension::ByteBuffer;
 		FlexKit::DeviceFormat	format;
-		bool				tripleBuffer			= false;
-		bool				useClearValues			= true;
-		bool				floatingPointClearValue	= false;
-		bool				allowUnorderedAccess	= false;
-		bool				allowDepthStencil		= false;
+		bool					tripleBuffer			= false;
+		bool					useClearValues			= true;
+		bool					floatingPointClearValue	= false;
+		bool					allowUnorderedAccess	= false;
+		bool					allowDepthStencil		= false;
 
 		static BufferResourceDesc ByteBuffer(size_t bufferSize, bool allowUnorderedAccess = true)
 		{
@@ -2124,7 +2041,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		dxRenderSystem(const dxRenderSystem&) = delete;
 		dxRenderSystem& operator =	(const dxRenderSystem&) = delete;
 
-		bool Initiate(Graphics_Desc& desc_in) final;
+		bool				Initiate(Graphics_Desc& desc_in) final;
+		AvailableFeatures	GetFeatures() const noexcept final;
+
 		void Release();
 
 		template<typename FN>
@@ -2231,7 +2150,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		PipelineStateLibraryDesc    CreatePipelibrary();
 
 		// Resource Creation and Destruction
-		[[nodiscard]] virtual bool						CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator);
+		[[nodiscard]] virtual bool						CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) final;
+		[[nodiscard]] virtual void						CreateDescriptorSet(std::byte*, size_t) final;
+		[[nodiscard]] IVertexBufferSet&					CreateVertexBufferSet() final;
+
 		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
 		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		[[nodiscard]] virtual VertexBufferHandle		CreateVertexBuffer(size_t BufferSize, bool GPUResident = true);
@@ -2248,9 +2170,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
 		              virtual void						CreateTextureView(ResourceHandle, DescHeapPOS) final;
-
-		IVertexBufferSet&								CreateVertexBufferSet() final;
-
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
@@ -2420,8 +2339,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			const RootSignature* RS2UAVs4SRVs4CBs	= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
 			const RootSignature* RS6CBVs4SRVs		= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
 			const RootSignature* RS4CBVs_SO			= nullptr;	// Stream Out Enabled
-			const RootSignature* ShadingRTSig		= nullptr;	// Signature For Compute Based Deferred Shading
-			const RootSignature* RSDefault			= nullptr;	// Default Signature for Rasting
+			const RootSignature* ShadingRTSig		= nullptr;	// signature For Compute Based Deferred Shading
+			const RootSignature* RSDefault			= nullptr;	// Default signature for Rasting
 			const RootSignature* ComputeSignature	= nullptr;	//
 			const RootSignature* ClearBuffer		= nullptr;
 		}rootLibrary;
@@ -2436,7 +2355,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		VertexBufferStateTable		VertexBuffers;
 		ResourceStateTable			Textures;
 		SOResourceTable				StreamOutTable;
-		PipelineStateTable			PipelineStates;
+		dxPipelineStateTable		PipelineStates;
 		ReadBackStateTable			ReadBackTable;
 		DescriptorHeapAllocator		descriptorHeapAllocator;
 
@@ -2485,8 +2404,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		ThreadManager&			threads;
 
-		IDxcLibrary*			hlslLibrary			= nullptr;
-		IDxcCompiler*			hlslCompiler		= nullptr;
+		IDxcUtils*				hlslUtils			= nullptr;
+		IDxcCompiler3*			hlslCompiler		= nullptr;
 		IDxcIncludeHandler*		hlslIncludeHandler	= nullptr;
 
 		DeviceVendor			vendorID		= DeviceVendor::UNKNOWN;
@@ -2494,7 +2413,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		ID3D12Debug5*			pDebug5			= nullptr;
 		ID3D12DebugDevice*		pDebugDevice	= nullptr;
 		ID3D12DebugDevice1*		pDebugDevice1	= nullptr;
-		iAllocator*				Memory			= nullptr;
+		iAllocator*				allocator		= nullptr;
 
 		std::mutex				crashM;
 		std::mutex				barrierLock;
@@ -2528,147 +2447,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		std::unreachable();
 	}
-
-
-	/************************************************************************************************/
-
-
-	struct PipelineBuilderImpl : IPipelineBuilder
-	{
-		PipelineBuilderImpl(iAllocator& allocator);
-		~PipelineBuilderImpl();
-
-		IPipelineBuilder& AddRootSignature	(const IPipelineInterface* rootSig) final;
-
-		IPipelineBuilder& AddShaderLibrary	(const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddComputeShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddWorkGraph		(const WorkGraph_Desc& desc = {}) final;
-
-		IPipelineBuilder& AddVertexShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddDomainShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddHullShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddGeometryShader	(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-
-		IPipelineBuilder& AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddMeshShader			(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-
-		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const char* file, const ShaderOptions& options = {}) final;
-		IPipelineBuilder& AddPixelShader		(const char* entryPoint, const Shader&) final;
-
-		IPipelineBuilder& SetDebugName			(const char* name) { debugName = name; return *this; }
-
-		IPipelineBuilder& AddInputLayout		(const InputLayoutState&	state = {});
-		IPipelineBuilder& AddInputTopology		(const ETopology			topology);
-		IPipelineBuilder& AddDepthStencilState	(const DepthStencilState&	state = {});
-		IPipelineBuilder& AddRasterizerState	(const RasterizerState&		state = {});
-		IPipelineBuilder& AddRenderTargetState	(const RenderTargetState&	state = {});
-		IPipelineBuilder& AddDepthStencilFormat	(const DeviceFormat			format = DeviceFormat::D24_UNORM_S8_UINT);
-		IPipelineBuilder& AddBlendState			(const BlendState&			state = {});
-
-		LoadPipelineStateRes Build(IRenderSystem& renderSystem, iAllocator& tempAllocator) final;
-		LoadPipelineStateRes BuildStream(IRenderSystem& renderSystem, void* buffer, const size_t size) final;
-
-		void Release() final;
-
-		class PipelineBlob
-		{
-		public:
-			PipelineBlob(iAllocator& IN_allocator) :
-				buffer { IN_allocator } {}
-
-
-			template<typename TY>
-			PipelineBlob(const TY& IN_struct)
-			{
-				//static_assert(std::is_pod_v<TY>, "POD types only!");
-
-				buffer.resize(sizeof(IN_struct));
-				memcpy(data(), &IN_struct, sizeof(TY));
-			}
-
-
-			PipelineBlob(const char* IN_buffer, const size_t size)
-			{
-				buffer.resize(size);
-				memcpy(data(), IN_buffer, size);
-			}
-
-
-			template<typename TY>
-			PipelineBlob& operator += (const TY& blob)
-			{
-				const size_t offset = buffer.size();
-
-				buffer.resize(buffer.size() + sizeof(blob));
-				memcpy(buffer.data() + offset, &blob, sizeof(blob));
-
-				return *this;
-			}
-
-			template<typename TY, D3D12_PIPELINE_STATE_SUBOBJECT_TYPE TYPEID, typename TY_>
-			PipelineBlob& operator += (const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>& blob)
-			{
-				const size_t offset = buffer.size();
-				const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>* _ptr = std::addressof(blob);
-
-				buffer.resize(buffer.size() + sizeof(const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>));
-				memcpy(buffer.data() + offset, _ptr, sizeof(const CD3DX12_PIPELINE_STATE_STREAM_SUBOBJECT<TY, TYPEID, TY_>));
-
-				return *this;
-			}
-
-			size_t size() const
-			{
-				return buffer.size();
-			}
-
-
-			void resize(size_t newSize)
-			{
-				buffer.resize(newSize);
-			}
-
-
-			char* data()
-			{
-				return buffer.data();
-			}
-
-
-			operator const char* () const
-			{
-				return buffer.data();
-			}
-
-
-			void Clear()
-			{
-				buffer.clear();
-			}
-
-			void Serialize(auto& ar)
-			{
-				ar& buffer;
-			}
-
-			void Release()
-			{
-				buffer.Release();
-			}
-
-			Vector<char> buffer;
-		};
-
-		const char*					debugName		= nullptr;
-		const RootSignature*		rootSig			= nullptr;
-		D3D12_INPUT_ELEMENT_DESC*	inputElements	= nullptr;
-		bool						built			= false;
-		uint64_t					hash			= 0xcbf29ce484222325;
-		iAllocator*					allocator		= nullptr;
-
-		PipelineBlob				blob;
-		Vector<Shader>				shaders;
-	};
 
 
 	/************************************************************************************************/
@@ -2985,12 +2763,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	const int   DefaultClearStencilValues[]	= { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	
-	/************************************************************************************************/
-	// Depreciated API
-
-	void CreateVertexBuffer			( dxRenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out ); // Expects Index buffer in index 15
-
-
 	/************************************************************************************************/
 
 

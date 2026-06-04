@@ -1,0 +1,91 @@
+{
+	"abstract" : true,
+	"backtrace" : 5,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"_find_package",
+			"find_package",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/range-v3/range-v3-config.cmake",
+			"Core/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 21,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 908,
+				"parent" : 1
+			},
+			{
+				"file" : 1,
+				"parent" : 2
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 9,
+				"parent" : 3
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 4
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 20,
+				"parent" : 3
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "range-v3::range-v3::@94795ff35dabbbd3a8ca",
+	"imported" : true,
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "range-v3::@94795ff35dabbbd3a8ca"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "range-v3::@94795ff35dabbbd3a8ca"
+		}
+	],
+	"local" : true,
+	"name" : "range-v3::range-v3",
+	"paths" : 
+	{
+		"build" : "Core",
+		"source" : "Core"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

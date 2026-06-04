@@ -1,0 +1,78 @@
+{
+	"abstract" : true,
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/_deps/scn-src/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 76,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 77,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "scn_internal::@1ae59bf41f0d94fa33fd",
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "scn::@1ae59bf41f0d94fa33fd"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "fast_float::@b0dd38cb02b7d1e97b64"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "scn::@1ae59bf41f0d94fa33fd"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "fast_float::@b0dd38cb02b7d1e97b64"
+		}
+	],
+	"name" : "scn_internal",
+	"paths" : 
+	{
+		"build" : "_deps/scn-build",
+		"source" : "out/build/x64-debug/_deps/scn-src"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

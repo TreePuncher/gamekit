@@ -370,7 +370,8 @@ namespace FlexKit
 			GPURange{
 				.devicePtr	= DevicePointer{ (uint64_t)buffer.resource._ptr },
 				.offset		= 0,
-				.size		= buffer.byteSize },
+				.size		= buffer.byteSize, 
+			    .resource	= InvalidHandle },
 			view.GetBuffer(),
 			view.GetBufferSizeRaw());
 	}

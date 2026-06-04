@@ -1,0 +1,131 @@
+{
+	"abstract" : true,
+	"artifacts" : 
+	[
+		{
+			"path" : "vcpkg_installed/x64-windows/debug/bin/freetyped.dll"
+		},
+		{
+			"path" : "vcpkg_installed/x64-windows/debug/lib/freetyped.lib"
+		}
+	],
+	"backtrace" : 14,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"include",
+			"_find_package",
+			"find_package"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/freetype/freetype-targets.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/freetype/freetype-config.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/freetype/vcpkg-cmake-wrapper.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/rmlui/Dependencies.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/rmlui/RmlUiConfig.cmake",
+			"Core/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 6
+			},
+			{
+				"command" : 4,
+				"file" : 6,
+				"line" : 26,
+				"parent" : 0
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 908,
+				"parent" : 1
+			},
+			{
+				"file" : 5,
+				"parent" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 5,
+				"line" : 32,
+				"parent" : 3
+			},
+			{
+				"file" : 4,
+				"parent" : 4
+			},
+			{
+				"command" : 4,
+				"file" : 4,
+				"line" : 10,
+				"parent" : 5
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 862,
+				"parent" : 6
+			},
+			{
+				"file" : 3,
+				"parent" : 7
+			},
+			{
+				"command" : 3,
+				"file" : 3,
+				"line" : 6,
+				"parent" : 8
+			},
+			{
+				"file" : 2,
+				"parent" : 9
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 3,
+				"parent" : 10
+			},
+			{
+				"file" : 1,
+				"parent" : 11
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 58,
+				"parent" : 12
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 13
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "freetype::@94795ff35dabbbd3a8ca",
+	"imported" : true,
+	"local" : true,
+	"name" : "freetype",
+	"nameOnDisk" : "freetyped.dll",
+	"paths" : 
+	{
+		"build" : "Core",
+		"source" : "Core"
+	},
+	"sources" : [],
+	"type" : "SHARED_LIBRARY"
+}

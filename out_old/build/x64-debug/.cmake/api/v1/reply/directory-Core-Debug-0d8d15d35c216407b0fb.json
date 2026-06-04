@@ -1,0 +1,347 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"Core/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 214,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 215,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"Core/flex.lib"
+			],
+			"targetId" : "flex::@94795ff35dabbbd3a8ca",
+			"targetIndex" : 50,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "flex::@94795ff35dabbbd3a8ca",
+				"index" : 50
+			},
+			"destination" : "lib",
+			"type" : "cxxModuleBmi"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"Core/flex.lib"
+			],
+			"targetId" : "flex::@94795ff35dabbbd3a8ca",
+			"targetIndex" : 50,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"fileSetDirectories" : 
+			[
+				"Core"
+			],
+			"fileSetName" : "flex_headers",
+			"fileSetTarget" : 
+			{
+				"id" : "flex::@94795ff35dabbbd3a8ca",
+				"index" : 50
+			},
+			"fileSetType" : "HEADERS",
+			"paths" : 
+			[
+				{
+					"from" : "Core/include/AnimationComponents.hpp",
+					"to" : "include/AnimationComponents.hpp"
+				},
+				{
+					"from" : "Core/include/AnimationRuntimeUtilities.hpp",
+					"to" : "include/AnimationRuntimeUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/AnimationUtilities.hpp",
+					"to" : "include/AnimationUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/AnimationRendering.hpp",
+					"to" : "include/AnimationRendering.hpp"
+				},
+				{
+					"from" : "Core/include/Application.hpp",
+					"to" : "include/Application.hpp"
+				},
+				{
+					"from" : "Core/include/Assets.hpp",
+					"to" : "include/Assets.hpp"
+				},
+				{
+					"from" : "Core/include/BuildSettings.hpp",
+					"to" : "include/BuildSettings.hpp"
+				},
+				{
+					"from" : "Core/include/DoOnce.hpp",
+					"to" : "include/DoOnce.hpp"
+				},
+				{
+					"from" : "Core/include/CameraComponent.hpp",
+					"to" : "include/CameraComponent.hpp"
+				},
+				{
+					"from" : "Core/include/CommonStructs.hpp",
+					"to" : "include/CommonStructs.hpp"
+				},
+				{
+					"from" : "Core/include/CameraComponent.hpp",
+					"to" : "include/CameraComponent.hpp"
+				},
+				{
+					"from" : "Core/include/ComponentBlobs.hpp",
+					"to" : "include/ComponentBlobs.hpp"
+				},
+				{
+					"from" : "Core/include/Components.hpp",
+					"to" : "include/Components.hpp"
+				},
+				{
+					"from" : "Core/include/Console.hpp",
+					"to" : "include/Console.hpp"
+				},
+				{
+					"from" : "Core/include/Containers.hpp",
+					"to" : "include/Containers.hpp"
+				},
+				{
+					"from" : "Core/include/Brush.hpp",
+					"to" : "include/Brush.hpp"
+				},
+				{
+					"from" : "Core/include/DebugPanel.hpp",
+					"to" : "include/DebugPanel.hpp"
+				},
+				{
+					"from" : "Core/include/DebugUI.hpp",
+					"to" : "include/DebugUI.hpp"
+				},
+				{
+					"from" : "Core/include/DefaultPipelineStates.hpp",
+					"to" : "include/DefaultPipelineStates.hpp"
+				},
+				{
+					"from" : "Core/include/DepthBuffer.hpp",
+					"to" : "include/DepthBuffer.hpp"
+				},
+				{
+					"from" : "Core/include/DungeonGen.hpp",
+					"to" : "include/DungeonGen.hpp"
+				},
+				{
+					"from" : "Core/include/EngineCore.hpp",
+					"to" : "include/EngineCore.hpp"
+				},
+				{
+					"from" : "Core/include/Events.hpp",
+					"to" : "include/Events.hpp"
+				},
+				{
+					"from" : "Core/include/Fonts.hpp",
+					"to" : "include/Fonts.hpp"
+				},
+				{
+					"from" : "Core/include/FrameGraph.hpp",
+					"to" : "include/FrameGraph.hpp"
+				},
+				{
+					"from" : "Core/include/GameFramework.hpp",
+					"to" : "include/GameFramework.hpp"
+				},
+				{
+					"from" : "Core/include/GPUAllocators.hpp",
+					"to" : "include/GPUAllocators.hpp"
+				},
+				{
+					"from" : "Core/include/Geometry.hpp",
+					"to" : "include/Geometry.hpp"
+				},
+				{
+					"from" : "Core/include/Handle.hpp",
+					"to" : "include/Handle.hpp"
+				},
+				{
+					"from" : "Core/include/Input.hpp",
+					"to" : "include/Input.hpp"
+				},
+				{
+					"from" : "Core/include/Intersection.hpp",
+					"to" : "include/Intersection.hpp"
+				},
+				{
+					"from" : "Core/include/KeycodesEnums.hpp",
+					"to" : "include/KeycodesEnums.hpp"
+				},
+				{
+					"from" : "Core/include/KeyValueIDs.hpp",
+					"to" : "include/KeyValueIDs.hpp"
+				},
+				{
+					"from" : "Core/include/Level.hpp",
+					"to" : "include/Level.hpp"
+				},
+				{
+					"from" : "Core/include/Logging.hpp",
+					"to" : "include/Logging.hpp"
+				},
+				{
+					"from" : "Core/include/Materials.hpp",
+					"to" : "include/Materials.hpp"
+				},
+				{
+					"from" : "Core/include/MathUtilities.hpp",
+					"to" : "include/MathUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/MemoryUtilities.hpp",
+					"to" : "include/MemoryUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/MeshUtilities.hpp",
+					"to" : "include/MeshUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/ModifiableShape.hpp",
+					"to" : "include/ModifiableShape.hpp"
+				},
+				{
+					"from" : "Core/include/NetworkUtilities.hpp",
+					"to" : "include/NetworkUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/Particles.hpp",
+					"to" : "include/Particles.hpp"
+				},
+				{
+					"from" : "Core/include/ProfilingUtilities.hpp",
+					"to" : "include/ProfilingUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/RenderSystemInterface.hpp",
+					"to" : "include/RenderSystemInterface.hpp"
+				},
+				{
+					"from" : "Core/include/ResourceHandles.hpp",
+					"to" : "include/ResourceHandles.hpp"
+				},
+				{
+					"from" : "Core/include/RMLRenderer.hpp",
+					"to" : "include/RMLRenderer.hpp"
+				},
+				{
+					"from" : "Core/include/RuntimeComponentIDs.hpp",
+					"to" : "include/RuntimeComponentIDs.hpp"
+				},
+				{
+					"from" : "Core/include/Scene.hpp",
+					"to" : "include/Scene.hpp"
+				},
+				{
+					"from" : "Core/include/SceneLoadingContext.hpp",
+					"to" : "include/SceneLoadingContext.hpp"
+				},
+				{
+					"from" : "Core/include/ScriptingRuntime.hpp",
+					"to" : "include/ScriptingRuntime.hpp"
+				},
+				{
+					"from" : "Core/include/Serialization.hpp",
+					"to" : "include/Serialization.hpp"
+				},
+				{
+					"from" : "Core/include/Signals.hpp",
+					"to" : "include/Signals.hpp"
+				},
+				{
+					"from" : "Core/include/static_vector.hpp",
+					"to" : "include/static_vector.hpp"
+				},
+				{
+					"from" : "Core/include/TextureUtilities.hpp",
+					"to" : "include/TextureUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/ThreadUtilities.hpp",
+					"to" : "include/ThreadUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/TimeUtilities.hpp",
+					"to" : "include/TimeUtilities.hpp"
+				},
+				{
+					"from" : "Core/include/Transforms.hpp",
+					"to" : "include/Transforms.hpp"
+				},
+				{
+					"from" : "Core/include/TriMeshResource.hpp",
+					"to" : "include/TriMeshResource.hpp"
+				},
+				{
+					"from" : "Core/include/TriggerComponent.hpp",
+					"to" : "include/TriggerComponent.hpp"
+				},
+				{
+					"from" : "Core/include/TriggerSlotIDs.hpp",
+					"to" : "include/TriggerSlotIDs.hpp"
+				},
+				{
+					"from" : "Core/include/Type.hpp",
+					"to" : "include/Type.hpp"
+				},
+				{
+					"from" : "Core/include/VertexBuffer.hpp",
+					"to" : "include/VertexBuffer.hpp"
+				}
+			],
+			"type" : "fileSet"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "Core",
+		"source" : "Core"
+	}
+}

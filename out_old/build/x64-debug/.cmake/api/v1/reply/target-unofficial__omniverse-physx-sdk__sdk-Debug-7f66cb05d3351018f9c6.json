@@ -1,0 +1,189 @@
+{
+	"abstract" : true,
+	"backtrace" : 5,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"_find_package",
+			"find_package",
+			"set_property"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/unofficial-omniverse-physx-sdk/unofficial-omniverse-physx-sdk-config.cmake",
+			"EngineComponents/PhysX/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 6,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 908,
+				"parent" : 1
+			},
+			{
+				"file" : 1,
+				"parent" : 2
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 29,
+				"parent" : 3
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 4
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 88,
+				"parent" : 3
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "unofficial::omniverse-physx-sdk::sdk::@4da0a4e981bccff2a242",
+	"imported" : true,
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXExtensions::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 7,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXPvdSDK::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 8,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCharacterKinematic::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 9,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCooking::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 10,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCommon::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 11,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXFoundation::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 12,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXVehicle::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 13,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXVehicle2::@4da0a4e981bccff2a242"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 6,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXExtensions::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 7,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXPvdSDK::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 8,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCharacterKinematic::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 9,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCooking::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 10,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXCommon::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 11,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXFoundation::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 12,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXVehicle::@4da0a4e981bccff2a242"
+		},
+		{
+			"backtrace" : 13,
+			"id" : "unofficial::omniverse-physx-sdk::PhysXVehicle2::@4da0a4e981bccff2a242"
+		}
+	],
+	"local" : true,
+	"name" : "unofficial::omniverse-physx-sdk::sdk",
+	"paths" : 
+	{
+		"build" : "EngineComponents/PhysX",
+		"source" : "EngineComponents/PhysX"
+	},
+	"sources" : [],
+	"type" : "UNKNOWN_LIBRARY"
+}

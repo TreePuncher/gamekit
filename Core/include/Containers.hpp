@@ -26,6 +26,11 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
+	template<typename TY>
+    using stl_allocator   = STLAllocatorAdapter<TY>;
+	using string_internal = std::basic_string<char, std::char_traits<char>, stl_allocator<char>>;
+
+
 	class Range
 	{
 	public:

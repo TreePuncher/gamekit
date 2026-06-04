@@ -1,0 +1,77 @@
+{
+	"abstract" : true,
+	"artifacts" : 
+	[
+		{
+			"path" : "vcpkg_installed/x64-windows/debug/lib/implotd.lib"
+		}
+	],
+	"backtrace" : 5,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"_find_package",
+			"find_package"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/implot/implot-config.cmake",
+			"Core/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 24,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 908,
+				"parent" : 1
+			},
+			{
+				"file" : 1,
+				"parent" : 2
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 58,
+				"parent" : 3
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 4
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "implot::implot::@94795ff35dabbbd3a8ca",
+	"imported" : true,
+	"local" : true,
+	"name" : "implot::implot",
+	"nameOnDisk" : "implotd.lib",
+	"paths" : 
+	{
+		"build" : "Core",
+		"source" : "Core"
+	},
+	"sources" : [],
+	"type" : "STATIC_LIBRARY"
+}

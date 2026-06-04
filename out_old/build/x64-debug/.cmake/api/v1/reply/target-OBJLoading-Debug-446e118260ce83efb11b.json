@@ -1,0 +1,496 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "Experiments/OBJLoading/OBJLoading.exe"
+		},
+		{
+			"path" : "Experiments/OBJLoading/OBJLoading.pdb"
+		}
+	],
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_executable",
+			"add_executable",
+			"target_link_libraries",
+			"add_custom_command"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"Experiments/OBJLoading/CMakeLists.txt",
+			"EngineComponents/vk/CMakeLists.txt",
+			"EngineComponents/DX12/CMakeLists.txt",
+			"Core/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 10,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 612,
+				"parent" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 17,
+				"parent" : 0
+			},
+			{
+				"file" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 35,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 36,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 42,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 45,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 103,
+				"parent" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 2,
+				"line" : 37,
+				"parent" : 4
+			},
+			{
+				"file" : 3
+			},
+			{
+				"command" : 2,
+				"file" : 3,
+				"line" : 39,
+				"parent" : 11
+			},
+			{
+				"file" : 4
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 159,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 160,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 161,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 162,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 163,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 164,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 165,
+				"parent" : 13
+			},
+			{
+				"command" : 2,
+				"file" : 4,
+				"line" : 179,
+				"parent" : 13
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 626,
+				"parent" : 1
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"compileDependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "flex::@94795ff35dabbbd3a8ca"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "vkBackend::@d01cb4d60b19530f8ece"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "dxBackend::@ebbcb2df38ba5c00ed7f"
+		}
+	],
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Zi /Ob0 /Od /RTC1 -std:c++latest -MDd /GL"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/UTF-8"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/utf-8"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/EHsc"
+				},
+				{
+					"backtrace" : 3,
+					"fragment" : "/permissive-"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 3,
+					"define" : "FMT_HEADER_ONLY=1"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "SPIRV_REFLECT_USE_SYSTEM_SPIRV_H"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "UNICODE"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "WIN32"
+				},
+				{
+					"backtrace" : 3,
+					"define" : "WIN32_LEAN_AND_MEAN"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/Core"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/Core/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/ThirdParty"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/EngineComponents/vk"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/EngineComponents/vk/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/EngineComponents/DX12"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/EngineComponents/DX12/include"
+				},
+				{
+					"backtrace" : 3,
+					"path" : "E:/repos/gamekit/ThirdParty/pix/Include/WinPixEventRuntime"
+				},
+				{
+					"backtrace" : 3,
+					"isSystem" : true,
+					"path" : "E:/repos/gamekit/out/build/x64-debug/vcpkg_installed/x64-windows/include"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					3,
+					3
+				],
+				"standard" : "23"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1
+			]
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "flex::@94795ff35dabbbd3a8ca"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "scn::@1ae59bf41f0d94fa33fd"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "BackendShared::@1a00e51544484e3d6d55"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "shaderpreprocessor::@26d7a6fbf3a19c69db6f"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "dxBackend::@ebbcb2df38ba5c00ed7f"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "vkBackend::@d01cb4d60b19530f8ece"
+		}
+	],
+	"id" : "OBJLoading::@14eb8b7a78dc2ac6b281",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "/DWIN32 /D_WINDOWS /EHsc /Zi /Ob0 /Od /RTC1 -MDd /GL",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "/machine:x64 /debug /INCREMENTAL",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "/subsystem:console",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "/INCREMENTAL:NO /LTCG",
+				"role" : "flags"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "Core\\flex.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "EngineComponents\\vk\\vkBackend.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "EngineComponents\\DX12\\dxBackend.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\vk-bootstrap.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 6,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\vulkan-1.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 7,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\spirv-cross-utild.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 8,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\spirv-cross-cored.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 9,
+				"fragment" : "vcpkg_installed\\x64-windows\\lib\\dxcompiler.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 10,
+				"fragment" : "EngineComponents\\ShaderPreprocessor\\shaderpreprocessor.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 12,
+				"fragment" : "EngineComponents\\BackendShared\\BackendShared.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 3,
+				"fragment" : "Core\\flex.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 14,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\imguid.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 15,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\imguizmo.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 16,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\angelscriptd.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 17,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\implotd.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 18,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\logurud.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 19,
+				"fragment" : "_deps\\scn-build\\scn.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 20,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\rmlui_debugger.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 20,
+				"fragment" : "vcpkg_installed\\x64-windows\\debug\\lib\\rmlui.lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 21,
+				"fragment" : "vcpkg_installed\\x64-windows\\lib\\zlib-ng.lib",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX",
+		"lto" : true
+	},
+	"linkLibraries" : 
+	[
+		{
+			"backtrace" : 3,
+			"id" : "flex::@94795ff35dabbbd3a8ca"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "vkBackend::@d01cb4d60b19530f8ece"
+		},
+		{
+			"backtrace" : 3,
+			"id" : "dxBackend::@ebbcb2df38ba5c00ed7f"
+		}
+	],
+	"name" : "OBJLoading",
+	"nameOnDisk" : "OBJLoading.exe",
+	"orderDependencies" : 
+	[
+		{
+			"backtrace" : 22,
+			"id" : "OBJLoading::@14eb8b7a78dc2ac6b281"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "Experiments/OBJLoading",
+		"source" : "Experiments/OBJLoading"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "Experiments/OBJLoading/ObjLoading.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 2,
+			"compileGroupIndex" : 0,
+			"path" : "Experiments/OBJLoading/main.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "EXECUTABLE"
+}

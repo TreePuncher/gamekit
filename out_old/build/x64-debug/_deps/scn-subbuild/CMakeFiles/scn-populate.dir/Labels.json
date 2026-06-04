@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/scn-populate"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/scn-populate.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/scn-populate-complete.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-build.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-configure.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-download.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-install.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-mkdir.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-patch.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-test.rule"
+		},
+		{
+			"file" : "E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/scn-populate-prefix/src/scn-populate-stamp/scn-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"scn-populate"
+		],
+		"name" : "scn-populate"
+	}
+}

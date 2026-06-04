@@ -11,8 +11,7 @@ namespace FlexKit
 		uint32_t				tableCount	= 0;
 	};
 
-
-	PreprocessorResult VKShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator);
-	PreprocessorResult DXShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator);
+	PreprocessorResult VKShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator = SystemAllocator);
+	PreprocessorResult DXShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator = SystemAllocator);
 
 }

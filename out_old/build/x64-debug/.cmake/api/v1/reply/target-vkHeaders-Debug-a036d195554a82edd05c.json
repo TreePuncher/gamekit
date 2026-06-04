@@ -1,0 +1,49 @@
+{
+	"abstract" : true,
+	"backtrace" : 2,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"EngineComponents/vk/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 144,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 1
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "vkHeaders::@d01cb4d60b19530f8ece",
+	"name" : "vkHeaders",
+	"paths" : 
+	{
+		"build" : "EngineComponents/vk",
+		"source" : "EngineComponents/vk"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

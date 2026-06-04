@@ -453,39 +453,6 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::AddStreamOutBarrier(SOResourceHandle streamOut, DeviceAccessState Before, DeviceAccessState State)
-	{
-		DebugBreak();
-
-		/*
-		auto res = find(PendingBarriers, 
-			[&](Barrier& rhs) -> bool
-			{
-				return
-					rhs.type		== Barrier::type::StreamOut &&
-					rhs.streamOut	== streamOut;
-			});
-
-		if (res != PendingBarriers.end()) {
-			res->NewState = State;
-		}
-		else
-		{
-			Barrier NewBarrier;
-			NewBarrier.OldState		= Before;
-			NewBarrier.NewState		= State;
-			NewBarrier.type			= Barrier::type::StreamOut;
-			NewBarrier.streamOut	= streamOut;
-
-			PendingBarriers.push_back(NewBarrier);
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
 	
 	void dxDirectContext::AddGlobalBarrier(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter)
 	{
@@ -677,7 +644,7 @@ namespace dx_Internal
 	{
 		FK_ASSERT(PSO);
 
-		const DXPipelineState* pso = static_cast<const DXPipelineState*>(PSO);
+		const dxPipelineState* pso = static_cast<const dxPipelineState*>(PSO);
 
 		if (PSO == nullptr)
 			__debugbreak();
@@ -785,7 +752,7 @@ namespace dx_Internal
 				}
 				else
 				{
-					auto view = _ReserveRTV(1);
+					auto view = ReserveRTV(1);
 					PushRenderTarget(renderSystem, renderTarget, view);
 					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 					renderTargetViews.push_back({ renderTarget, view });
@@ -794,7 +761,7 @@ namespace dx_Internal
 		}
 		else
 		{
-			auto view = _ReserveRTV(RTs.size());
+			auto view = ReserveRTV(RTs.size());
 			
 			for (auto& renderTarget : RTs)
 			{
@@ -818,7 +785,7 @@ namespace dx_Internal
 					});
 					res == depthStencilViews.end())
 			{
-				auto DSV = _ReserveDSV(1);
+				auto DSV = ReserveDSV(1);
 				PushDepthStencil(renderSystem, depthStencil, DSV);
 
 				DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{ DSV.V1 };
@@ -860,7 +827,7 @@ namespace dx_Internal
 				}
 				else
 				{
-					auto view = _ReserveRTV(1);
+					auto view = ReserveRTV(1);
 					PushRenderTarget(renderSystem, renderTarget, view);
 					RTV_CPU_HANDLES.push_back(D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 });
 					renderTargetViews.push_back({ renderTarget, view });
@@ -869,7 +836,7 @@ namespace dx_Internal
 		}
 		else
 		{
-			auto view = _ReserveRTV(RTs.size());
+			auto view = ReserveRTV(RTs.size());
 			
 			for (auto& renderTarget : RTs)
 			{
@@ -884,7 +851,7 @@ namespace dx_Internal
 
 		if(depthEnabled)
 		{
-			auto descriptor = _GetDepthDesciptor(DSV.depthStencil);
+			auto descriptor = GetDepthDesciptor(DSV.depthStencil);
 
 			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor, DSV.arraySize);
 
@@ -901,7 +868,6 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-	/*
 	void dxDirectContext::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
 	{
 		DeviceContext->RSSetViewports((UINT)VPs.size(), VPs.begin());
@@ -924,7 +890,6 @@ namespace dx_Internal
 		DeviceContext->RSSetScissorRects((UINT)rects.size(), rects.data());
 	}
 
-	*/
 
 	/************************************************************************************************/
 
@@ -1005,7 +970,7 @@ namespace dx_Internal
 	{
 		if (DS != InvalidHandle)
 		{
-			auto DSV = _ReserveDSV(1);
+			auto DSV = ReserveDSV(1);
 			PushDepthStencil(renderSystem, DS, DSV);
 			DeviceContext->OMSetRenderTargets(
 				(UINT)RenderTargetCount,
@@ -1033,7 +998,8 @@ namespace dx_Internal
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
-		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
+
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::UINT);
 		DeviceContext->SetGraphicsRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
 	}
 
@@ -1045,6 +1011,7 @@ namespace dx_Internal
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
+
 		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
 		DeviceContext->SetGraphicsRootConstantBufferView((UINT)idx, 0);
 	}
@@ -1143,25 +1110,11 @@ namespace dx_Internal
 #endif
 		if (!CurrentGraphicsRootSig())
 			return;
-
+		
 		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::SRV);
 		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Resource.Get()->GetGPUVirtualAddress());
 	}
 
-
-	/************************************************************************************************/
-
-#if 0
-	void dxDirectContext::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_GENERIC_READ);
-#endif
-
-		DeviceContext->SetGraphicsRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
-	}
-#endif
 
 	/************************************************************************************************/
 
@@ -1312,19 +1265,6 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-#if 0
-	void dxDirectContext::SetComputeShaderResourceView(size_t idx, Texture2D& Texture)
-	{
-#if USING(DEBUGGRAPHICS)
-		if (debugCommandList)
-			debugCommandList->AssertResourceState(Texture, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-#endif
-
-		DeviceContext->SetComputeRootShaderResourceView((UINT)idx, Texture->GetGPUVirtualAddress());
-	}
-#endif
-
-	/************************************************************************************************/
 
 
 	void dxDirectContext::SetComputeShaderResourceView(size_t slot, ResourceHandle resource, const size_t offset)
@@ -1756,63 +1696,6 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	// Requires SO resources to be in DeviceAccessState::DRS::STREAMOUTCLEAR!
-	/*
-	void dxDirectContext::ClearSOCounters(static_vector<SOResourceHandle> handles)
-	{
-		
-		//typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
-		//{
-		//D3D12_GPU_VIRTUAL_ADDRESS Dest;
-		//UINT32 Value;
-		//} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
-		
-
-		static_vector<ID3D12Resource*>		sources;
-		static_vector<size_t>				sourceOffset;
-		static_vector<ID3D12Resource*>		destinations;
-		static_vector<size_t>				destinationOffset;
-		static_vector<size_t>				copySize;
-		static_vector<DeviceAccessState>	currentSOStates;
-		static_vector<DeviceAccessState>	finalStates;
-
-		for (auto& s : handles)
-			sources.push_back(nullptr);
-
-		for (auto& s : handles)
-			sourceOffset.push_back(0);
-
-		for (auto& s : handles)
-			destinations.push_back(renderSystem->GetSOCounterResource(s));
-
-		for (auto& s : handles)
-			destinationOffset.push_back(0);
-
-		for (auto& s : destinations)
-			copySize.push_back(16);
-
-		for (auto& s : handles)
-			currentSOStates.push_back(DeviceAccessState::DASCopyDest);
-
-		for (auto& s : handles)
-			finalStates.push_back(DeviceAccessState::DASCopyDest);
-
-
-		CopyBufferRegion(
-			sources,			// sources
-			sourceOffset,		// source offsets
-			destinations,		// destinations
-			destinationOffset,  // destination offsets
-			copySize,			// copy sizes
-			currentSOStates,	// source initial state
-			finalStates);		// source final	state
-	}
-	*/
-
-
-	/************************************************************************************************/
-
-
 	void dxDirectContext::CopyUInt64(
 		static_vector<ID3D12Resource*>			sources,
 		static_vector<DeviceAccessState>		sourceState,
@@ -2075,20 +1958,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetSOTargets(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews)
-	{
-		DeviceContext->SOSetTargets(0, (UINT)SOViews.size(), SOViews.begin());
-	}
-
-
-	/************************************************************************************************/
-
-
 	void dxDirectContext::ClearDepthBuffer(ResourceHandle resource, float clearDepth, uint32_t stencil)
 	{
 		UpdateResourceStates();
 
-		auto descriptor = _GetDepthDesciptor(resource);
+		auto descriptor = GetDepthDesciptor(resource);
 		PushDepthStencilArray(renderSystem, resource, 0, 0, descriptor);
 
 		DeviceContext->ClearDepthStencilView(
@@ -2122,7 +1996,7 @@ namespace dx_Internal
 		}
 		else
 		{
-			auto view = _ReserveRTV(1);
+			auto view = ReserveRTV(1);
 			PushRenderTarget(renderSystem, renderTarget, view);
 			RTV_CPU_HANDLES = D3D12_CPU_DESCRIPTOR_HANDLE{ view.V1 };
 			renderTargetViews.push_back({ renderTarget, view });
@@ -2139,8 +2013,8 @@ namespace dx_Internal
 
 	void dxDirectContext::ClearUAVTextureFloat(ResourceHandle UAV, float4 clearColor)
 	{
-		auto viewCPU    = _ReserveSRVLocal(1);
-		auto viewGPU    = _ReserveSRV(1).value();
+		auto viewCPU    = ReserveSRVLocal(1);
+		auto viewGPU    = ReserveSRV(1).value();
 		auto resource   = renderSystem->GetDeviceResource(UAV);
 
 		Texture2D tex{
@@ -2173,8 +2047,8 @@ namespace dx_Internal
 
 	void dxDirectContext::ClearUAVTextureUint(ResourceHandle UAV, uint4 clearColor)
 	{
-		auto CPUview	= _ReserveSRVLocal(1);
-		auto GPUview	= _ReserveSRV(1);
+		auto CPUview	= ReserveSRVLocal(1);
+		auto GPUview	= ReserveSRV(1);
 		auto resource	= renderSystem->GetDeviceResource(UAV);
 
 		FK_ASSERT(GPUview.has_value() != false, "Failed to allocated descriptor");
@@ -2213,7 +2087,7 @@ namespace dx_Internal
 
 	void dxDirectContext::ClearUAV(ResourceHandle resource, uint4 clearColor)
 	{
-		const auto view				= _ReserveSRVLocal(1);
+		const auto view				= ReserveSRVLocal(1);
 		const auto deviceResource	= renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
 		const auto deviceFormat		= renderSystem->GetTextureDeviceFormat(resource);
 
@@ -2237,7 +2111,7 @@ namespace dx_Internal
 
 		UpdateResourceStates();
 
-		static auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
+		static auto PSO = static_cast<const dxPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->allocator));
 		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
@@ -2275,7 +2149,7 @@ namespace dx_Internal
 		end = Min((uint32_t)renderSystem->GetResourceSize(UAV), end);
 		uint2 range{ begin / 16, end / 16};
 
-		auto PSO = static_cast<const DXPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->Memory));
+		auto PSO = static_cast<const dxPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->allocator));
 		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
@@ -2590,9 +2464,9 @@ namespace dx_Internal
 			FK_LOG_ERROR("Failed to reset device context");
 		}
 
-		_ResetDSV();
-		_ResetRTV();
-		_ResetSRV();
+		ResetDSV();
+		ResetRTV();
+		ResetSRV();
 
 		TrackedSOBuffers.clear();
 		pendingBarriers.clear();
@@ -2684,7 +2558,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS dxDirectContext::_GetDepthDesciptor(ResourceHandle depthBuffer)
+	DescHeapPOS dxDirectContext::GetDepthDesciptor(ResourceHandle depthBuffer)
 	{
 		auto DSV_CPU_HANDLE = DescHeapPOS{};
 
@@ -2698,7 +2572,7 @@ namespace dx_Internal
 			res == depthStencilViews.end())
 		{
 			if (!depthStencilViews.full()) {
-				auto DSV        = _ReserveDSV(1);
+				auto DSV        = ReserveDSV(1);
 				DSV_CPU_HANDLE  = DSV;
 				depthStencilViews.push_back({ depthBuffer, DSV });
 			}
@@ -2808,7 +2682,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::_QueueReadBacks()
+	void dxDirectContext::QueueReadBacks()
 	{
 		for (const auto readBackHandle : queuedReadBacks)
 		{
@@ -2829,7 +2703,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS dxDirectContext::_ReserveDSV(size_t count)
+	DescHeapPOS dxDirectContext::ReserveDSV(size_t count)
 	{
 		auto currentCPU = CPUDescriptorHandle{ DSV_CPU.ptr };
 		DSV_CPU.ptr = DSV_CPU.ptr + renderSystem->DescriptorDSVSize * count;
@@ -2841,7 +2715,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	std::optional<DescHeapPOS> dxDirectContext::_ReserveSRV(size_t count)
+	std::optional<DescHeapPOS> dxDirectContext::ReserveSRV(size_t count)
 	{
 		if (shaderResources.size > heapUsed + count)
 		{
@@ -2862,7 +2736,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS dxDirectContext::_ReserveSRVLocal(size_t count)
+	DescHeapPOS dxDirectContext::ReserveSRVLocal(size_t count)
 	{
 		auto currentCPU = SRV_LOCAL_CPU;
 		SRV_LOCAL_CPU.ptr = SRV_LOCAL_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
@@ -2874,7 +2748,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS dxDirectContext::_ReserveRTV(size_t count)
+	DescHeapPOS dxDirectContext::ReserveRTV(size_t count)
 	{
 		auto currentCPU = RTV_CPU;
 		RTV_CPU.ptr = RTV_CPU.ptr + renderSystem->DescriptorRTVSize * count;
@@ -2886,7 +2760,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::_ResetRTV()
+	void dxDirectContext::ResetRTV()
 	{
 		RTV_CPU = descHeapRTV->GetCPUDescriptorHandleForHeapStart();
 
@@ -2897,7 +2771,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::_ResetDSV()
+	void dxDirectContext::ResetDSV()
 	{
 		DSV_CPU = descHeapDSV->GetCPUDescriptorHandleForHeapStart();
 
@@ -2908,7 +2782,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::_ResetSRV()
+	void dxDirectContext::ResetSRV()
 	{
 		heapUsed = 0;
 
@@ -3045,10 +2919,17 @@ namespace dx_Internal
 	{
 		auto uploadSize		= Min(destRange.size, size);
 		auto uploadSpace	= Reserve(uploadSize);
-		auto dest			= dxRenderSystem::globalInstance->GetDeviceResource(destRange.resource);
+
+		ID3D12Resource* apiResource = nullptr;
+		if (destRange.resource != InvalidHandle)
+			apiResource = (ID3D12Resource*)dxRenderSystem::globalInstance->GetDevicePointer(destRange.resource);
+		else
+			apiResource = (ID3D12Resource*)destRange.devicePtr;
+
+		memcpy(uploadSpace.buffer, source_ptr, size);
 
 		commandList->CopyBufferRegion(
-			dest.As<ID3D12Resource>(),
+			apiResource,
 			destRange.offset,
 			uploadSpace.resource.As<ID3D12Resource>(),
 			uploadSpace.offset,

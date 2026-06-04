@@ -4,11 +4,13 @@
 #include "AnimationUtilities.hpp"
 #include "Containers.hpp"
 #include "DDSUtilities.hpp"
+#include "dxVertexBufferSet.hpp"
 #include "dxRenderSystem.hpp"
+#include "dxPipelineBuilder.hpp"
 #include "Logging.hpp"
 #include "MemoryUtilities.hpp"
 #include "ThreadUtilities.hpp"
-#include "TriMeshResource.hpp"
+#include "ShaderPreprocessor.hpp"
 
 #include <algorithm>
 #include <d3d12.h>
@@ -675,7 +677,7 @@ namespace dx_Internal
 		PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
-		Desc.Type					= RootSignatureEntryType::UnorderedAcess;
+		Desc.Type					= RootSignatureEntryType::UnorderedAccess;
 		Desc.Direct.Register		= (uint32_t)Register;
 		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
 		Desc.Direct.Accessibility	= AccessableStages;
@@ -982,14 +984,14 @@ namespace dx_Internal
 
 	void RootSignature::Release()
 	{
-		if(Signature && !Signature->Release())
+		if(signature && !signature->Release())
 		{
 			auto* mutable_this = const_cast<RootSignature*>(this);
 
-			mutable_this->Heaps.Release();
+			mutable_this->heaps.Release();
 
-			auto t = (uint64_t)Signature;
-			mutable_this->Signature = nullptr;
+			auto t = (uint64_t)signature;
+			mutable_this->signature = nullptr;
 			dxRenderSystem::_GetInstance()._ReleaseRootSignature(t);
 			allocator->free(mutable_this);
 		}
@@ -1001,481 +1003,9 @@ namespace dx_Internal
 
 	size_t RootSignature::GetDescriptorTableSize(size_t idx) const
 	{
-		FK_ASSERT(idx < Heaps.size());
-		return Heaps[idx].heap.size();
+		FK_ASSERT(idx < heaps.size());
+		return heaps[idx].heap.size();
 	}
-
-
-	/************************************************************************************************/
-
-
-	PipelineBuilderImpl::PipelineBuilderImpl(iAllocator& IN_allocator) :
-		allocator	{ IN_allocator },
-		blob		{ IN_allocator },
-		shaders		{ IN_allocator }
-	{
-		blob.buffer.reserve(1024);
-	}
-
-
-	/************************************************************************************************/
-
-
-	PipelineBuilderImpl::~PipelineBuilderImpl()
-	{
-		Release();
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddRootSignature(const IPipelineInterface* pipelineInterface)
-	{
-		auto IN_rootSig = static_cast<const RootSignature*>(pipelineInterface);
-		rootSig = IN_rootSig;
-
-		blob += CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE{ rootSig->Get_ptr() };
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddShaderLibrary(const char* file, const ShaderOptions& options)
-	{
-		/*
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(nullptr, "lib_6_8", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		struct
-		{
-			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_DXIL_LIBRARY;
-
-		} DXILObject;
-		blob += DXILObject;
-
-		//D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH
-		*/
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddComputeShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "cs_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_CS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddWorkGraph(const WorkGraph_Desc& work_desc)
-	{
-		struct {
-			D3D12_STATE_SUBOBJECT_TYPE type = D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_WORK_GRAPH;
-			D3D12_WORK_GRAPH_DESC workGraph;
-		} subObject = {
-			.workGraph {
-				.ProgramName				= nullptr,
-				.Flags						= (D3D12_WORK_GRAPH_FLAGS)work_desc.flags,
-				.NumEntrypoints				= 0,
-				.pEntrypoints				= nullptr,
-				.NumExplicitlyDefinedNodes	= work_desc.nodeCount,
-				.pExplicitlyDefinedNodes	= nullptr,
-			}
-		};
-
-		blob += subObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddVertexShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "vs_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_VS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddDomainShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ds_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_DS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddHullShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "hs_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_HS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddGeometryShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "gs_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_GS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddAmplificationShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "as_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_AS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddMeshShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ms_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_MS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const char* file, const ShaderOptions& options)
-	{
-		shaders.emplace_back(dxRenderSystem::_GetInstance().LoadShader(entryPoint, "ps_6_7", file, options));
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddPixelShader(const char* entryPoint, const Shader& shader)
-	{
-		shaders.emplace_back(shader);
-		hash = FNVa62(shaders.back().buffer, shaders.back().bufferSize, hash);
-
-		CD3DX12_PIPELINE_STATE_STREAM_PS streamObject = D3D12_SHADER_BYTECODE{ (D3D12_SHADER_BYTECODE)Shader2ByteCode(shaders.back()) };
-		blob += streamObject;
-
-		return *this;
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddInputLayout(const InputLayoutState& state)
-	{
-		if (inputElements)
-			return *this;
-
-		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT layout;
-		memset(std::addressof(layout), 0, sizeof(layout));
-
-		inputElements = (D3D12_INPUT_ELEMENT_DESC*)allocator->malloc(state.count * sizeof(D3D12_INPUT_ELEMENT_DESC));
-
-		for (auto&& [idx, input] : zip(iota(0u, state.count), state.inputs))
-		{
-			inputElements[idx] =
-				D3D12_INPUT_ELEMENT_DESC{
-					.SemanticName			= input.name,
-					.SemanticIndex			= input.index,
-					.Format					= TextureFormat2DXGIFormat(input.format),
-					.InputSlot				= input.slot,
-					.AlignedByteOffset		= input.alignedByteOffset,
-					.InputSlotClass			= ToDX(input.inputSlotClass),
-					.InstanceDataStepRate	= input.instanceStepRate
-				};
-		}
-
-		layout = D3D12_INPUT_LAYOUT_DESC{
-			.pInputElementDescs = inputElements,
-			.NumElements		= state.count,
-		};
-
-		hash = FNVa62((const char*)inputElements, state.count * sizeof(D3D12_INPUT_ELEMENT_DESC), hash);
-		blob += layout;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddInputTopology(const ETopology topology)
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY dxTopolgy{ (D3D12_PRIMITIVE_TOPOLOGY_TYPE)topology };
-		hash = FNVa62((const char*)&dxTopolgy, sizeof(dxTopolgy), hash);
-		blob += dxTopolgy;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddRasterizerState(const RasterizerState& state)
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER2 rasterizerState;
-		memset(&rasterizerState, 0, sizeof(CD3DX12_RASTERIZER_DESC2));
-
-		CD3DX12_RASTERIZER_DESC2& desc = rasterizerState;
-		desc = CD3DX12_RASTERIZER_DESC2{ D3D12_DEFAULT };
-
-		desc.ConservativeRaster		= state.conservativeRasterEnable ? D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON : D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
-		desc.CullMode				= (D3D12_CULL_MODE)state.CullMode;
-		desc.DepthBias				= state.depthBias;
-		desc.DepthBiasClamp			= state.depthBiasClamp;
-		desc.FillMode				= (D3D12_FILL_MODE)state.fill;
-		desc.ForcedSampleCount		= state.forcedSampleCount;
-		desc.FrontCounterClockwise	= state.frontCounterClockWise;
-		desc.LineRasterizationMode	= (D3D12_LINE_RASTERIZATION_MODE)state.antialiasedLineMode;
-
-		hash = FNVa62((const char*)&rasterizerState, sizeof(rasterizerState), hash);
-		blob += rasterizerState;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddDepthStencilState(const DepthStencilState& inputState)
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL depthStencil{};
-		CD3DX12_DEPTH_STENCIL_DESC& state = depthStencil;
-
-		state.BackFace.StencilDepthFailOp	= (D3D12_STENCIL_OP)inputState.backFace.stencilDepthFailOp;
-		state.BackFace.StencilFailOp		= (D3D12_STENCIL_OP)inputState.backFace.stencilFailOp;
-		state.BackFace.StencilPassOp		= (D3D12_STENCIL_OP)inputState.backFace.stencilPassOp;
-		state.BackFace.StencilFunc			= (D3D12_COMPARISON_FUNC)inputState.backFace.stencilFunc;
-
-		state.FrontFace.StencilDepthFailOp	= (D3D12_STENCIL_OP)inputState.frontFace.stencilDepthFailOp;
-		state.FrontFace.StencilFailOp		= (D3D12_STENCIL_OP)inputState.frontFace.stencilFailOp;
-		state.FrontFace.StencilPassOp		= (D3D12_STENCIL_OP)inputState.frontFace.stencilPassOp;
-		state.FrontFace.StencilFunc			= (D3D12_COMPARISON_FUNC)inputState.frontFace.stencilFunc;
-
-		state.DepthEnable		= (uint32_t)inputState.depthEnable;
-		state.DepthFunc			= (D3D12_COMPARISON_FUNC)inputState.depthFunc;
-		state.DepthWriteMask	= (D3D12_DEPTH_WRITE_MASK)inputState.depthWriteMask;
-		state.StencilEnable		= inputState.stencilEnable;
-		state.StencilReadMask	= inputState.stencilReadMask;
-		state.StencilWriteMask	= inputState.stencilWriteMask;
-
-		hash = FNVa62((const char*)&depthStencil, sizeof(depthStencil), hash);
-		blob += depthStencil;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddBlendState(const BlendState& state)
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_BLEND_DESC blendState{};
-		CD3DX12_BLEND_DESC& desc = blendState;
-
-		desc.AlphaToCoverageEnable	= state.alphaToCoverageEnable;
-		desc.IndependentBlendEnable	= state.independentBlendEnable;
-		memcpy(&desc.RenderTarget, &state.renderTarget, sizeof(state));
-
-		blob += blendState;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddRenderTargetState(const RenderTargetState& state)
-	{
-		CD3DX12_RT_FORMAT_ARRAY formats{};
-		memset(&formats, 0, sizeof(formats));
-		formats.NumRenderTargets = state.targetCount;
-
-		for (auto [idx, format] : zip(iota(0u, state.targetCount), state.targetFormats))
-			formats.RTFormats[idx] = TextureFormat2DXGIFormat(format);
-
-		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS dxFormats{ formats };
-		hash = FNVa62((const char*)&dxFormats, sizeof(dxFormats), hash);
-		blob += dxFormats;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	IPipelineBuilder& PipelineBuilderImpl::AddDepthStencilFormat(const DeviceFormat format)
-	{
-		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT dxDepthFormat{ TextureFormat2DXGIFormat(format) };
-		hash = FNVa62((const char*)&dxDepthFormat, sizeof(dxDepthFormat), hash);
-		blob += dxDepthFormat;
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FlexKit::LoadPipelineStateRes PipelineBuilderImpl::Build(IRenderSystem& irs, iAllocator& tempAllocator)
-	{
-		auto& renderSystem = static_cast<dxRenderSystem&>(irs);
-
-		D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-			.SizeInBytes					= blob.size(),
-			.pPipelineStateSubobjectStream	= blob.data()
-		};
-
-		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
-
-		if (SUCCEEDED(HR))
-		{
-			if (!rootSig)
-			{
-				for (auto& shader : shaders)
-				{
-					ID3D12RootSignature* dxRootSig = nullptr;
-					HR = renderSystem.pDevice14->CreateRootSignature(0,shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
-
-					if (SUCCEEDED(HR))
-					{
-						rootSig = renderSystem._GetRootSignature((uint64_t)dxRootSig);
-
-						if (!rootSig)
-						{
-							RootSignatureBuilder builder{ *renderSystem.Memory };
-							rootSig = builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, renderSystem, *renderSystem.Memory);
-						}
-						break;
-					}
-				}
-			}
-
-			if (!rootSig)
-			{
-				// TODO: use shader reflection!
-				FK_LOG_ERROR("Failed to acquire root signature!");
-				return { nullptr, nullptr };
-			}
-
-			if (pso && debugName)
-			{
-				SETDEBUGNAME(pso, debugName);
-				rootSig->SetDebugStr(debugName);
-			}
-
-			allocator->free(inputElements);
-			inputElements = nullptr;
-			blob.Clear();
-
-			return { pso, rootSig };
-		}
-		else
-			return { nullptr, nullptr };
-	}
-
-
-	/************************************************************************************************/
-
-
-	LoadPipelineStateRes PipelineBuilderImpl::BuildStream(IRenderSystem& irs, void* buffer, const size_t size)
-	{
-		auto& renderSystem = static_cast<dxRenderSystem&>(irs);
-
-		const D3D12_PIPELINE_STATE_STREAM_DESC streamDesc{
-			.SizeInBytes					= size,
-			.pPipelineStateSubobjectStream	= buffer
-		};
-
-		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
-
-		return { pso, nullptr };
-	}
-
-
-	void PipelineBuilderImpl::Release()
-    {
-		if (allocator)
-		{
-			blob.Release();
-		    shaders.Release();
-			allocator->free(inputElements);
-			allocator = nullptr;
-		}
-    }
-
 
 
 	/************************************************************************************************/
@@ -2037,7 +1567,7 @@ namespace dx_Internal
 
 
 	dxRenderSystem::dxRenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
-			Memory			{ IN_allocator },
+			allocator			{ IN_allocator },
 			Queries			{ IN_allocator, this },
 			Textures		{ IN_allocator },
 			VertexBuffers	{ IN_allocator },
@@ -2068,7 +1598,7 @@ namespace dx_Internal
 	{
 		Vector<ID3D12DeviceChild*> ObjectsCreated(in.Memory);
 
-		Memory				= in.Memory;
+		allocator				= in.Memory;
 		Settings.AAQuality	= 0;
 		Settings.AASamples	= 1;
 		UINT DeviceFlags	= 0;
@@ -2313,13 +1843,14 @@ namespace dx_Internal
 			}
 		FINALLYOVER;
 
-		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslLibrary))))
+
+		if (FAILED(DxcCreateInstance(CLSID_DxcLibrary, IID_PPV_ARGS(&hlslUtils))))
 			throw(std::runtime_error{ "Unable to create HLSL 6.x Library!" });
 
 		if (FAILED(DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&hlslCompiler))))
 			throw(std::runtime_error{ "Unable to create HLSL 6.x Compiler!" });
 
-		hlslLibrary->CreateIncludeHandler(&hlslIncludeHandler);
+		if (hlslUtils) hlslUtils->CreateDefaultIncludeHandler(&hlslIncludeHandler);
 
 		// Create Resources
 		const UINT DXGIFLAGS =
@@ -2378,7 +1909,7 @@ namespace dx_Internal
 		copyEngine.Initiate(Device, uint32_t((threads.GetThreadCount() + 1) * 1.5), ObjectsCreated, in.Memory);
 
 		for (size_t I = 0; I < 3 * (1 + threads.GetThreadCount()); ++I)
-			Contexts.emplace_back(this, Memory);
+			Contexts.emplace_back(this, allocator);
 
 		InitiateComplete = true;
 		
@@ -2403,9 +1934,19 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	AvailableFeatures dxRenderSystem::GetFeatures() const noexcept
+	{
+		AvailableFeatures features;
+		return features;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void dxRenderSystem::Release()
 	{
-		if (!Memory)
+		if (!allocator)
 			return;
 
 		const size_t completedValue = directFence->GetCompletedValue();
@@ -2457,7 +1998,7 @@ namespace dx_Internal
 		}
 #endif
 
-		Memory = nullptr;
+		allocator = nullptr;
 	}
 
 
@@ -2514,7 +2055,7 @@ namespace dx_Internal
 	{
 		auto obj = PipelineStates.GetPSOObject(state);
 
-		if (obj && obj->state != PipelineStateObject::PSO_States::Loaded)
+		if (obj && obj->state != dxPipelineStateObject::PSO_States::Loaded)
 			QueuePSOLoad(state);
 	}
 
@@ -2526,7 +2067,7 @@ namespace dx_Internal
 	{
 		FK_LOG_2("Reloading PSO!");
 
-		PipelineStates.QueuePSOLoad(State, Memory);
+		PipelineStates.QueuePSOLoad(State, allocator);
 	}
 
 
@@ -2973,8 +2514,28 @@ namespace dx_Internal
 
 	[[nodiscard]] bool dxRenderSystem::CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator)
 	{
+		FK_ASSERT(bufferSize >= sizeof(PipelineBuilderImpl));
 		new(_ptr) PipelineBuilderImpl{ tempAllocator };
+
 		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	[[nodiscard]] void dxRenderSystem::CreateDescriptorSet(std::byte* _ptr, size_t bufferSize)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	[[nodiscard]] IVertexBufferSet& dxRenderSystem::CreateVertexBufferSet()
+	{
+		return allocator->allocate<dxVertexBufferSet>();
 	}
 
 
@@ -4393,89 +3954,87 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	Shader  dxRenderSystem::LoadShader(const char* entryPoint, const char* profile, const char* file, const ShaderOptions& options)
+	Shader  dxRenderSystem::LoadShader(const char* entry, const char* profile, const char* file, const ShaderOptions& options)
 	{
 		std::filesystem::path filePath{ file };
 		auto parentPath = filePath.parent_path();
 
-		wchar_t entryPointW[64];
-		wchar_t fileW[256];
-		wchar_t filenameW[256];
-		wchar_t profileW[64];
+		wchar_t entryW[64];
+		wchar_t profileW[10];
 
-		size_t fileWLength = 0;
-		if (entryPoint != nullptr)
-			mbstowcs(entryPointW, entryPoint, 64);
+		if (entry != nullptr)
+			mbstowcs(entryW, entry, 64);
 
-		mbstowcs(profileW, profile, 64);
-		mbstowcs(fileW, file, 256);
-		mbstowcs(filenameW, filePath.filename().string().c_str(), 256);
+		if (entry != nullptr)
+			mbstowcs(profileW, profile, 10);
+		else
+			return {};
 
+		if (!std::filesystem::exists(filePath))
+			return {};
+
+		auto shaderFileSize = FlexKit::GetFileSize(filePath.string().c_str()) + 1;
+		std::string shaderStr;
+		shaderStr.resize(shaderFileSize);
+
+		memset(shaderStr.data(), 0, shaderFileSize);
+		LoadFileIntoBuffer(filePath.string().c_str(), (std::byte*)shaderStr.data(), shaderFileSize);
+
+
+		DXShaderProprocessor(shaderStr, SHADER_TYPE::Unknown, *allocator);
 
 		IDxcBlobEncoding* blob;
-		auto HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
-
-		if (FAILED(HR1))
-		{
-			LPSTR string = nullptr;
-
-			const auto msgLen = FormatMessageA(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				nullptr,
-				HR1,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR)&string,
-				0,
-				nullptr);
-
-			auto converted = fmt::format("Shader failed to load: {}", string);
-
-			FK_LOG_ERROR(converted.c_str());
-
-			LocalFree(string);
-
+		if (auto HR = hlslUtils->CreateBlobFromPinned(shaderStr.data(), shaderStr.size(), DXC_CP_ACP, &blob); FAILED(HR))
 			return {};
-		}
 
 		IncludeHandler includeHandler;
-		includeHandler.includePath      = parentPath;
-		includeHandler.handler          = hlslIncludeHandler;
-
+		includeHandler.includePath = parentPath;
+		includeHandler.handler = hlslIncludeHandler;
 
 		IDxcCompiler2* debugCompiler = nullptr;
 		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
 
 		static_vector<LPCWSTR> arguments;
+		arguments.push_back(L"-T");
+		arguments.push_back(profileW);
+		arguments.push_back(L"-E");
+		arguments.push_back(entryW);
 
-#if USING(DEBUGSHADERS)
-		arguments.push_back(L"-Od");
-		arguments.push_back(L"/Zi");
-		arguments.push_back(L"-Qembed_debug");
-#else
-		arguments.push_back(L"-O2");
-#endif
+		if (options.enableDebug)
+		{
+			arguments.push_back(L"-Od");
+			arguments.push_back(L"/Zi");
+			arguments.push_back(L"-Qembed_debug");
+		}
+		else
+		    arguments.push_back(L"-O2");
 
-		if(options.enable16BitTypes)
+		if (options.enable16BitTypes)
 			arguments.push_back(L"-enable-16bit-types");
 
 		if (options.hlsl2021)
 			arguments.push_back(L"-HV 2021");
 
+		DxcBuffer buffer{
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+		};
+
+		int _;
+
+		blob->GetEncoding(&_, &buffer.Encoding);
 		IDxcOperationResult* result = nullptr;
 
-		HRESULT HR2;
-		try
-		{
-			HR2 = hlslCompiler->Compile(blob, filenameW, entryPoint != nullptr ? entryPointW : nullptr, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
-		}
-		catch (...)
-		{
-			std::cout << "t";
-		}
+		auto HR2 = hlslCompiler->Compile(
+			&buffer,
+			arguments.data(),
+			(UINT)arguments.size(),
+			&includeHandler,
+			IID_PPV_ARGS(&result));
 
 		if (FAILED(HR2))
 		{
-			if(result)
+			if (result)
 				result->Release();
 
 			return {};
@@ -4486,42 +4045,31 @@ namespace dx_Internal
 			HRESULT status;
 			result->GetStatus(&status);
 
-			while(FAILED(status))
+			if (FAILED(status))
 			{
 				IDxcBlobEncoding* errors;
 				result->GetErrorBuffer(&errors);
 
 				auto errorString = (const char*)errors->GetBufferPointer();
-
-				std::string traceMessage = GetCallStackString();
-				std::string formattedMessage =
-					std::format("{}\nFailed to Compile Shader\nEntryPoint: {}\nFile : {}\nStack Trace : \n {}\nPress Enter to try again\n",
-						errorString, entryPoint ? entryPoint : "No Entry Point", file, traceMessage);
-
-				FK_LOG_ERROR(formattedMessage.c_str());
+				FK_LOG_ERROR("%s\nFailed to compiled shader!\nFile: %s\nPress Enter to try again\n", errorString, filePath.string().c_str());
 
 				errors->Release();
 
-				char str[100];
-				std::cin >> str;
-
-				HR1 = hlslLibrary->CreateBlobFromFile(fileW, nullptr, &blob);
-				HR2 = hlslCompiler->Compile(blob, filenameW, entryPointW, profileW, arguments.data(), (UINT)arguments.size(), nullptr, 0, &includeHandler, &result);
-
-				result->GetStatus(&status);
+				return {};
 			}
-
 
 			auto HR = result->GetResult(&byteCodeBlob);
 
 			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-			Shader out = CreateShader( byteCodeBlob, Memory );
+			Shader out = CreateShader(byteCodeBlob, allocator);
 			byteCodeBlob->Release();
 			result->Release();
 
 			return out;
 		}
+
+		return {};
 	}
 
 
@@ -4539,54 +4087,51 @@ namespace dx_Internal
 		if(entry != nullptr)
 			mbstowcs(entryW, entry, 64);
 
-		IDxcBlobEncoding* blob;
-		auto HR1 = hlslLibrary->CreateBlobFromFile(filePath.c_str(), nullptr, &blob);
 
-		if (FAILED(HR1))
-		{
-			LPSTR string = nullptr;
-
-			const auto msgLen = FormatMessageA(
-				FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-				nullptr,
-				HR1,
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR)&string,
-				0,
-				nullptr);
-
-			std::string formattedMessage =
-				std::format("interface failed to load : {}", string);
-
-			FK_LOG_ERROR(formattedMessage.c_str());
-
-			LocalFree(string);
-
+		if (!std::filesystem::exists(filePath))
 			return std::unexpected{ "File Not Found!" };
-		}
+
+		auto shaderFileSize = FlexKit::GetFileSize(filePath.string().c_str()) + 1;
+		std::string shaderStr;
+		shaderStr.resize(shaderFileSize);
+
+		memset(shaderStr.data(), 0, shaderFileSize);
+		LoadFileIntoBuffer(filePath.string().c_str(), (std::byte*)shaderStr.data(), shaderFileSize);
+
+
+		DXShaderProprocessor(shaderStr, SHADER_TYPE::Unknown, *allocator);
+
+		IDxcBlobEncoding* blob;
+		if (auto HR = hlslUtils->CreateBlobFromPinned(shaderStr.data(), shaderStr.size(), DXC_CP_ACP, &blob); FAILED(HR))
+			return std::unexpected{ "DX:LoadRootSignature: File To Create Blob!" };
 
 		IncludeHandler includeHandler;
-		includeHandler.includePath = parentPath;
-		includeHandler.handler = hlslIncludeHandler;
+		includeHandler.includePath	= parentPath;
+		includeHandler.handler		= hlslIncludeHandler;
 
 
 		IDxcCompiler2* debugCompiler = nullptr;
 		hlslCompiler->QueryInterface<IDxcCompiler2>(&debugCompiler);
 
 		static_vector<LPCWSTR> arguments;
-
 		arguments.push_back(L"/extractrootsignature");
 
+		DxcBuffer buffer{
+			blob->GetBufferPointer(),
+			blob->GetBufferSize(),
+		};
+
+		int _;
+
+		blob->GetEncoding(&_, &buffer.Encoding);
 		IDxcOperationResult* result = nullptr;
+
 		auto HR2 = hlslCompiler->Compile(
-			blob,
-			filePath.c_str(),
-			entry != nullptr ? entryW : nullptr,
-			profileW,
-			arguments.data(), (UINT)arguments.size(),
-			nullptr, 0,
+			&buffer,
+			arguments.data(),
+			(UINT)arguments.size(),
 			&includeHandler,
-			&result);
+			IID_PPV_ARGS(&result));
 
 		if (FAILED(HR2))
 		{
@@ -4618,7 +4163,7 @@ namespace dx_Internal
 
 			wchar_t* text = (wchar_t*)byteCodeBlob->GetBufferPointer();
 
-			Shader out = CreateShader(byteCodeBlob, Memory);
+			Shader out = CreateShader(byteCodeBlob, allocator);
 			byteCodeBlob->Release();
 			result->Release();
 
@@ -4631,136 +4176,6 @@ namespace dx_Internal
 
 	/************************************************************************************************/
 
-
-	void CreateVertexBuffer(dxRenderSystem* RS, CopyContextHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBufferSet& DVB_Out)
-	{
-		// TODO: Add Buffer Layout Structure for more complex Buffer Layouts
-		// TODO: ATM only is able to make Buffers of a single Value
-		InputDescription Input_Desc;
-
-		DVB_Out.buffers.SetFull();
-
-		// Generate Input Layout
-		HRESULT	HR = ERROR;
-		D3D12_RESOURCE_DESC Resource_DESC	= CD3DX12_RESOURCE_DESC::Buffer(0);
-		Resource_DESC.Alignment				= 0;
-		Resource_DESC.DepthOrArraySize		= 1;
-		Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout				= D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width					= 0;
-		Resource_DESC.Height				= 1;
-		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count		= 1;
-		Resource_DESC.SampleDesc.Quality	= 0;
-		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HEAP_Props ={};
-		HEAP_Props.CPUPageProperty	    = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type				    = D3D12_HEAP_TYPE_DEFAULT;
-		HEAP_Props.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask	    = 0;
-		HEAP_Props.VisibleNodeMask		= 0;
-
-		auto& cctx = RS->GetCopyContext(handle);
-
-		for (uint32_t itr = 0; itr < BufferCount; ++itr)
-		{
-			auto& buffer = Buffers[itr];
-			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::INDEX)
-			{
-				// Create the Vertex Buffer
-				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
-				Resource_DESC.Width	= Buffers[itr]->GetBufferSizeRaw();
-
-				ID3D12Resource* NewBuffer = nullptr;
-
-				HRESULT HR = RS->pDevice->CreateCommittedResource(
-									&HEAP_Props, 
-									D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
-									&Resource_DESC, 
-									D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, 
-									nullptr, 
-									IID_PPV_ARGS(&NewBuffer));
-			
-				if (FAILED(HR))
-				{// TODO!
-					FK_ASSERT(0);
-				}
-
-				RS->UpdateResourceByUploadQueue(
-					NewBuffer, 
-					handle,
-					Buffers[itr]->GetBuffer(),
-					Buffers[itr]->GetBufferSizeRaw(), 1,
-					DASCommon);
-
-				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
-
-				DVB_Out.buffers[itr].apiResource		= NewBuffer;
-				DVB_Out.buffers[itr].bufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
-				DVB_Out.buffers[itr].bufferStride		= (uint32_t)Buffers[itr]->GetElementSize();
-				DVB_Out.buffers[itr].type				= Buffers[itr]->GetBufferType();
-				DVB_Out.MD.IndexBuffer_Index			= itr;
-				DVB_Out.MD.InputElementCount			= Buffers[itr]->GetBufferSize();
-			}
-			else if (Buffers[itr] && Buffers[itr]->GetBufferSize())
-			{
-				ID3D12Resource* apiResource = nullptr;
-				// Create the Vertex Buffer
-				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
-				Resource_DESC.Width	= Buffers[itr]->GetBufferSizeRaw();
-
-				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, 
-									D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, 
-									D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON,
-									nullptr, IID_PPV_ARGS(&apiResource));
-
-				if (FAILED(HR))
-				{// TODO!
-					FK_ASSERT(0);
-				}
-
-				switch (Buffers[itr]->GetBufferType())
-				{
-				case VERTEXBUFFER_TYPE::POSITION:
-					{SETDEBUGNAME(apiResource, "VERTEXBUFFER");				break;}
-				case VERTEXBUFFER_TYPE::NORMAL:
-					{SETDEBUGNAME(apiResource, "NORMAL BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::TANGENT:
-					{SETDEBUGNAME(apiResource, "TANGET BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::COLOR:
-					{SETDEBUGNAME(apiResource, "COLOUR BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::UV:
-					{SETDEBUGNAME(apiResource, "TEXCOORD BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::ANIMATION1:
-					{SETDEBUGNAME(apiResource, "AnimationWeights");			break;}
-				case VERTEXBUFFER_TYPE::ANIMATION2:
-					{SETDEBUGNAME(apiResource, "AnimationIndices");			break;}
-				case VERTEXBUFFER_TYPE::PACKED:
-					{SETDEBUGNAME(apiResource, "PACKED_BUFFER");			break;}
-				case VERTEXBUFFER_TYPE::UNKNOWN:
-				default:
-					{SETDEBUGNAME(apiResource, "VERTEXBUFFER_TYPE_ERROR");	break; }
-					break;
-				}
-
-				RS->UpdateResourceByUploadQueue(
-					apiResource,
-					handle,
-					Buffers[itr]->GetBuffer(),
-					Buffers[itr]->GetBufferSizeRaw(), 1, 
-					DASCommon);
-
-				DVB_Out.buffers[itr].apiResource		= apiResource;
-				DVB_Out.buffers[itr].bufferStride		= (uint32_t)Buffers[itr]->GetElementSize();
-				DVB_Out.buffers[itr].bufferSizeInBytes	= (uint32_t)Buffers[itr]->GetBufferSizeRaw();
-				DVB_Out.buffers[itr].type				= Buffers[itr]->GetBufferType();
-			}
-		}
-	}
-	
-
-	/************************************************************************************************/
 
 	VertexBufferHandle VertexBufferStateTable::CreateVertexBuffer(size_t BufferSize, bool GPUResident, dxRenderSystem* RS) // Creates Using Placed Resource
 	{
@@ -6770,11 +6185,43 @@ namespace dx_Internal
 		}
 
 
-		auto& object			= Memory->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps), Memory);
-		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
+		auto& object			= allocator->allocate_aligned<RootSignature>(rootSig, std::move(builder.Heaps), allocator);
+
+		if (builder.RootEntries.size())
+		{
+			object.slots.reserve(builder.RootEntries.size());
+			for (const auto& s : builder.RootEntries)
+			{
+				switch (s.Type)
+				{
+				case RootSignatureEntryType::DescriptorHeap:
+					object.slots.push_back(RootSignature::SlotType::DescriptorSet);
+					break;
+				case RootSignatureEntryType::ConstantBuffer:
+					object.slots.push_back(RootSignature::SlotType::CBV);
+					break;
+				case RootSignatureEntryType::StructuredBuffer:
+					object.slots.push_back(RootSignature::SlotType::SRV);
+					break;
+				case RootSignatureEntryType::UnorderedAccess:
+					object.slots.push_back(RootSignature::SlotType::UAV);
+					break;
+				case RootSignatureEntryType::UINT:
+					object.slots.push_back(RootSignature::SlotType::UINT);
+					break;
+				default:
+				case RootSignatureEntryType::Error:
+					throw std::runtime_error{ "DX: Invalid Slot type!" };
+				    break;
+				}
+			}
+		}
+
+		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ allocator });
 
 		std::unique_lock unique{ rootSignatureLock };
 		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSig, std::move(object_ptr));
+
 
 		return &object;
 	}
@@ -6786,7 +6233,7 @@ namespace dx_Internal
 	RootSignature* dxRenderSystem::_CreateRootSignature(RootSignatureBuilder& builder, iAllocator& temp)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE, 16>, 16> desciptorHeaps{ temp };
-		Vector<RootSignature::SlotType, 32>		slots{ Memory };
+		Vector<RootSignature::SlotType, 32>		slots{ allocator };
 		static_vector<CD3DX12_ROOT_PARAMETER>	parameters;
 
 		for (const auto& I : builder.RootEntries)
@@ -6862,7 +6309,7 @@ namespace dx_Internal
 					PipelineDest2ShaderVis(I.Direct.Accessibility));
 				slots.push_back(RootSignature::SlotType::SRV);
 			}	break;
-			case RootSignatureEntryType::UnorderedAcess:
+			case RootSignatureEntryType::UnorderedAccess:
 			{
 				Param.InitAsUnorderedAccessView(
 					I.Direct.Register,
@@ -6945,8 +6392,8 @@ namespace dx_Internal
 
 		lock.unlock();
 
-		auto& object			= Memory->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps), Memory);
-		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ Memory });
+		auto& object			= allocator->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps), allocator);
+		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ allocator });
 
 		std::unique_lock unique{ rootSignatureLock };
 
@@ -7000,7 +6447,7 @@ namespace dx_Internal
 				contextIdx = ++contextIdx % Contexts.size();
 
 				dxDirectContext& context = Contexts[idx];
-				if (context._GetCounter() <= completedCounter)
+				if (context.GetCounter() <= completedCounter)
 				{
 					auto range = CreateDescriptorRange(1024);
 
@@ -7010,7 +6457,7 @@ namespace dx_Internal
 					return context.Reset(range.value(), submissionId, descriptorHeapAllocator.Heap());
 				}
 				else
-					lowest = Min(lowest, context._GetCounter());
+					lowest = Min(lowest, context.GetCounter());
 			}
 
 			WaitFor(lowest);
@@ -7119,7 +6566,7 @@ namespace dx_Internal
 		for (auto context : contexts)
 		{
 			auto deviceContext = static_cast<dxDirectContext*>(context);
-			dispatchIdx = Max(deviceContext->dispatchIdx, dispatchIdx);
+			dispatchIdx = Max(deviceContext->GetCounter(), dispatchIdx);
 
 			cls.push_back(deviceContext->GetCommandList());
 			deviceContext->Close();
@@ -7141,7 +6588,7 @@ namespace dx_Internal
 			FK_LOG_ERROR("Failed to Signal");
 
 		for (auto context : contexts)
-			static_cast<dxDirectContext*>(context)->_QueueReadBacks();
+			static_cast<dxDirectContext*>(context)->QueueReadBacks();
 
 		directUploadBuffer.last = directUploadBuffer.position;
 
@@ -7215,7 +6662,8 @@ namespace dx_Internal
 	/************************************************************************************************/
 	
 
-	bool CreateInputLayout(dxRenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBufferSet* DVB_Out)
+	/*
+	bool CreateInputLayout(dxRenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, dxVertexBufferSet* DVB_Out)
 	{
 		InputDescription Input_Desc;
 
@@ -7475,6 +6923,7 @@ namespace dx_Internal
 
 		return true;
 	}
+	*/
 	
 
 

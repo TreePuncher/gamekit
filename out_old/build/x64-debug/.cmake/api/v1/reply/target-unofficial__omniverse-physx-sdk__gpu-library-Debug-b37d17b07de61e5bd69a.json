@@ -1,0 +1,77 @@
+{
+	"abstract" : true,
+	"artifacts" : 
+	[
+		{
+			"path" : "vcpkg_installed/x64-windows/tools/PhysXGpu_64.dll"
+		}
+	],
+	"backtrace" : 5,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"_add_library",
+			"add_library",
+			"_find_package",
+			"find_package"
+		],
+		"files" : 
+		[
+			"C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+			"out/build/x64-debug/vcpkg_installed/x64-windows/share/unofficial-omniverse-physx-sdk/unofficial-omniverse-physx-sdk-config.cmake",
+			"EngineComponents/PhysX/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 2,
+				"line" : 6,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 908,
+				"parent" : 1
+			},
+			{
+				"file" : 1,
+				"parent" : 2
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 105,
+				"parent" : 3
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 653,
+				"parent" : 4
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "unofficial::omniverse-physx-sdk::gpu-library::@4da0a4e981bccff2a242",
+	"imported" : true,
+	"local" : true,
+	"name" : "unofficial::omniverse-physx-sdk::gpu-library",
+	"nameOnDisk" : "PhysXGpu_64.dll",
+	"paths" : 
+	{
+		"build" : "EngineComponents/PhysX",
+		"source" : "EngineComponents/PhysX"
+	},
+	"sources" : [],
+	"type" : "SHARED_LIBRARY"
+}

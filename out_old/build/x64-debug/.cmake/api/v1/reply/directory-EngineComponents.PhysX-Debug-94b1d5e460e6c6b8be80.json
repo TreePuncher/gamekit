@@ -1,0 +1,107 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"install"
+		],
+		"files" : 
+		[
+			"EngineComponents/PhysX/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 32,
+				"parent" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 33,
+				"parent" : 0
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"installers" : 
+	[
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"EngineComponents/PhysX/PhysxComponent.lib"
+			],
+			"targetId" : "PhysxComponent::@4da0a4e981bccff2a242",
+			"targetIndex" : 38,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 1,
+			"component" : "Unspecified",
+			"destination" : "include",
+			"fileSetDirectories" : 
+			[
+				"EngineComponents/PhysX"
+			],
+			"fileSetName" : "physxcomponent_headers",
+			"fileSetTarget" : 
+			{
+				"id" : "PhysxComponent::@4da0a4e981bccff2a242",
+				"index" : 38
+			},
+			"fileSetType" : "HEADERS",
+			"paths" : 
+			[
+				{
+					"from" : "EngineComponents/PhysX/include/PhysicsUtilities.hpp",
+					"to" : "include/PhysicsUtilities.hpp"
+				},
+				{
+					"from" : "EngineComponents/PhysX/include/PhysicsDebugVis.hpp",
+					"to" : "include/PhysicsDebugVis.hpp"
+				}
+			],
+			"type" : "fileSet"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"destination" : "lib",
+			"paths" : 
+			[
+				"EngineComponents/PhysX/PhysxComponent.lib"
+			],
+			"targetId" : "PhysxComponent::@4da0a4e981bccff2a242",
+			"targetIndex" : 38,
+			"type" : "target"
+		},
+		{
+			"backtrace" : 2,
+			"component" : "Unspecified",
+			"cxxModuleBmiTarget" : 
+			{
+				"id" : "PhysxComponent::@4da0a4e981bccff2a242",
+				"index" : 38
+			},
+			"destination" : "lib",
+			"type" : "cxxModuleBmi"
+		}
+	],
+	"paths" : 
+	{
+		"build" : "EngineComponents/PhysX",
+		"source" : "EngineComponents/PhysX"
+	}
+}

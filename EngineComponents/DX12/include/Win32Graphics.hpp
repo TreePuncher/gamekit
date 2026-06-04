@@ -15,21 +15,22 @@ namespace FlexKit
 
 	struct Win32RenderWindowDesc
 	{
-		bool		fullscreen;
-		uint64_t	hInstance;
-		uint64_t	hWindow;
-		uint32_t	height;
-		uint32_t	width;
-		uint32_t	depth;
-		uint32_t	AA_Count;
-		uint32_t	AA_Quality;
-		uint32_t	POS_X;
-		uint32_t	POS_Y;
-		char		ID[64];
+		bool			fullscreen;
+		uint64_t		hInstance;
+		uint64_t		hWindow;
+		uint32_t		height;
+		uint32_t		width;
+		uint32_t		depth;
+		uint32_t		AA_Count;
+		uint32_t		AA_Quality;
+		uint32_t		POS_X;
+		uint32_t		POS_Y;
+		DeviceFormat	format;
+		char			ID[64];
 	};
 
 
-	Win32RenderWindowDesc DefaultWindowDesc(uint2 WH, bool fullscreen = false);
+	Win32RenderWindowDesc DefaultWindowDesc(uint2 WH, DeviceFormat format = DeviceFormat::R8G8B8A8_UNORM, bool fullscreen = false);
 
 
 	/************************************************************************************************/

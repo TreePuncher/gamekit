@@ -14,7 +14,7 @@ add_executable(
 )
 
 set_property(TARGET OBJLoading PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(OBJLoading PRIVATE flex vkBackend)
+target_link_libraries(OBJLoading PRIVATE flex vkBackend dxBackend)
 
 if(NOT EXISTS ${PROJECT_BINARY_DIR}/assets)
     file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)

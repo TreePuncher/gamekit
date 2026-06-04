@@ -161,11 +161,6 @@ namespace VK_internal
 		DebugBreak();
 	}
 
-	void vkDirectContext::AddStreamOutBarrier(SOResourceHandle, DeviceAccessState Before, DeviceAccessState State)
-	{
-		DebugBreak();
-	}
-
 	void vkDirectContext::AddCopyResourceBarrier(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State)
 	{
 		DebugBreak();

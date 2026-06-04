@@ -14,15 +14,10 @@ namespace dx_Internal
 	class dxDirectContext : public IDirectContext
 	{
 	public:
-		dxDirectContext(dxRenderSystem*	renderSystem_IN	= nullptr, 
-				iAllocator*		allocator		= nullptr);
-			
+		dxDirectContext(dxRenderSystem*	renderSystem_IN	= nullptr, iAllocator*	allocator = nullptr);
 		dxDirectContext(dxDirectContext&& RHS);
 
-
 		dxDirectContext& operator = (dxDirectContext&& RHS);
-
-
 		dxDirectContext				(const dxDirectContext& RHS) = delete;
 		dxDirectContext& operator = (const dxDirectContext& RHS) = delete;
 
@@ -36,7 +31,6 @@ namespace dx_Internal
 		void AddAliasingBarrier			(ResourceHandle before, ResourceHandle after) final;
 		void AddUAVBarrier				(ResourceHandle Handle = InvalidHandle, uint32_t subresource = -1, DeviceLayout layout = DeviceLayout::Unknown, DeviceSyncPoint src = Sync_All, DeviceSyncPoint dst = Sync_All) final;
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceAccessState Before) final;
-		void AddStreamOutBarrier		(SOResourceHandle,		DeviceAccessState Before, DeviceAccessState State) final;
 		void AddCopyResourceBarrier		(ResourceHandle Handle, DeviceAccessState Before, DeviceAccessState State) final;
 
 		void AddGlobalBarrier			(ResourceHandle resource, DeviceAccessState accessBefore, DeviceAccessState accessAfter, DeviceSyncPoint syncBefore, DeviceSyncPoint syncAfter) final;
@@ -63,12 +57,10 @@ namespace dx_Internal
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) final;
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) final;
 
-		/*
 		void SetViewports				(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetViewports				(std::span<const D3D12_VIEWPORT>	VPs);
 		void SetScissorRects			(static_vector<D3D12_RECT, 16>		rects);
 		void SetScissorRects			(std::span<const D3D12_RECT>		rects);
-		*/
 
 		void SetViewports				(std::span<const Viewport>	VPs)	final;
 		void SetScissorRects			(std::span<const Rect>		rects)	final;
@@ -76,34 +68,13 @@ namespace dx_Internal
 		void SetScissorAndViewports		(static_vector<ResourceHandle, 16>	RenderTargets) final;
 		void SetScissorAndViewports2	(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0) final;
 
-		/*
-		template<typename ... ARGS>
-		void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
-		{
-			static_vector<D3D12_VIEWPORT, 16>	VPs;
-			static_vector<D3D12_RECT, 16>		Rects;
+		void QueueReadBack				(ReadBackResourceHandle readBack) final;
+		void QueueReadBack				(ReadBackResourceHandle readBack, ReadBackEventHandler callback) final;
 
-			Tuple_For(
-				RenderTargets,
-				[&](auto target)
-				{
-					const auto WH = renderSystem->GetTextureWH(target);
-					VPs.push_back(  { 0,0, (FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
-					Rects.push_back({ 0,0, (LONG)WH[0], (LONG)WH[1] });
-				});
+		void SetDepthStencil			(ResourceHandle DS) final;
+		void SetInputPrimitive			(EInputPrimitive primitive) final;
 
-			SetViewports(VPs);
-			SetScissorRects(Rects);
-		}
-        */
-
-		void QueueReadBack(ReadBackResourceHandle readBack) final;
-		void QueueReadBack(ReadBackResourceHandle readBack, ReadBackEventHandler callback) final;
-
-		void SetDepthStencil	(ResourceHandle DS) final;
-		void SetInputPrimitive	(EInputPrimitive primitive) final;
-
-		void SetGraphicsConstantValue(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
+		void SetGraphicsConstantValue	(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
 
 		void NullGraphicsConstantBufferView	(size_t idx) final;
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) final;
@@ -113,7 +84,6 @@ namespace dx_Internal
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorSet& DH) final;
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) final;
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource& Resource, size_t Count, size_t ElementSize);
-		//void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
 		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
 		void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) final;
 
@@ -127,7 +97,6 @@ namespace dx_Internal
 		void SetComputeConstantBufferView	(size_t idx, ResourceHandle, size_t offset = 0, size_t bufferSize = 256) final;
 		void SetComputeConstantBufferView	(size_t idx, DevicePointer) final;
 
-		//void SetComputeShaderResourceView	(size_t idx, Texture2D&		texture);
 		void SetComputeShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
 		void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
 		void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) final;
@@ -206,7 +175,6 @@ namespace dx_Internal
 			static_vector<DeviceAccessState>	currentStates,
 			static_vector<DeviceAccessState>	finalStates) final;
 
-		//void ClearSOCounters(static_vector<SOResourceHandle> handles);
 
 		void CopyUInt64(
 			static_vector<ID3D12Resource*>			source,
@@ -232,8 +200,6 @@ namespace dx_Internal
 		void SetVertexBuffers2		(const std::span<const D3D12_VERTEX_BUFFER_VIEW>		views);
 		void SetVertexBuffers2		(const std::span<const VBView>							views, uint32_t offset = 0) final;
 
-		void SetSOTargets			(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
-
 		void Draw					(const size_t VertexCount, const size_t BaseVertex = 0, const size_t baseIndex = 0) final;
 		void DrawInstanced			(const size_t VertexCount, const size_t BaseVertex = 0, const size_t instanceCount = 0, size_t instanceOffset = 0) final;
 		virtual void DrawIndexed			(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0) final;
@@ -246,7 +212,6 @@ namespace dx_Internal
 		void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(const uint3) final;
 		void Dispatch				(const IPipelineState* const PSO, const uint3 xyz)  final { SetPipelineState(PSO); Dispatch(xyz); }
-		//void Dispatch				(ID3D12PipelineState* PSO, const uint3 xyz) { SetPipelineState(PSO); Dispatch(xyz); }
 		void DispatchRays			(const uint3, const DispatchDesc desc) final;
 		void DispatchMesh			(const uint3) final;
 
@@ -268,8 +233,8 @@ namespace dx_Internal
 
 		void SetDebugName(const char* ID) noexcept final;
 
-		UploadReservation		ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle	uploadQueue);
-		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256) noexcept;
+		UploadReservation		ReserveDirectUploadSpace(size_t size, size_t alignment = 256) noexcept final;
+
 
 		const struct RootSignature*	CurrentGraphicsRootSig() const		{ return CurrentRootSignature; }
 		const struct RootSignature*	CurrentComputeRootSig() const		{ return CurrentComputeRootSignature; }
@@ -282,29 +247,29 @@ namespace dx_Internal
 
 		IRenderSystem& GetRenderSystem() noexcept final;
 
-		void _QueueReadBacks();
+		void							QueueReadBacks();
 
-		std::optional<DescHeapPOS>	_ReserveSRV(size_t count);
-		DescHeapPOS	_ReserveDSV(size_t count);
-		DescHeapPOS	_ReserveRTV(size_t count);
-		DescHeapPOS	_ReserveSRVLocal(size_t count);
+		std::optional<DescHeapPOS>		ReserveSRV(size_t count);
+		DescHeapPOS						ReserveDSV(size_t count);
+		DescHeapPOS						ReserveRTV(size_t count);
+		DescHeapPOS						ReserveSRVLocal(size_t count);
 
 
-		void		_ResetRTV();
-		void		_ResetDSV();
-		void		_ResetSRV();
+		void							ResetRTV();
+		void							ResetDSV();
+		void							ResetSRV();
 
-		uint64_t	_GetCounter() { return dispatchIdx; }
-		struct ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
+		uint64_t							GetCounter()		{ return dispatchIdx; }
+		struct ID3D12GraphicsCommandList*	GetCommandList()	{ return DeviceContext; }
 
 		dxRenderSystem* renderSystem = nullptr;
 
 		void BeginMarker(const char* str);
 		void EndMarker(const char* str);
 
-	//private:
+	private:
 
-		DescHeapPOS _GetDepthDesciptor(ResourceHandle resource);
+		DescHeapPOS GetDepthDesciptor(ResourceHandle resource);
 
 		void UpdateResourceStates();
 

@@ -263,13 +263,15 @@ namespace FlexKit
 
 
 		template<typename ... TY_ARGS>
-		void emplace_back(TY_ARGS&& ... in_args)
+		size_t emplace_back(TY_ARGS&& ... in_args)
 		{
 			if (!full())
 			{
-				new(at_ptr(Size)) TY_{ std::forward<TY_ARGS>(in_args)...};
-				Size++;
+				new(at_ptr(Size)) TY_{ std::forward<TY_ARGS>(in_args)... };
+				return Size++;
 			}
+			else
+				return -1;
 		}
 
 

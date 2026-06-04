@@ -213,6 +213,7 @@ namespace FlexKit
 		using value_type        = TY;
 
 		STLAllocatorAdapter(iAllocator* IN_allocator) noexcept : allocator{ IN_allocator } {}
+		STLAllocatorAdapter(iAllocator& IN_allocator) noexcept : allocator{ IN_allocator } {}
 
 		[[nodiscard]]
 		TY* allocate(const size_t n = 1)
@@ -246,15 +247,29 @@ namespace FlexKit
 
 		std::byte* address() { return nullptr; }
 
+		std::size_t MaxAllocationSize() const noexcept
+		{
+			return 0xffffffffffffffff;
+		}
+
+		bool operator==(const STLAllocatorAdapter& rhs) const noexcept
+		{
+			return rhs.allocator == allocator;
+		}
+
+		bool operator!=(const STLAllocatorAdapter& rhs) const noexcept
+		{
+			return !(*this == rhs);
+		}
 
 		iAllocator* allocator;
 	};
 
-
+        
 	/************************************************************************************************/
 
 
-	class FLEXKITAPI StackAllocator
+	class StackAllocator
 	{
 	public:
 		StackAllocator() noexcept :
