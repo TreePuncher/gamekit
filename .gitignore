@@ -51,3 +51,4 @@ vcpkg_installed
 */DawnCache/*
 **/Intel® VTune™ Profiler Results/*
 /out/*
+/out_desktop/build/x64-debug

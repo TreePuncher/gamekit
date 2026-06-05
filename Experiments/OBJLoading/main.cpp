@@ -284,8 +284,6 @@ struct TestState : FrameworkState
 			{
 				float fTime = (float)t;
 				
-				auto cb = resources.ReserveCB(512);
-				
 				struct
 				{
 					float time;
