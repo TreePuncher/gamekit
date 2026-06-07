@@ -53,6 +53,10 @@ SET_PROPERTY(TARGET WINPIX PROPERTY IMPORTED_LOCATION   ${WINPIX_LOCATION}/WinPi
 
 target_include_directories(dxBackend PUBLIC ${FLEX_ROOT}/ThirdParty/pix/Include/WinPixEventRuntime)    
 
+
+add_library(dxHeaders INTERFACE)
+target_include_directories(dxHeaders INTERFACE "src")
+
 #add_custom_command(TARGET dxBackend POST_BUILD
 #    COMMAND ${CMAKE_COMMAND} -E copy ${FLEX_ROOT}/ThirdParty/Pix/bin/x64/WinPixEventRuntime.dll ${CMAKE_CURRENT_BINARY_DIR}
 #    COMMAND_EXPAND_LISTS)

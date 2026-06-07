@@ -9,7 +9,7 @@ namespace dx_Internal
 	using namespace FlexKit;
 	using FlexKit::IContext;
 
-	dxDescriptorSet::dxDescriptorSet(IContext& ictx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) :
+	dxDescriptorSet::dxDescriptorSet(IContext& ictx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory) :
 		FillState(TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
@@ -58,7 +58,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorSet::Init(IContext& ictx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory)
+	void dxDescriptorSet::Init(IContext& ictx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -77,7 +77,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorSet::Init(IContext& ictx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+	void dxDescriptorSet::Init(IContext& ictx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -96,7 +96,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDescriptorSet::Init2(IContext& ictx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+	void dxDescriptorSet::Init2(IContext& ictx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory)
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
@@ -844,7 +844,7 @@ namespace dx_Internal
 	}
 
 
-	bool dxDescriptorSet::CheckType(const DescriptorHeapLayout& layout, DescHeapEntryType type, size_t idx)
+	bool dxDescriptorSet::CheckType(const DescriptorSetLayout& layout, DescHeapEntryType type, size_t idx)
 	{
 		size_t entryIdx = 0;
 		for (HeapDescriptor entry : layout.entries)

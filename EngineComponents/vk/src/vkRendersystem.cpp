@@ -476,7 +476,7 @@ namespace VK_internal
 		        };
 	}
 
-	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DescriptorHeapLayout& layout, iAllocator& allocator)
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DescriptorSetLayout& layout, iAllocator& allocator)
 	{
 		Vector<VkDescriptorSetLayoutBinding>	bindings		{ allocator };
 
@@ -2052,12 +2052,6 @@ namespace VK_internal
 
 
 	ResourceHandle vkRenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget)
-	{
-		return InvalidHandle;
-	}
-
-
-	SOResourceHandle vkRenderSystem::CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer)
 	{
 		return InvalidHandle;
 	}

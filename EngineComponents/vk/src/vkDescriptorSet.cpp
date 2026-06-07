@@ -19,7 +19,7 @@ namespace VK_internal
         return *this;
     }
 
-    void vkDescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, iAllocator& TempMemory)
+    void vkDescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, iAllocator& TempMemory)
     {
         auto& vkRS  = GetVKRS();
         auto& vkCtx = static_cast<vkDirectContext&>(ctx);
@@ -40,7 +40,7 @@ namespace VK_internal
         bufferOffset        = offset;
     }
 
-    void vkDescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+    void vkDescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& TempMemory)
     {
         auto& vkRS = GetVKRS();
         apiLayout = layout_IN.deviceLayout.As<VkDescriptorSetLayout_T>();
@@ -57,7 +57,7 @@ namespace VK_internal
         descriptorBuffer = (std::byte*)begin.V1.to_uint();
     }
 
-    void vkDescriptorSet::Init2(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& TempMemory)
+    void vkDescriptorSet::Init2(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& TempMemory)
     {
         auto& vkRS = GetVKRS();
         apiLayout = layout_IN.deviceLayout.As<VkDescriptorSetLayout_T>();

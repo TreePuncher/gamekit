@@ -395,10 +395,10 @@ namespace FlexKit
 						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
 
 						FlexKit::DescriptorSet heap;
-						heap.Init2(ctx, rootSig->GetDescHeap(0), 1, allocator);
+						heap.Init2(ctx, rootSig->GetDescriptorSetLayout(0), 1, allocator);
 						heap.SetSRV(ctx, 0, texture);
 
-						ctx.SetGraphicsDescriptorTable(4, heap);
+						ctx.SetGraphicsDescriptorSet(4, heap);
 						ctx.SetScissorRects(std::span{ &r, 1});
 						ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 					}

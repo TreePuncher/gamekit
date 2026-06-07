@@ -11,15 +11,22 @@ namespace dx_Internal
 	{
 	public:
 		dxDescriptorSet() = default;
-		dxDescriptorSet(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		dxDescriptorSet(IContext& ctx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory);
 
 		// moveable
 		dxDescriptorSet(dxDescriptorSet&& rhs);
 		dxDescriptorSet& operator = (dxDescriptorSet&&);
 
-		void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
-		void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
-		void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap v
+		IDescriptorHeap& operator = (IDescriptorHeap&& rhs) override
+		{
+			*this = std::move(static_cast<dxDescriptorSet&>(rhs));
+
+			return *this;
+		}
+
+		void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory);
+		void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
+		void Init2(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap v
 		void NullFill(IContext& ctx, const size_t end = -1);
 
 		void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
@@ -55,7 +62,8 @@ namespace dx_Internal
 		operator D3D12_GPU_DESCRIPTOR_HANDLE	() const { return { descriptorHeap.V2 }; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 		operator GPUDescriptorHandle			() const { return descriptorHeap.V2; }
 
-		DescriptorSet	GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		DescriptorSet			GetHeapOffsetted(size_t offset, IContext& ctx) const;
+		virtual DevicePointer	GetGPUDescriptorHandle() const { return descriptorHeap.V2; }
 
 		void Mirror(const DescriptorSet& rhs);
 		operator DescriptorRange() const noexcept;
@@ -67,10 +75,10 @@ namespace dx_Internal
 		DescriptorSet Clone() const { return {}; }
 
 
-		static bool CheckType(const DescriptorHeapLayout& layout, DescHeapEntryType type, size_t idx);
+		static bool CheckType(const DescriptorSetLayout& layout, DescHeapEntryType type, size_t idx);
 
 		DescHeapPOS						descriptorHeap;
-		const DescriptorHeapLayout* Layout;
+		const DescriptorSetLayout*		Layout;
 		Vector<bool>					FillState;
 	};
 }

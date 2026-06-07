@@ -569,7 +569,7 @@ namespace dx_Internal
 						if (!rootSig)
 						{
 							RootSignatureBuilder builder{ *renderSystem.allocator };
-							rootSig = builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, renderSystem, *renderSystem.allocator);
+							rootSig = (RootSignature*)builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, *renderSystem.allocator);
 						}
 						break;
 					}

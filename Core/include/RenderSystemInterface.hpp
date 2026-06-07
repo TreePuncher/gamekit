@@ -814,14 +814,66 @@ namespace FlexKit
 		SYNC_Compute = 0x02
 	};
 
+
 	struct PipelineStateLibraryDesc
+	{
+		void*	blob		= nullptr;
+		size_t	blobSize	= 0;
+	};
+
+
+
+	struct ShaderExport
+	{
+		std::string_view function;
+	};
+
+	enum class HitGroupType
+	{
+	    HitGroupType_Triangles    
+	};
+
+	struct HitGroup
+	{
+	    HitGroupType	type;
+		std::string_view ID;
+		std::string_view anyHit;
+		std::string_view closestHit;
+		std::string_view intersection;
+	};
+
+	struct LibraryPipeline
 	{
 
 	};
 
-
-	struct PipelineStateLibrary
+	struct LibraryRT
 	{
+		struct Shader*			byteCode;
+		IPipelineInterface*		globalInterface;
+		uint8_t					maxRayDepth;
+		uint8_t					payloadSize;
+		uint8_t					attributesByteSize;
+
+		std::span<ShaderExport> exports;
+		std::span<HitGroup>		hitGroups;
+	};
+
+	struct LibraryExecutable
+	{
+
+	};
+
+	using LibrarySection = std::variant<LibraryPipeline, LibraryRT, LibraryExecutable>;
+
+	struct IPipelineStateLibrary
+	{
+		virtual void				AddSections(std::span<LibrarySection>) = 0;
+		virtual ShaderID			FindShaderFunction(std::string_view shaderFNID) = 0;
+
+		virtual IPipelineInterface*	GetLocalPipelineInterface(std::string_view shaderFNID) = 0;
+
+		virtual void				Release() = 0;
 	};
 
 
@@ -2029,13 +2081,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class DescriptorHeapLayout
+	class DescriptorSetLayout
 	{
 	public:
-		DescriptorHeapLayout() {}
-		DescriptorHeapLayout(iAllocator& allocator) : entries{ allocator } {}
+		DescriptorSetLayout() {}
+		DescriptorSetLayout(iAllocator& persistantAllocator) : entries{ persistantAllocator } {}
 
-		DescriptorHeapLayout(const DescriptorHeapLayout& RHS)
+		DescriptorSetLayout(const DescriptorSetLayout& RHS)
 		{
 			entries = RHS.entries;
 
@@ -2098,7 +2150,7 @@ namespace FlexKit
 		}
 
 
-		bool SetParameterAsShaderUAV(
+		bool SetParameterAsUAV(
 			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
 		{
 			HeapDescriptor Desc;
@@ -2210,36 +2262,62 @@ namespace FlexKit
 	struct RootSignatureHeapEntry
 	{
 		size_t					idx;
-		DescriptorHeapLayout	Heap;
+		DescriptorSetLayout	Heap;
 	};
 
 
-	struct RootSignatureBuilderImpl
+	struct IPipelineInterfaceBuilder
 	{
+		~IPipelineInterfaceBuilder(){}
+
+		virtual void Release() = 0;
+
+		virtual bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+
+		virtual bool SetParameterAsDescriptorSet(
+			size_t index, const DescriptorSetLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+
+		virtual bool SetParameterAsCBV(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+
+		virtual bool SetParameterAsUAVBuffer(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+
+		virtual bool SetParameterAsSRVBuffer(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+
+		virtual void Clear() = 0;
+
+		virtual IPipelineInterface* Build(iAllocator& TempMemory) = 0;
+		virtual IPipelineInterface* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp) = 0;
+		virtual IPipelineInterface* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp) = 0;
 	};
 
 
 	struct PipelineInterfaceBuilder : NoCopy, NoMove
 	{
-		PipelineInterfaceBuilder(iAllocator& allocator);
+		PipelineInterfaceBuilder(iAllocator& persistantAllocator);
 		~PipelineInterfaceBuilder();
 
 		void Release();
 
 		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
-		bool SetParameterAsDescriptorTable(
-			size_t index, const DescriptorHeapLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
+		bool SetParameterAsDescriptorSet(
+			size_t index, const DescriptorSetLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
 			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
-		bool SetParameterAsUAV(
+		bool SetParameterAsUAVBuffer(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
 			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
-		bool SetParameterAsSRV(
+		bool SetParameterAsSRVBuffer(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
 			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
@@ -2247,9 +2325,12 @@ namespace FlexKit
 
 		bool AllowIA = false;
 
-		[[nodiscard]] IPipelineInterface* Build(iAllocator& TempMemory);
-		[[nodiscard]] IPipelineInterface* LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp);
-		[[nodiscard]] IPipelineInterface* LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp);
+		[[nodiscard]] IPipelineInterface* Build					(iAllocator& TempMemory);
+		[[nodiscard]] IPipelineInterface* LoadSignatureFromFile	(const char* dir, const char* entry, iAllocator& temp);
+		[[nodiscard]] IPipelineInterface* LoadSignatureFromBlob	(void* _ptr, size_t size, iAllocator& temp);
+
+		IPipelineInterfaceBuilder* GetImpl();
+		std::byte internal[576];
 	};
 
 
@@ -2419,6 +2500,8 @@ namespace FlexKit
 		virtual void SetPipelineState			(const struct IPipelineState* const PSO) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputePipelineState	(const PSOHandle, iAllocator& temp) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetRTStateObject			(ShaderID program, const struct IPipelineStateLibrary* const object) IDIRECTCONTEXTDEBUGBODY;
+
 
 		virtual void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) IDIRECTCONTEXTDEBUGBODY;
@@ -2438,15 +2521,15 @@ namespace FlexKit
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetGraphicsDescriptorTable		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetGraphicsDescriptorSet		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetGraphicsDescriptorSet		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 
 
-		virtual void SetComputeDescriptorTable		(size_t idx) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetComputeDescriptorTable		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
-		virtual void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeDescriptorSet		(size_t idx) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeDescriptorSet		(size_t idx, const struct DescriptorSet& DH) IDIRECTCONTEXTDEBUGBODY;
+		virtual void SetComputeDescriptorSet		(size_t idx, const DescriptorRange& range) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputeConstantBufferView	(size_t idx, const struct ConstantBufferDataSet& CB) IDIRECTCONTEXTDEBUGBODY;
@@ -2608,9 +2691,9 @@ namespace FlexKit
 
 	    virtual IDescriptorHeap& operator = (IDescriptorHeap&&) = 0;
 
-		virtual void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) = 0;
-		virtual void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
-		virtual void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory) = 0;
+		virtual void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
+		virtual void Init2(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) = 0;
 		virtual void NullFill(IContext& ctx, const size_t end = -1) = 0;
 
 		virtual void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) = 0;
@@ -2651,7 +2734,7 @@ namespace FlexKit
 	struct DescriptorSet
 	{
 		DescriptorSet() = default;
-		DescriptorSet(IContext&, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
+		DescriptorSet(IContext&, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory);
 
 		DescriptorSet& operator = (const DescriptorSet&);
 
@@ -2659,9 +2742,9 @@ namespace FlexKit
 		DescriptorSet(DescriptorSet&& rhs);
 		DescriptorSet& operator = (DescriptorSet&&);
 
-		IDescriptorHeap& Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory);
-		IDescriptorHeap& Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
-		IDescriptorHeap& Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap layouts
+		IDescriptorHeap& Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory);
+		IDescriptorHeap& Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory);
+		IDescriptorHeap& Init2(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory); // for variable size heap layouts
 		IDescriptorHeap& NullFill(IContext& ctx, const size_t end = -1);
 
 		IDescriptorHeap& SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants);
@@ -2707,7 +2790,7 @@ namespace FlexKit
 
 	struct IPipelineInterface
 	{
-		virtual const DescriptorHeapLayout&		GetDescHeap(uint32_t idx) const noexcept = 0;
+		virtual const DescriptorSetLayout&		GetDescriptorSetLayout(uint32_t idx) const noexcept = 0;
 		virtual DeviceRootSignature_ptr			GetAPIObject() const noexcept = 0;
 
 		virtual void Release() = 0;
@@ -2777,11 +2860,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct VertexBufferSetDescription
-	{
-
-	};
-
 	struct IRenderSystem
 	{
 		IRenderSystem()
@@ -2800,7 +2878,7 @@ namespace FlexKit
 		virtual bool													Initiate(Graphics_Desc& desc) = 0;
 		virtual AvailableFeatures										GetFeatures() const noexcept = 0;
 
-		virtual void													BuildLibrary			(PSOHandle state, const PipelineStateLibraryDesc) = 0;
+		virtual IPipelineStateLibrary*									CreateLibrary			(std::span<LibrarySection> sections = {}) = 0;
 		virtual void													RegisterPSOLoader		(PSOHandle state, LOADSTATE_FN FN) = 0;
 		virtual void													LoadPSOIfRequired		(PSOHandle state) = 0;
 		virtual void													QueuePSOLoad			(PSOHandle state) = 0;
@@ -2848,7 +2926,6 @@ namespace FlexKit
 
 
 		// Objects methods
-		virtual void		SetObjectLayout(SOResourceHandle	handle, DeviceLayout state) noexcept = 0;
 		virtual void		SetObjectLayout(ResourceHandle		handle, DeviceLayout state) noexcept = 0;
 
 		// Info queries
@@ -2866,7 +2943,6 @@ namespace FlexKit
 		virtual DeviceAddressRange		GetDeviceRange			(const ConstantBufferHandle)	const noexcept = 0;
 
 		virtual DeviceLayout			GetObjectLayout			(const QueryHandle		handle) const noexcept = 0;
-		virtual DeviceLayout			GetObjectLayout			(const SOResourceHandle	handle) const noexcept = 0;
 		virtual DeviceLayout			GetObjectLayout			(const ResourceHandle	handle) const noexcept = 0;
 
 		virtual size_t					GetResourceSize			(ConstantBufferHandle handle)	const noexcept = 0;
@@ -2890,11 +2966,8 @@ namespace FlexKit
 		virtual	DeviceResource_ptr		GetDeviceResource		(const ReadBackResourceHandle	handle) const = 0;
 		virtual	DeviceResource_ptr		GetDeviceResource		(const ConstantBufferHandle		handle) const = 0;
 		virtual	DeviceResource_ptr		GetDeviceResource		(const ResourceHandle		    handle) const = 0;
-		virtual	DeviceResource_ptr		GetDeviceResource		(const SOResourceHandle			handle) const = 0;
-
-		virtual	DeviceResource_ptr		GetSOCounterResource	(const SOResourceHandle		handle)		const = 0;
-		virtual	size_t					GetStreamOutBufferSize	(const SOResourceHandle		handle)	const = 0;
-		virtual size_t					GetVertexBufferOffset	(const VertexBufferHandle	handle)	const = 0;
+		
+	    virtual size_t					GetVertexBufferOffset	(const VertexBufferHandle	handle)	const = 0;
 
 		virtual PackedResourceTileInfo	GetPackedTileInfo(ResourceHandle)	const noexcept { return {}; }
 
@@ -2935,12 +3008,12 @@ namespace FlexKit
 		[[nodiscard]] virtual QueryHandle						CreateOcclusionBuffer(size_t Size) = 0;
 		[[nodiscard]] virtual ResourceHandle					CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
 		[[nodiscard]] virtual ResourceHandle					CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false) = 0;
-		[[nodiscard]] virtual SOResourceHandle					CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) = 0;
 		[[nodiscard]] virtual QueryHandle						CreateSOQuery(size_t SOIndex, size_t count) = 0;
 		[[nodiscard]] virtual QueryHandle						CreateTimeStampQuery(size_t count) = 0;
 		[[nodiscard]] virtual IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr) { return {}; };
 		[[nodiscard]] virtual ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) = 0;
 		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
+		[[nodiscard]] virtual bool								CreatePipelineInterfaceBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
 	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
 					  virtual void								CreateDescriptorSet(std::byte*, size_t) = 0;
 
@@ -3024,23 +3097,32 @@ namespace FlexKit
 		case DeviceLayout::CopyDst:
 			return (access & DASCopyDest);
 		case DeviceLayout::ResolveSrc:
+			return (access & DASResolveRead);
 		case DeviceLayout::ResolveDst:
+			return (access & DASResolveWrite);
 			return true;
 		case DeviceLayout::ShadingRateSrc:
 			return (access & DASShadingRateSrc);
 		case DeviceLayout::VideoDecodeRead:
 			return (access & DASShadingRateSrc);
-		case DeviceLayout::DecodeWrite:
 		case DeviceLayout::ProcessRead:
-		case DeviceLayout::ProcessWrite:
 		case DeviceLayout::EncodeRead:
+			return (access & DASEncodeRead);
+		case DeviceLayout::DecodeWrite:
+		case DeviceLayout::ProcessWrite:
 		case DeviceLayout::EncodeWrite:
+			return (access & DASEncodeWrite);
 		case DeviceLayout::DirectQueueCommon:
 		case DeviceLayout::DirectQueueGenericRead:
+			return (access & DASReadFlag);
 		case DeviceLayout::DirectQueueUnorderedAccess:
+			return (access & DASUAV);
 		case DeviceLayout::DirectQueueShaderResource:
+			return (access & DASPixelShaderResource);
 		case DeviceLayout::DirectQueueCopySrc:
+			return (access & DASCopySrc);
 		case DeviceLayout::DirectQueueCopyDst:
+			return (access & DASCopyDest);
 		case DeviceLayout::ComputeQueueCommon:
 		case DeviceLayout::ComputeQueueGenericRead:
 		case DeviceLayout::ComputeQueueUnorderedAccess:

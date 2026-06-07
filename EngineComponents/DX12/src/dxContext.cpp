@@ -54,8 +54,7 @@ namespace dx_Internal
 			renderSystem			{ renderSystem_IN	},
 			Memory					{ allocator			},
 			RenderTargetCount		{ 0					},
-			DepthStencilEnabled		{ false				},
-			TrackedSOBuffers		{ }
+			DepthStencilEnabled		{ false				}
 	{
 		HRESULT HR;
 
@@ -406,6 +405,7 @@ namespace dx_Internal
 			case TextureDimension::Texture2DArray:
 			{
 				barrier.type					= BarrierType::Texture;
+				barrier.texture.flags			= 0;
 				barrier.texture.layoutAfter		= layout;
 				barrier.texture.layoutBefore	= layout;
 			}	break;
@@ -711,6 +711,21 @@ namespace dx_Internal
 			DeviceContext->SetPipelineState(implPSO.As<ID3D12PipelineState>());
 		}
 	}
+
+
+	/************************************************************************************************/
+
+	void dxDirectContext::SetRTStateObject(ShaderID program, const IPipelineStateLibrary* const lib)
+    {
+		D3D12_SET_PROGRAM_DESC desc{
+			.Type = D3D12_PROGRAM_TYPE_RAYTRACING_PIPELINE,
+		};
+
+		memcpy(&desc.RaytracingPipeline.ProgramIdentifier, &program, sizeof(D3D12_PROGRAM_IDENTIFIER));
+		auto* dxLib = (dxPipelineStateLibrary*)lib;
+
+		DeviceContext->SetPipelineState1(dxLib->stateObject);
+    }
 
 
 	/************************************************************************************************/
@@ -1061,7 +1076,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorSet& IDH)
+	void dxDirectContext::SetGraphicsDescriptorSet(size_t idx, const DescriptorSet& IDH)
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
@@ -1087,7 +1102,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsDescriptorTable(size_t slot, const DescriptorRange& range)
+	void dxDirectContext::SetGraphicsDescriptorSet(size_t slot, const DescriptorRange& range)
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
@@ -1157,7 +1172,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t slot)
+	void dxDirectContext::SetComputeDescriptorSet(size_t slot)
 	{
 		if (!CurrentComputeRootSig())
 			return;
@@ -1167,7 +1182,7 @@ namespace dx_Internal
 	}
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorSet& IDH)
+	void dxDirectContext::SetComputeDescriptorSet(size_t slot, const DescriptorSet& IDH)
 	{
 		if (!CurrentComputeRootSig())
 			return;
@@ -1179,7 +1194,7 @@ namespace dx_Internal
 	}
 
 
-	void dxDirectContext::SetComputeDescriptorTable(size_t slot, const DescriptorRange& range)
+	void dxDirectContext::SetComputeDescriptorSet(size_t slot, const DescriptorRange& range)
 	{
 		if (!CurrentComputeRootSig())
 			return;
@@ -2388,8 +2403,6 @@ namespace dx_Internal
 		DesciptorHeaps.clear();
 		VBViews.clear();
 
-		TrackedSOBuffers.clear();
-
 		CurrentPipelineState = nullptr;
 
 		DeviceContext->ClearState(nullptr);
@@ -2468,7 +2481,6 @@ namespace dx_Internal
 		ResetRTV();
 		ResetSRV();
 
-		TrackedSOBuffers.clear();
 		pendingBarriers.clear();
 		queuedBarriers.clear();
 		renderTargetViews.clear();
@@ -2646,10 +2658,10 @@ namespace dx_Internal
 				textureBarrier.AccessAfter		= DAS2AccessState(barrier.accessAfter);
 				textureBarrier.LayoutBefore		= DeviceLayout2DX(barrier.texture.layoutBefore);
 				textureBarrier.LayoutAfter		= DeviceLayout2DX(barrier.texture.layoutAfter);
-				textureBarrier.Flags			= D3D12_TEXTURE_BARRIER_FLAG_NONE;
+				textureBarrier.Flags			= (D3D12_TEXTURE_BARRIER_FLAGS)barrier.texture.flags;
 				textureBarrier.pResource		= renderSystem->GetDeviceResource(barrier.resource).As<ID3D12Resource>();
-				textureBarrier.SyncAfter		= SyncPoint2DX_Forward(barrier.dst);
 				textureBarrier.SyncBefore		= SyncPoint2DX_Backward(barrier.src);
+				textureBarrier.SyncAfter		= SyncPoint2DX_Forward(barrier.dst);
 
 				textureBarrier.Subresources		= D3D12_BARRIER_SUBRESOURCE_RANGE{
 					.IndexOrFirstMipLevel	= 0,

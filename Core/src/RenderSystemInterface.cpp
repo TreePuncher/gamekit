@@ -10,70 +10,77 @@ namespace FlexKit
 {
 	PipelineInterfaceBuilder::PipelineInterfaceBuilder(iAllocator& allocator)
 	{
-	    
+		IRenderSystem::GetInstance().CreatePipelineInterfaceBuilder(internal, sizeof(internal), allocator);
 	}
 
     PipelineInterfaceBuilder::~PipelineInterfaceBuilder()
 	{
-	    
+		Release();
 	}
 
 	void PipelineInterfaceBuilder::Release()
 	{
-	    
+		return GetImpl()->Release();
 	}
 
-	bool PipelineInterfaceBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
+	bool PipelineInterfaceBuilder::SetParameterAsUINT(size_t index, uint32_t count, uint32_t cbRegister, uint32_t registerSpace, PIPELINE accessableStages)
 	{
-		return false;
+		return GetImpl()->SetParameterAsUINT(index, count, cbRegister, accessableStages);
 	}
 
-	bool PipelineInterfaceBuilder::SetParameterAsDescriptorTable(
-		size_t index, const DescriptorHeapLayout& layout, size_t unused, PIPELINE accessableStages)
+	bool PipelineInterfaceBuilder::SetParameterAsDescriptorSet(
+		size_t index, const DescriptorSetLayout& layout, size_t unused, PIPELINE accessableStages)
 	{
-		return false;
+		return GetImpl()->SetParameterAsDescriptorSet(index, layout, unused, accessableStages);
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsCBV(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
-		return false;
+		return GetImpl()->SetParameterAsCBV(Index, Register, RegisterSpace, AccessableStages);
 	}
 
-	bool PipelineInterfaceBuilder::SetParameterAsUAV(
+	bool PipelineInterfaceBuilder::SetParameterAsUAVBuffer(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
-		return false;
+		return GetImpl()->SetParameterAsUAVBuffer(Index, Register, RegisterSpace, AccessableStages);
 	}
 
-	bool PipelineInterfaceBuilder::SetParameterAsSRV(
+	bool PipelineInterfaceBuilder::SetParameterAsSRVBuffer(
 		size_t Index, size_t Register, size_t RegisterSpace,
 		PIPELINE AccessableStages)
 	{
-		return false;
+		return GetImpl()->SetParameterAsSRVBuffer(Index, Register, RegisterSpace, AccessableStages);
 	}
 
 	void PipelineInterfaceBuilder::Clear()
 	{
+		return GetImpl()->Clear();
 	}
 
-	IPipelineInterface* PipelineInterfaceBuilder::Build(iAllocator& TempMemory)
+	IPipelineInterface* PipelineInterfaceBuilder::Build(iAllocator& temp)
 	{
-		return nullptr;
+		return GetImpl()->Build(temp);
 	}
+
 
 	IPipelineInterface* PipelineInterfaceBuilder::LoadSignatureFromFile(const char* dir, const char* entry, iAllocator& temp)
 	{
-		return nullptr;
+		return GetImpl()->LoadSignatureFromFile(dir, entry, temp);
 	}
 
 	IPipelineInterface* PipelineInterfaceBuilder::LoadSignatureFromBlob(void* _ptr, size_t size, iAllocator& temp)
 	{
-		return nullptr;
+		return GetImpl()->LoadSignatureFromBlob(_ptr, size, temp);
 	}
 
+
+	IPipelineInterfaceBuilder* PipelineInterfaceBuilder::GetImpl()
+	{
+		return std::launder((IPipelineInterfaceBuilder*)internal);
+	}
 
 	class DescriptorHeapImpl;
 
@@ -400,7 +407,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorSet::DescriptorSet(IContext& ctx, const DescriptorHeapLayout& layout_IN, iAllocator& tempMemory)
+	DescriptorSet::DescriptorSet(IContext& ctx, const DescriptorSetLayout& layout_IN, iAllocator& tempMemory)
 	{
 		auto& instance = IRenderSystem::GetInstance();
 		instance.CreateDescriptorSet(internal, sizeof(internal));
@@ -430,7 +437,7 @@ namespace FlexKit
 	}
 
 
-	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, iAllocator& tempMemory)
+	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, iAllocator& tempMemory)
 	{
 		auto& impl = GetImpl();
 	    impl.Init(ctx, layout_IN, *tempMemory);
@@ -439,7 +446,7 @@ namespace FlexKit
 	}
 
 
-	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
+	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
 		auto& impl = GetImpl();
 		impl.Init(ctx, layout_IN, reserveCount, tempMemory);
@@ -448,7 +455,7 @@ namespace FlexKit
 	}
 
 
-	IDescriptorHeap& DescriptorSet::Init2(IContext& ctx, const DescriptorHeapLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
+	IDescriptorHeap& DescriptorSet::Init2(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
 		auto& impl = GetImpl();
 		impl.Init2(ctx, layout_IN, reserveCount, tempMemory);

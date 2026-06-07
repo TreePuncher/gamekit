@@ -335,7 +335,7 @@ namespace FlexKit
 		else if (auto resource = textures.find(texture); resource)
 		{
 			ctx->SetGraphicsPipelineState(RMLDraw2PSO, *allocator);
-			ctx->SetGraphicsDescriptorTable(1u, *resource);
+			ctx->SetGraphicsDescriptorSet(1u, *resource);
 		}
 		else
 			return;

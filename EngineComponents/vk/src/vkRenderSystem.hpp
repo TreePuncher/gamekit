@@ -216,7 +216,6 @@ namespace VK_internal
 		QueryHandle						CreateOcclusionBuffer(size_t Size) final;
 		ResourceHandle					CreateUAVBufferResource(size_t bufferHandle, bool tripleBuffer = true) final;
 		ResourceHandle					CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget = false) final;
-		SOResourceHandle				CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer = true) final;
 		QueryHandle						CreateSOQuery(size_t SOIndex, size_t count) final;
 		QueryHandle						CreateTimeStampQuery(size_t count) final;
 		IndirectLayout					CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr) final;

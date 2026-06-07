@@ -12,7 +12,7 @@ namespace VK_internal
 	{
 	}
 
-	const DescriptorHeapLayout&	vkPipelineInterface::GetDescHeap(uint32_t idx) const noexcept
+	const DescriptorSetLayout&	vkPipelineInterface::GetDescriptorSetLayout(uint32_t idx) const noexcept
 	{
 		return heapLayouts[idx];
 	}

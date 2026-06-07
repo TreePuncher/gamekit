@@ -7,6 +7,8 @@
 #include <fmt/core.h>
 #include <ranges>
 
+#include "directx/d3d12.h"
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -107,10 +109,6 @@ namespace FlexKit
 
 			switch (resource.type)
 			{
-			case FrameObjectResourceType::OT_StreamOut:
-				FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
-				//ctx->AddStreamOutBarrier(resource.SOBuffer, currentState, nodeState);
-				break;
 			case FrameObjectResourceType::OT_Virtual:
 			case FrameObjectResourceType::OT_DepthBuffer:
 			case FrameObjectResourceType::OT_BackBuffer:
@@ -164,7 +162,7 @@ namespace FlexKit
 						ctx.AddTextureBarrier(object_ref.shaderResource, accessState, DASNOACCESS, retired.neededLayout, DeviceLayout::Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				default:
-						ctx.AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
+						ctx.AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All_Shading, DeviceSyncPoint::Sync_None);
 					break;
 				}
 			}
@@ -502,7 +500,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle handle)
 	{
-		if (auto frameResource = AddReadableResource(handle, DASCopySrc, DeviceLayout::DecodeWrite); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DASCopySrc, DeviceLayout::DecodeWrite, {}, { Sync_None, Sync_Copy }); frameResource != InvalidHandle)
 			return frameResource;
 
 		context.frameResources.AddResource(handle);
@@ -515,7 +513,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopyDest(ResourceHandle  handle)
 	{
-		if (auto frameResource = AddWriteableResource(handle, DASCopyDest, DeviceLayout::CopyDst); frameResource != InvalidHandle)
+		if (auto frameResource = AddWriteableResource(handle, DASCopyDest, DeviceLayout::CopyDst, {}, { Sync_None, Sync_Copy }); frameResource != InvalidHandle)
 			return frameResource;
 
 		context.frameResources.AddResource(handle);
@@ -529,14 +527,16 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::RenderTarget(ResourceHandle target)
 	{
-		Barrier barrier;
-		barrier.type					= BarrierType::Texture;
-		barrier.src						= Sync_All;
-		barrier.dst						= Sync_All;
-		barrier.accessAfter				= DASRenderTarget;
-		barrier.texture.layoutAfter		= DeviceLayout::RenderTarget;
+		auto syncBefore		= Sync_None;
+		auto syncAfter		= Sync_RenderTarget;
 
-		const auto resourceHandle = AddWriteableResource(target, DASRenderTarget, DeviceLayout::RenderTarget);
+		if (auto frameResource = GetResources().FindFrameResource(target); frameResource != InvalidHandle)
+		{
+			if (GetResources().GetResourceObject(frameResource)->lastUsers.size() > 0)
+				syncBefore = Sync_All;
+		}
+
+		const auto resourceHandle = AddWriteableResource(target, DASRenderTarget, DeviceLayout::RenderTarget, {}, { syncBefore ,syncAfter });
 
 		if (resourceHandle == InvalidHandle)
 		{
@@ -565,7 +565,11 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::Present(ResourceHandle renderTarget)
 	{
-		auto resourceHandle = AddReadableResource(renderTarget, DeviceAccessState::DASPresent, DeviceLayout::Present);
+		auto resourceHandle = AddReadableResource(
+			renderTarget,
+			DeviceAccessState::DASPresent, DeviceLayout::Present,
+			{},
+			{ Sync_RenderTarget, Sync_All_Shading });
 
 		if (resourceHandle == InvalidHandle)
 		{
@@ -829,7 +833,7 @@ namespace FlexKit
 		barrier.accessBefore	= DASNOACCESS;
 		barrier.accessAfter		= access;
 		barrier.src				= DeviceSyncPoint::Sync_None;
-		barrier.dst				= DeviceSyncPoint::Sync_All;
+		barrier.dst				= DeviceSyncPoint::Sync_All_Shading;
 
 		switch (desc.Dimensions)
 		{
@@ -847,8 +851,7 @@ namespace FlexKit
 			barrier.type					= BarrierType::Texture;
 			barrier.texture.layoutBefore	= DeviceLayout::Undefined;
 			barrier.texture.layoutAfter		= layout;
-			FK_ASSERT(0);
-			//barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
+			barrier.texture.flags			= D3D12_TEXTURE_BARRIER_FLAG_DISCARD;
 		}	break;
 		}
 
@@ -1058,29 +1061,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::VertexBuffer(SOResourceHandle handle)
-	{
-		return AddReadableResource(handle, DeviceAccessState::DASVERTEXBUFFER, DeviceLayout::Common);
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle	FrameGraphNodeBuilder::StreamOut(SOResourceHandle handle)
-	{
-		return AddWriteableResource(handle, DeviceAccessState::DASSTREAMOUT, DeviceLayout::UnorderedAccess);
-	}
-
-
-	/************************************************************************************************/
-
-
 	FrameResourceHandle FrameGraphNodeBuilder::ReadTransition(FrameResourceHandle handle, DeviceAccessState access, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints)
 	{
 		auto object = resources->GetResourceObject(handle);
-
-		return AddReadableResource(handle, access, GuessLayoutFromAccess(access));
+		return AddReadableResource(handle, access, GuessLayoutFromAccess(access), {}, syncPoints);
 	}
 
 
@@ -1091,7 +1075,7 @@ namespace FlexKit
 	{
 		auto object = resources->GetResourceObject(handle);
 
-		return AddWriteableResource(handle, access, GuessLayoutFromAccess(access));
+		return AddWriteableResource(handle, access, GuessLayoutFromAccess(access), {}, syncPoints);
 	}
 
 
@@ -1127,10 +1111,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const DescriptorHeapLayout&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
+	const DescriptorSetLayout&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
 		auto rootSig = resources->renderSystem->GetPSORootSignature(State);
-		return rootSig->GetDescHeap(idx);
+		return rootSig->GetDescriptorSetLayout(idx);
 	}
 
 
@@ -1574,9 +1558,6 @@ namespace FlexKit
 		{
 			switch (I.type)
 			{
-			case OT_StreamOut:
-			{
-			}	break;
 			case OT_BackBuffer:
 			case OT_DepthBuffer:
 			case OT_RenderTarget:
@@ -2015,7 +1996,7 @@ namespace FlexKit
 				DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
 					allocator);
 				descHeap.NullFill(ctx);
 
@@ -2027,7 +2008,7 @@ namespace FlexKit
 					{ resources.GetResource(Data.RenderTarget) }, false);
 
 				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
-				ctx.SetGraphicsDescriptorTable		(0, descHeap);
+				ctx.SetGraphicsDescriptorSet		(0, descHeap);
 				ctx.SetGraphicsConstantBufferView	(1, Data.cameraConstants);
 				ctx.SetGraphicsConstantBufferView	(2, Data.constants);
 
@@ -2165,7 +2146,7 @@ namespace FlexKit
 				DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
 					allocator);
 				descHeap.NullFill(ctx);
 
@@ -2180,7 +2161,7 @@ namespace FlexKit
 				ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
-				ctx.SetGraphicsDescriptorTable(0, descHeap);
+				ctx.SetGraphicsDescriptorSet(0, descHeap);
 				ctx.SetGraphicsConstantBufferView(1, Data.cameraConstants);
 				ctx.SetGraphicsConstantBufferView(2, Data.passConstants);
 

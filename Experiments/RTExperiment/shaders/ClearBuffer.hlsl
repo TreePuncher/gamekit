@@ -1,34 +1,29 @@
-#include "vkPipelineLayout.hpp"
 
-namespace VK_internal
+cbuffer LocalConstants : register(b0)
 {
-    vkPipelineLayout::vkPipelineLayout(iAllocator& allocator) :
-        descriptorlayouts   { allocator },
-        apiLayout           { nullptr }
-    {
-    }
+	uint clearValueX;
+	uint clearValueY;
+	uint clearValueZ;
+	uint clearValueW;
 
-    const DescriptorSetLayout& vkPipelineLayout::GetDescriptorSetLayout(uint32_t idx) const noexcept
-    {
-        static DescriptorSetLayout out;
+	uint begin;
+	uint end;
 
-        return out;
-    }
+};
 
-    DeviceRootSignature_ptr vkPipelineLayout::GetAPIObject() const noexcept
-    {
-        return nullptr;
-    }
+RWByteAddressBuffer ClearTarget : register(u0);
 
-    void vkPipelineLayout::Release()
-    {
-    }
+[numthreads(1024, 1, 1)]
+void Clear(uint3 threadID : SV_DispatchThreadID)
+{
+	if(threadID.x < (end - begin))
+		ClearTarget.Store4(begin + threadID.x * 16, uint4(clearValueX, clearValueY, clearValueZ, clearValueW));
 }
 
 
 /**********************************************************************
 
-Copyright (c) 2025 Robert May
+Copyright (c) 2015 - 2023 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -666,9 +666,9 @@ namespace FlexKit
 			//transparency				{ renderSystem, *persistent },
 			passHistories				{ *persistent }
 	{
-		FlexKit::DescriptorHeapLayout layout{};
+		FlexKit::DescriptorSetLayout layout{};
 		layout.SetParameterAsSRV(0, 0, 2, 0);
-		layout.SetParameterAsShaderUAV(1, 1, 1, 0);
+		layout.SetParameterAsUAV(1, 1, 1, 0);
 
 #if 0
 		RootSignatureBuilder builder{ renderSystem, persistent };
@@ -1163,7 +1163,7 @@ namespace FlexKit
 
 				DescriptorSet heap{
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0),
+					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
 					allocator };
 
 				heap.NullFill(ctx);
@@ -1178,7 +1178,7 @@ namespace FlexKit
 					resources.GetResource(data.depthBufferObject));
 
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-				ctx.SetGraphicsDescriptorTable(0, heap);
+				ctx.SetGraphicsDescriptorSet(0, heap);
 				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
 				ctx.NullGraphicsConstantBufferView(6);
@@ -1247,7 +1247,7 @@ namespace FlexKit
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
 				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, tempAllocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 20, tempAllocator);
 				//descHeap.SetSRV(ctx, 6, data.diffuseMap);
 				descHeap.NullFill(ctx, 20);
 
@@ -1279,7 +1279,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, tempAllocator));
-				ctx.SetGraphicsDescriptorTable(5, descHeap);
+				ctx.SetGraphicsDescriptorSet(5, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetResource({ data.renderTargetObject }) }, false, {});
@@ -1354,7 +1354,7 @@ namespace FlexKit
 				}passConstants = { float2(WH[0], WH[1]), t };
 
 				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 20, allocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 20, allocator);
 
 				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
@@ -1364,7 +1364,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, allocator));
-				ctx.SetGraphicsDescriptorTable(5, descHeap);
+				ctx.SetGraphicsDescriptorSet(5, descHeap);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets({ frameResources.GetResource(data.renderTargetObject) }, false);
@@ -1436,7 +1436,7 @@ namespace FlexKit
 				}passConstants = { float2(WH[0], WH[1]) };
 
 				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, allocator);
+				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 5, allocator);
 
 				descHeap.SetSRV(ctx, 0, resources.GetResource(data.Source));
 				descHeap.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
@@ -1445,7 +1445,7 @@ namespace FlexKit
 
 				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator));
-				ctx.SetGraphicsDescriptorTable(5, descHeap);
+				ctx.SetGraphicsDescriptorSet(5, descHeap);
 
 				ctx.SetScissorAndViewports({ destination });
 				ctx.SetRenderTargets({ resources.GetResource(data.TempObject1), resources.GetResource(data.TempObject2) }, false);
@@ -1455,7 +1455,7 @@ namespace FlexKit
 				ctx.Draw(6);
 
 				DescriptorSet descHeap2;
-				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescHeap(0), 5, allocator);
+				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 5, allocator);
 
 				descHeap2.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
 				descHeap2.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
@@ -1463,7 +1463,7 @@ namespace FlexKit
 				descHeap2.SetSRV(ctx, 3, resources.PixelShaderResource(data.TempObject2, ctx));
 
 				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSVERTICAL, allocator));
-				ctx.SetGraphicsDescriptorTable(5, descHeap2);
+				ctx.SetGraphicsDescriptorSet(5, descHeap2);
 				ctx.SetRenderTargets({ resources.GetResource(data.DestinationObject) }, false);
 				ctx.Draw(6);
 			});
@@ -1590,7 +1590,7 @@ namespace FlexKit
 				const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
 
 				DescriptorSet heap1{};
-				heap1.Init(ctx, rootSignatureToneMapping->GetDescHeap(0), allocator);
+				heap1.Init(ctx, rootSignatureToneMapping->GetDescriptorSetLayout(0), allocator);
 				heap1.SetSRV(ctx, 0, resources.NonPixelShaderResource(data.sourceTarget, ctx));
 
 #if 0
@@ -1598,7 +1598,7 @@ namespace FlexKit
 				ID3D12PipelineState* averageLuminance = resources.GetPipelineState(AVERAGELUMANANCE_GLOBAL);
 
 				ctx.SetComputeRootSignature(rootSignatureToneMapping);
-				ctx.SetComputeDescriptorTable(0, heap1);
+				ctx.SetComputeDescriptorSet(0, heap1);
 				ctx.SetComputeUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
 				ctx.SetComputeConstantValue(2, 2, &XY, 0);
 				ctx.Dispatch(createInitialLevel, { XY, 1 });
@@ -1613,7 +1613,7 @@ namespace FlexKit
 				ctx.SetRootSignature(rootSignatureToneMapping);
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 				ctx.SetPipelineState(toneMap);
-				ctx.SetGraphicsDescriptorTable(0, heap1);
+				ctx.SetGraphicsDescriptorSet(0, heap1);
 				//ctx.SetGraphicsUnorderedAccessView(1, resources.UAV(data.temp1Buffer, ctx));
 				ctx.SetGraphicsConstantValue(2, 2, &XY, 0);
 				ctx.SetScissorAndViewports({  resources.GetResource(data.outputTarget) });

@@ -51,7 +51,6 @@ namespace FlexKit
 		OT_ByteBuffer,
 		OT_PVS,
 		OT_Query,
-		OT_StreamOut,
 		OT_Resource,
 		OT_ReadBack,
 		OT_VertexBuffer,
@@ -87,7 +86,7 @@ namespace FlexKit
 		FrameObjectResourceType			type;
 
 		uint32_t						lastSubmission	= -1;
-		DeviceAccessState				access			= DeviceAccessState::DASCommon;
+		DeviceAccessState				access			= DeviceAccessState::DASNOACCESS;
 		DeviceLayout					layout			= DeviceLayout::Unknown;
 
 		TextureDimension				dimensions		= TextureDimension::Unknown;
@@ -102,7 +101,6 @@ namespace FlexKit
 			CBPushBuffer*			constantBuffer;
 			QueryHandle				query;
 			ReadBackResourceHandle	readBackBuffer;
-			SOResourceHandle		SOBuffer;
 		};
 
 
@@ -192,19 +190,6 @@ namespace FlexKit
 			shaderResource.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return shaderResource;
-		}
-
-
-		static FrameObject SOBufferObject(SOResourceHandle resource, iAllocator& allocator, DeviceLayout initialLayout = DeviceLayout::Common)
-		{
-			FrameObject Streamout;
-			Streamout.layout		= initialLayout;
-			Streamout.type			= OT_StreamOut;
-			Streamout.SOBuffer		= resource;
-			Streamout.dimensions	= TextureDimension::Texture2D;
-			Streamout.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
-
-			return Streamout;
 		}
 
 
@@ -389,20 +374,6 @@ namespace FlexKit
 		{
 			objects.push_back(
 				FrameObject::DepthBufferObject(Handle, InitialState, *allocator));
-
-			objects.back().handle = FrameResourceHandle{ (uint32_t)objects.size() - 1 };
-		}
-
-
-		/************************************************************************************************/
-
-
-		void AddSOResource(SOResourceHandle handle)
-		{
-			DeviceLayout layout = renderSystem->GetObjectLayout(handle);
-
-			objects.push_back(
-				FrameObject::SOBufferObject(handle, *allocator, layout));
 
 			objects.back().handle = FrameResourceHandle{ (uint32_t)objects.size() - 1 };
 		}
@@ -613,26 +584,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		FrameResourceHandle	FindFrameResource(SOResourceHandle handle)
-		{
-			auto res = find(objects,
-				[&](const auto& LHS)
-				{
-					auto CorrectType = LHS.type == OT_StreamOut;
-
-					return (CorrectType && LHS.SOBuffer == handle);
-				});
-
-			if (res != objects.end())
-				return res->handle;
-
-			return InvalidHandle;
-		}
-
-
-		/************************************************************************************************/
-
-
 		FrameResourceHandle	FindFrameResource(QueryHandle handle)
 		{
 			auto res = find(objects,
@@ -775,56 +726,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		SOResourceHandle GetSOResource(FrameResourceHandle handle) const
-		{
-			auto res = find(SubNodeTracking,
-				[&](const auto& rhs) -> bool
-				{
-					return rhs.resource == handle;
-				});
-
-			if (res == SubNodeTracking.end())
-			{
-				auto res = find(globalResources.objects,
-					[&](const FrameObject& rhs) -> bool
-					{
-						return rhs.handle == handle;
-					});
-
-				FK_ASSERT(res != globalResources.objects.end());
-				//SubNodeTracking.push_back({ res->Handle, res->State });
-
-				return res->SOBuffer;
-			}
-			else
-				return globalResources.objects[res->resource].SOBuffer;
-		}
-
-
-#if USING(ENABLEDX12)
-		/*
-		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, IDirectContext& ctx, size_t vertexSize) const
-		{
-			auto& res			= _FindSubNodeResource(handle);
-			auto SOHandle		= globalResources.objects[res.resource].SOBuffer;
-			auto deviceResource = renderSystem().GetDeviceResource(SOHandle);
-
-			DebugBreak();
-			if (res.access != DASVERTEXBUFFER && res.layout != DeviceLayout::GenericRead) 
-				ctx.AddStreamOutBarrier(SOHandle, res.access, DASVERTEXBUFFER);
-
-			res.access = DASVERTEXBUFFER;
-
-			D3D12_VERTEX_BUFFER_VIEW view = {
-				deviceResource->GetGPUVirtualAddress(),
-				static_cast<UINT>(renderSystem().GetStreamOutBufferSize(SOHandle)),
-				static_cast<UINT>(vertexSize)
-			};
-
-			return view;
-		}
-        */
-#endif
 
 		ResourceHandle Transition(const FrameResourceHandle resource, DeviceAccessState access, DeviceLayout layout, IDirectContext& ctx, DeviceSyncPoint before = DeviceSyncPoint::Sync_All, DeviceSyncPoint after = DeviceSyncPoint::Sync_All) const
 		{
@@ -1101,15 +1002,6 @@ namespace FlexKit
 		return [handle, &resources](FrameObjectLink& lhs)
 		{
 			return resources[lhs.handle].shaderResource == handle;
-		};
-	}
-
-
-	inline auto MakePred(SOResourceHandle handle, const PassObjectList& resources)
-	{
-		return [handle, &resources](FrameObjectLink& lhs)
-		{
-			return (resources[lhs.handle].SOBuffer == handle && resources[lhs.handle].type == OT_StreamOut);
 		};
 	}
 
@@ -1449,9 +1341,6 @@ namespace FlexKit
 
 		FrameResourceHandle	UnorderedAccess (ResourceHandle, DeviceAccessState state = DeviceAccessState::DASUAV);
 
-		FrameResourceHandle	VertexBuffer	(SOResourceHandle);
-		FrameResourceHandle	StreamOut		(SOResourceHandle);
-
 		FrameResourceHandle ReadTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
 		FrameResourceHandle WriteTransition	(FrameResourceHandle handle, DeviceAccessState state, std::pair<DeviceSyncPoint, DeviceSyncPoint> syncPoints = { Sync_All, Sync_All });
 
@@ -1462,7 +1351,7 @@ namespace FlexKit
 
 		void SetDebugName(FrameResourceHandle handle, const char* debugName);
 
-		const DescriptorHeapLayout&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+		const DescriptorSetLayout&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
 		IRenderSystem&	GetRenderSystem();
 		FrameResources& GetResources() { return *resources; }
@@ -1892,6 +1781,7 @@ namespace FlexKit
 				memory);
 
 			FrameGraphNodeBuilder builder(nodes, &resources, nodes[idx], directStateContext, memory);
+			setup(builder);
 			builder.BuildNode(this);
 
 			pendingDirectNodes.push_back(&nodes[idx]);
@@ -3056,13 +2946,13 @@ namespace FlexKit
 							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 							DescriptorSet descHeap;
-							auto& desciptorTableLayout = rootSig->GetDescHeap(0);
+							auto& desciptorTableLayout = rootSig->GetDescriptorSetLayout(0);
 
 							descHeap.Init2(context, desciptorTableLayout, 1, allocator);
 							descHeap.NullFill(context, 1);
 							descHeap.SetSRV(context, 0, D.texture);
 
-							context.SetGraphicsDescriptorTable(0, descHeap);
+							context.SetGraphicsDescriptorSet(0, descHeap);
 						}	break;
 					}
 
