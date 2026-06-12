@@ -13,6 +13,16 @@ if(NOT ANDROID)
         ${CPP_FILES}
     )
 
+    target_sources(
+    RTExperiment PUBLIC
+    FILE_SET rtHeaders
+    TYPE HEADERS
+    FILES
+    "RTExperiment.hpp"
+    "ShaderBindingTable.hpp"
+    "PersistentGPUAllocator.hpp"
+    )
+
     target_include_directories(
         RTExperiment
         PUBLIC

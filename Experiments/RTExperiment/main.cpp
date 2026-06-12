@@ -12,9 +12,9 @@ int main()
 
 		auto app = std::make_unique<FlexKit::FKApplication>(allocator,
 			FlexKit::CoreOptions{
-				.GPUdebugMode		= true,
-				.GPUValidation		= true,
-				.GPUSyncQueues		= true,
+				.GPUdebugMode		= false,
+				.GPUValidation		= false,
+				.GPUSyncQueues		= false,
 				.CreateRenderSystem	= CreateDX,
 			}, FlexKit::FrameworkOptions{
 				.integrateIMGUI		= false

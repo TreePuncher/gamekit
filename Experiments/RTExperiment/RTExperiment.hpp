@@ -1,17 +1,20 @@
 #include <Application.hpp>
-
+#include <Scene.hpp>
 #include <RenderSystemInterface.hpp>
 #include <FrameGraph.hpp>
 #include <filesystem>
 #include <ModifiableShape.hpp>
 #include <MeshUtilities.hpp>
 #include <PersistentGPUAllocator.hpp>
+#include <Transforms.hpp>
 #include <TriMeshResource.hpp>
 #include <Type.hpp>
 
 #include <Win32Graphics.hpp>
 #include <dxContext.hpp>
 #include <dxRenderSystem.hpp>
+
+#include "CameraComponent.hpp"
 #include "ShaderBindingTable.hpp"
 
 using namespace FlexKit;
@@ -57,10 +60,10 @@ TriMeshHandle LoadObj(std::filesystem::path p)
 		float xyz[3];
 	};
 
-	Vector<uint32_t>	indexes	{ SystemAllocator };
-	Vector<float3>		points	{ SystemAllocator };
-	Vector<float3>		normals	{ SystemAllocator };
-	Vector<float2>		uvs		{ SystemAllocator };
+	Vector<uint32_t>	indexes{ SystemAllocator };
+	Vector<float3>		points{ SystemAllocator };
+	Vector<float3>		normals{ SystemAllocator };
+	Vector<float2>		uvs{ SystemAllocator };
 
 	auto meshHandle = CreateMesh(123456789);
 	auto& mesh = *GetMeshResource(meshHandle);
@@ -155,34 +158,45 @@ TriMeshHandle LoadObj(std::filesystem::path p)
 	return meshHandle;
 }
 
-constexpr GUID_t VertexShaderAssetID	= GetCRCGUID(VertexShader);
-constexpr GUID_t PixelShaderAssetID		= GetCRCGUID(PixelShader);
+constexpr GUID_t VertexShaderAssetID = GetCRCGUID(VertexShader);
+constexpr GUID_t PixelShaderAssetID = GetCRCGUID(PixelShader);
+constexpr PassHandle RTPass = GetCRC32("RTPass");
 
 struct RTExperimentState : FrameworkState
 {
-	RTExperimentState(GameFramework& IN_framework) : 
-        FrameworkState(IN_framework),
-		persistent{ 64, framework.core.GetBlockMemory() },
+	RTExperimentState(GameFramework& IN_framework) :
+		FrameworkState(IN_framework),
+
+		brushes{ GetAllocator() },
+	    cameras { GetAllocator() },
+		lights{ GetAllocator() },
+		materials{ GetRenderSystem(), GetAllocator() },
+		visibility{ GetAllocator() },
+		scene{ GetAllocator() },
+		gameObjects{ GetAllocator(), 1024 },
+
+		persistent{ 64, GetAllocator() },
 		gpuAllocator{ 64 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, framework.core.GetBlockMemory() }
 	{
 		Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT);
 
-		DescriptorSetLayout layout{ framework.core.GetBlockMemory() };
+		DescriptorSetLayout layout{ GetAllocator() };
 		layout.SetParameterAsUAV(0, 0, 1, 0);
 		layout.SetParameterAsSRV(1, 1, 1, 0);
 
-		PipelineInterfaceBuilder builder{ framework.core.GetBlockMemory() };
+		PipelineInterfaceBuilder builder{ GetTempAllocator() };
 		builder.SetParameterAsUINT(0, 16, 0, 0);
 		builder.SetParameterAsDescriptorSet(1, layout);
-		
-		globalInterface = builder.Build(framework.core.GetTempMemory());
 
+		InitiateSceneNodeBuffer(GetAllocator());
+
+		globalInterface = builder.Build(GetTempAllocator());
 		renderWindow = CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
 
-		library			= LoadShaderLibrary("assets/shaders/rtLibrary.hlsl", globalInterface);
-		raygenID		= library->FindShaderFunction("raygen_main");
-		missID			= library->FindShaderFunction("miss_main");
-		defaultGroup1	= library->FindShaderFunction("defaultHitGroup");
+		library = LoadShaderLibrary("assets/shaders/rtLibrary.hlsl", globalInterface);
+		raygenID = library->FindShaderFunction("raygen_main");
+		missID = library->FindShaderFunction("miss_main");
+		defaultGroup1 = library->FindShaderFunction("defaultHitGroup");
 
 		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
@@ -191,9 +205,9 @@ struct RTExperimentState : FrameworkState
 				builder.AddInputLayout({
 					.inputs = {
 						{
-							.name			= "POSITION",
-							.index			= 0,
-							.format			= DeviceFormat::R16G16B16A16_FLOAT,
+							.name = "POSITION",
+							.index = 0,
+							.format = DeviceFormat::R16G16B16A16_FLOAT,
 							.inputSlotClass = EInputClassification::PerVertex,
 						}},
 					.count = 1
@@ -216,7 +230,39 @@ struct RTExperimentState : FrameworkState
 		vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
 		cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
 
-		shape = LoadObj("Test.obj");
+		suzanneMesh		= LoadObj("suzanne.obj");
+		lightMesh		= LoadObj("light.obj");
+		roomMesh		= LoadObj("room.obj");
+
+		auto& suzanneObj	= gameObjects.Allocate();
+		auto& lightObj		= gameObjects.Allocate();
+		auto& roomObj		= gameObjects.Allocate();
+		auto& cameraObj		= gameObjects.Allocate();
+
+		MaterialHandle lightMaterial	= materials.CreateMaterial();
+		MaterialHandle roomMaterial		= materials.CreateMaterial();
+		MaterialHandle suzanneMaterial	= materials.CreateMaterial();
+
+		materials.Add2Pass(lightMaterial, RTPass);
+		materials.Add2Pass(roomMaterial, RTPass);
+		materials.Add2Pass(suzanneMaterial, RTPass);
+
+		auto& cameraView = cameraObj.AddView<CameraView>();
+		activeCamera = cameraView.camera;
+		cameraView.SetCameraNode(GetZeroedNode());
+		cameraView.SetCameraFOV(pi / 4);
+
+	    auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanneMesh);
+		auto& lightBrush = lightObj.AddView<BrushView>(lightMesh);
+		auto& roomBrush = roomObj.AddView<BrushView>(roomMesh);
+
+		suzanneBrush.SetMaterial(suzanneMaterial);
+		lightBrush.SetMaterial(lightMaterial);
+		roomBrush.SetMaterial(roomMaterial);
+
+		scene.OwnGameObject(suzanneObj);
+		scene.OwnGameObject(lightObj);
+		scene.OwnGameObject(roomObj);
 
 		SBTMemory		= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
 		hitTable		= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
@@ -239,8 +285,15 @@ struct RTExperimentState : FrameworkState
 	}
 
 
-	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher&, double dT, FrameGraph& frameGraph)
+	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 	{
+		auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
+		auto& transformUpdate	= QueueTransformUpdateTask(dispatcher);
+	    auto& sceneUpdate		= scene.UpdateSceneBVH(dispatcher, transformUpdate, GetAllocatorMT());
+		auto& passes			= GatherScene(dispatcher, &scene, activeCamera, GetAllocatorMT());
+
+		cameraUpdate.AddOutput(transformUpdate);
+
 		struct
 		{
 			float xyz[3];
@@ -306,12 +359,12 @@ struct RTExperimentState : FrameworkState
 						{
 							uint8_t programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
 						} hitGroups[1] = {
-						    
+
 						};
 
-						auto rayGeneratorUpload		= ctx.ReserveDirectUploadSpace(64, sizeof(rayGeneratorRecord));
-						auto missShaderUpload		= ctx.ReserveDirectUploadSpace(64, sizeof(missGeneratorRecord));
-						auto hitGroupsUpload		= ctx.ReserveDirectUploadSpace(64, sizeof(hitGroups));
+						auto rayGeneratorUpload = ctx.ReserveDirectUploadSpace(64, sizeof(rayGeneratorRecord));
+						auto missShaderUpload = ctx.ReserveDirectUploadSpace(64, sizeof(missGeneratorRecord));
+						auto hitGroupsUpload = ctx.ReserveDirectUploadSpace(64, sizeof(hitGroups));
 
 						memcpy(rayGeneratorRecord.programID, (void*)raygenID.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 						memcpy(missGeneratorRecord.programID, (void*)missID.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
@@ -325,6 +378,11 @@ struct RTExperimentState : FrameworkState
 						ctx.CopyBuffer(hitGroupsUpload, hitTable.resource, hitTable.offset);
 						return true;
 					}();
+
+				auto rtPass = passes.GetData().GetPass(RTPass);
+
+				for (auto& brush : rtPass)
+				{}
 			});
 
 		auto drawPass = frameGraph.AddNode2(
@@ -333,7 +391,7 @@ struct RTExperimentState : FrameworkState
 				builder.Requires(GetTypeGUID(Trangle));
 
 				return DrawTrangle{
-					.renderTarget		= builder.RenderTarget(renderTarget), 
+					.renderTarget = builder.RenderTarget(renderTarget),
 				};
 			},
 			[=, this](const DrawTrangle& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
@@ -351,7 +409,7 @@ struct RTExperimentState : FrameworkState
 
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
 
-				auto mesh = GetMeshResource(shape);
+				auto mesh = GetMeshResource(suzanneMesh);
 				auto& lod = mesh->lods[0];
 
 				ctx.SetInputPrimitive(EInputPrimitive::INPUTPRIMITIVETRIANGLELIST);
@@ -371,13 +429,13 @@ struct RTExperimentState : FrameworkState
 				builder.Requires(GetTypeGUID(Trangle));
 
 				return TracePass{
-                    .sbtBuffer = builder.ReadTransition(sbtUpdate.sbtBuffer, DeviceAccessState::DASNonPixelShaderResource,
+					.sbtBuffer = builder.ReadTransition(sbtUpdate.sbtBuffer, DeviceAccessState::DASNonPixelShaderResource,
 											{ DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_Raytracing }),
-				    .traceBuffer = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT, false),DeviceAccessState::DASUAV),
+					.traceBuffer = builder.AcquireVirtualResource(GPUResourceDesc::UAVTexture({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT, false),DeviceAccessState::DASUAV),
 					.renderTarget = builder.WriteTransition(
-						            drawPass.renderTarget,
-						        DeviceAccessState::DASCopyDest,
-						        { DeviceSyncPoint::Sync_Draw, DeviceSyncPoint::Sync_Copy }),
+									drawPass.renderTarget,
+								DeviceAccessState::DASCopyDest,
+								{ DeviceSyncPoint::Sync_Draw, DeviceSyncPoint::Sync_Copy }),
 				};
 			},
 			[=, this](const TracePass& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
@@ -386,7 +444,7 @@ struct RTExperimentState : FrameworkState
 				FlexKit::DescriptorSet set(ctx, set0Layout, threadLocalAllocator);
 				set.SetUAVTexture(ctx, 0, resources.GetResource(data.traceBuffer));
 				set.NullFill(ctx);
-			    ctx.SetRTStateObject(library->FindShaderFunction("raygen_main"), library);
+				ctx.SetRTStateObject(library->FindShaderFunction("raygen_main"), library);
 
 				// Update SBT
 				D3D12_DISPATCH_RAYS_DESC rayDesc{};
@@ -402,9 +460,9 @@ struct RTExperimentState : FrameworkState
 					D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
 						missTable.devicePtr, 32, 32,
 				};
-				rayDesc.Width	= 800;
-				rayDesc.Height	= 600;
-				rayDesc.Depth	= 1;
+				rayDesc.Width = 800;
+				rayDesc.Height = 600;
+				rayDesc.Depth = 1;
 
 				ctx.DiscardResource(resources.GetResource(data.traceBuffer));
 				ctx.ClearUAVTextureFloat(resources.GetResource(data.traceBuffer));
@@ -444,21 +502,35 @@ struct RTExperimentState : FrameworkState
 		core.RenderSystem->ResetVertexBuffer(vBuffer);
 	}
 
-	double					t				= 0.0;
-	size_t					vertexCount		= 0;
-	IRenderWindow*			renderWindow	= nullptr;
-	VertexBufferHandle		vBuffer			= InvalidHandle;
-	ConstantBufferHandle	cBuffer			= InvalidHandle;
+	SceneNodeComponent			transforms;
+	BrushComponent				brushes;
+	CameraComponent				cameras;
+	LightComponent				lights;
+	MaterialComponent			materials;
+	SceneVisibilityComponent	visibility;
+	ObjectPool<GameObject>		gameObjects;
+
+	Scene					scene;
+	CameraHandle			activeCamera;
+
+	double					t = 0.0;
+	size_t					vertexCount = 0;
+	IRenderWindow*			renderWindow = nullptr;
+	VertexBufferHandle		vBuffer = InvalidHandle;
+	ConstantBufferHandle	cBuffer = InvalidHandle;
 	UniqueResourceHandle	testTexture;
-	TriMeshHandle			shape			= InvalidHandle;
+
+	TriMeshHandle			suzanneMesh		= InvalidHandle;
+	TriMeshHandle			roomMesh		= InvalidHandle;
+	TriMeshHandle			lightMesh		= InvalidHandle;
 
 	dx_Internal::MemoryPoolAllocator gpuAllocator;
 
 	PersistentAllocator		persistent;
 	IPipelineInterface*		globalInterface = nullptr;
-    IPipelineStateLibrary*	library			= nullptr;
+	IPipelineStateLibrary*	library = nullptr;
 	ShaderBindingTable		sbt;
-	
+
 	ShaderID raygenID;
 	ShaderID missID;
 	ShaderID defaultGroup1;

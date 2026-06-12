@@ -98,6 +98,8 @@ namespace FlexKit
 		}
 
 		BlockAllocator		blockAllocator;
+		ThreadSafeAllocator	blockAllocatorMT{ blockAllocator };
+
 		StackAllocator		tempAllocator;
 		ThreadSafeAllocator	tempAllocatorMT;
 
@@ -152,6 +154,7 @@ namespace FlexKit
 		IRenderWindow*			activeWindow = nullptr;
 
 		BlockAllocator&			GetBlockMemory()	{ return  Memory->blockAllocator; }
+		ThreadSafeAllocator&	GetMTBlockMemory()	{ return  Memory->blockAllocatorMT; }
 		StackAllocator&			GetTempMemory()		{ return  Memory->GetTempMemory(); }
 		ThreadSafeAllocator&	GetTempMemoryMT()	{ return  Memory->GetTempMemoryMT(); }
 	};
