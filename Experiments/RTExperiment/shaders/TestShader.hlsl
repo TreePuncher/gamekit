@@ -9,20 +9,23 @@
 
 struct VIN
 {
-	[[vk::location(0)]] float3 xyz : POSITION;
+	[[vk::location(0)]] float3 pos		: POSITION;
+	[[vk::location(1)]] float3 normal	: NORMAL;
 };
 
 struct VOut
 {
-	[[vk::location(0)]] float4 position : SV_Position;
-	[[vk::location(1)]] float3 uvw : UVW;
+	[[vk::location(0)]] float4 position		: SV_Position;
+	[[vk::location(1)]] float3 uvw			: UVW;
+	[[vk::location(2)]] float3 n			: NORMAL;
 };
 
 VOut VMain(VIN vin)
 {
 	VOut OUT;
-	OUT.position	= float4(vin.xyz, 1);
-	OUT.uvw			= vin.xyz / 2.0f + 0.5f;
+	OUT.position	= float4(vin.pos, 1);
+	OUT.n			= float4(vin.normal, 0.0f);
+	OUT.uvw			= vin.pos / 2.0f + 0.5f;
 
 	return OUT;
 }
@@ -30,10 +33,11 @@ VOut VMain(VIN vin)
 [[fk::RootSignature(id=rootsig1)]]
 float4 PMain(VOut vin) : SV_Target
 {
-	return
-        float4(
-            sin(time) / 2.0f + 0.5f,
-            cos(time) / 2.0f + 0.5f,
-            vin.position.y / 553.0f,
-            1.0f);
+	return float4(vin.n, 1.0f);
+	//return
+    //    float4(
+    //        sin(time) / 2.0f + 0.5f,
+    //        cos(time) / 2.0f + 0.5f,
+    //        vin.position.y / 553.0f,
+    //        1.0f);
 }

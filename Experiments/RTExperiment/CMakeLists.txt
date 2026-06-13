@@ -21,6 +21,7 @@ if(NOT ANDROID)
     "RTExperiment.hpp"
     "ShaderBindingTable.hpp"
     "PersistentGPUAllocator.hpp"
+    "OBJLoader.hpp"
     )
 
     target_include_directories(

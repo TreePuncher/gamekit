@@ -2939,10 +2939,7 @@ namespace FlexKit
 	}
 
 
-	inline float4x4 Inverse(const float4x4& m)
-	{
-		return {};
-	}
+	float4x4 Inverse(const float4x4& m);
 
 
 	/************************************************************************************************/

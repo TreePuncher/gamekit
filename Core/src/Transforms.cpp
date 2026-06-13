@@ -5,10 +5,42 @@
 #include <iostream>
 
 #include "RenderSystemInterface.hpp"
+#include <DirectXMath.h>
+
 
 namespace FlexKit
 {
 	/************************************************************************************************/
+
+
+	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX* const M)
+	{
+		float4x4 Mout;
+		memcpy(&Mout, M, sizeof(Mout));
+		return Mout;
+	}
+
+	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(const float4x4& M)
+	{
+		DirectX::XMMATRIX Mout;
+		memcpy(&Mout, &M, sizeof(Mout));
+		return Mout;
+	}
+
+	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX& M)
+	{
+		float4x4 Mout;
+		memcpy(&Mout, &M, sizeof(Mout));
+		return Mout;
+	}
+
+	inline float4x4 Inverse(const float4x4& m)
+	{
+		const float4x4 MI = XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(m)));
+
+		return MI;
+	}
+
 
 
 	float4x4 GetLT_Internal(uint32_t);
@@ -381,26 +413,24 @@ namespace FlexKit
 
 	float4x4 GetLT(NodeHandle node)
 	{
-		FK_ASSERT(0);
-		//using DirectX::XMMatrixIdentity;
-		//using DirectX::XMMatrixMultiply;
-		//using DirectX::XMMatrixTranspose;
-		//using DirectX::XMMatrixTranslationFromVector;
-		//using DirectX::XMMatrixScalingFromVector;
-		//using DirectX::XMMatrixRotationQuaternion;
-		//
-		//auto idx = _SNHandleToIndex(node);
-		//
-		//XMMatrixIdentity();
-		//LT_Entry TRS = SceneNodeTable.LT[idx];
-		//
-		//DirectX::XMMATRIX LT =
-		//		XMMatrixRotationQuaternion(TRS.R) *
-		//		XMMatrixScalingFromVector(TRS.S) *
-		//		XMMatrixTranslationFromVector(TRS.T);
-		//
-		//return XMMatrixToFloat4x4(LT);
-		return {};
+		using DirectX::XMMatrixIdentity;
+		using DirectX::XMMatrixMultiply;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixRotationQuaternion;
+		
+		auto idx = _SNHandleToIndex(node);
+		
+		XMMatrixIdentity();
+		LT_Entry TRS = SceneNodeTable.LT[idx];
+		
+		DirectX::XMMATRIX LT =
+				XMMatrixRotationQuaternion(TRS.R) *
+				XMMatrixScalingFromVector(TRS.S) *
+				XMMatrixTranslationFromVector(TRS.T);
+		
+		return XMMatrixToFloat4x4(LT);
 	}
 
 
@@ -409,22 +439,20 @@ namespace FlexKit
 
 	float4x4 GetLT_Internal(uint32_t idx)
 	{
-		FK_ASSERT(0);
-
-		//using DirectX::XMMatrixIdentity;
-		//using DirectX::XMMatrixMultiply;
-		//using DirectX::XMMatrixTranspose;
-		//using DirectX::XMMatrixTranslationFromVector;
-		//using DirectX::XMMatrixScalingFromVector;
-		//using DirectX::XMMatrixRotationQuaternion;
-		//
-		//const auto	index	= _SNHandleToIndex(idx);
-		//LT_Entry	TRS		= SceneNodeTable.LT[idx];
-		//
-		//auto LT =
-		//	XMMatrixRotationQuaternion(TRS.R) *
-		//	XMMatrixScalingFromVector(TRS.S) *
-		//	XMMatrixTranslationFromVector(TRS.T);
+		using DirectX::XMMatrixIdentity;
+		using DirectX::XMMatrixMultiply;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixRotationQuaternion;
+		
+		const auto	index	= _SNHandleToIndex(idx);
+		LT_Entry	TRS		= SceneNodeTable.LT[idx];
+		
+		auto LT =
+			XMMatrixRotationQuaternion(TRS.R) *
+			XMMatrixScalingFromVector(TRS.S) *
+			XMMatrixTranslationFromVector(TRS.T);
 
 		return {};
 	}
@@ -573,9 +601,8 @@ namespace FlexKit
 
 		SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
 
-		FK_ASSERT(0);
 		size_t Unused_Nodes = 0;
-#if 0
+#if 1
 		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
 			const auto flag         = SceneNodeTable.Flags[itr];
@@ -584,23 +611,22 @@ namespace FlexKit
 
 			if((flag & SceneNodes::DIRTY) && !(SceneNodes::UPDATED) || (parentFlag & SceneNodes::UPDATED) | flag )
 			{
-				DirectX::XMMATRIX LT = XMMatrixIdentity();
+				DirectX::XMMATRIX LT = DirectX::XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
 
 				const auto newFlag          = scaleFlag | SceneNodes::UPDATED;
 				SceneNodeTable.Flags[itr]   = newFlag;
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
-				LT =(	XMMatrixRotationQuaternion(TRS.R) *
-						XMMatrixScalingFromVector(sf ? TRS.S : float3(1.0f, 1.0f, 1.0f).pfloats)) *
-						XMMatrixTranslationFromVector(TRS.T);
+				LT =(DirectX::XMMatrixRotationQuaternion(TRS.R) *
+					DirectX::XMMatrixScalingFromVector(sf ? TRS.S : float4(1.0f, 1.0f, 1.0f, 0.0f))) *
+					DirectX::XMMatrixTranslationFromVector(TRS.T);
 
 				auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent);
-				auto PT = SceneNodeTable.WT[ParentIndex].m4x4;
-				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, XMMatrixTranspose(PT)));
+				auto PT = Float4x4ToXMMATIRX(SceneNodeTable.WT[ParentIndex].m4x4);
+				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, DirectX::XMMatrixTranspose(PT)));
 
-				auto temp						= SceneNodeTable.WT[itr].m4x4;
-				SceneNodeTable.WT[itr].m4x4	= WT;
+				SceneNodeTable.WT[itr].m4x4	= XMMatrixToFloat4x4(WT);
 			}
 			else
 				SceneNodeTable.Flags[itr] = scaleFlag;
@@ -754,7 +780,8 @@ namespace FlexKit
 	{
 		FlexKit::SetParentNode(parent, node);
 
-		TriggerComponent::GetComponent()[triggers].Trigger(ParentChangeSignalID, &parent, GetTypeGUID(NodeHandle));
+		if (triggerEnable)
+		    TriggerComponent::GetComponent()[triggers].Trigger(ParentChangeSignalID, &parent, GetTypeGUID(NodeHandle));
 	}
 
 
