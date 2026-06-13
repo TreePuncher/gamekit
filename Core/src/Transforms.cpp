@@ -454,7 +454,7 @@ namespace FlexKit
 			XMMatrixScalingFromVector(TRS.S) *
 			XMMatrixTranslationFromVector(TRS.T);
 
-		return {};
+		return XMMatrixToFloat4x4(LT);
 	}
 
 
@@ -1009,9 +1009,8 @@ namespace FlexKit
 	{
 		float4x4 WT = GetWT(GetParentNode(Node));
 
-		auto MI = Inverse(WT);
-		auto V	= GetTranslation(MI);
-		TranslateLocal(Node, float3(V));
+		auto v = Inverse(WT) * float4{ XYZ, 0.0f };
+		TranslateLocal(Node, v.xyz());
 	}
 
 

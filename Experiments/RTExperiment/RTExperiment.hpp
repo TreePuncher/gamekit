@@ -66,6 +66,7 @@ struct RTExperimentState final : FrameworkState
 
 	Scene					scene;
 	CameraHandle			activeCamera;
+	GameObject*				cameraObj;
 
 	double					t = 0.0;
 	IRenderWindow*			renderWindow = nullptr;

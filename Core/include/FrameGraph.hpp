@@ -1395,7 +1395,7 @@ namespace FlexKit
 				Barrier barrier;
 				barrier.accessBefore	= frameObject.access;
 				barrier.accessAfter		= access;
-				barrier.src				= std::get<0>(syncPoints);
+				barrier.src				= (frameObject.access != DeviceAccessState::DASNOACCESS) ? std::get<0>(syncPoints) : DeviceSyncPoint::Sync_None;
 				barrier.dst				= std::get<1>(syncPoints);
 
 				switch (frameObject.dimensions)
@@ -1459,7 +1459,7 @@ namespace FlexKit
 				Barrier barrier;
 				barrier.accessBefore	= frameObject.access;
 				barrier.accessAfter		= access;
-				barrier.src				= std::get<0>(syncPoints);
+				barrier.src				= (frameObject.access != DeviceAccessState::DASNOACCESS) ? std::get<0>(syncPoints) : DeviceSyncPoint::Sync_None;
 				barrier.dst				= std::get<1>(syncPoints);
 
 				switch (frameObject.dimensions)

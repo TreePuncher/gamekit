@@ -1476,15 +1476,15 @@ namespace FlexKit
 
 	struct DepthStencilState
 	{
-		bool				depthEnable = false;
-		EDepthWriteMask		depthWriteMask = EDepthWriteMask::All;
-		EComparison			depthFunc = EComparison::LESS;
-		bool				stencilEnable = false;
-		uint8_t				stencilReadMask = 0xff;
-		uint8_t				stencilWriteMask = 0xff;
+		bool				depthEnable			= false;
+		EDepthWriteMask		depthWriteMask		= EDepthWriteMask::All;
+		EComparison			depthFunc			= EComparison::LESS;
+		bool				stencilEnable		= false;
+		uint8_t				stencilReadMask		= 0xff;
+		uint8_t				stencilWriteMask =	 0xff;
 
-		DepthStencilOP	frontFace = {};
-		DepthStencilOP	backFace = {};
+		DepthStencilOP	frontFace	= {};
+		DepthStencilOP	backFace	= {};
 	};
 
 

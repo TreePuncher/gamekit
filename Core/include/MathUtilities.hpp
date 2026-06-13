@@ -3004,9 +3004,9 @@ namespace FlexKit
 	int			Testing();
 
 
-	inline float3 GetTranslation(const float4x4&)
+	inline float3 GetTranslation(const float4x4& xyz)
 	{
-		return float3{ 0, 0, 0 };
+		return float3{ xyz[0][3], xyz[1][3], xyz[2][3] };
 	}
 
 	void printfloat2(const float2& in);

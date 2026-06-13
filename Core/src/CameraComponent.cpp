@@ -917,6 +917,25 @@ namespace FlexKit
 		GetComponent().MarkDirty(camera);
 	}
 
+	/************************************************************************************************/
+
+
+	void CameraView::SetCameraNear(float n)
+	{
+		GetComponent().SetCameraNear(camera, n);
+		GetComponent().MarkDirty(camera);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CameraView::SetCameraFar(float m)
+	{
+		GetComponent().SetCameraFar(camera, m);
+		GetComponent().MarkDirty(camera);
+	}
+
 
 	/************************************************************************************************/
 

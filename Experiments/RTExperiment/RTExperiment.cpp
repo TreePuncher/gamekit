@@ -48,18 +48,17 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 				.inputs = {
 					{
 						.name			= "POSITION",
-						.index			= 0,
 						.format			= DeviceFormat::R32G32B32_FLOAT,
 						.inputSlotClass = EInputClassification::PerVertex,
 					},
 					{
 						.name			= "NORMAL",
-						.index			= 1,
 						.format			= DeviceFormat::R32G32B32_FLOAT,
+						.slot			= 1,
 						.inputSlotClass = EInputClassification::PerVertex,
 					},
 				},
-				.count = 1
+				.count = 2
 				});
 			//builder.AddVertexShader("VMain");
 			//builder.AddPixelShader("PMain");
@@ -72,6 +71,10 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 					.targetCount = 1,
 					.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT },
 				});
+			builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
+			builder.AddDepthStencilState({
+				.depthEnable = true,
+			});
 
 			return builder.Build(renderSystem, allocator);
 		});
@@ -88,24 +91,30 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	auto& suzanneObj = gameObjects.Allocate();
 	auto& lightObj = gameObjects.Allocate();
 	auto& roomObj = gameObjects.Allocate();
-	auto& cameraObj = gameObjects.Allocate();
+	cameraObj = &gameObjects.Allocate();
 
 	suzanneObj.AddView<TriggerView>();
 	lightObj.AddView<TriggerView>();
 	roomObj.AddView<TriggerView>();
 
-	MaterialHandle lightMaterial = materials.CreateMaterial();
-	MaterialHandle roomMaterial = materials.CreateMaterial();
-	MaterialHandle suzanneMaterial = materials.CreateMaterial();
+	MaterialHandle lightMaterial	= materials.CreateMaterial();
+	MaterialHandle roomMaterial		= materials.CreateMaterial();
+	MaterialHandle suzanneMaterial	= materials.CreateMaterial();
 
 	materials.Add2Pass(lightMaterial, RTPass);
 	materials.Add2Pass(roomMaterial, RTPass);
 	materials.Add2Pass(suzanneMaterial, RTPass);
 
-	auto& cameraView = cameraObj.AddView<CameraView>();
+	auto& cameraView = cameraObj->AddView<CameraView>();
+	auto& cameraNode = cameraObj->AddView<SceneNodeView>(GetZeroedNode());
 	activeCamera = cameraView.camera;
-	cameraView.SetCameraNode(GetZeroedNode());
+	cameraView.SetCameraNode(cameraNode.node);
 	cameraView.SetCameraFOV(pi / 4);
+	cameraView.SetCameraAspectRatio(800.0f / 600.0f);
+	cameraView.SetCameraFar(12.0f);
+
+	cameraNode.Yaw(pi / 2.0f);
+	cameraNode.TranslateWorld({ 7, 2, 0 });
 
 	auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanneMesh);
 	auto& lightBrush = lightObj.AddView<BrushView>(lightMesh);
@@ -154,7 +163,7 @@ UpdateTask* RTExperimentState::Draw(UpdateTask* update, EngineCore& core, Update
 	auto& passes			= GatherScene(dispatcher, &scene, activeCamera, GetAllocatorMT());
 
 	passes.AddInput(sceneUpdate);
-	cameraUpdate.AddOutput(transformUpdate);
+	cameraUpdate.AddInput(transformUpdate);
 
 	auto renderTarget = renderWindow->GetBackBuffer();
 	frameGraph.AddOutput(renderTarget);
@@ -164,7 +173,6 @@ UpdateTask* RTExperimentState::Draw(UpdateTask* update, EngineCore& core, Update
 
 	ClearBackBuffer(frameGraph, renderTarget, { sinf(t) * 0.5f + 0.5f, cosf(t * 5.0f) * 0.5f + 0.5f, tanf(t * 10.0f) * 0.5f + 0.5f, 1 });
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
-
 
 	auto& sbtUpdate = UpdateSBT(frameGraph, passes);
 	if (!trace)
@@ -193,6 +201,7 @@ ForwardPassData& RTExperimentState::ForwardPass(FrameGraph& frameGraph, Resource
 
 			return ForwardPassData{
 				.renderTarget = builder.RenderTarget(renderTarget),
+				.depthTarget = builder.DepthTarget(depthBuffer.Get()),
 			};
 		},
 		[=, this, &passes](const ForwardPassData& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
@@ -206,13 +215,17 @@ ForwardPassData& RTExperimentState::ForwardPass(FrameGraph& frameGraph, Resource
 				.time = fTime,
 			};
 
+			auto cameraConstants = GetCameraConstants(activeCamera);
+			CBPushBuffer			cbPushBuffer{ resources.ReserveCB(sizeof(cameraConstants)) };
+			ConstantBufferDataSet	cameraCB{ cameraConstants, cbPushBuffer};
+
 			const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
 
 			ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
 			ctx.SetInputPrimitive(EInputPrimitive::INPUTPRIMITIVETRIANGLELIST);
 			ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
-			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
-
+			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthTarget));
+			ctx.SetGraphicsConstantBufferView(0, cameraCB);
 
 			for (auto& brushDraw : passes.GetData().GetPass(RTPass))
 			{
