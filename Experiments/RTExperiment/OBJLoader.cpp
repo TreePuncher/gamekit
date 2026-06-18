@@ -9,6 +9,9 @@ using namespace FlexKit;
 
 TriMeshHandle LoadObj(std::filesystem::path p)
 {
+	if (!std::filesystem::exists(p))
+		FK_LOG_ERROR(std::format("File Not Found! {}", p.string()).c_str());
+
 	using namespace FlexKit;
 
 	Vector<char> buffer{ SystemAllocator };
@@ -85,7 +88,7 @@ TriMeshHandle LoadObj(std::filesystem::path p)
 
 	for (const auto& leaf : kdbTree)
 		for (auto I = leaf->begin; I < leaf->end; I++)
-			optimized.PushTri(kdbTree.mesh.tris[I], context, true);
+			optimized.PushTri(kdbTree.mesh.tris[I], context, false);
 
 	MeshUtilityFunctions::OptimizedBuffer optimizedBuffer{ optimized };
 

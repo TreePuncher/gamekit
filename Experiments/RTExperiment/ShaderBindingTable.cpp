@@ -37,6 +37,8 @@ namespace FlexKit
             ShaderExport{ .function = "raygen_main" },
             ShaderExport{ .function = "anyhit_main" },
             ShaderExport{ .function = "closesthit_main" },
+            ShaderExport{ .function = "MyLocalRootSignature" },
+            ShaderExport{ .function = "defaultHitGroup" },
         };
 
         HitGroup hitGroups[] = {
@@ -56,11 +58,15 @@ namespace FlexKit
             .payloadSize        = 20,
             .attributesByteSize = 32,
             .exports            = std::span{ exports },
-            .hitGroups          = std::span{ hitGroups }
+            //.hitGroups          = std::span{ hitGroups }
         };
 
         return renderSystem.CreateLibrary(std::span{ &rtLibrary, 1 });
     }
+
+    ShaderBindingTable::ShaderBindingTable(iAllocator& IN_allocator ) : 
+        objectMappings  { IN_allocator },
+        freeList        { IN_allocator } {}
 
     ShaderBindingTable::~ShaderBindingTable()
     {

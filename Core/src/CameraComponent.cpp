@@ -233,7 +233,7 @@ namespace FlexKit
 
 		updatedView	= Inverse(updatedWT);
 		updatedProj	= CreatePerspectiveRH(*this, invert);
-		updatedPV	= updatedProj * updatedView;
+		updatedPV	= updatedProj;
 		updatedIV	= updatedWT;
 
 		previous.WT     = WT;
@@ -262,7 +262,7 @@ namespace FlexKit
 		NewData.Proj			= proj;
 		NewData.View			= view;
 		NewData.ViewI			= WT;
-		NewData.PV				= proj * view;
+		NewData.PV				= proj;
 		NewData.PVI				= Inverse(NewData.PV);
 		NewData.MinZ			= minZ;
 		NewData.MaxZ			= maxZ;

@@ -291,10 +291,7 @@ namespace FlexKit
 	{
 		float4x4 wt = GetWT(node);
 
-		return float3{
-					wt[0, 3],
-					wt[1, 3],
-					wt[2, 3] };
+		return GetTranslation(wt);
 	}
 
 
@@ -565,44 +562,11 @@ namespace FlexKit
 	bool UpdateTransforms()
 	{
 		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity
-#if 0
-		for (size_t itr = 1; itr < Nodes->used; ++itr)// Skip Root
-		{
-			if ( Nodes->Flags[itr]												| SceneNodes::DIRTY || 
-				 Nodes->Flags[_SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent)]| SceneNodes::DIRTY )
-			{
-				Nodes->Flags[itr] = Nodes->Flags[itr] | SceneNodes::DIRTY; // To cause Further children to update
-				bool			  EnableScale = Nodes->Nodes[itr].Scaleflag;
-				FlexKit::WT_Entry Parent;
-				FlexKit::WT_Entry WOut;
-				FlexKit::LT_Entry LIn;
-
-				// Gather
-				GetTransform(Nodes, Nodes->Nodes[itr].Parent, &Parent);
-
-				WOut = Nodes->WT[itr];
-				LIn  = Nodes->LT[itr];
-
-				// Calculate
-				WOut.World.R = DirectX::XMQuaternionMultiply(LIn.R, Parent.World.R);
-				WOut.World.S = DirectX::XMVectorMultiply	(LIn.S, Parent.World.S);
-
-				LIn.T.m128_f32[3] = 0;// Should Always Be Zero
-				//if(EnableScale)	WOut.World.T = DirectX::XMVectorMultiply(Parent.World.S, LIn.T);
-				WOut.World.T = DirectX::XMQuaternionMultiply(DirectX::XMQuaternionConjugate(Parent.World.R), LIn.T);
-				WOut.World.T = DirectX::XMQuaternionMultiply(WOut.World.T, Parent.World.R);
-				WOut.World.T = DirectX::XMVectorAdd			(WOut.World.T, Parent.World.T);
-
-				// Write Results
-				Nodes->WT[itr] = WOut;
-			}
-		}
-#else
 
 		SceneNodeTable.Flags[0] = SceneNodes::CLEAR;
 
 		size_t Unused_Nodes = 0;
-#if 1
+
 		for (size_t itr = 1; itr < SceneNodeTable.size(); ++itr)
 		{
 			const auto flag         = SceneNodeTable.Flags[itr];
@@ -611,31 +575,29 @@ namespace FlexKit
 
 			if((flag & SceneNodes::DIRTY) && !(SceneNodes::UPDATED) || (parentFlag & SceneNodes::UPDATED) | flag )
 			{
-				DirectX::XMMATRIX LT = DirectX::XMMatrixIdentity();
+				float4x4 LT = float4x4::Identity();
 				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].handle);
 
 				const auto newFlag          = scaleFlag | SceneNodes::UPDATED;
 				SceneNodeTable.Flags[itr]   = newFlag;
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
-				LT =(DirectX::XMMatrixRotationQuaternion(TRS.R) *
-					DirectX::XMMatrixScalingFromVector(sf ? TRS.S : float4(1.0f, 1.0f, 1.0f, 0.0f))) *
-					DirectX::XMMatrixTranslationFromVector(TRS.T);
+				
+			    LT =	TranslationMatrix(TRS.T) *
+			            Quaternion2Matrix(TRS.R) *
+                        ScaleMatrix(sf ? TRS.S : float4(1.0f, 1.0f, 1.0f, 0.0f));
 
 				auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent);
-				auto PT = Float4x4ToXMMATIRX(SceneNodeTable.WT[ParentIndex].m4x4);
-				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, DirectX::XMMatrixTranspose(PT)));
+				auto PT = SceneNodeTable.WT[ParentIndex].m4x4;
+				auto WT = PT * LT;
 
-				SceneNodeTable.WT[itr].m4x4	= XMMatrixToFloat4x4(WT);
+				SceneNodeTable.WT[itr].m4x4	= WT;
 			}
 			else
 				SceneNodeTable.Flags[itr] = scaleFlag;
 
 			Unused_Nodes += (SceneNodeTable.Flags[itr] & SceneNodes::FREE);
 		}
-#endif
-
-#endif
 
 		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
 		return ((float(Unused_Nodes) / float(SceneNodeTable.size())) > 0.25f);

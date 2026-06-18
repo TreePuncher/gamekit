@@ -79,7 +79,7 @@ struct PersistentAllocator
 			left->end	= begin + splitSizes.first;
 			
 			right->begin	= left->end;
-			right->end		= right->begin + splitSizes.second;
+			right->end		= end;
 		}
 
 		void Collapse()
@@ -148,10 +148,9 @@ struct PersistentAllocator
 
 			while(node->parent != nullptr)
 			{
-				if (auto right = node->parent->right.get(); right != node)
-				    return FindFreeNode(node->parent->right.get(), blockCount);
-				else if (auto left = node->parent->left.get(); left != node)
-					return FindFreeNode(node->parent->left.get(), blockCount);
+				if (auto left = node->parent->left.get(); left != node)
+					if (!left->allocated && left->size() >= blockCount)
+					    return FindFreeNode(node->parent->left.get(), blockCount);
 
 				node = node->parent;
 			}

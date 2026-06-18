@@ -298,6 +298,15 @@ namespace FlexKit
 
 				continue;
 			}
+			else if (auto res = scn::scan<uint32_t, std::string_view>(match, R"([[fk::PushConstants(num={}, id={:[^)]})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [num, rootSigID] = res->values();
+				handler.LocalRootValues(num, rootSigID, ctx);
+
+				continue;
+				}
 			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::BeginRootSignatureDef(id={:[^)]})]])"))
 			{
 				ctx.shaderOffset = endres;
@@ -361,6 +370,10 @@ namespace FlexKit
 
 	struct VulkanAttributeHandler
 	{
+		void LocalRootValues(uint32_t numValues, std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+		    
+		}
 		// push buffer
 		static void CBVPushBuffer(uint32_t binding, PreprocessorContext& ctx)
 		{
@@ -563,7 +576,7 @@ namespace FlexKit
 				uint32_t entrySpace = 0xffffff00 - definition.entries.size();
 				uint32_t binding	= definition.entries.size();
 
-				while (definition.SpaceInUse(binding))
+				while (definition.IsSpaceInUse(binding))
 					entrySpace--;
 
 				definition.spacesInUse.push_back(entrySpace);
@@ -611,7 +624,7 @@ namespace FlexKit
 				TRYAGAIN:
 				for (auto& rootSig : rootSignatures)
 				{
-					if (rootSig.SpaceInUse(space))
+					if (rootSig.IsSpaceInUse(space))
 					{
 						space--;
 						goto TRYAGAIN;
@@ -663,6 +676,39 @@ namespace FlexKit
 
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+		void LocalRootValues(uint32_t numValues, std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+			if (
+			auto res = std::find_if(rootSignatures.begin(), rootSignatures.end(),
+				[&](RootSignatureDefinition& def)
+				{
+					return def.name == rootSigID;
+				}); res != rootSignatures.end())
+			{
+				auto& def = *res;
+				uint32_t binding = def.entries.size();
+				def.entries.push_back(RootSignatureEntryTypes::Values);
+
+				uint32_t space = 0xffff0000;
+				while (def.IsSpaceInUse(space))
+					space--;
+
+				def.sections += std::format(" RootConstants(num={}, b{}, space{})", numValues, binding, space);
+				def.entrySpace.push_back(space);
+
+				std::string idStr = std::format("localrootConsants_{}_{}", binding, space);
+				std::string replacement = std::format("cbuffer {} : register(b0, space{})", idStr, space);
+				ctx.shader.replace(ctx.begin, ctx.end, replacement);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + replacement.size();
+			}
+			else
+			{
+				std::string errorLine = std::format("// Failed to find RootSignatureID: {}", rootSigID);
+				ctx.shader.replace(ctx.begin, ctx.end, errorLine);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + errorLine.size();
+			}
 		}
 
 
@@ -1087,12 +1133,14 @@ namespace FlexKit
 		}
 
 
-		void LocalRootSignature(std::string_view signatureID, PreprocessorContext& ctx) const
+		void LocalRootSignature(std::string_view signatureID, PreprocessorContext& ctx)
 		{
-			for (const auto& rootSigDef : rootSignatures)
+			for (auto& rootSigDef : rootSignatures)
 			{
 				if (rootSigDef.name == signatureID)
 				{
+					rootSigDef.local = true;
+
 					std::string rootSignature = rootSigDef.GetSignatureDefinition();
 					std::string line;
 
@@ -1157,7 +1205,6 @@ namespace FlexKit
 
 		struct RootSignatureDefinition
 		{
-
 			std::vector<RootSignatureEntryTypes>	entries;
 			std::vector<uint32_t>					entrySpace;
 			std::vector<std::string>				flags;
@@ -1165,6 +1212,8 @@ namespace FlexKit
 
 			std::string	sections;
 			std::string	name;
+
+			bool local = false;
 
 			std::string GetSignatureDefinition() const
 			{
@@ -1187,7 +1236,7 @@ namespace FlexKit
 				return out;
 			}
 
-			bool SpaceInUse(uint32_t space) const
+			bool IsSpaceInUse(uint32_t space) const
 			{
 				auto res = std::ranges::find(spacesInUse, space);
 
@@ -1205,7 +1254,23 @@ namespace FlexKit
 
 	PreprocessorResult DXShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator)
 	{
-		return ShaderProprocessor(shader, type, DirectXAttributeHandler{ .rootSignatures{} }, allocator);
+		auto handler = DirectXAttributeHandler{ .rootSignatures{} };
+		auto res = ShaderProprocessor(shader, type, handler, allocator);
+
+		for (auto& def : handler.rootSignatures)
+		{
+			if (def.local)
+			{
+				auto str = def.GetSignatureDefinition();
+				res.attributes.emplace_back(
+					ShaderAttributeLocalRootSignature{
+						.id = def.name, 
+						.rootSigDefinition = str
+					});
+			}
+		}
+
+		return res;
 	}
 }
 

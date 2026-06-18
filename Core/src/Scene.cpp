@@ -1088,7 +1088,7 @@ namespace FlexKit
 
 		const auto CameraNode	= cameraComponent.GetCameraNode(Camera);
 		const float3	POS		= GetPositionW(CameraNode);
-		const Quaternion Q		= GetOrientation(CameraNode);
+
 		const auto F			= GetFrustum(Camera);
 		const auto& Visibles	= SceneVisibilityComponent::GetComponent();
 
@@ -1106,14 +1106,13 @@ namespace FlexKit
 					Lq * potentialVisible.boundingSphere.xyz() + Pw,
 					Ls * potentialVisible.boundingSphere.w };
 
-				Apply(*potentialVisible.entity,
-					[&](BrushView& view)
-					{
-						const auto& brush = view.GetBrush();
-
-						if (Intersects(F, BS))
+				if (Intersects(F, BS))
+				    Apply(*potentialVisible.entity,
+					    [&](BrushView& view)
+					    {
+							const auto& brush = view.GetBrush();
 							PushDraw(*potentialVisible.entity, brush, solid, POS);
-					});
+					    });
 			}
 		}
 	}

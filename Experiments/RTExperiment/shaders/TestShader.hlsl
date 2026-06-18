@@ -4,7 +4,7 @@
 
 [[fk::CBV(id=rootsig1)]]
 {
-    float4x4 View;
+	float4x4 View;
     float4x4 ViewI;
     float4x4 Proj;
     float4x4 PV;
@@ -17,23 +17,23 @@
 
 struct VIN
 {
-	[[vk::location(0)]] float3 pos : POSITION;
-	[[vk::location(1)]] float3 normal : NORMAL;
+	[[vk::location(0)]] float3 pos		: POSITION;
+	[[vk::location(1)]] float3 normal	: NORMAL;
 };
 
 struct VOut
 {
 	[[vk::location(0)]] float4 position : SV_Position;
-	[[vk::location(1)]] float3 uvw : UVW;
-	[[vk::location(2)]] float3 n : NORMAL;
+	[[vk::location(1)]] float3 uvw		: UVW;
+	[[vk::location(2)]] float3 n		: NORMAL;
 };
 
 VOut VMain(VIN vin)
 {
 	VOut OUT;
-	OUT.position = mul(PV, float4(vin.pos, 1));
-	OUT.n = mul(PV, float4(vin.normal, 0.0f));
-	OUT.uvw = vin.pos / 2.0f + 0.5f;
+	OUT.position	= mul(PV, float4(vin.pos, 1));
+	OUT.n			= vin.normal;
+	OUT.uvw			= vin.pos / 2.0f + 0.5f;
 
 	return OUT;
 }

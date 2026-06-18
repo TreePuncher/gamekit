@@ -1037,7 +1037,7 @@ namespace FlexKit
 
 	enum class AttributeType
 	{
-		RootSignatureFlag, DescriptorTable, Resource, ConstantValues, Sampler, Unknown
+		RootSignatureFlag, DescriptorTable, Resource, ConstantValues, Sampler, RootSignature, Unknown
 	};
 
 
@@ -1135,16 +1135,30 @@ namespace FlexKit
 		std::string_view GetID() const { return {}; }
 	};
 
+	struct ShaderAttributeLocalRootSignature
+	{
+		std::string id;
+		std::string rootSigDefinition;
+	};
+
+	struct ShaderAttributeLocalRootSignatureBlock
+	{
+		ShaderAttributeBlockHeader header;
+
+		uint16_t idLength;
+		uint16_t signatureLength;
+
+		std::string_view GetID()		const { return std::string_view((const char*)this + sizeof(ShaderAttributeLocalRootSignatureBlock), idLength); }
+		std::string_view GetSignature() const { return std::string_view((const char*)this + sizeof(ShaderAttributeLocalRootSignatureBlock) + idLength, signatureLength); }
+	};
 
 	using ShaderAttribute =
-		std::variant<ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, ShaderAttributeResource>;
-
+		std::variant<ShaderAttributeConstantValues, ShaderAttributeDescriptorTable, ShaderAttributeFlag, ShaderAttributeResource, ShaderAttributeLocalRootSignature>;
 
 	struct ShaderExtra
 	{
 		Vector<ShaderAttribute> attributes;
 	};
-
 
 	struct Shader
 	{
@@ -1460,7 +1474,7 @@ namespace FlexKit
 	{
 		EFillMode		fill						= EFillMode::SOLID;
 		ECullMode		CullMode					= ECullMode::NONE;
-		bool			frontCounterClockWise		= false;
+		bool			frontCounterClockWise		= true;
 		bool			depthClipEnable				= true;
 		bool			multisampleEnable			= false;
 		bool			conservativeRasterEnable	= false;

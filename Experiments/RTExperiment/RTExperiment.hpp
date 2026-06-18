@@ -19,7 +19,11 @@ using namespace FlexKit;
 
 constexpr GUID_t VertexShaderAssetID = GetCRCGUID(VertexShader);
 constexpr GUID_t PixelShaderAssetID = GetCRCGUID(PixelShader);
-constexpr PassHandle RTPass = GetCRC32("RTPass");
+
+constexpr PassHandle RTPass			= GetCRC32("RTPass");
+
+constexpr uint32_t DiffuseColor		= GetCRC32("Diffuse");
+constexpr uint32_t LightIrradiance	= GetCRC32("Irradiance");
 
 struct ForwardPassData
 {
@@ -29,12 +33,14 @@ struct ForwardPassData
 
 struct UpdateSBTData
 {
-	FrameResourceHandle sbtBuffer;
+	FrameGraphNodeHandle	node;
+	FrameResourceHandle		sbtBuffer;
 };
 
 struct TracePassData
 {
 	FrameResourceHandle sbtBuffer;
+	FrameResourceHandle tlas;
 	FrameResourceHandle traceBuffer;
 	FrameResourceHandle renderTarget;
 };
@@ -51,7 +57,7 @@ struct RTExperimentState final : FrameworkState
 
 	ForwardPassData&	ForwardPass		(FrameGraph& framegraph, ResourceHandle renderTarget, GatherPassesTask& passes, CameraUpdateTask& cameraUpdate);
 	UpdateSBTData&		UpdateSBT		(FrameGraph& frameGraph, GatherPassesTask& passes);
-	TracePassData&		PathTracePass	(FrameGraph& frameGraph, CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, ResourceHandle renderTarget);
+	TracePassData&		PathTracePass	(FrameGraph& frameGraph, GatherPassesTask& passes, CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, ResourceHandle renderTarget);
 
     void PostDrawUpdate(EngineCore&, double dT) override;
 
@@ -85,7 +91,7 @@ struct RTExperimentState final : FrameworkState
 	IPipelineStateLibrary*	library			= nullptr;
 	ShaderBindingTable		sbt;
 
-	bool	trace = false;
+	bool	trace = true;
 
 	ShaderID raygenID;
 	ShaderID missID;
@@ -96,6 +102,7 @@ struct RTExperimentState final : FrameworkState
 	GPURange hitTable;
 	GPURange missTable;
 	GPURange rayGenerator;
+	GPURange sceneInstances;
 };
 
 

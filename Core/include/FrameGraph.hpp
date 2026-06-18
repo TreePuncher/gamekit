@@ -2259,7 +2259,8 @@ namespace FlexKit
 				void BuildBLAS(FrameResourceHandle resource, TriMesh::LOD_Runtime& src_lod)
 				{
 					const auto prebuildInfo	= frameResources.renderSystem->GetBLASPreBuildInfo(*src_lod.bufferSet);
-					const auto desc			= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
+					auto desc	= GPUResourceDesc::RayTracingStructure(prebuildInfo.BLAS_byteSize);
+					desc.WH[0]	= Align(desc.WH[0], 64 * KILOBYTE);
 
 					auto [handle, _] = AllocateResource(resource, desc);
 

@@ -162,7 +162,7 @@ namespace FlexKit
 						ctx.AddTextureBarrier(object_ref.shaderResource, accessState, DASNOACCESS, retired.neededLayout, DeviceLayout::Undefined, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				default:
-						ctx.AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All_Shading, DeviceSyncPoint::Sync_None);
+						ctx.AddGlobalBarrier(object_ref.shaderResource, accessState, DASNOACCESS, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_None);
 					break;
 				}
 			}
@@ -500,7 +500,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopySource(ResourceHandle handle)
 	{
-		if (auto frameResource = AddReadableResource(handle, DASCopySrc, DeviceLayout::DecodeWrite, {}, { Sync_None, Sync_Copy }); frameResource != InvalidHandle)
+		if (auto frameResource = AddReadableResource(handle, DASCopySrc, DeviceLayout::DecodeWrite, {}, { Sync_All, Sync_Copy }); frameResource != InvalidHandle)
 			return frameResource;
 
 		context.frameResources.AddResource(handle);
@@ -513,7 +513,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::CopyDest(ResourceHandle  handle)
 	{
-		if (auto frameResource = AddWriteableResource(handle, DASCopyDest, DeviceLayout::CopyDst, {}, { Sync_None, Sync_Copy }); frameResource != InvalidHandle)
+		if (auto frameResource = AddWriteableResource(handle, DASCopyDest, DeviceLayout::CopyDst, {}, { Sync_All, Sync_Copy }); frameResource != InvalidHandle)
 			return frameResource;
 
 		context.frameResources.AddResource(handle);
@@ -833,7 +833,7 @@ namespace FlexKit
 		barrier.accessBefore	= DASNOACCESS;
 		barrier.accessAfter		= access;
 		barrier.src				= DeviceSyncPoint::Sync_None;
-		barrier.dst				= DeviceSyncPoint::Sync_All_Shading;
+		barrier.dst				= DeviceSyncPoint::Sync_All;
 
 		switch (desc.Dimensions)
 		{
@@ -1516,7 +1516,7 @@ namespace FlexKit
 				{
 					auto r_itr	= r_begin - 1;
 
-					for (; r_end <= r_itr; r_itr--)
+					for (; r_end < r_itr; r_itr--)
 					{
 						const auto handle = (*r_itr)->handle;
 

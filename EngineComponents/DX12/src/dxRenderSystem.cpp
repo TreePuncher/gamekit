@@ -911,7 +911,7 @@ namespace dx_Internal
 				case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
 				{
 					auto& parameter = desc->pParameters[itr].DescriptorTable;
-					DescriptorSetLayout layout;
+					DescriptorSetLayout layout{ *renderSystem.allocator };
 
 					for(auto&& [idx, range] : zip(iota(0), std::span{ parameter.pDescriptorRanges, parameter.NumDescriptorRanges}))
 					{
@@ -2787,8 +2787,6 @@ namespace dx_Internal
 		}
 		else
 		{
-			size_t byteSize							= CalculateByteSize(desc);
-
 			D3D12_HEAP_PROPERTIES heapProperties	={};
 			heapProperties.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 			heapProperties.Type						= D3D12_HEAP_TYPE_DEFAULT;
@@ -2808,7 +2806,7 @@ namespace dx_Internal
 
 			FK_ASSERT(desc.bufferCount <= 3);
 
-			FK_LOG_9("Creating Texture!");
+			FK_LOG_9("Creating Resource!");
 
 			const size_t end = desc.bufferCount;
 			for (size_t itr = 0; itr < end; ++itr)
@@ -2888,9 +2886,8 @@ namespace dx_Internal
 			}
 
 			auto filledDesc = desc;
-
 			filledDesc.resources	= (DeviceResource_ptr*)NewResource;
-			filledDesc.byteSize		= byteSize;
+			filledDesc.byteSize		= CalculateByteSize(desc);
 
 			return Textures.AddResource(filledDesc, filledDesc.initialLayout);
 		}
@@ -6307,7 +6304,9 @@ namespace dx_Internal
 			}
 		}
 
-		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ allocator });
+		auto object_ptr	= RootSignature_ptr(
+			&object,
+			RootSignatureDeleter{ allocator });
 
 		std::unique_lock unique{ rootSignatureLock };
 		auto rootSignatureEntry = rootSignatures.insert((uint64_t)rootSig, std::move(object_ptr));
@@ -6485,7 +6484,7 @@ namespace dx_Internal
 
 		lock.unlock();
 
-		auto& object			= allocator->allocate_aligned<RootSignature>(rootSignature, std::move(builder.Heaps), allocator);
+		auto& object			= allocator->allocate_aligned<RootSignature>(rootSignature, builder.Heaps.Copy(*allocator), allocator);
 		auto object_ptr			= RootSignature_ptr(&object, RootSignatureDeleter{ allocator });
 
 		std::unique_lock unique{ rootSignatureLock };
@@ -7659,7 +7658,7 @@ namespace dx_Internal
 
 		FK_LOG_9("Allocating Block with size %u", requestedBlockCount);
 
-		if (allocation.offset / blockSize > blockCount) {
+		if ((allocation.offset + allocation.size) / blockSize > blockCount) {
 			FK_LOG_ERROR("MemoryPoolAllocator Allocated a block beyond range!");
 			return { InvalidHandle, InvalidHandle };
 		}

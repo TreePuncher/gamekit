@@ -446,6 +446,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 	inline D3D12_BARRIER_SYNC SyncPoint2DX_Backward(const DeviceSyncPoint syncPoint)
 	{
+		if (syncPoint == DeviceSyncPoint::Sync_All)
+			return D3D12_BARRIER_SYNC::D3D12_BARRIER_SYNC_ALL;
+
 		D3D12_BARRIER_SYNC out = SyncPoint2DX(syncPoint);
 
 		out = (syncPoint & DeviceSyncPoint::Sync_IA != 0) ? D3D12_BARRIER_SYNC_INDEX_INPUT : out;
@@ -2293,6 +2296,9 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 			void operator ()(RootSignature* _ptr)
 			{
+#ifdef _DEBUG
+				FK_LOG_INFO("DX: freeing root signature!");
+#endif
 				_ptr->Release();
 			};
 		};

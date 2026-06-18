@@ -1,5 +1,6 @@
 #include "RTExperiment.hpp"
 #include "OBJLoader.hpp"
+#include <print>
 
 using namespace FlexKit;
 
@@ -16,13 +17,16 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	triggers	{ GetAllocator(), GetAllocator() },
 	gameObjects	{ GetAllocator(), 1024 },
 
+	sbt			{ GetAllocator() },
 	depthBuffer	{ GetRenderSystem(), { 800, 600 } },
-	persistent	{ 64, GetAllocator() },
+	persistent	{ 256, GetAllocator() },
 	gpuAllocator{ 64 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, framework.core.GetBlockMemory() }
 {
+	InitiateSceneNodeBuffer(GetAllocator());
+
 	Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT);
 
-	DescriptorSetLayout layout{ GetAllocator() };
+	DescriptorSetLayout layout{ GetTempAllocator() };
 	layout.SetParameterAsUAV(0, 0, 1, 0);
 	layout.SetParameterAsSRV(1, 1, 1, 0);
 
@@ -30,9 +34,7 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	builder.SetParameterAsUINT(0, 16, 0, 0);
 	builder.SetParameterAsDescriptorSet(1, layout);
 
-	InitiateSceneNodeBuffer(GetAllocator());
-
-	globalInterface = builder.Build(GetTempAllocator());
+	globalInterface = builder.Build(GetAllocator());
 	renderWindow = CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
 
 	library = LoadShaderLibrary("assets/shaders/rtLibrary.hlsl", globalInterface);
@@ -41,7 +43,7 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	defaultGroup1 = library->FindShaderFunction("defaultHitGroup");
 
 	GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
-		[](IRenderSystem& renderSystem, iAllocator& allocator)
+		[&](IRenderSystem& renderSystem, iAllocator& allocator)
 		{
 			PipelineBuilder builder(renderSystem, allocator);
 			builder.AddInputLayout({
@@ -62,21 +64,21 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 				});
 			//builder.AddVertexShader("VMain");
 			//builder.AddPixelShader("PMain");
-			builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl", ShaderOptions{ .enableDebug = true });
-			builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl", ShaderOptions{ .enableDebug = true });
+			builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{ .enableDebug = true });
+			builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{ .enableDebug = true });
 			builder.AddRasterizerState({
-				.CullMode = ECullMode::BACK
+				.CullMode = ECullMode::BACK,
 			});
 			builder.AddRenderTargetState({
-					.targetCount = 1,
-					.targetFormats = { DeviceFormat::R16G16B16A16_FLOAT },
+					.targetCount	= 1,
+					.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT },
 				});
 			builder.AddDepthStencilFormat(DeviceFormat::D32_FLOAT);
 			builder.AddDepthStencilState({
 				.depthEnable = true,
 			});
 
-			return builder.Build(renderSystem, allocator);
+			return builder.Build(renderSystem, GetAllocatorMT());
 		});
 
 	GetRenderSystem().QueuePSOLoad(GetTypeGUID(Trangle));
@@ -84,8 +86,8 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
 	cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
 
-	suzanneMesh = LoadObj("suzanne.obj");
 	lightMesh = LoadObj("light.obj");
+	suzanneMesh = LoadObj("suzanne.obj");
 	roomMesh = LoadObj("room.obj");
 
 	auto& suzanneObj = gameObjects.Allocate();
@@ -97,13 +99,17 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	lightObj.AddView<TriggerView>();
 	roomObj.AddView<TriggerView>();
 
-	MaterialHandle lightMaterial	= materials.CreateMaterial();
-	MaterialHandle roomMaterial		= materials.CreateMaterial();
-	MaterialHandle suzanneMaterial	= materials.CreateMaterial();
+	auto& suzanneMaterial = suzanneObj.AddView<MaterialView>();
+	auto& lightMaterial = lightObj.AddView<MaterialView>();
+	auto& roomMaterial = roomObj.AddView<MaterialView>();
 
-	materials.Add2Pass(lightMaterial, RTPass);
-	materials.Add2Pass(roomMaterial, RTPass);
-	materials.Add2Pass(suzanneMaterial, RTPass);
+	lightMaterial.Add2Pass(RTPass);
+	roomMaterial.Add2Pass(RTPass);
+	suzanneMaterial.Add2Pass(RTPass);
+
+	lightMaterial.SetProperty(LightIrradiance, 1.0f);
+	roomMaterial.SetProperty(DiffuseColor, float3{ 0.5f, 0.5f, 0.5 });
+	suzanneMaterial.SetProperty(DiffuseColor, float3{ 0.5f, 0.0f, 0.5 });
 
 	auto& cameraView = cameraObj->AddView<CameraView>();
 	auto& cameraNode = cameraObj->AddView<SceneNodeView>(GetZeroedNode());
@@ -111,10 +117,9 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	cameraView.SetCameraNode(cameraNode.node);
 	cameraView.SetCameraFOV(pi / 4);
 	cameraView.SetCameraAspectRatio(800.0f / 600.0f);
-	cameraView.SetCameraFar(12.0f);
-
-	cameraNode.Yaw(pi / 2.0f);
-	cameraNode.TranslateWorld({ 7, 2, 0 });
+	cameraView.SetCameraFar(100.0f);
+	cameraNode.Yaw(pi / -2.0f);
+	cameraNode.TranslateLocal({ 7, 2, 0 });
 
 	auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanneMesh);
 	auto& lightBrush = lightObj.AddView<BrushView>(lightMesh);
@@ -128,14 +133,16 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	lightBrush.SetMaterial(lightMaterial);
 	roomBrush.SetMaterial(roomMaterial);
 
+
 	scene.OwnGameObject(suzanneObj);
 	scene.OwnGameObject(lightObj);
 	scene.OwnGameObject(roomObj);
 
 	SBTMemory		= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
-	hitTable		= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
+	hitTable		= persistent.AllocBlocks(10, GetRenderSystem().GetCurrentCounter()).value();
 	missTable		= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
 	rayGenerator	= persistent.AllocBlocks(2, GetRenderSystem().GetCurrentCounter()).value();
+	sceneInstances	= persistent.AllocBlocks(4, GetRenderSystem().GetCurrentCounter()).value();
 }
 
 
@@ -157,10 +164,10 @@ UpdateTask* RTExperimentState::Update(EngineCore&, UpdateDispatcher&, double dT)
 
 UpdateTask* RTExperimentState::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
+    auto& cameraUpdate		= cameras.QueueCameraUpdate(dispatcher);
 	auto& transformUpdate	= QueueTransformUpdateTask(dispatcher);
-	auto& sceneUpdate		= scene.UpdateSceneBVH(dispatcher, transformUpdate, GetAllocatorMT());
-	auto& passes			= GatherScene(dispatcher, &scene, activeCamera, GetAllocatorMT());
+	auto& sceneUpdate		= scene.UpdateSceneBVH(dispatcher, transformUpdate, GetTempAllocatorMT());
+	auto& passes			= GatherScene(dispatcher, &scene, activeCamera, GetTempAllocatorMT());
 
 	passes.AddInput(sceneUpdate);
 	cameraUpdate.AddInput(transformUpdate);
@@ -171,7 +178,7 @@ UpdateTask* RTExperimentState::Draw(UpdateTask* update, EngineCore& core, Update
 	frameGraph.AddMemoryPool(gpuAllocator);
 	frameGraph.AddConstantBuffer(cBuffer);
 
-	ClearBackBuffer(frameGraph, renderTarget, { sinf(t) * 0.5f + 0.5f, cosf(t * 5.0f) * 0.5f + 0.5f, tanf(t * 10.0f) * 0.5f + 0.5f, 1 });
+	ClearBackBuffer(frameGraph, renderTarget);
 	ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
 
 	auto& sbtUpdate = UpdateSBT(frameGraph, passes);
@@ -183,7 +190,7 @@ UpdateTask* RTExperimentState::Draw(UpdateTask* update, EngineCore& core, Update
 	}
 	else
 	{
-		PathTracePass(frameGraph, cameraUpdate, sbtUpdate, renderTarget);
+		PathTracePass(frameGraph, passes, cameraUpdate, sbtUpdate, renderTarget);
 	}
 
 	return nullptr;
@@ -200,8 +207,8 @@ ForwardPassData& RTExperimentState::ForwardPass(FrameGraph& frameGraph, Resource
 			builder.AddDataDependency(passes);
 
 			return ForwardPassData{
-				.renderTarget = builder.RenderTarget(renderTarget),
-				.depthTarget = builder.DepthTarget(depthBuffer.Get()),
+				.renderTarget	= builder.RenderTarget(renderTarget),
+				.depthTarget	= builder.DepthTarget(depthBuffer.Get()),
 			};
 		},
 		[=, this, &passes](const ForwardPassData& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
@@ -227,7 +234,9 @@ ForwardPassData& RTExperimentState::ForwardPass(FrameGraph& frameGraph, Resource
 			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthTarget));
 			ctx.SetGraphicsConstantBufferView(0, cameraCB);
 
-			for (auto& brushDraw : passes.GetData().GetPass(RTPass))
+			auto brushes = passes.GetData().GetPass(RTPass);
+
+			for (auto& brushDraw : brushes)
 			{
 				ctx.SetGraphicsConstantValue(0, 1, &constants0);
 
@@ -248,14 +257,117 @@ ForwardPassData& RTExperimentState::ForwardPass(FrameGraph& frameGraph, Resource
 
 UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPassesTask& passes)
 {
+
+#if 0
+	struct SharedPassData
+	{
+	    
+	};
+
+
+	DataDrivenMultiPassDescription<SharedPassData, GatherPassesTask&, BrushEntry> passDescription
+	{
+		.sharedData = SharedPassData{},
+		.getPVS	= [](auto& source) -> std::span<BrushEntry>
+		{
+			return {};
+		},
+
+		.getPasses =[] (iAllocator&)->Vector<BrushEntry>
+		{
+			return {};
+		}
+	};
+
+	frameGraph.AddDataDrivenMultiPass(
+		passDescription,
+		[](auto& builder, SharedPassData& shared)
+	    {
+	    
+	    },[](auto& begin, auto& end, auto& pvs, IDirectContext& ctx, iAllocator& local) {});
+
+#endif
+
+	struct TracableScene
+	{
+		Scene* scene = nullptr;
+		const ResourceAllocation* resourceAllocation = nullptr;
+	};
+
+	PassDrivenResourceAllocation allocation
+	{
+		.getPass =
+			[&]() -> std::span<const BrushEntry>
+			{
+				return passes.GetData().GetPass(PassHandle{ RTPass });
+			},
+		.initializeResources =
+			[&](std::span<const BrushEntry> objects, std::span<FrameResourceHandle> frameHandles, auto& resourceCtx, iAllocator& allocator)
+			{
+				ProfileFunction();
+
+				SceneVisibilityComponent& sceneVis = SceneVisibilityComponent::GetComponent();
+				Vector<TriMeshHandle> handles{ &allocator };
+
+				for (auto& mesh : scene.sceneEntities)
+				{
+					auto meshes = GetTriMesh(*sceneVis[mesh].entity);
+
+					for (auto& mesh : meshes)
+						handles.push_back(mesh);
+				}
+
+				std::ranges::sort(handles.begin(), handles.end());
+				auto uniqueEnd = std::ranges::unique(handles.begin(), handles.end());
+
+				handles.erase(uniqueEnd.begin(), uniqueEnd.end());
+
+				auto range = std::ranges::remove_if(
+					handles,
+					[](TriMeshHandle& mesh)
+					{
+						auto meshResource = GetMeshResource(mesh);
+
+						auto& lod = meshResource->GetLowestLoadedLod();
+
+						return (lod.blAS != -1);
+					});
+
+				handles.erase(range.begin(), range.end());
+
+				for (auto [meshHandle, frameHandle] : zip(handles, frameHandles))
+				{
+					auto	meshResource = GetMeshResource(meshHandle);
+					auto& lod = meshResource->GetLowestLoadedLod();
+
+					resourceCtx.BuildBLAS(frameHandle, lod);
+				}
+			},
+		.layout		= DeviceLayout::Unknown,
+		.access		= DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
+		.max		= 16,
+		.pool		= &gpuAllocator,
+		.dependency = &passes,
+	};
+
+
+
+	const auto& allocationRes = frameGraph.AllocateResourceSet(allocation);
+	auto& traceableScene = GetAllocator().allocate<TracableScene>();
+
+	traceableScene.resourceAllocation = &allocationRes;
+	traceableScene.scene = &scene;
+
 	auto& sbtUpdate = frameGraph.AddNode2(
 		[&](FrameGraphNodeBuilder& builder) -> UpdateSBTData
 		{
 			builder.Requires(GetTypeGUID(Trangle));
 			builder.AddDataDependency(passes);
+			builder.AddNodeDependency(traceableScene.resourceAllocation->node);
 
 			return UpdateSBTData{
-				.sbtBuffer = builder.CopyDest(persistent.resource)
+				.node		= builder.GetNodeHandle(),
+				.sbtBuffer	= builder.CopyDest(persistent.resource),
 			};
 		},
 		[=, &passes, this](const UpdateSBTData& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
@@ -270,79 +382,197 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 					struct
 					{
 						uint8_t programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-						uint8_t rgba;
+						float4 rgba = { 218.0f/256.0f, 110.0f / 256.0f, 214.0f / 256.0f, 1 };
 					} missGeneratorRecord;
 
-					struct
-					{
-						uint8_t programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-					} hitGroups[1] = {
-
-					};
-
 					auto rayGeneratorUpload = ctx.ReserveDirectUploadSpace(64, sizeof(rayGeneratorRecord));
-					auto missShaderUpload = ctx.ReserveDirectUploadSpace(64, sizeof(missGeneratorRecord));
-					auto hitGroupsUpload = ctx.ReserveDirectUploadSpace(64, sizeof(hitGroups));
+					auto missShaderUpload	= ctx.ReserveDirectUploadSpace(64, sizeof(missGeneratorRecord));
 
 					memcpy(rayGeneratorRecord.programID, (void*)raygenID.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 					memcpy(missGeneratorRecord.programID, (void*)missID.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-					memcpy(hitGroups[0].programID, (void*)defaultGroup1.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 					memcpy(rayGeneratorUpload.buffer, &rayGeneratorRecord, sizeof(rayGeneratorRecord));
 					memcpy(missShaderUpload.buffer, &missGeneratorRecord, sizeof(missGeneratorRecord));
-					memcpy(hitGroupsUpload.buffer, &hitGroups, sizeof(hitGroups));
 
-					ctx.CopyBuffer(rayGeneratorUpload,	rayGenerator.resource,	rayGenerator.offset);
-					ctx.CopyBuffer(missShaderUpload,	missTable.resource,		missTable.offset);
-					ctx.CopyBuffer(hitGroupsUpload,		hitTable.resource,		hitTable.offset);
+					ctx.CopyBuffer(rayGeneratorUpload, rayGenerator.resource, rayGenerator.offset);
+					ctx.CopyBuffer(missShaderUpload, missTable.resource, missTable.offset);
 
 					return true;
 				}();
 
+
 			auto rtPass = passes.GetData().GetPass(RTPass);
 
-			for (auto& brush : rtPass)
+			struct alignas(64) HitGroupData
 			{
+				uint8_t programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
+				uint8_t test[5] = { 3, 0, 0, 3, 5 };
+			};
 
+			Vector<HitGroupData>	hitGroupData{ threadLocalAllocator };
+			Vector<uint32_t>		destination{ threadLocalAllocator };
+
+			auto res = scene.Query(threadLocalAllocator, MaterialPassQuery{ RTPass }, BrushReq{}, GameObjectReq{});
+			for (auto obj : res)
+			{
+				auto&& [materialView, brushView, gameObject] = obj;
+
+				const auto brushID = brushView->brushID;
+
+				if (auto res = sbt.objectMappings.find(brushID); res != nullptr)
+				{
+					// Check for stale information
+				}
+				else
+				{
+					// insert into binding table
+					const uint32_t idx = (sbt.freeList.size()) ? sbt.freeList.pop_back() : sbt.GetIdx();
+					destination.push_back(idx);
+
+					HitGroupData data;
+					memset(data.programID, 0, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+					memcpy(data.programID, (void*)defaultGroup1.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+					hitGroupData.push_back(data);
+
+					sbt.objectMappings.insert(brushID, HitGroupAllocation{ .idx = idx });
+				}
 			}
+
+			if (hitGroupData.empty())
+				return;
+
+			auto hitGroupsUpload = ctx.ReserveDirectUploadSpace(hitGroupData.ByteSize(), 64);
+			const uint32_t stride = sizeof(HitGroupData);
+
+			memcpy(
+				hitGroupsUpload.buffer,
+				hitGroupData.data(), hitGroupData.ByteSize());
+
+			for (auto [idx, src, destination] : zip(iota(0), hitGroupData, destination))
+			{
+				auto size = sizeof(HitGroupData);
+	            ctx.CopyBufferRegion(
+					hitTable.resource,
+					hitGroupsUpload.resource,
+					size,
+					hitTable.offset + stride * destination,
+					hitGroupsUpload.offset + stride * destination);
+			}
+
+			auto& dxCtx = static_cast<dx_Internal::dxDirectContext&>(ctx);
+			
+			static const auto buildHLAS = [&]() -> bool
+				{
+					Vector<D3D12_RAYTRACING_INSTANCE_DESC> instances(threadLocalAllocator);
+					for (auto obj : enumerate(res))
+					{
+						auto&& [idx, data] = obj;
+						auto&& [materialView, brushView, gameObject] = data;
+
+						auto mesh = brushView->meshes.front();
+						auto blas = GetMeshResource(mesh)->GetHighestLoadedLod().blAS;
+
+						D3D12_RAYTRACING_INSTANCE_DESC instance{
+							.Transform = {
+								{1, 0, 0, 0},
+								{0, 1, 0, 0},
+								{0, 0, 1, 0} },
+							.InstanceID = (UINT)idx,
+							.InstanceMask = 0xffffffff,
+							.InstanceContributionToHitGroupIndex = 0,
+							.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
+							.AccelerationStructure = resources.GetDevicePointer(blas),
+						};
+
+						instances.push_back(instance);
+					};
+
+					auto upload = dxCtx.ReserveDirectUploadSpace(instances.ByteSize());
+					memcpy(upload.buffer, instances.data(), instances.ByteSize());
+
+					dxCtx.CopyBufferRegion(persistent.resource, upload.resource, instances.ByteSize(), sceneInstances.offset, upload.offset);
+
+					return true;
+				}();
+			
 		});
 
 	return sbtUpdate;
 }
 
 
-TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, ResourceHandle renderTarget)
+TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPassesTask& passes, CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, ResourceHandle renderTarget)
 {
+	struct UpdateTLAS
+	{
+		FrameGraphNodeHandle	nodeHandle;
+		FrameResourceHandle		tlas;
+		FrameResourceHandle		scratchPad;
+	};
+
+	UpdateTLAS& updateTLAS = frameGraph.AddNode2(
+		[&](FrameGraphNodeBuilder& builder) -> UpdateTLAS
+		{
+			builder.AddNodeDependency(sbtUpdate.node),
+			builder.AddDataDependency(cameraUpdate);
+
+			return {
+				.nodeHandle = builder.GetNodeHandle(),
+			    .tlas = builder.AcquireVirtualResource(GPUResourceDesc::RayTracingStructure(64 * KILOBYTE), DeviceAccessState::DASACCELERATIONSTRUCTURE_WRITE, VirtualResourceScope::Frame),
+				.scratchPad = builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(64 * KILOBYTE), DeviceAccessState::DASUAV, VirtualResourceScope::Frame),
+			};
+		},
+		[=, this, &passes](const UpdateTLAS& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
+		{
+			D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{
+						.DestAccelerationStructureData = resources.GetDevicePointer(data.tlas),
+						.Inputs{
+							.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+							.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
+							.NumDescs = (UINT)passes.GetData().GetPass(RTPass).size(),
+							.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
+							.InstanceDescs = sceneInstances
+						},
+						.ScratchAccelerationStructureData = resources.GetDevicePointer(data.scratchPad),
+			};
+
+			auto& dxCtx = static_cast<dx_Internal::dxDirectContext&>(ctx);
+			dxCtx.FlushBarriers();
+			dxCtx.DeviceContext->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
+		});
+
 	auto& tracePass = frameGraph.AddNode2(
 		[&](FrameGraphNodeBuilder& builder) -> TracePassData
 		{
 			builder.Requires(GetTypeGUID(Trangle));
 			builder.AddDataDependency(cameraUpdate);
+			builder.AddNodeDependency(updateTLAS.nodeHandle);
 
 			return TracePassData{
 				.sbtBuffer = builder.ReadTransition(
 								sbtUpdate.sbtBuffer, DeviceAccessState::DASNonPixelShaderResource,
 								{ DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_Raytracing }),
-
+				.tlas = builder.ReadTransition(updateTLAS.tlas, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ, {DeviceSyncPoint::Sync_BuildRaytracingAccelerationStructure, DeviceSyncPoint::Sync_Raytracing}),
 				.traceBuffer = builder.AcquireVirtualResource(
 								GPUResourceDesc::UAVTexture(
 								{ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT, false),	DeviceAccessState::DASUAV),
 
-				.renderTarget = builder.RenderTarget(renderTarget),
+				.renderTarget = builder.CopyDest(renderTarget),
 
 #if 0
-						.renderTarget = builder.WriteTransition(
-										drawPass.renderTarget,
-										DeviceAccessState::DASCopyDest,
-										{ DeviceSyncPoint::Sync_Draw, DeviceSyncPoint::Sync_Copy }),
+				.renderTarget = builder.WriteTransition(
+								drawPass.renderTarget,
+								DeviceAccessState::DASCopyDest,
+								{ DeviceSyncPoint::Sync_Draw, DeviceSyncPoint::Sync_Copy }),
 #endif
 			};
 		},
 		[=, this](const TracePassData& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& threadLocalAllocator)
 		{
-			auto& set0Layout = globalInterface->GetDescriptorSetLayout(0);
-			DescriptorSet set(ctx, set0Layout, threadLocalAllocator);
+			auto* set0Layout = &globalInterface->GetDescriptorSetLayout(0);
+			DescriptorSet set(ctx, *set0Layout, threadLocalAllocator);
 			set.SetUAVTexture(ctx, 0, resources.GetResource(data.traceBuffer));
-			set.NullFill(ctx);
+			set.SetStructuredResource(ctx, 1, resources.GetResource(data.tlas));
 			ctx.SetRTStateObject(library->FindShaderFunction("raygen_main"), library);
 
 			// Update SBT
@@ -353,11 +583,11 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, CameraUp
 			};
 			rayDesc.HitGroupTable =
 				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
-					hitTable.devicePtr, 32, 32,
+					hitTable.devicePtr, 64 * sbt.count, 64,
 			};
 			rayDesc.MissShaderTable =
 				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
-					missTable.devicePtr, 32, 32,
+					missTable.devicePtr, 64, 64,
 			};
 
 			rayDesc.Width = 800;
@@ -402,4 +632,5 @@ void RTExperimentState::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
 	renderWindow->Present();
 	depthBuffer.Increment();
 	core.RenderSystem->ResetVertexBuffer(vBuffer);
+	core.RenderSystem->ResetConstantBuffer(cBuffer);
 }
