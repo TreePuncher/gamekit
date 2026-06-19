@@ -554,7 +554,7 @@ namespace FlexKit
 					break;
 				}
 
-				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout::ShaderResource);
+				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout::SRV);
 			}
 		};
 

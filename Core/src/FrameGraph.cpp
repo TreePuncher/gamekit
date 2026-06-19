@@ -1994,15 +1994,17 @@ namespace FlexKit
 			},
 			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
-				DescriptorSet descHeap;
+				auto pipelineState		= resources.GetPipelineState(Data.PSO, allocator);
+				auto pipelineInterface	= pipelineState->GetInterface();
+
+			    DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
+					pipelineInterface->GetDescriptorSetLayout(0),
 					allocator);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
-				ctx.SetPipelineState(resources.GetPipelineState(Data.PSO, allocator));
+				ctx.SetPipelineState(pipelineState);
 				ctx.SetVertexBuffers({ Data.vertexBuffer });
 
 				ctx.SetRenderTargets(
@@ -2144,16 +2146,17 @@ namespace FlexKit
 			},
 			[](auto& Data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
+				auto pipelineState		= resources.GetPipelineState(DRAW_LINE3D_PSO, allocator);
+				auto pipelineInterface	= pipelineState->GetInterface();
+
 				DescriptorSet descHeap;
 				descHeap.Init(
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
+					pipelineInterface->GetDescriptorSetLayout(0),
 					allocator);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
-				ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO, allocator));
-
+				ctx.SetPipelineState(pipelineState);
 				ctx.SetScissorAndViewports({ resources.GetResource(Data.RenderTarget) });
 				ctx.SetRenderTargets(
 					{	resources.GetResource(Data.RenderTarget) }, false,

@@ -27,11 +27,11 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT);
 
 	DescriptorSetLayout layout{ GetTempAllocator() };
-	layout.SetParameterAsUAV(0, 0, 1, 0);
-	layout.SetParameterAsSRV(1, 1, 1, 0);
+	layout.AddUAVs(1);
+	layout.AddSRVs(1);
 
 	PipelineInterfaceBuilder builder{ GetTempAllocator() };
-	builder.SetParameterAsUINT(0, 16, 0, 0);
+	builder.SetParameterAsUINT(0, 20);
 	builder.SetParameterAsDescriptorSet(1, layout);
 
 	globalInterface = builder.Build(GetAllocator());
@@ -597,6 +597,9 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			rayDesc.Height	= 600;
 			rayDesc.Depth	= 1;
 
+			auto constants = GetCameraConstants(activeCamera);
+			float3 pos = constants.WPOS;
+
 			ctx.DiscardResource(resources.GetResource(data.traceBuffer));
 			ctx.ClearUAVTextureFloat(resources.GetResource(data.traceBuffer));
 			ctx.AddUAVBarrier(
@@ -605,8 +608,20 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 				DeviceSyncPoint::Sync_ClearUAV, DeviceSyncPoint::Sync_Raytracing);
 
 			auto& dxCtx = static_cast<dx_Internal::dxDirectContext&>(ctx);
+
+			struct 
+			{
+				float4x4_GPU	PVI;
+				float			cameraPOS[3];
+			} viewportPoints
+		    {
+				.PVI		= constants.PVI,
+				.cameraPOS	= { pos.x, pos.y, pos.z },
+		    };
+
 			dxCtx.FlushBarriers();
 			dxCtx.SetComputeRootSignature(globalInterface);
+			dxCtx.SetComputeConstantValue(0, 20, &viewportPoints);
 			dxCtx.SetComputeDescriptorSet(0, set);
 			
 		    dxCtx.DeviceContext->DispatchRays(&rayDesc);

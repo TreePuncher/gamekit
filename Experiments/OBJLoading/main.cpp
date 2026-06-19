@@ -177,7 +177,7 @@ struct TestState : FrameworkState
 		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
 #endif
 
-		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::ShaderResource({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
+		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::SRV({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
 
 		//FlexKit::AddAssetFile("assets\\shaderpack.gameres");
 

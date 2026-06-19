@@ -593,13 +593,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages)
+	bool RootSignatureBuilder::SetParameterAsUINT(size_t Index, uint32_t size, PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type							= RootSignatureEntryType::UINT;
 		Desc.UINTConstant.size              = size;
-		Desc.UINTConstant.Register		    = cbRegister;
-		Desc.UINTConstant.RegisterSpace     = registerSpace;
+		Desc.UINTConstant.Register		    = Index;
+		Desc.UINTConstant.RegisterSpace     = 0xffffff00;
 		Desc.UINTConstant.Accessibility	    = AccessableStages;
 
 		if (RootEntries.size() <= Index)
@@ -619,8 +619,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-    bool RootSignatureBuilder::SetParameterAsDescriptorSet(
-		size_t index, const DescriptorSetLayout& layout, size_t unused, PIPELINE accessableStages)
+    bool RootSignatureBuilder::SetParameterAsDescriptorSet(size_t index, const DescriptorSetLayout& layout, PIPELINE accessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type							= RootSignatureEntryType::DescriptorHeap;
@@ -645,14 +644,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RootSignatureBuilder::SetParameterAsCBV(
-		size_t Index, size_t Register, size_t RegisterSpace, 
-		PIPELINE AccessableStages)
+	bool RootSignatureBuilder::SetParameterAsCBV(size_t Index, PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::ConstantBuffer;
-		Desc.Direct.Register		= (uint32_t)Register;
-		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Register		= Index;
+		Desc.Direct.RegisterSpace	= 0xffffff00;
 		Desc.Direct.Accessibility	= AccessableStages;
 
 
@@ -673,14 +670,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	bool RootSignatureBuilder::SetParameterAsUAV(
-		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE AccessableStages)
+	bool RootSignatureBuilder::SetParameterAsUAV(size_t Index, PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::UnorderedAccess;
-		Desc.Direct.Register		= (uint32_t)Register;
-		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Register		= Index;
+		Desc.Direct.RegisterSpace	= 0xffffff00;
 		Desc.Direct.Accessibility	= AccessableStages;
 
 
@@ -702,13 +697,12 @@ namespace dx_Internal
 
 
 	bool RootSignatureBuilder::SetParameterAsSRV(
-		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE AccessableStages)
+		size_t Index, PIPELINE AccessableStages)
 	{
 		RootEntry Desc;
 		Desc.Type					= RootSignatureEntryType::StructuredBuffer;
-		Desc.Direct.Register		= (uint32_t)Register;
-		Desc.Direct.RegisterSpace	= (uint32_t)RegisterSpace;
+		Desc.Direct.Register		= (uint32_t)Index;
+		Desc.Direct.RegisterSpace	= (uint32_t)0xffffff00;
 		Desc.Direct.Accessibility	= AccessableStages;
 
 		if (RootEntries.size() <= Index)
@@ -803,27 +797,27 @@ namespace dx_Internal
 							{
 							case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
 							{
-								layout.SetParameterAsSRV(
-									idx, 
-									range.BaseShaderRegister, 
-									range.NumDescriptors,
-									range.RegisterSpace);
+								layout.entries.push_back(HeapDescriptor{
+										.registerIdx	= range.BaseShaderRegister,
+										.count			= range.NumDescriptors,
+										.type			= DescHeapEntryType::SRV,
+								    });
 							}	break;
 							case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
 							{
-								layout.SetParameterAsUAV(
-									idx, 
-									range.BaseShaderRegister, 
-									range.NumDescriptors,
-									range.RegisterSpace);
+								layout.entries.push_back(HeapDescriptor{
+								        .registerIdx	= range.BaseShaderRegister,
+								        .count			= range.NumDescriptors,
+								        .type			= DescHeapEntryType::UAV,
+									});
 							}	break;
 							case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
 							{
-								layout.SetParameterAsCBV(
-									idx, 
-									range.BaseShaderRegister, 
-									range.NumDescriptors,
-									range.RegisterSpace);
+								layout.entries.push_back(HeapDescriptor{
+										.registerIdx	= range.BaseShaderRegister,
+										.count			= range.NumDescriptors,
+										.type			= DescHeapEntryType::CBV,
+									});
 							}	break;
 							case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
 							{
@@ -839,22 +833,22 @@ namespace dx_Internal
 					case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
 					{
 						auto& parameter = desc->pParameters[itr].Constants;
-						SetParameterAsUINT(itr, parameter.Num32BitValues, parameter.ShaderRegister, parameter.RegisterSpace, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+						SetParameterAsUINT(itr, parameter.Num32BitValues, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 					}	break;
 					case D3D12_ROOT_PARAMETER_TYPE_CBV:
 					{
 						auto& parameter = desc->pParameters[itr].Descriptor;
-						SetParameterAsCBV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+						SetParameterAsCBV(itr, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 					}	break;
 					case D3D12_ROOT_PARAMETER_TYPE_SRV:
 					{
 						auto& parameter = desc->pParameters[itr].Descriptor;
-						SetParameterAsSRV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+						SetParameterAsSRV(itr, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 					}	break;
 					case D3D12_ROOT_PARAMETER_TYPE_UAV:
 					{
 						auto& parameter = desc->pParameters[itr].Descriptor;
-						SetParameterAsUAV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+						SetParameterAsUAV(itr, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
 					}	break;
 				}
 			}
@@ -919,27 +913,27 @@ namespace dx_Internal
 						{
 						case D3D12_DESCRIPTOR_RANGE_TYPE_SRV:
 						{
-							layout.SetParameterAsSRV(
-								idx, 
-								range.BaseShaderRegister, 
-								range.NumDescriptors,
-								range.RegisterSpace);
+							layout.entries.push_back(HeapDescriptor{
+									.registerIdx	= range.BaseShaderRegister,
+									.count			= range.NumDescriptors,
+									.type			= DescHeapEntryType::SRV,
+								});
 						}	break;
 						case D3D12_DESCRIPTOR_RANGE_TYPE_UAV:
 						{
-							layout.SetParameterAsUAV(
-								idx, 
-								range.BaseShaderRegister, 
-								range.NumDescriptors,
-								range.RegisterSpace);
+							layout.entries.push_back(HeapDescriptor{
+									.registerIdx	= range.BaseShaderRegister,
+									.count			= range.NumDescriptors,
+									.type			= DescHeapEntryType::UAV,
+								});
 						}	break;
 						case D3D12_DESCRIPTOR_RANGE_TYPE_CBV:
 						{
-							layout.SetParameterAsCBV(
-								idx, 
-								range.BaseShaderRegister, 
-								range.NumDescriptors,
-								range.RegisterSpace);
+							layout.entries.push_back(HeapDescriptor{
+								.registerIdx	= range.BaseShaderRegister,
+								.count			= range.NumDescriptors,
+								.type			= DescHeapEntryType::CBV,
+								});
 						}	break;
 						case D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER: 
 						{
@@ -953,22 +947,44 @@ namespace dx_Internal
 				case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
 				{
 					auto& parameter = desc->pParameters[itr].Constants;
-					SetParameterAsUINT(itr, parameter.Num32BitValues, parameter.ShaderRegister, parameter.RegisterSpace, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+
+					RootEntry Desc;
+					Desc.Type = RootSignatureEntryType::UINT;
+					Desc.UINTConstant.size			= parameter.Num32BitValues;
+					Desc.UINTConstant.Register		= parameter.ShaderRegister;
+					Desc.UINTConstant.RegisterSpace = parameter.RegisterSpace;
+					Desc.UINTConstant.Accessibility = ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility);
+					RootEntries.push_back(Desc);
 				}	break;
 				case D3D12_ROOT_PARAMETER_TYPE_CBV:
 				{
 					auto& parameter = desc->pParameters[itr].Descriptor;
-					SetParameterAsCBV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					RootEntry Desc;
+					Desc.Type					= RootSignatureEntryType::ConstantBuffer;
+					Desc.Direct.Register		= parameter.ShaderRegister;
+					Desc.Direct.RegisterSpace	= parameter.RegisterSpace;
+					Desc.Direct.Accessibility	= ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility);
+					RootEntries.push_back(Desc);
 				}	break;
 				case D3D12_ROOT_PARAMETER_TYPE_SRV:
 				{
 					auto& parameter = desc->pParameters[itr].Descriptor;
-					SetParameterAsSRV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					RootEntry Desc;
+					Desc.Type					= RootSignatureEntryType::StructuredBuffer;
+					Desc.Direct.Register		= parameter.ShaderRegister;
+					Desc.Direct.RegisterSpace	= parameter.RegisterSpace;
+					Desc.Direct.Accessibility	= ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility);
+					RootEntries.push_back(Desc);
 				}	break;
 				case D3D12_ROOT_PARAMETER_TYPE_UAV:
 				{
 					auto& parameter = desc->pParameters[itr].Descriptor;
-					SetParameterAsUAV(itr, parameter.ShaderRegister, parameter.ShaderRegister, ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility));
+					RootEntry Desc;
+					Desc.Type					= RootSignatureEntryType::UnorderedAccess;
+					Desc.Direct.Register		= parameter.ShaderRegister;
+					Desc.Direct.RegisterSpace	= parameter.RegisterSpace;
+					Desc.Direct.Accessibility	= ShaderVis2PipelineDest(desc->pParameters[itr].ShaderVisibility);
+					RootEntries.push_back(Desc);
 				}	break;
 			}
 		}
@@ -1048,106 +1064,11 @@ namespace dx_Internal
 			CD3DX12_STATIC_SAMPLER_DESC{2, D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT},
 		};
 
-		{
-			builder.AllowIA = true;
-			DescriptorSetLayout DescriptorHeap;
-			DescriptorHeap.SetParameterAsSRV(0, 0, 6);
-			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
-			FK_ASSERT(DescriptorHeap.Check());
+		builder.SetParameterAsUINT(0, 6, PIPELINE_DEST_CS);
+		builder.SetParameterAsUAV(1, PIPELINE_DEST_CS);
+		ClearBuffer = (RootSignature*)builder.Build(temp);
 
-			builder.SetParameterAsDescriptorSet(0, DescriptorHeap, -1);
-			builder.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV(5, 4, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV(6, 5, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsSRV(7, 7, 0, PIPELINE_DEST_VS);
-			RS6CBVs4SRVs = (RootSignature*)builder.Build(temp);
-			SETDEBUGNAME(*RS6CBVs4SRVs, "RS4CBVs4SRVs");
-		}
-		{
-			builder.AllowIA	= true;
-			builder.AllowSO	= true;
-			DescriptorSetLayout DescriptorHeap;
-			DescriptorHeap.SetParameterAsSRV(0, 0, 8);
-
-			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE_DEST_ALL);
-			builder.SetParameterAsDescriptorSet		(3, DescriptorHeap, -1);
-			builder.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
-			RS4CBVs_SO = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*RS4CBVs_SO, "RS4CBVs_SO");
-		}
-		{
-			builder.AllowIA = true;
-			DescriptorSetLayout DescriptorHeap;
-			DescriptorHeap.SetParameterAsUAV	(0, 0, 4);
-			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
-			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
-			FK_ASSERT(DescriptorHeap.Check());
-
-			builder.SetParameterAsDescriptorSet(0, DescriptorHeap, -1);
-			builder.SetParameterAsCBV(1, 0, 3, PIPELINE::PIPELINE_DEST_ALL);
-			RS2UAVs4SRVs4CBs = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
-		}
-		{
-			DescriptorSetLayout DescriptorHeap;
-			DescriptorHeap.SetParameterAsSRV		(0, 0, 8);
-			DescriptorHeap.SetParameterAsUAV	(1, 0, 1);
-			DescriptorHeap.SetParameterAsCBV		(2, 0, 2);
-			FK_ASSERT(DescriptorHeap.Check());
-
-			builder.AllowIA = false;
-			builder.SetParameterAsDescriptorSet(0, DescriptorHeap, -1);
-			ShadingRTSig = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*ShadingRTSig, "ShadingRTSig");
-		}
-		{
-
-			DescriptorSetLayout DescriptorHeapSRV;
-			DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1, 0);
-			FK_ASSERT(DescriptorHeapSRV.Check());
-
-			DescriptorSetLayout DescriptorHeapUAV;
-			DescriptorHeapUAV.SetParameterAsUAV(0, 0, -1);
-			FK_ASSERT(DescriptorHeapUAV.Check());
-
-			builder.AllowIA = true;
-			builder.SetParameterAsCBV				(0, 0, 0, PIPELINE::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(1, 1, 0, PIPELINE::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(2, 2, 0, PIPELINE::PIPELINE_DEST_ALL);
-			builder.SetParameterAsCBV				(3, 3, 0, PIPELINE::PIPELINE_DEST_ALL);
-			builder.SetParameterAsDescriptorSet		(4, DescriptorHeapSRV, -1, PIPELINE::PIPELINE_DEST_ALL);
-			builder.SetParameterAsDescriptorSet	(	5, DescriptorHeapUAV, -1, PIPELINE::PIPELINE_DEST_ALL);
-			RSDefault = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*RSDefault, "RSDefault");
-		}
-		{
-			builder.AllowIA = false;
-			DescriptorSetLayout DescriptorHeap;
-			DescriptorHeap.SetParameterAsUAV(0, 0, 4, 0);
-			DescriptorHeap.SetParameterAsSRV(1, 0, 4, 0);
-			DescriptorHeap.SetParameterAsCBV(2, 0, 2, 0);
-			FK_ASSERT(DescriptorHeap.Check());
-
-			builder.SetParameterAsDescriptorSet(0, DescriptorHeap, -1, PIPELINE_DEST_CS);
-			ComputeSignature = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*ComputeSignature, "ComputeSignature");
-
-			builder.SetParameterAsUINT(0, 6, 0, 0, PIPELINE_DEST_CS);
-			builder.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_CS);
-			ClearBuffer = (RootSignature*)builder.Build(temp);
-
-			SETDEBUGNAME(*ClearBuffer, "ClearBuffer");
-		}
+		SETDEBUGNAME(*ClearBuffer, "ClearBuffer");
 	}
 
 
@@ -1398,22 +1319,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes CreateClearBufferPSO(IRenderSystem& irs, iAllocator&)
+	LoadPipelineStateRes CreateClearBufferPSO(IRenderSystem& irs, iAllocator& allocator)
 	{
 		auto& RS = static_cast<dxRenderSystem&>(irs);
-		Shader computeShader = RS.LoadShader("Clear", "cs_6_0", R"(assets\shaders\ClearBuffer.hlsl)");
+		PipelineBuilder builder{irs, allocator};
+		builder.AddComputeShader("Clear", R"(assets\shaders\ClearBuffer.hlsl)");
 
-		D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
-			RS.Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>(),
-			Shader2ByteCode(computeShader)
-		};
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS.pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
-
-		FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
-
-		return { PSO, RS.Library(ROOTLIBRARYSIG::ClearBuffer) };
+        return  builder.Build(irs, allocator);
 	}
 
 
@@ -6233,35 +6145,6 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	const IPipelineInterface* dxRenderSystem::Library(ROOTLIBRARYSIG ID) const noexcept
-	{
-		switch (ID)
-		{
-		case ROOTLIBRARYSIG::RS2UAVs4SRVs4CBs:
-			return rootLibrary.RS2UAVs4SRVs4CBs;
-		case ROOTLIBRARYSIG::RS6CBVs4SRVs:
-			return rootLibrary.RS6CBVs4SRVs;
-		case ROOTLIBRARYSIG::RS4CBVs_SO:
-			return rootLibrary.RS4CBVs_SO;
-		case ROOTLIBRARYSIG::ShadingRTSig:
-			return rootLibrary.ShadingRTSig;
-		case ROOTLIBRARYSIG::RSDefault:
-			return rootLibrary.RSDefault;
-		case ROOTLIBRARYSIG::ComputeSignature:
-			return rootLibrary.ComputeSignature;
-		case ROOTLIBRARYSIG::ClearBuffer:
-			return rootLibrary.ClearBuffer;
-		default:
-			FK_ASSERT(0, "Invalid ROOTLIBRARYSIG ID passed to dxRenderSystem::Library(ROOTLIBRARYSIG)");
-		}
-
-		std::unreachable();
-	}
-
-
-	/************************************************************************************************/
-
-
 	RootSignature* dxRenderSystem::_CreateRootSignature(ID3D12RootSignature* rootSig, RootSignatureBuilder& builder)
 	{
 		{
@@ -6324,6 +6207,7 @@ namespace dx_Internal
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE1, 16>, 16> desciptorHeaps{ temp };
 		Vector<RootSignature::SlotType, 32>		slots{ allocator };
 		static_vector<CD3DX12_ROOT_PARAMETER1>	parameters;
+		uint32_t heapIdx = 0;
 
 		for (const auto& I : builder.RootEntries)
 		{
@@ -6354,10 +6238,10 @@ namespace dx_Internal
 					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
 					switch (H.type)
 					{
-					case DescHeapEntryType::ConstantBuffer:
+					case DescHeapEntryType::CBV:
 						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
 						break;
-					case DescHeapEntryType::ShaderResource:
+					case DescHeapEntryType::SRV:
 						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 						break;
 					case DescHeapEntryType::UAVBuffer:
@@ -6372,10 +6256,12 @@ namespace dx_Internal
 					CD3DX12_DESCRIPTOR_RANGE1 Range;
 					Range.Init(
 						RangeType,
-						H.count, H.registerIdx, H.space);
+						H.count, H.registerIdx, heapIdx);
 
 					desciptorHeaps.back().push_back(Range);
 				}
+
+				heapIdx++;
 
 				Param.InitAsDescriptorTable(
 					(UINT)desciptorHeaps.back().size(),

@@ -355,13 +355,13 @@ namespace FlexKit
 
 	enum class DescHeapEntryType : uint32_t
 	{
-		ConstantBuffer,
-		ShaderResource,			// DX12
-		ShaderResourceImage,	// VK
-		ShaderResourceBuffer,	// VK
-		UAV,					// DX12
-		UAVBuffer,				// VK
-		UAVImage,				// VK
+		CBV,
+		SRV,			// DX12
+		SRVImage,		// VK
+		SRVBuffer,		// VK
+		UAV,			// DX12
+		UAVBuffer,		// VK
+		UAVImage,		// VK
 		HeapError
 	};
 
@@ -696,19 +696,6 @@ namespace FlexKit
 		MORPHTARGETTANGENT,
 
 		UNKNOWN
-	};
-
-
-	enum class ROOTLIBRARYSIG : uint32_t
-	{
-		RS2UAVs4SRVs4CBs,
-		RS6CBVs4SRVs,
-		RS4CBVs_SO,
-		ShadingRTSig,
-		RSDefault,
-		ComputeSignature,
-		ClearBuffer,
-		COUNT
 	};
 
 
@@ -2088,7 +2075,6 @@ namespace FlexKit
 	{
 		uint32_t				registerIdx = -1;
 		uint32_t				count	= 0;
-		uint32_t				space	= 0;
 		DescHeapEntryType		type	= DescHeapEntryType::HeapError;
 	};
 
@@ -2112,72 +2098,55 @@ namespace FlexKit
 		}
 
 
-		bool SetParameterAsCBV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
+		bool AddCBVs(uint32_t registerCount)
 		{
 			HeapDescriptor Desc;
-			Desc.registerIdx	= BaseRegister;
-			Desc.space			= RegisterSpace;
-			Desc.type			= DescHeapEntryType::ConstantBuffer;
-			Desc.count			= RegisterCount;
+			Desc.registerIdx	= currentBase;
+			Desc.type			= DescHeapEntryType::CBV;
+			Desc.count			= registerCount;
 
-			if (entries.size() <= Index)
-			    entries.resize(Index + 1);
-
-		    entries[Index] = Desc;
+			currentBase += registerCount;
+			entries.push_back(Desc);
 
 			return true;
 		}
 
 
-		bool SetParameterAsSRV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
+		bool AddSRVs(uint32_t registerCount)
 		{
 			HeapDescriptor Desc;
-			Desc.registerIdx	= uint32_t(BaseRegister);
-			Desc.space			= uint32_t(RegisterSpace);
-			Desc.type			= DescHeapEntryType::ShaderResource;
-			Desc.count			= RegisterCount;
+			Desc.registerIdx	= currentBase;
+			Desc.type			= DescHeapEntryType::SRV;
+			Desc.count			= registerCount;
 
-			if (entries.size() <= Index)
-				entries.resize(Index + 1);
-
-			entries[Index] = Desc;
+			currentBase += registerCount;
+			entries.push_back(Desc);
 
 			return true;
 		}
 
-		bool SetParameterAsSRVImage(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
+		bool AddSRVImages(uint32_t registerCount)
 		{
 			HeapDescriptor Desc;
-			Desc.registerIdx	= uint32_t(BaseRegister);
-			Desc.space			= uint32_t(RegisterSpace);
-			Desc.type			= DescHeapEntryType::ShaderResourceImage;
-			Desc.count			= RegisterCount;
+			Desc.registerIdx	= currentBase;
+			Desc.type			= DescHeapEntryType::SRVImage;
 
-			if (entries.size() <= Index)
-				entries.resize(Index + 1);
-
-			entries[Index] = Desc;
+			currentBase += registerCount;
+			entries.push_back(Desc);
 
 			return true;
 		}
 
 
-		bool SetParameterAsUAV(
-			uint32_t Index, uint32_t BaseRegister, uint32_t RegisterCount, uint32_t RegisterSpace = 0)
+		bool AddUAVs(uint32_t registerCount)
 		{
 			HeapDescriptor Desc;
-			Desc.registerIdx	= BaseRegister;
-			Desc.space			= RegisterSpace;
-			Desc.count			= RegisterCount;
+			Desc.registerIdx	= currentBase;
+			Desc.count			= registerCount;
 			Desc.type			= DescHeapEntryType::UAVBuffer;
 
-			if (entries.size() <= Index)
-				entries.resize(Index + 1);
-
-			entries[Index] = Desc;
+			currentBase += registerCount;
+			entries.push_back(Desc);
 
 			return true;
 		}
@@ -2194,16 +2163,16 @@ namespace FlexKit
 		{
 			size_t out = 0;
 			for (auto& e : entries)
-				out += e.count + e.space;
+				out += e.count;
 
 			FK_ASSERT(out);
 
 			return out;
 		}
 
-		static constexpr size_t EntryCount = 4;
-		DeviceHeapLayout_ptr deviceLayout = nullptr;
-		Vector<HeapDescriptor, EntryCount> entries;
+		uint32_t				currentBase		= 0;
+		DeviceHeapLayout_ptr	deviceLayout	= nullptr;
+		Vector<HeapDescriptor, 4> entries;
 	};
 
 
@@ -2287,22 +2256,19 @@ namespace FlexKit
 
 		virtual void Release() = 0;
 
-		virtual bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+		virtual bool SetParameterAsUINT(size_t Index, uint32_t size, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
 
 		virtual bool SetParameterAsDescriptorSet(
-			size_t index, const DescriptorSetLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+			size_t index, const DescriptorSetLayout& layout, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
 
 		virtual bool SetParameterAsCBV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
 
 		virtual bool SetParameterAsUAVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
 
 		virtual bool SetParameterAsSRVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) = 0;
 
 		virtual void Clear() = 0;
 
@@ -2319,22 +2285,19 @@ namespace FlexKit
 
 		void Release();
 
-		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+		bool SetParameterAsUINT(size_t Index, uint32_t size, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsDescriptorSet(
-			size_t index, const DescriptorSetLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t index, const DescriptorSetLayout& layout, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsCBV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsUAVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsSRVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		void Clear();
 
@@ -3042,7 +3005,6 @@ namespace FlexKit
 	    virtual void FlushPendingReadBacks() {}
 
 
-		virtual const IPipelineInterface*	Library(ROOTLIBRARYSIG ID) const noexcept = 0;
 		virtual ResourceHandle				DefaultTexture() const noexcept { return FlexKit::InvalidHandle; }
 
 		// Resettable resources

@@ -879,36 +879,31 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		RootSignatureBuilder(iAllocator* Memory) :
 			Heaps		{ Memory } {}
 
-		bool SetParameterAsUINT(size_t Index, uint32_t size, uint32_t cbRegister, uint32_t registerSpace, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) override;
+		bool SetParameterAsUINT(size_t Index, uint32_t size, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) override;
 
 		bool SetParameterAsDescriptorSet(
-			size_t index, const DescriptorSetLayout& layout, size_t unused = -1, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL) override;
+			size_t index, const DescriptorSetLayout& layout, PIPELINE accessableStages = PIPELINE::PIPELINE_DEST_ALL) override;
 
 		bool SetParameterAsCBV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsUAV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 		bool SetParameterAsSRV(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL);
 
 
 		bool SetParameterAsUAVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) 
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL) 
 		{
-			return SetParameterAsUAV(Index, Register, RegisterSpace, AccessableStages);
+			return SetParameterAsUAV(Index, AccessableStages);
 		}
 
 		bool SetParameterAsSRVBuffer(
-			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL)
+			size_t Index, PIPELINE AccessableStages = PIPELINE::PIPELINE_DEST_ALL)
 		{
-			return SetParameterAsSRV(Index, Register, RegisterSpace, AccessableStages);
+			return SetParameterAsSRV(Index, AccessableStages);
 		}
 
 		void Clear() override;
@@ -938,7 +933,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 				struct
 				{
-					size_t					HeapIdx;
+					size_t		HeapIdx;
 					PIPELINE	Accessibility;
 				}DescriptorHeap;
 
@@ -2085,8 +2080,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual UploadReservation	ReserveDirectUploadSpace(size_t resourceSize, size_t alignment)		noexcept final;
 		virtual UploadReservation	ReserveUploadBuffer(const size_t uploadSize, CopyContextHandle)		noexcept final;
 
-		virtual const IPipelineInterface* Library(ROOTLIBRARYSIG ID) const noexcept final;
-
 		virtual void BackResource(ResourceHandle, const GPUResourceDesc& desc) noexcept final;
 
 		void						SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) final;
@@ -2239,13 +2232,6 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		struct RootSigLibrary
 		{
 			void Initiate(dxRenderSystem* RS, iAllocator& allocator, iAllocator& temp);
-
-			const RootSignature* RS2UAVs4SRVs4CBs	= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
-			const RootSignature* RS6CBVs4SRVs		= nullptr;	// 4CBVs On all Stages, 4 SRV On all Stages
-			const RootSignature* RS4CBVs_SO			= nullptr;	// Stream Out Enabled
-			const RootSignature* ShadingRTSig		= nullptr;	// signature For Compute Based Deferred Shading
-			const RootSignature* RSDefault			= nullptr;	// Default signature for Rasting
-			const RootSignature* ComputeSignature	= nullptr;	//
 			const RootSignature* ClearBuffer		= nullptr;
 		}rootLibrary;
 

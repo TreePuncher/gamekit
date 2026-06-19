@@ -652,7 +652,13 @@ namespace dx_Internal
 		if (CurrentPipelineState == pso->state)
 			return;
 
-		CurrentPipelineState = pso->state;
+		auto nextRootSignature = (RootSignature*)pso->rootSignature;
+		if (nextRootSignature != CurrentRootSignature)
+		{
+			CurrentRootSignature = nextRootSignature;
+			DeviceContext->SetGraphicsRootSignature(CurrentRootSignature->signature);
+		}
+
 		DeviceContext->SetPipelineState(pso->state);
 	}
 
@@ -1332,7 +1338,7 @@ namespace dx_Internal
 		if (!CurrentComputeRootSig())
 			return;
 
-		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::CBV);
+		const uint32_t  idx = CurrentComputeRootSig()->GetIndex(slot, RootSignature::SlotType::UINT);
 		DeviceContext->SetComputeRoot32BitConstants((UINT)idx, (UINT)valueCount, data_ptr, (UINT)offset);
 	}
 
@@ -2127,7 +2133,6 @@ namespace dx_Internal
 		UpdateResourceStates();
 
 		static auto PSO = static_cast<const dxPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->allocator));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRootUnorderedAccessView(1, renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>()->GetGPUVirtualAddress());
@@ -2165,7 +2170,9 @@ namespace dx_Internal
 		uint2 range{ begin / 16, end / 16};
 
 		auto PSO = static_cast<const dxPipelineState*>(renderSystem->GetPSO(CLEARBUFFERPSO, *renderSystem->allocator));
-		DeviceContext->SetComputeRootSignature(renderSystem->Library(ROOTLIBRARYSIG::ClearBuffer)->GetAPIObject().As<ID3D12RootSignature>());
+		auto pipelineinterface = PSO->rootSignature;
+
+		DeviceContext->SetComputeRootSignature(pipelineinterface->GetAPIObject().As<ID3D12RootSignature>());
 		DeviceContext->SetPipelineState(PSO->state);
 		DeviceContext->SetComputeRoot32BitConstants(0, 4, &clearColor, 0);
 		DeviceContext->SetComputeRoot32BitConstants(0, 2, &range, 4);

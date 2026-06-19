@@ -361,6 +361,15 @@ namespace FlexKit
 
 				continue;
 			}
+			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::UAVByteBuffer(id={:[^)]})]])"))
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id] = res->values();
+				handler.UAVByteBuffer(id, ctx);
+
+				continue;
+			}
 
 			shader.erase(res, endres - res);
 		}
@@ -546,6 +555,12 @@ namespace FlexKit
 			ctx.shader.replace(ctx.begin, ctx.end, line);
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
 		}
+
+		static void UAVByteBuffer(std::string_view id, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
 	};
 
 
@@ -573,7 +588,7 @@ namespace FlexKit
 			if (res != rootSignatures.end())
 			{
 				RootSignatureDefinition& definition = *res;
-				uint32_t entrySpace = 0xffffff00 - definition.entries.size();
+				uint32_t entrySpace = 0xfffffeff - definition.entries.size();
 				uint32_t binding	= definition.entries.size();
 
 				while (definition.IsSpaceInUse(binding))
@@ -769,6 +784,27 @@ namespace FlexKit
 		{
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+
+		void UAVByteBuffer(std::string_view id, PreprocessorContext& ctx)
+		{
+			auto& def = rootSignatures.back();
+
+			uint32_t space = 0xffffff00;
+			uint32_t binding = def.entries.size();
+			def.entries.push_back(RootSignatureEntryTypes::UAV);;
+			while (def.IsSpaceInUse(space))
+				space--;
+			def.entrySpace.push_back(space);
+			def.spacesInUse.push_back(space);
+			if (def.sections.size())
+				def.sections += ", ";
+			def.sections += std::format("UAV(u{}, space={})", binding, space);
+
+			auto line = std::format("RWByteAddressBuffer {} : register(u{}, space{});", id, binding, space);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
 		}
 
 

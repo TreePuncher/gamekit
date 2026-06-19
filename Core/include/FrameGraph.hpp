@@ -2923,9 +2923,10 @@ namespace FlexKit
 					{ frameResources.GetResource(data.renderTarget) },
 					false);
 
-				static auto rootSig = frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
-				context.SetRootSignature	(rootSig);
-				context.SetPipelineState	(frameResources.GetPipelineState(data.state, allocator));
+				const IPipelineState*			pipelineState = frameResources.GetPipelineState(data.state, allocator);
+				const IPipelineInterface*		pipelineInterface = pipelineState->GetInterface();
+
+				context.SetPipelineState	(pipelineState);
 				context.SetInputPrimitive	(INPUTPRIMITIVETRIANGLELIST);
 
 				size_t TextureDrawCount = 0;
@@ -2947,7 +2948,7 @@ namespace FlexKit
 							context.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 							DescriptorSet descHeap;
-							auto& desciptorTableLayout = rootSig->GetDescriptorSetLayout(0);
+							const auto& desciptorTableLayout = pipelineInterface->GetDescriptorSetLayout(0);
 
 							descHeap.Init2(context, desciptorTableLayout, 1, allocator);
 							descHeap.NullFill(context, 1);

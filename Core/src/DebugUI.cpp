@@ -343,14 +343,14 @@ namespace FlexKit
 				};
 
 
-				auto constantBuffer	= frameResources.ReserveCB(1024);
-				auto constants		= ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
-				auto rootSig		= frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
+				auto constantBuffer				= frameResources.ReserveCB(1024);
+				auto constants					= ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
+				const auto pipelineState		= frameResources.GetPipelineState(DRAW_imgui, allocator);
+				const auto pipelineInterface    = pipelineState->GetInterface();
 
 				// Setup draw State
 				auto SetupState = [&] {
-					ctx.SetRootSignature(rootSig);
-					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui, allocator));
+					ctx.SetPipelineState(pipelineState);
 					ctx.SetScissorAndViewports({ renderTarget });
 					ctx.SetRenderTargets({ renderTarget }, false);
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
@@ -395,7 +395,7 @@ namespace FlexKit
 						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
 
 						FlexKit::DescriptorSet heap;
-						heap.Init2(ctx, rootSig->GetDescriptorSetLayout(0), 1, allocator);
+						heap.Init2(ctx, pipelineInterface->GetDescriptorSetLayout(0), 1, allocator);
 						heap.SetSRV(ctx, 0, texture);
 
 						ctx.SetGraphicsDescriptorSet(4, heap);

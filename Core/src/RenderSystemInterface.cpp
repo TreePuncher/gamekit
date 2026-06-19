@@ -23,36 +23,33 @@ namespace FlexKit
 		return GetImpl()->Release();
 	}
 
-	bool PipelineInterfaceBuilder::SetParameterAsUINT(size_t index, uint32_t count, uint32_t cbRegister, uint32_t registerSpace, PIPELINE accessableStages)
+	bool PipelineInterfaceBuilder::SetParameterAsUINT(size_t index, uint32_t count, PIPELINE accessableStages)
 	{
-		return GetImpl()->SetParameterAsUINT(index, count, cbRegister, accessableStages);
+		return GetImpl()->SetParameterAsUINT(index, count, accessableStages);
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsDescriptorSet(
-		size_t index, const DescriptorSetLayout& layout, size_t unused, PIPELINE accessableStages)
+		size_t index, const DescriptorSetLayout& layout, PIPELINE accessableStages)
 	{
-		return GetImpl()->SetParameterAsDescriptorSet(index, layout, unused, accessableStages);
+		return GetImpl()->SetParameterAsDescriptorSet(index, layout, accessableStages);
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsCBV(
-		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE AccessableStages)
+		size_t Index, PIPELINE AccessableStages)
 	{
-		return GetImpl()->SetParameterAsCBV(Index, Register, RegisterSpace, AccessableStages);
+		return GetImpl()->SetParameterAsCBV(Index, AccessableStages);
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsUAVBuffer(
-		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE AccessableStages)
+		size_t Index, PIPELINE AccessableStages)
 	{
-		return GetImpl()->SetParameterAsUAVBuffer(Index, Register, RegisterSpace, AccessableStages);
+		return GetImpl()->SetParameterAsUAVBuffer(Index, AccessableStages);
 	}
 
 	bool PipelineInterfaceBuilder::SetParameterAsSRVBuffer(
-		size_t Index, size_t Register, size_t RegisterSpace,
-		PIPELINE AccessableStages)
+		size_t Index, PIPELINE AccessableStages)
 	{
-		return GetImpl()->SetParameterAsSRVBuffer(Index, Register, RegisterSpace, AccessableStages);
+		return GetImpl()->SetParameterAsSRVBuffer(Index, AccessableStages);
 	}
 
 	void PipelineInterfaceBuilder::Clear()

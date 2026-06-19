@@ -485,13 +485,13 @@ namespace VK_internal
 			VkDescriptorType type;
 			switch (entry.type)
 			{
-			case DescHeapEntryType::ConstantBuffer:
+			case DescHeapEntryType::CBV:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				break;
-			case DescHeapEntryType::ShaderResourceBuffer:
+			case DescHeapEntryType::SRVBuffer:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 				break;
-			case DescHeapEntryType::ShaderResourceImage:
+			case DescHeapEntryType::SRVImage:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				break;
 			case DescHeapEntryType::UAVBuffer:

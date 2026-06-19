@@ -1,5 +1,6 @@
+[[fk::BeginRootSignatureDef(id=globalsig)]]
 
-cbuffer LocalConstants : register(b0)
+[[fk::PushConstants(num=6)]] 
 {
 	uint clearValueX;
 	uint clearValueY;
@@ -8,12 +9,12 @@ cbuffer LocalConstants : register(b0)
 
 	uint begin;
 	uint end;
-
 };
 
-RWByteAddressBuffer ClearTarget : register(u0);
+[[fk::UAVByteBuffer(id=ClearTarget)]]
 
 [numthreads(1024, 1, 1)]
+[[fk::RootSignature(id=globalsig)]]
 void Clear(uint3 threadID : SV_DispatchThreadID)
 {
 	if(threadID.x < (end - begin))
