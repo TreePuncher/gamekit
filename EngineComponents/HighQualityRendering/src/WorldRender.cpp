@@ -1252,7 +1252,7 @@ namespace FlexKit
 				descHeap.NullFill(ctx, 20);
 
 				auto& renderSystem          = frameResources.renderSystem();
-				const auto WH               = frameResources.renderSystem().GetTextureWH(renderTarget);
+				const auto WH               = frameResources.renderSystem().GetResourceWH(renderTarget);
 				const auto cameraConstants  = GetCameraConstants(camera);
 
 				struct
@@ -1329,7 +1329,7 @@ namespace FlexKit
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto& renderSystem			= frameResources.renderSystem();
-				const float2 WH				= renderSystem.GetTextureWH(renderTarget);
+				const float2 WH				= renderSystem.GetResourceWH(renderTarget);
 				const auto cameraConstants	= GetCameraConstants(camera);
 
 				struct
@@ -1410,7 +1410,7 @@ namespace FlexKit
 			[=](BilateralBlurPass& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				auto& renderSystem	= resources.renderSystem();
-				const float2 WH		= resources.renderSystem().GetTextureWH(destination);
+				const float2 WH		= resources.renderSystem().GetResourceWH(destination);
 
 				auto constantBuffer = resources.ReserveCB(2048);
 				auto vertexBuffer   = resources.ReserveVB(2048);
@@ -1570,7 +1570,7 @@ namespace FlexKit
 			ToneMap{},
 			[&](FrameGraphNodeBuilder& builder, ToneMap& data)
 			{
-				const auto WH = frameGraph.GetRenderSystem().GetTextureWH(target) / 2;
+				const auto WH = frameGraph.GetRenderSystem().GetResourceWH(target) / 2;
 
 				data.outputTarget   = builder.RenderTarget(target);
 				data.sourceTarget   = builder.NonPixelShaderResource(source);

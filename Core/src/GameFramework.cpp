@@ -450,7 +450,7 @@ namespace FlexKit
 			(uint32_t)stats.objectsDrawnLastFrame,
 			RTFeatureStr);
 		
-		const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
+		const uint2 WH          = core.RenderSystem.GetResourceWH(renderTarget);
 		const float aspectRatio = float(WH[0]) / float(WH[1]);
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();

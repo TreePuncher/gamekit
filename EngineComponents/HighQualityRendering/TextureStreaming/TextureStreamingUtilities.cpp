@@ -1151,7 +1151,7 @@ namespace FlexKit
 		{
 			if (texture != InvalidHandle)
 			{
-				const uint2 WH				= textureStreamEngine.renderSystem.GetTextureWH(texture);
+				const uint2 WH				= textureStreamEngine.renderSystem.GetResourceWH(texture);
 				const uint2 XY				= textureStreamEngine.renderSystem.GetTextureTilingWH(texture, 0);
 				const auto packedBlockInfo	= textureStreamEngine.renderSystem.GetPackedTileInfo(texture);
 				const auto mipCount			= textureStreamEngine.renderSystem.GetTextureMipCount(texture);

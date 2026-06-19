@@ -121,14 +121,14 @@ namespace FlexKit
 
 				switch (object->dimensions)
 				{
-					case TextureDimension::Buffer:
+					case ResourceDimension::Buffer:
 						ctx.AddBufferBarrier(resource, currentAccess, finalAccess, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 						break;
-					case TextureDimension::Texture1D:
-					case TextureDimension::Texture2D:
-					case TextureDimension::Texture3D:
-					case TextureDimension::TextureCubeMap:
-					case TextureDimension::Texture2DArray:
+					case ResourceDimension::Texture1D:
+					case ResourceDimension::Texture2D:
+					case ResourceDimension::Texture3D:
+					case ResourceDimension::TextureCubeMap:
+					case ResourceDimension::Texture2DArray:
 					{
 						ctx.AddTextureBarrier(resource, currentAccess, finalAccess, currentLayout, finalLayout, DeviceSyncPoint::Sync_All, DeviceSyncPoint::Sync_All);
 					}	break;
@@ -699,7 +699,7 @@ namespace FlexKit
 	{
 		FrameObject virtualObject		= FrameObject::VirtualObject(*allocator);
 		virtualObject.shaderResource	= InvalidHandle;
-		virtualObject.dimensions		= TextureDimension::Buffer;
+		virtualObject.dimensions		= ResourceDimension::Buffer;
 		virtualObject.layout			= layout;
 		virtualObject.access			= access;
 		virtualObject.virtualState		= VirtualResourceState::Virtual_Null;
@@ -720,15 +720,15 @@ namespace FlexKit
 	uint32_t	GetNeededFlags(const GPUResourceDesc& desc)
 	{
 		uint32_t NeededFlags = 0;
-		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
-		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
+		NeededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
 
-		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
-		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
-		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
+		NeededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
 		NeededFlags |= (desc.type == ResourceType::RenderTarget) ? DeviceHeapFlags::RenderTarget : 0;
 
 		return NeededFlags;
@@ -837,16 +837,17 @@ namespace FlexKit
 
 		switch (desc.Dimensions)
 		{
-		case TextureDimension::Buffer:
+		case ResourceDimension::AccelerationStructure:
+		case ResourceDimension::Buffer:
 		{
 			barrier.type = BarrierType::Buffer;
 
 		}	break;
-		case TextureDimension::Texture1D:
-		case TextureDimension::Texture2D:
-		case TextureDimension::Texture2DArray:
-		case TextureDimension::Texture3D:
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::Texture1D:
+		case ResourceDimension::Texture2D:
+		case ResourceDimension::Texture2DArray:
+		case ResourceDimension::Texture3D:
+		case ResourceDimension::TextureCubeMap:
 		{
 			barrier.type					= BarrierType::Texture;
 			barrier.texture.layoutBefore	= DeviceLayout::Undefined;
@@ -932,15 +933,15 @@ namespace FlexKit
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(PoolAllocatorInterface& poolAllocator, const GPUResourceDesc& desc, DeviceAccessState access, VirtualResourceScope lifeSpan)
 	{
 		auto neededFlags = 0;
-		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
-		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
-		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
-		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
+		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture1D ? DeviceHeapFlags::RenderTarget : 0;
+		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2D ? DeviceHeapFlags::RenderTarget : 0;
+		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture3D ? DeviceHeapFlags::RenderTarget : 0;
+		neededFlags |= !(desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2DArray ? DeviceHeapFlags::RenderTarget : 0;
 
-		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
-		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
-		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
-		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == TextureDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
+		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Buffer    ? DeviceHeapFlags::UAVBuffer : 0;
+		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture1D ? DeviceHeapFlags::UAVTextures : 0;
+		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture2D ? DeviceHeapFlags::UAVTextures : 0;
+		neededFlags |= (desc.type == ResourceType::UnorderedAccess) && desc.Dimensions == ResourceDimension::Texture3D ? DeviceHeapFlags::UAVTextures : 0;
 		neededFlags |= (desc.type == ResourceType::RenderTarget) ? DeviceHeapFlags::RenderTarget : 0;
 
 		if (!((poolAllocator.Flags() & neededFlags) == neededFlags))

@@ -306,7 +306,7 @@ namespace FlexKit
 		ImGuiIO& io         = ImGui::GetIO();
 		auto*   drawData    = ImGui::GetDrawData();
 		
-		const auto WH   = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+		const auto WH   = frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
 
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
 		io.DeltaTime    = dT;

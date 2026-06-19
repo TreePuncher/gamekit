@@ -163,7 +163,7 @@ namespace VK_internal
 
         const auto [object, dimension] = vkRS.resources.Get<APIHandle, Dimension>(handle);
 
-        FK_ASSERT(dimension == FlexKit::TextureDimension::Buffer);
+        FK_ASSERT(dimension == FlexKit::ResourceDimension::Buffer);
 
         VkBufferDeviceAddressInfo getAddressInfo{
             .sType      = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -207,13 +207,13 @@ namespace VK_internal
 
         switch (dimension)
         {
-        case TextureDimension::Buffer:
+        case ResourceDimension::Buffer:
         {
             auto& vkRS = GetVKRS();
 
             const auto [object, dimension] = vkRS.resources.Get<APIHandle, Dimension>(handle);
 
-            FK_ASSERT(dimension == FlexKit::TextureDimension::Buffer);
+            FK_ASSERT(dimension == FlexKit::ResourceDimension::Buffer);
 
             VkBufferDeviceAddressInfo getAddressInfo{
                 .sType      = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -248,18 +248,18 @@ namespace VK_internal
                 vkRS.descriptorBufferProperties.uniformBufferDescriptorSize,
                 descriptorBuffer + offset);
         }   break;
-        case TextureDimension::Texture1D:
-        case TextureDimension::Texture2D:
-        case TextureDimension::Texture3D:
-        case TextureDimension::Texture2DArray:
-        case TextureDimension::TextureCubeMap:
+        case ResourceDimension::Texture1D:
+        case ResourceDimension::Texture2D:
+        case ResourceDimension::Texture3D:
+        case ResourceDimension::Texture2DArray:
+        case ResourceDimension::TextureCubeMap:
         {
-            FK_ASSERT(dimension != FlexKit::TextureDimension::Buffer);
+            FK_ASSERT(dimension != FlexKit::ResourceDimension::Buffer);
             auto& vkRS = GetVKRS();
 
             const auto [layout, view, xyzw, format] = vkRS.resources.Get<Layout, View, XYZW, Format>(handle);
                 
-            if (dimension == TextureDimension::TextureCubeMap)
+            if (dimension == ResourceDimension::TextureCubeMap)
                 FK_ASSERT(xyzw[3] == 6);
 
             VkBufferDeviceAddressInfo getAddressInfo{
@@ -345,7 +345,7 @@ namespace VK_internal
 
         const auto [object, dimension] = vkRS.resources.Get<APIHandle, Dimension>(handle);
 
-        FK_ASSERT(dimension == FlexKit::TextureDimension::Buffer);
+        FK_ASSERT(dimension == FlexKit::ResourceDimension::Buffer);
 
         VkBufferDeviceAddressInfo getAddressInfo{
             .sType  = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -407,7 +407,7 @@ namespace VK_internal
 
         const auto [object, dimension] = vkRS.resources.Get<APIHandle, Dimension>(handle);
 
-        FK_ASSERT(dimension == FlexKit::TextureDimension::Buffer);
+        FK_ASSERT(dimension == FlexKit::ResourceDimension::Buffer);
 
         VkBufferDeviceAddressInfo getAddressInfo{
             .sType  = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -449,7 +449,7 @@ namespace VK_internal
 
         const auto [object, dimension] = vkRS.resources.Get<APIHandle, Dimension>(handle);
 
-        FK_ASSERT(dimension == FlexKit::TextureDimension::Buffer);
+        FK_ASSERT(dimension == FlexKit::ResourceDimension::Buffer);
 
         VkBufferDeviceAddressInfo getAddressInfo{
             .sType  = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,

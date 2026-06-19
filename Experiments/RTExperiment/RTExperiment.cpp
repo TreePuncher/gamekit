@@ -552,7 +552,9 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 				.sbtBuffer = builder.ReadTransition(
 								sbtUpdate.sbtBuffer, DeviceAccessState::DASNonPixelShaderResource,
 								{ DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_Raytracing }),
-				.tlas = builder.ReadTransition(updateTLAS.tlas, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ, {DeviceSyncPoint::Sync_BuildRaytracingAccelerationStructure, DeviceSyncPoint::Sync_Raytracing}),
+				.tlas = builder.ReadTransition(
+					            updateTLAS.tlas, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
+					{ DeviceSyncPoint::Sync_BuildRaytracingAccelerationStructure, DeviceSyncPoint::Sync_Raytracing }),
 				.traceBuffer = builder.AcquireVirtualResource(
 								GPUResourceDesc::UAVTexture(
 								{ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT, false),	DeviceAccessState::DASUAV),
@@ -572,8 +574,9 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			auto* set0Layout = &globalInterface->GetDescriptorSetLayout(0);
 			DescriptorSet set(ctx, *set0Layout, threadLocalAllocator);
 			set.SetUAVTexture(ctx, 0, resources.GetResource(data.traceBuffer));
-			set.SetStructuredResource(ctx, 1, resources.GetResource(data.tlas));
-			ctx.SetRTStateObject(library->FindShaderFunction("raygen_main"), library);
+			set.SetSRV(ctx, 1, resources.GetResource(data.tlas));
+			set.NullFill(ctx);
+		    ctx.SetRTStateObject(library->FindShaderFunction("raygen_main"), library);
 
 			// Update SBT
 			D3D12_DISPATCH_RAYS_DESC rayDesc{};
@@ -590,9 +593,9 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 					missTable.devicePtr, 64, 64,
 			};
 
-			rayDesc.Width = 800;
-			rayDesc.Height = 600;
-			rayDesc.Depth = 1;
+			rayDesc.Width	= 800;
+			rayDesc.Height	= 600;
+			rayDesc.Depth	= 1;
 
 			ctx.DiscardResource(resources.GetResource(data.traceBuffer));
 			ctx.ClearUAVTextureFloat(resources.GetResource(data.traceBuffer));
@@ -605,12 +608,11 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			dxCtx.FlushBarriers();
 			dxCtx.SetComputeRootSignature(globalInterface);
 			dxCtx.SetComputeDescriptorSet(0, set);
-			dxCtx.DeviceContext->DispatchRays(&rayDesc);
-
+			
+		    dxCtx.DeviceContext->DispatchRays(&rayDesc);
 			ctx.CopyResource(
 				resources.GetResource(data.renderTarget),
 				resources.CopySrc(data.traceBuffer, ctx, DeviceSyncPoint::Sync_Raytracing, DeviceSyncPoint::Sync_Copy));
-
 		});
 
 	frameGraph.AddNode2(

@@ -425,7 +425,7 @@ FlexKit::UpdateTask* GenerationTest::Draw(FlexKit::UpdateTask* update, FlexKit::
 		core.GetTempMemoryMT()
 	);
 
-	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
+	textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetResourceWH(targets.RenderTarget), res.entityConstants, res.passes, res.skinnedDraws, reserveCB, reserveVB);
 	*/
 
 	framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());

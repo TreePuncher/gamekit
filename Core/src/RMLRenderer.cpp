@@ -328,7 +328,7 @@ namespace FlexKit
 		if (!geometryEntry)
 			return;
 
-		auto wh = renderSystem->GetTextureWH(renderTarget);
+		auto wh = renderSystem->GetResourceWH(renderTarget);
 
 		if (!texture)
 			ctx->SetGraphicsPipelineState(RMLDrawPSO, *allocator);
@@ -374,7 +374,7 @@ namespace FlexKit
 
 		if (!enable)
 		{
-			auto WH = renderSystem->GetTextureWH(renderTarget);
+			auto WH = renderSystem->GetResourceWH(renderTarget);
 			ctx->SetScissorRects(
 				static_vector{
 					Rect{

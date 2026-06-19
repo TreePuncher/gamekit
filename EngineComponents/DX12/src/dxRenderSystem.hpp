@@ -1319,20 +1319,20 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	inline D3D12_RTV_DIMENSION _Dimension2DeviceRTVDimension(TextureDimension dimension)
+	inline D3D12_RTV_DIMENSION _Dimension2DeviceRTVDimension(ResourceDimension dimension)
 	{
 		switch (dimension)
 		{
-		case TextureDimension::Buffer:
+		case ResourceDimension::Buffer:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_BUFFER;
-		case TextureDimension::Texture1D:
+		case ResourceDimension::Texture1D:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE1D;
-		case TextureDimension::Texture2D:
+		case ResourceDimension::Texture2D:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
-		case TextureDimension::Texture2DArray:
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::Texture2DArray:
+		case ResourceDimension::TextureCubeMap:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
-		case TextureDimension::Texture3D:
+		case ResourceDimension::Texture3D:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE3D;
 		default:
 			return D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_UNKNOWN;
@@ -1363,11 +1363,11 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		switch (desc.Dimensions)
 		{
-		case TextureDimension::Buffer:
+		case ResourceDimension::AccelerationStructure:
+		case ResourceDimension::Buffer:
 			out = CD3DX12_RESOURCE_DESC1::Buffer(desc.WH[0]);
-
 			break;
-		case TextureDimension::Texture1D:
+		case ResourceDimension::Texture1D:
 			out = CD3DX12_RESOURCE_DESC1::Tex1D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1375,7 +1375,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::Texture2D:
+		case ResourceDimension::Texture2D:
 			out = CD3DX12_RESOURCE_DESC1::Tex2D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1384,7 +1384,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::Texture3D:
+		case ResourceDimension::Texture3D:
 			out = CD3DX12_RESOURCE_DESC1::Tex3D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1393,7 +1393,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::TextureCubeMap:
 			out = CD3DX12_RESOURCE_DESC1::Tex2D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1426,11 +1426,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		switch (desc.Dimensions)
 		{
-		case TextureDimension::Buffer:
+		case ResourceDimension::AccelerationStructure:
+		case ResourceDimension::Buffer:
 			out = CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]);
 
 			break;
-		case TextureDimension::Texture1D:
+		case ResourceDimension::Texture1D:
 			out = CD3DX12_RESOURCE_DESC::Tex1D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1438,7 +1439,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::Texture2D:
+		case ResourceDimension::Texture2D:
 			out = CD3DX12_RESOURCE_DESC::Tex2D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1447,7 +1448,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::Texture3D:
+		case ResourceDimension::Texture3D:
 			out = CD3DX12_RESOURCE_DESC::Tex3D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1456,7 +1457,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 				desc.mipLevels);
 
 			break;
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::TextureCubeMap:
 			out = CD3DX12_RESOURCE_DESC::Tex2D(
 				dxgiFormat,
 				desc.WH[0],
@@ -1483,15 +1484,15 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		switch (desc.Dimensions)
 		{
-		case TextureDimension::Buffer:
+		case ResourceDimension::Buffer:
 			return desc.WH[0];
-		case TextureDimension::Texture1D:
+		case ResourceDimension::Texture1D:
 			return desc.WH[0] * GetFormatElementSize(dxgiFormat);
-		case TextureDimension::Texture2D:
+		case ResourceDimension::Texture2D:
 			return desc.WH.Product() * GetFormatElementSize(dxgiFormat);
-		case TextureDimension::Texture3D:
+		case ResourceDimension::Texture3D:
 			return desc.WH.Product() * GetFormatElementSize(dxgiFormat) * desc.arraySize;
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::TextureCubeMap:
 			return desc.WH.Product() * GetFormatElementSize(dxgiFormat) * 6;
 		};
 
@@ -1560,7 +1561,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void				SetFrameGraphIndex(ResourceHandle Texture, size_t FrameID, size_t Index);
 
 		DXGI_FORMAT			GetFormat(ResourceHandle handle) const;
-		TextureDimension	GetDimension(ResourceHandle) const;
+		ResourceDimension	GetDimension(ResourceHandle) const;
 		size_t				GetArraySize(ResourceHandle) const;
 		uint8_t				GetMIPCount(ResourceHandle) const;
 
@@ -1610,7 +1611,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			uint16_t				arraySize;
 			ResourceHandle			Handle;
 			DXGI_FORMAT				Format;
-			TextureDimension		dimension;
+			ResourceDimension		dimension;
 			Vector<TileMapping>		tileMappings = {};
 			GPUResourceExtra_t		extra;
 			const char*				userString;
@@ -2010,10 +2011,10 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual size_t				GetVertexBufferSize(const VertexBufferHandle) const noexcept final;
 		virtual BLAS_PreBuildInfo	GetBLASPreBuildInfo(const IVertexBufferSet&) const noexcept final;
 
-		virtual size_t			GetTextureFrameGraphIndex(ResourceHandle) noexcept final;
-		virtual void			SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept final;
+		virtual size_t				GetTextureFrameGraphIndex(ResourceHandle) noexcept final;
+		virtual void				SetTextureFrameGraphIndex(ResourceHandle, size_t) noexcept final;
 
-		virtual void			MarkTextureUsed(ResourceHandle Handle) final;
+		virtual void				MarkTextureUsed(ResourceHandle Handle) final;
 
 		virtual DevicePointer		GetDevicePointer(const ResourceHandle) const noexcept final;
 
@@ -2026,22 +2027,22 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual size_t	GetAllocationSize(ResourceHandle handle) const noexcept; // Includes padding and alignment
 		virtual size_t	GetAllocationSize(GPUResourceDesc desc) const noexcept; // Includes padding and alignment
 
-		virtual size_t	GetTextureElementSize	(ResourceHandle handle) const;
-		virtual uint2	GetTextureWH			(ResourceHandle handle) const;
+		virtual size_t	GetResourceElementSize	(ResourceHandle handle) const;
+		virtual uint2	GetResourceWH			(ResourceHandle handle) const;
 
 		virtual DeviceFormat	GetTextureFormat	(ResourceHandle Handle) const;
 		virtual uint8_t			GetTextureMipCount	(ResourceHandle Handle) const;
 		virtual uint2			GetTextureTilingWH	(ResourceHandle Handle, const uint mipLevel) const;
 		virtual uint2			GetHeapOffset		(ResourceHandle Handle, uint subResourceID = 0) const;
 
-				DXGI_FORMAT		GetTextureDeviceFormat(ResourceHandle Handle) const;
+				DXGI_FORMAT		GetResourceDeviceFormat(ResourceHandle Handle) const;
 
 		virtual void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
 		virtual void				UpdateTextureTileMappings(const ResourceHandle Handle, std::span<const TileMapping>, iAllocator& temp);
 		virtual const TileMapList&	GetTileMappings(const ResourceHandle Handle);
 
 
-		virtual TextureDimension	GetTextureDimension(ResourceHandle handle) const final;
+		virtual ResourceDimension	GetResourceDimension(ResourceHandle handle) const final;
 		virtual	size_t				GetTextureArraySize(ResourceHandle handle) const final;
 
 		virtual ResourceHandle		LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator) final;
@@ -2369,7 +2370,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			RenderTargets,
 			[&](auto target)
 			{
-				const auto WH = ctx.renderSystem->GetTextureWH(target);
+				const auto WH = ctx.renderSystem->GetResourceWH(target);
 				VPs.push_back({ 0.0f ,0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f });
 				Rects.push_back({ 0,0, WH[0], WH[1] });
 			});

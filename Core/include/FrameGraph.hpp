@@ -89,7 +89,7 @@ namespace FlexKit
 		DeviceAccessState				access			= DeviceAccessState::DASNOACCESS;
 		DeviceLayout					layout			= DeviceLayout::Unknown;
 
-		TextureDimension				dimensions		= TextureDimension::Unknown;
+		ResourceDimension				dimensions		= ResourceDimension::Unknown;
 		VirtualResourceState			virtualState	= VirtualResourceState::NonVirtual;
 		Vector<FrameGraphNodeHandle>	lastUsers		= nullptr;
 		PoolAllocatorInterface*			pool			= nullptr;
@@ -104,7 +104,7 @@ namespace FlexKit
 		};
 
 
-		static FrameObject PixelShaderResourceObject(ResourceHandle resource, TextureDimension dimensions, iAllocator& allocator)
+		static FrameObject PixelShaderResourceObject(ResourceHandle resource, ResourceDimension dimensions, iAllocator& allocator)
 		{
 			FrameObject shaderResource;
 			shaderResource.layout			= DeviceLayout::ShaderResource;
@@ -123,7 +123,7 @@ namespace FlexKit
 			renderTarget.layout			= DeviceLayout::RenderTarget;
 			renderTarget.type			= OT_RenderTarget;
 			renderTarget.shaderResource = resource;
-			renderTarget.dimensions		= TextureDimension::Texture2D;
+			renderTarget.dimensions		= ResourceDimension::Texture2D;
 			renderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return renderTarget;
@@ -136,7 +136,7 @@ namespace FlexKit
 			renderTarget.layout			= initialLayout;
 			renderTarget.type			= OT_BackBuffer;
 			renderTarget.shaderResource = resource;
-			renderTarget.dimensions		= TextureDimension::Texture2D;
+			renderTarget.dimensions		= ResourceDimension::Texture2D;
 			renderTarget.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return renderTarget;
@@ -147,7 +147,7 @@ namespace FlexKit
 			FrameObject constantBuffer;
 			constantBuffer.handle		= handle;
 			constantBuffer.type			= OT_ConstantBuffer;
-			constantBuffer.dimensions	= TextureDimension::Buffer;
+			constantBuffer.dimensions	= ResourceDimension::Buffer;
 			constantBuffer.lastUsers	= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return constantBuffer;
@@ -160,7 +160,7 @@ namespace FlexKit
 			depthBufferTarget.layout			= initialLayout;
 			depthBufferTarget.type				= OT_DepthBuffer;
 			depthBufferTarget.shaderResource	= resource;
-			depthBufferTarget.dimensions		= TextureDimension::Texture2D;
+			depthBufferTarget.dimensions		= ResourceDimension::Texture2D;
 			depthBufferTarget.lastUsers			= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return depthBufferTarget;
@@ -172,7 +172,7 @@ namespace FlexKit
 			FrameObject readBackBuffer;
 			readBackBuffer.handle			= handle;
 			readBackBuffer.type				= OT_ReadBack;
-			readBackBuffer.dimensions		= TextureDimension::Buffer;
+			readBackBuffer.dimensions		= ResourceDimension::Buffer;
 			readBackBuffer.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 			readBackBuffer.readBackBuffer	= readback;
 
@@ -180,7 +180,7 @@ namespace FlexKit
 		}
 
 
-		static FrameObject TextureObject(ResourceHandle resource, DeviceLayout initialLayout, TextureDimension dimensions, iAllocator& allocator)
+		static FrameObject TextureObject(ResourceHandle resource, DeviceLayout initialLayout, ResourceDimension dimensions, iAllocator& allocator)
 		{
 			FrameObject shaderResource;
 			shaderResource.layout			= initialLayout;
@@ -199,7 +199,7 @@ namespace FlexKit
 			query.layout		= initialLayout;
 			query.type			= OT_Query;
 			query.query			= resource;
-			query.dimensions	= TextureDimension::Texture2D;
+			query.dimensions	= ResourceDimension::Texture2D;
 			query.lastUsers		= Vector<FrameGraphNodeHandle>{ allocator };
 
 			return query;
@@ -385,7 +385,7 @@ namespace FlexKit
 		FrameResourceHandle AddResource(ResourceHandle handle)
 		{
 			const DeviceLayout		layout = renderSystem->GetObjectLayout(handle);
-			const TextureDimension	dimensions = renderSystem->GetTextureDimension(handle);
+			const ResourceDimension	dimensions = renderSystem->GetResourceDimension(handle);
 
 			if (auto res = FindFrameResource(handle); res != InvalidHandle)
 				return res;
@@ -410,7 +410,7 @@ namespace FlexKit
 			std::scoped_lock lock{};
 
 			const DeviceLayout		layout = renderSystem->GetObjectLayout(handle);
-			const TextureDimension	dimensions = renderSystem->GetTextureDimension(handle);
+			const ResourceDimension	dimensions = renderSystem->GetResourceDimension(handle);
 
 			const auto resourceHandle =
 				FrameResourceHandle{
@@ -624,7 +624,7 @@ namespace FlexKit
 		uint2 GetTextureWH(FrameResourceHandle handle) const
 		{
 			if (auto res = GetResource(handle); res != InvalidHandle)
-				return renderSystem->GetTextureWH(res);
+				return renderSystem->GetResourceWH(res);
 			else
 				return { 0, 0 };
 		}
@@ -738,20 +738,20 @@ namespace FlexKit
 			{
 				switch (object_ref.dimensions)
 				{
-				case TextureDimension::Buffer:
+				case ResourceDimension::Buffer:
 					if (access != currentObject.access)
 					{
-						FK_ASSERT(renderSystem().GetTextureDimension(object_ref.shaderResource) == TextureDimension::Buffer);
+						FK_ASSERT(renderSystem().GetResourceDimension(object_ref.shaderResource) == ResourceDimension::Buffer);
 
 						ctx.AddBufferBarrier(object_ref.shaderResource, currentObject.access, access, before, after);
 						currentObject.access = access;
 					}
 					break;
-				case TextureDimension::Texture1D:
-				case TextureDimension::Texture2D:
-				case TextureDimension::Texture2DArray:
-				case TextureDimension::Texture3D:
-				case TextureDimension::TextureCubeMap:
+				case ResourceDimension::Texture1D:
+				case ResourceDimension::Texture2D:
+				case ResourceDimension::Texture2DArray:
+				case ResourceDimension::Texture3D:
+				case ResourceDimension::TextureCubeMap:
 					ctx.AddTextureBarrier(object_ref.shaderResource, currentObject.access, access, currentObject.layout, layout, before, after);
 					currentObject.access = access;
 					currentObject.layout = layout;
@@ -1400,7 +1400,7 @@ namespace FlexKit
 
 				switch (frameObject.dimensions)
 				{
-				case TextureDimension::Buffer:
+				case ResourceDimension::Buffer:
 					barrier.type					= BarrierType::Buffer;
 					barrier.resource				= frameObject.shaderResource;
 					break;
@@ -1464,7 +1464,7 @@ namespace FlexKit
 
 				switch (frameObject.dimensions)
 				{
-				case TextureDimension::Buffer:
+				case ResourceDimension::Buffer:
 					barrier.type					= BarrierType::Buffer;
 					barrier.resource				= frameObject.shaderResource;
 					break;

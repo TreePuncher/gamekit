@@ -600,7 +600,7 @@ namespace FlexKit
 		};
 	}
 
-	enum class TextureDimension : uint8_t
+	enum class ResourceDimension : uint8_t
 	{
 		Buffer,
 		Texture1D,
@@ -608,6 +608,7 @@ namespace FlexKit
 		Texture2DArray,
 		Texture3D,
 		TextureCubeMap,
+		AccelerationStructure,
 		Unknown,
 	};
 
@@ -1726,7 +1727,7 @@ namespace FlexKit
 	struct GPUResourceDesc
 	{
 		ResourceType			type;
-		TextureDimension		Dimensions		= TextureDimension::Texture2D;
+		ResourceDimension		Dimensions		= ResourceDimension::Texture2D;
 		ResourceAllocationType	allocationType	= ResourceAllocationType::Committed;
 		DeviceFormat			format			= DeviceFormat::UNKNOWN;
 		DeviceLayout			initialLayout	= DeviceLayout::Common;
@@ -1771,7 +1772,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::RenderTarget,
-				.Dimensions		= TextureDimension::Texture2D,
+				.Dimensions		= ResourceDimension::Texture2D,
 				.allocationType = allocationType,
 				.format			= IN_format,
 				.WH				= IN_WH,
@@ -1789,7 +1790,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::DepthTarget,
-				.Dimensions		= TextureDimension::Texture2D,
+				.Dimensions		= ResourceDimension::Texture2D,
 				.allocationType = allocationType,
 				.format			= IN_format,
 				.initialLayout	= DeviceLayout::DepthStencilWrite,
@@ -1810,7 +1811,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Texture2D,
+				.Dimensions		= ResourceDimension::Texture2D,
 				.allocationType = allocationType,
 				.format			= IN_format,
 
@@ -1825,7 +1826,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Texture3D,
+				.Dimensions		= ResourceDimension::Texture3D,
 				.allocationType = allocationType,
 				.format			= IN_format,
 
@@ -1841,7 +1842,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::Buffer,
+				.Dimensions		= ResourceDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
 				.initialLayout	= DeviceLayout::Undefined,
@@ -1858,7 +1859,7 @@ namespace FlexKit
 		{
 			GPUResourceDesc desc{
 				.type			= ResourceType::RayTracingStructure,
-				.Dimensions		= TextureDimension::Buffer, // dimensions
+				.Dimensions		= ResourceDimension::AccelerationStructure, // dimensions
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= DeviceFormat::UNKNOWN,
 				.initialLayout	= DeviceLayout::Undefined,
@@ -1877,7 +1878,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Buffer,
+				.Dimensions		= ResourceDimension::Buffer,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
 				.initialLayout	= DeviceLayout::Undefined,
@@ -1893,7 +1894,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture1D,
+				.Dimensions		= ResourceDimension::Texture1D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
 
@@ -1908,7 +1909,7 @@ namespace FlexKit
 		{
 			return GPUResourceDesc{
 				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture2D,
+				.Dimensions		= ResourceDimension::Texture2D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
 
@@ -1928,7 +1929,7 @@ namespace FlexKit
 		{
 			return {
 				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture3D,
+				.Dimensions		= ResourceDimension::Texture3D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= IN_format,
 
@@ -1943,7 +1944,7 @@ namespace FlexKit
 		{
 			GPUResourceDesc desc = {
 				.type			= ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::Texture2D,
+				.Dimensions		= ResourceDimension::Texture2D,
 				.allocationType = ResourceAllocationType::Committed,
 				.format			= format,
 				.initialLayout	= DeviceLayout::Present,
@@ -1963,7 +1964,7 @@ namespace FlexKit
 		}
 
 
-		static GPUResourceDesc DDS(uint2 WH, DeviceFormat format, uint8_t mipCount, TextureDimension dimensions, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
+		static GPUResourceDesc DDS(uint2 WH, DeviceFormat format, uint8_t mipCount, ResourceDimension dimensions, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			 return {
 				.type			= ResourceType::ShaderResource,
@@ -1992,7 +1993,7 @@ namespace FlexKit
 		{
 			 return {
 				.type			= renderTarget ? ResourceType::RenderTarget : ResourceType::ShaderResource,
-				.Dimensions		= TextureDimension::TextureCubeMap,
+				.Dimensions		= ResourceDimension::TextureCubeMap,
 				.allocationType = allocationType,
 				.format			= format,
 
@@ -2006,7 +2007,7 @@ namespace FlexKit
 		{
 			 return {
 				.type			= renderTarget ? ResourceType::UnorderedAccessRenderTarget : ResourceType::UnorderedAccess,
-				.Dimensions		= TextureDimension::TextureCubeMap,
+				.Dimensions		= ResourceDimension::TextureCubeMap,
 				.allocationType = allocationType,
 				.format			= format,
 
@@ -2965,15 +2966,15 @@ namespace FlexKit
 		virtual size_t					GetAllocationSize		(ResourceHandle handle) const noexcept = 0; // Includes padding and alignment
 		virtual size_t					GetAllocationSize		(GPUResourceDesc desc) 	const noexcept = 0; // Includes padding and alignment
 
-		virtual size_t					GetTextureElementSize	(ResourceHandle   Handle) const = 0;
-		virtual uint2					GetTextureWH			(ResourceHandle   Handle) const = 0;
+		virtual size_t					GetResourceElementSize	(ResourceHandle   Handle) const = 0;
+		virtual uint2					GetResourceWH			(ResourceHandle   Handle) const = 0;
 
 		virtual DeviceFormat			GetTextureFormat		(ResourceHandle Handle) const = 0;
 		virtual uint8_t					GetTextureMipCount		(ResourceHandle Handle) const = 0;
 		virtual uint2					GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
 		virtual uint2					GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
 
-		virtual TextureDimension		GetTextureDimension		(ResourceHandle handle) const = 0;
+		virtual ResourceDimension		GetResourceDimension		(ResourceHandle handle) const = 0;
 		virtual	size_t					GetTextureArraySize		(ResourceHandle handle) const = 0;
 
 		virtual	DeviceHeap_ptr			GetDeviceResource		(const DeviceHeapHandle			handle) const = 0;

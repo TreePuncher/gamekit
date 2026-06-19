@@ -204,7 +204,7 @@ namespace dx_Internal
 
 		PushTextureToDescHeap(
 			ctx.renderSystem,
-			ctx.renderSystem->GetTextureDeviceFormat(handle),
+			ctx.renderSystem->GetResourceDeviceFormat(handle),
 			handle,
 			IncrementHeapPOS(
 					descriptorHeap, 
@@ -542,9 +542,9 @@ namespace dx_Internal
 		FillState[idx] = true;
 
 		Texture2D tex;
-		tex.WH			= ctx.renderSystem->GetTextureWH(handle);
+		tex.WH			= ctx.renderSystem->GetResourceWH(handle);
 		tex.Texture		= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
-		tex.Format		= ctx.renderSystem->GetTextureDeviceFormat(handle);
+		tex.Format		= ctx.renderSystem->GetResourceDeviceFormat(handle);
 
 		PushUAV2DToDescHeap(
 			ctx.renderSystem,
@@ -574,7 +574,7 @@ namespace dx_Internal
 		FillState[idx] = true;
 
 		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
+		tex.WH		= ctx.renderSystem->GetResourceWH(handle);
 		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 
@@ -609,7 +609,7 @@ namespace dx_Internal
 		FillState[idx] = true;
 
 		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
+		tex.WH		= ctx.renderSystem->GetResourceWH(handle);
 		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 
@@ -643,7 +643,7 @@ namespace dx_Internal
 
 		PushUAVCubeMapToDescHeap(
 			ctx.renderSystem,
-			ctx.renderSystem->GetTextureDeviceFormat(handle),
+			ctx.renderSystem->GetResourceDeviceFormat(handle),
 			ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>(),
 			IncrementHeapPOS(
 					descriptorHeap, 
@@ -670,7 +670,7 @@ namespace dx_Internal
 		FillState[idx] = true;
 
 		Texture2D tex;
-		tex.WH		= ctx.renderSystem->GetTextureWH(handle);
+		tex.WH		= ctx.renderSystem->GetResourceWH(handle);
 		tex.Texture	= ctx.renderSystem->GetDeviceResource(handle).As<ID3D12Resource>();
 		tex.Format	= TextureFormat2DXGIFormat(format);
 

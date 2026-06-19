@@ -1051,7 +1051,7 @@ namespace FlexKit
 	{
 		auto& RS = IRenderSystem::GetInstance();
 
-		auto previousWH = RS.GetTextureWH(albedo);
+		auto previousWH = RS.GetResourceWH(albedo);
 		if (WH == previousWH)
 			return;
 
@@ -1279,7 +1279,7 @@ namespace FlexKit
 		auto setup	= 
 			[&](FrameGraphNodeBuilder& builder, MarkClustersPass& data)
 			{
-				const uint2 WH = (builder.GetRenderSystem().GetTextureWH(renderTarget) / 32) + 1;
+				const uint2 WH = (builder.GetRenderSystem().GetResourceWH(renderTarget) / 32) + 1;
 
 				data.clustersObject = builder.AcquireVirtualResource(
 					GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_UINT), 
@@ -1387,7 +1387,7 @@ namespace FlexKit
 
 		const ResourceAllocation& allocation = frameGraph.AllocateResourceSet(allocationDesc);
 
-		auto WH = frameGraph.GetRenderSystem().GetTextureWH(depthBuffer);
+		auto WH = frameGraph.GetRenderSystem().GetResourceWH(depthBuffer);
 		auto& lightBufferData = frameGraph.AddNode<LightBufferUpdate>(
 			LightBufferUpdate{
 					.visableLights	= visibleLightsTask.GetData().lights,
@@ -1705,7 +1705,7 @@ namespace FlexKit
 						uint2 WH;
 					} constants{
 						cameraConstants.FOV,
-						resources.GetTextureWH(data.depthBufferObject)
+						resources.GetResourceWH(data.depthBufferObject)
 					};
 
 					// Build Light Lists
@@ -2274,7 +2274,7 @@ namespace FlexKit
 
 				data.renderTargetObject			= builder.AcquireVirtualResource(
 													GPUResourceDesc::UAVTexture(
-														builder.GetRenderSystem().GetTextureWH(renderTarget),
+														builder.GetRenderSystem().GetResourceWH(renderTarget),
 														DeviceFormat::R16G16B16A16_FLOAT, true), FlexKit::DASRenderTarget, VirtualResourceScope::Frame);
 
 				data.pointLightBufferObject		= builder.ReadTransition(lightPass.lightBufferObject,		DASPixelShaderResource);
@@ -2297,7 +2297,7 @@ namespace FlexKit
 				const auto& visableLights = *data.pointLightHandles;
 
 				auto& renderSystem = resources.renderSystem();
-				const auto WH = resources.renderSystem().GetTextureWH(renderTarget);
+				const auto WH = resources.renderSystem().GetResourceWH(renderTarget);
 				const auto cameraConstants = GetCameraConstants(camera);
 				const auto lightCount = (uint32_t)visableLights.size();
 

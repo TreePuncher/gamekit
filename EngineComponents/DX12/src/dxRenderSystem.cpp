@@ -2451,7 +2451,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	size_t	dxRenderSystem::GetTextureElementSize(ResourceHandle handle) const
+	size_t	dxRenderSystem::GetResourceElementSize(ResourceHandle handle) const
 	{
 		auto Format = Textures.GetFormat(handle);
 		return GetFormatElementSize(Format);
@@ -2461,7 +2461,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint2	dxRenderSystem::GetTextureWH(ResourceHandle handle) const
+	uint2	dxRenderSystem::GetResourceWH(ResourceHandle handle) const
 	{
 		if (handle == InvalidHandle)
 			return { 0, 0 };
@@ -2474,7 +2474,7 @@ namespace dx_Internal
 
 
 	/*
-	const uint2	dxRenderSystem::GetTextureWH(ResourceHandle Handle) const
+	const uint2	dxRenderSystem::GetResourceWH(ResourceHandle Handle) const
 	{
 		return Texture2DUAVs.GetExtra(Handle).WH;
 	}
@@ -2492,7 +2492,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DXGI_FORMAT dxRenderSystem::GetTextureDeviceFormat(ResourceHandle handle) const
+	DXGI_FORMAT dxRenderSystem::GetResourceDeviceFormat(ResourceHandle handle) const
 	{
 		return Textures.GetFormat(handle);
 	}
@@ -2501,7 +2501,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	TextureDimension dxRenderSystem::GetTextureDimension(ResourceHandle handle) const
+	ResourceDimension dxRenderSystem::GetResourceDimension(ResourceHandle handle) const
 	{
 		return Textures.GetDimension(handle);
 	}
@@ -2560,8 +2560,8 @@ namespace dx_Internal
 	void dxRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
 	{
 		auto resource	= GetDeviceResource(handle).As<ID3D12Resource>();
-		auto wh			= GetTextureWH(handle);
-		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
+		auto wh			= GetResourceWH(handle);
+		auto formatSize = GetResourceElementSize(handle); FK_ASSERT(formatSize != -1);
 		auto format     = GetTextureFormat(handle);
 
 		size_t resourceSize = bufferSize;
@@ -4730,7 +4730,7 @@ namespace dx_Internal
 		entry.arraySize			= desc.arraySize;
 		entry.tileMappings		= { allocator };
 
-		if (desc.Dimensions == TextureDimension::Buffer)
+		if (desc.Dimensions == ResourceDimension::Buffer)
 		{
 			UAVResourceLayout layout;
 			layout.format		= newEntry.Format;
@@ -4791,7 +4791,7 @@ namespace dx_Internal
 		entry.arraySize			= desc.arraySize;
 		entry.tileMappings      = { allocator };
 
-		if (desc.Dimensions == TextureDimension::Buffer)
+		if (desc.Dimensions == ResourceDimension::Buffer)
 		{
 			UAVResourceLayout layout;
 			layout.format		= newEntry.Format;
@@ -5006,7 +5006,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	TextureDimension ResourceStateTable::GetDimension(ResourceHandle handle) const
+	ResourceDimension ResourceStateTable::GetDimension(ResourceHandle handle) const
 	{
 		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
 
@@ -7044,17 +7044,17 @@ namespace dx_Internal
 	DescHeapPOS PushRenderTarget(dxRenderSystem* RS, ResourceHandle target, DescHeapPOS POS, const size_t MIPOffset)
 	{
 		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-		const auto dimension            = RS->GetTextureDimension(target);
+		const auto dimension            = RS->GetResourceDimension(target);
 
 		switch (dimension)
 		{
-		case TextureDimension::Texture2D:
+		case ResourceDimension::Texture2D:
 			TargetDesc.Format               = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
 			TargetDesc.Texture2D.MipSlice   = (UINT)MIPOffset;
 			TargetDesc.Texture2D.PlaneSlice = 0;
 			TargetDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
 			break;
-		case TextureDimension::TextureCubeMap:
+		case ResourceDimension::TextureCubeMap:
 			TargetDesc.Format                           = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
 			TargetDesc.Texture2DArray.FirstArraySlice   = 0;
 			TargetDesc.Texture2DArray.MipSlice          = (UINT)MIPOffset;
@@ -7078,7 +7078,7 @@ namespace dx_Internal
 	DescHeapPOS PushDepthStencil(dxRenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-		DSVDesc.Format				= RS->GetTextureDeviceFormat(target);
+		DSVDesc.Format				= RS->GetResourceDeviceFormat(target);
 		DSVDesc.Texture2D.MipSlice	= 0;
 		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
 
@@ -7095,7 +7095,7 @@ namespace dx_Internal
 		const size_t arraySize = IN_arraySize == -1 ? RS->GetTextureArraySize(Target) : IN_arraySize;
 
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-		DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
+		DSVDesc.Format                          = RS->GetResourceDeviceFormat(Target);
 		DSVDesc.Texture2DArray.ArraySize        = (UINT)(arraySize - arrayOffset);
 		DSVDesc.Texture2DArray.FirstArraySlice  = (UINT)arrayOffset;
 		DSVDesc.Texture2DArray.MipSlice         = (UINT)MipSlice;
@@ -7218,21 +7218,67 @@ namespace dx_Internal
 
 	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
 	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {}; {
-			const auto mipCount     = RS->GetTextureMipCount(handle);
-			const auto arraySize    = RS->GetTextureArraySize(handle);
+		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {}; 
+		viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		viewDesc.Format = format;
 
-			viewDesc.Format                             = format;
-			viewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			viewDesc.ViewDimension                      = arraySize > 1 ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY : D3D12_SRV_DIMENSION_TEXTURE2D;
-			viewDesc.Texture2DArray.MipLevels           = Max(mipCount, 1);
-			viewDesc.Texture2DArray.MostDetailedMip     = 0;
-			viewDesc.Texture2DArray.PlaneSlice          = 0;
+		const auto mipCount		= RS->GetTextureMipCount(handle);
+		const auto wh			= RS->GetResourceWH(handle);
+		const auto arraySize    = RS->GetTextureArraySize(handle);
+		auto dimension			= RS->GetResourceDimension(handle);
+        
+		switch (dimension)
+		{
+		case ResourceDimension::Buffer:
+			viewDesc.ViewDimension				= D3D12_SRV_DIMENSION_BUFFER;
+			viewDesc.Buffer.Flags				= D3D12_BUFFER_SRV_FLAG_RAW;
+			viewDesc.Buffer.FirstElement		= 0;
+			viewDesc.Buffer.NumElements			= wh[0];
+			viewDesc.Buffer.StructureByteStride = RS->GetResourceElementSize(handle);
+			break;
+		case ResourceDimension::Texture1D:
+			viewDesc.ViewDimension = (arraySize <= 1) ? D3D12_SRV_DIMENSION_TEXTURE1D : D3D12_SRV_DIMENSION_TEXTURE1DARRAY;
+			viewDesc.Texture1D.MipLevels			= mipCount;
+			viewDesc.Texture1D.MostDetailedMip		= 0;
+			viewDesc.Texture1D.ResourceMinLODClamp	= 0;
+		case ResourceDimension::Texture2D:
+			viewDesc.ViewDimension = (arraySize <= 1) ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+			viewDesc.Texture2DArray.MipLevels			= Max(mipCount, 1);
+			viewDesc.Texture2DArray.MostDetailedMip		= 0;
+			viewDesc.Texture2DArray.PlaneSlice			= 0;
 			viewDesc.Texture2DArray.ResourceMinLODClamp = 0;
-			viewDesc.Texture2DArray.ArraySize           = (UINT)arraySize;
-		}
+			viewDesc.Texture2DArray.ArraySize			= (UINT)arraySize;
+		case ResourceDimension::Texture3D:
+			viewDesc.ViewDimension						= D3D12_SRV_DIMENSION_TEXTURE3D;
+			viewDesc.Texture3D.MipLevels			= Max(mipCount, 1);
+			viewDesc.Texture3D.MostDetailedMip		= 0;
+			viewDesc.Texture3D.ResourceMinLODClamp	= 0;
+			break;
+		case ResourceDimension::Texture2DArray:
+			viewDesc.ViewDimension						= D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+			viewDesc.Texture2DArray.MipLevels			= Max(mipCount, 1);
+			viewDesc.Texture2DArray.MostDetailedMip		= 0;
+			viewDesc.Texture2DArray.PlaneSlice			= 0;
+			viewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+			viewDesc.Texture2DArray.ArraySize			= (UINT)arraySize;
+			break;
+		case ResourceDimension::TextureCubeMap:
+			viewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+			viewDesc.Texture2DArray.MipLevels			= Max(mipCount, 1);
+			viewDesc.Texture2DArray.MostDetailedMip		= 0;
+			viewDesc.Texture2DArray.PlaneSlice			= 0;
+			viewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+			viewDesc.Texture2DArray.ArraySize			= (UINT)arraySize;
+			break;
+		case ResourceDimension::AccelerationStructure:
+			viewDesc.ViewDimension								= D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+			viewDesc.RaytracingAccelerationStructure.Location	= RS->GetDevicePointer(handle);
+			break;
+        };
 
-		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle).As<ID3D12Resource>(), &viewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
+		RS->pDevice->CreateShaderResourceView(
+			dimension != ResourceDimension::AccelerationStructure ? RS->GetDeviceResource(handle).As<ID3D12Resource>() : nullptr,
+    		&viewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}

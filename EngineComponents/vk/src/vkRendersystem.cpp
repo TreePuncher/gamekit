@@ -1478,7 +1478,7 @@ namespace VK_internal
 	}
 
 
-	size_t vkRenderSystem::GetTextureElementSize(ResourceHandle handle) const
+	size_t vkRenderSystem::GetResourceElementSize(ResourceHandle handle) const
 	{
 		auto format = resources.Get<ResourceFieldID::Format>(handle);
 
@@ -1489,7 +1489,7 @@ namespace VK_internal
 	}
 
 
-	uint2 vkRenderSystem::GetTextureWH(ResourceHandle handle) const
+	uint2 vkRenderSystem::GetResourceWH(ResourceHandle handle) const
 	{
 		uint4 xyzw = resources.Get<ResourceFieldID::XYZW>(handle);
 
@@ -1523,9 +1523,9 @@ namespace VK_internal
 	}
 
 
-	TextureDimension vkRenderSystem::GetTextureDimension(ResourceHandle handle) const
+	ResourceDimension vkRenderSystem::GetResourceDimension(ResourceHandle handle) const
 	{
-		return TextureDimension::Unknown;
+		return ResourceDimension::Unknown;
 	}
 
 

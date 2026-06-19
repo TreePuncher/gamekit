@@ -158,15 +158,15 @@ namespace VK_internal
 		size_t				GetAllocationSize		(ResourceHandle handle) const noexcept final; // Includes padding and alignment
 		size_t				GetAllocationSize		(GPUResourceDesc desc)	const noexcept final; // Includes padding and alignment
 
-		size_t				GetTextureElementSize	(ResourceHandle   Handle) const final;
-		uint2				GetTextureWH			(ResourceHandle   Handle) const final;
+		size_t				GetResourceElementSize	(ResourceHandle   Handle) const final;
+		uint2				GetResourceWH			(ResourceHandle   Handle) const final;
 
 		DeviceFormat		GetTextureFormat		(ResourceHandle Handle) const final;
 		uint8_t				GetTextureMipCount		(ResourceHandle Handle) const final;
 		uint2				GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel)	const final;
 		uint2				GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const final;
 
-		TextureDimension	GetTextureDimension		(ResourceHandle handle) const final;
+		ResourceDimension	GetResourceDimension		(ResourceHandle handle) const final;
 		size_t				GetTextureArraySize		(ResourceHandle handle) const final;
 
 		DeviceHeap_ptr		GetDeviceResource(const DeviceHeapHandle        handle) const final;

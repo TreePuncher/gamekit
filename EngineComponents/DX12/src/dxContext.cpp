@@ -388,7 +388,7 @@ namespace dx_Internal
 	{
 		if(resource != FlexKit::InvalidHandle)
 		{
-			const auto dimension = renderSystem->GetTextureDimension(resource);
+			const auto dimension = renderSystem->GetResourceDimension(resource);
 			Barrier barrier;
 			barrier.resource		= resource;
 			barrier.accessBefore	= DASUAV;
@@ -398,20 +398,20 @@ namespace dx_Internal
 
 			switch (dimension)
 			{
-			case TextureDimension::Buffer:
+			case ResourceDimension::Buffer:
 				barrier.type = BarrierType::Buffer;
 				break;
-			case TextureDimension::Texture2D:
-			case TextureDimension::Texture2DArray:
+			case ResourceDimension::Texture2D:
+			case ResourceDimension::Texture2DArray:
 			{
 				barrier.type					= BarrierType::Texture;
 				barrier.texture.flags			= 0;
 				barrier.texture.layoutAfter		= layout;
 				barrier.texture.layoutBefore	= layout;
 			}	break;
-			case TextureDimension::Texture1D:
-			case TextureDimension::Texture3D:
-			case TextureDimension::TextureCubeMap:
+			case ResourceDimension::Texture1D:
+			case ResourceDimension::Texture3D:
+			case ResourceDimension::TextureCubeMap:
 				DebugBreak();
 			}
 
@@ -743,8 +743,8 @@ namespace dx_Internal
 
 		if (RTs.size() && enableDepthStencil)
 		{
-			depthWH = renderSystem->GetTextureWH(depthStencil);
-			textureWH = renderSystem->GetTextureWH(RTs.front());
+			depthWH = renderSystem->GetResourceWH(depthStencil);
+			textureWH = renderSystem->GetResourceWH(RTs.front());
 
 			WHsAllEqual = depthWH == textureWH;;
 		}
@@ -934,7 +934,7 @@ namespace dx_Internal
 
 		for (auto RT : RenderTargets)
 		{
-			auto WH = renderSystem->GetTextureWH(RT);
+			auto WH = renderSystem->GetResourceWH(RT);
 			VPs.emplace_back	(0.0f, 0.0f, (float)WH[0], (float)WH[1], 0.0f, 1.0f);
 			Rects.emplace_back	(0u, 0u, WH[0], WH[1]);
 		}
@@ -953,7 +953,7 @@ namespace dx_Internal
 
 		for (auto RT : RenderTargets)
 		{
-			auto WH = float2{ renderSystem->GetTextureWH(RT) } / std::pow(2.0f, (float)MIPMapOffset);
+			auto WH = float2{ renderSystem->GetResourceWH(RT) } / std::pow(2.0f, (float)MIPMapOffset);
 			VPs.emplace_back	(0.0f, 0.0f,	WH[0], WH[1], 0.0f, 1.0f);
 			Rects.emplace_back	(0u, 0u, (uint32_t)WH[0], (uint32_t)WH[1]);
 		}
@@ -1474,7 +1474,7 @@ namespace dx_Internal
 		FlushBarriers();
 
 		auto destination				= renderSystem->GetDeviceResource(dest).As<ID3D12Resource>();
-		const auto		deviceFormat	= renderSystem->GetTextureDeviceFormat(dest);
+		const auto		deviceFormat	= renderSystem->GetResourceDeviceFormat(dest);
 		const size_t	formatSize		= GetFormatElementSize(deviceFormat);
 		const bool		BCformat		= IsDDS(renderSystem->GetTextureFormat(dest));
 		const size_t	rowPitch		= AlignedSize(BCformat ? formatSize * WH[0] / 4 : formatSize * WH[0]);
@@ -2034,9 +2034,9 @@ namespace dx_Internal
 
 		Texture2D tex{
 			renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>(),
-			renderSystem->GetTextureWH(UAV),
+			renderSystem->GetResourceWH(UAV),
 			renderSystem->GetTextureMipCount(UAV),
-			renderSystem->GetTextureDeviceFormat(UAV),
+			renderSystem->GetResourceDeviceFormat(UAV),
 		};
 
 		PushUAV2DToDescHeap(
@@ -2070,9 +2070,9 @@ namespace dx_Internal
 
 		Texture2D tex{
 			renderSystem->GetDeviceResource(UAV).As<ID3D12Resource>(),
-			renderSystem->GetTextureWH(UAV),
+			renderSystem->GetResourceWH(UAV),
 			renderSystem->GetTextureMipCount(UAV),
-			renderSystem->GetTextureDeviceFormat(UAV),
+			renderSystem->GetResourceDeviceFormat(UAV),
 		};
 
 		PushUAV2DToDescHeap(
@@ -2104,7 +2104,7 @@ namespace dx_Internal
 	{
 		const auto view				= ReserveSRVLocal(1);
 		const auto deviceResource	= renderSystem->GetDeviceResource(resource).As<ID3D12Resource>();
-		const auto deviceFormat		= renderSystem->GetTextureDeviceFormat(resource);
+		const auto deviceFormat		= renderSystem->GetResourceDeviceFormat(resource);
 
 		PushUAV1DToDescHeap(renderSystem, deviceResource, deviceFormat, 0, view);
 
@@ -2355,9 +2355,9 @@ namespace dx_Internal
 	void dxDirectContext::CopyTexture2D(const UploadReservation src, const ResourceHandle destination, const uint2 BufferSize)
 	{
 		const auto destinationResource		= renderSystem->GetDeviceResource(destination).As<ID3D12Resource>();
-		const auto WH						= renderSystem->GetTextureWH(destination);
-		const auto format					= renderSystem->GetTextureDeviceFormat(destination);
-		const auto texelSize				= renderSystem->GetTextureElementSize(destination);
+		const auto WH						= renderSystem->GetResourceWH(destination);
+		const auto format					= renderSystem->GetResourceDeviceFormat(destination);
+		const auto texelSize				= renderSystem->GetResourceElementSize(destination);
 
 		D3D12_TEXTURE_COPY_LOCATION destLocation{};
 		destLocation.pResource			= destinationResource;
@@ -2627,7 +2627,9 @@ namespace dx_Internal
 			case BarrierType::Buffer:
 			{
 #ifdef USING(DEBUGGRAPHICS)
-				FK_ASSERT(renderSystem->GetTextureDimension(barrier.resource) == TextureDimension::Buffer);
+				FK_ASSERT(
+					renderSystem->GetResourceDimension(barrier.resource) == ResourceDimension::Buffer ||
+					renderSystem->GetResourceDimension(barrier.resource) == ResourceDimension::AccelerationStructure);
 #endif
 
 				D3D12_BUFFER_BARRIER bufferBarrier;
@@ -2644,13 +2646,13 @@ namespace dx_Internal
 			case BarrierType::Texture:
 			{
 #ifdef USING(DEBUGGRAPHICS)
-				auto dimension = renderSystem->GetTextureDimension(barrier.resource);
+				auto dimension = renderSystem->GetResourceDimension(barrier.resource);
 				FK_ASSERT(
-					dimension == TextureDimension::Texture1D ||
-					dimension == TextureDimension::Texture2D ||
-					dimension == TextureDimension::Texture2DArray ||
-					dimension == TextureDimension::Texture3D ||
-					dimension == TextureDimension::TextureCubeMap);
+					dimension == ResourceDimension::Texture1D ||
+					dimension == ResourceDimension::Texture2D ||
+					dimension == ResourceDimension::Texture2DArray ||
+					dimension == ResourceDimension::Texture3D ||
+					dimension == ResourceDimension::TextureCubeMap);
 #endif
 
 				D3D12_TEXTURE_BARRIER textureBarrier;
