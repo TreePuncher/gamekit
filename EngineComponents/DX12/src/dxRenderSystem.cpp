@@ -1986,8 +1986,10 @@ namespace dx_Internal
 
 						for (auto [idx, objExport] : enumerate(rt.exports))
 						{
-							wchar_t* wstr = (wchar_t*)allocator->malloc(objExport.function.size() * sizeof(wchar_t) + 2);
-							mbstowcs(wstr, objExport.function.data(), objExport.function.size() + 1);
+							auto strSize = objExport.id.size() * sizeof(wchar_t) + 2;
+							wchar_t* wstr = (wchar_t*)allocator->malloc(strSize);
+						    memset(wstr, 0, strSize);
+							mbstowcs(wstr, objExport.id.data(), objExport.id.size() + 1);
 							allocations.push_back(wstr);
 
 							exports[idx].ExportToRename = nullptr;
@@ -2021,7 +2023,21 @@ namespace dx_Internal
 							.pDesc	= shaderConfig
 						};
 
-						
+						for (auto& association : rt.associations)
+						{
+							D3D12_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION* object = &allocator->allocate<D3D12_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION>();
+							object->NumExports = association.num;
+							object->SubobjectToAssociate = association.id.data();
+							object->pExports = association.associations;
+
+						    D3D12_STATE_SUBOBJECT associationSubobject{
+							    .Type	= D3D12_STATE_SUBOBJECT_TYPE::D3D12_STATE_SUBOBJECT_TYPE_DXIL_SUBOBJECT_TO_EXPORTS_ASSOCIATION,
+							    .pDesc	= object
+						    };
+
+							allocations.push_back(object);
+							subObjects.push_back(associationSubobject);
+						}
 
 						subObjects.push_back(rayTracingPipelineConfig);
 						subObjects.push_back(shaderConfigObject);

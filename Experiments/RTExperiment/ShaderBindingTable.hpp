@@ -4,7 +4,10 @@
 
 namespace FlexKit
 {
-    IPipelineStateLibrary* LoadShaderLibrary(const std::filesystem::path& shaderFile, IPipelineInterface* globalInterface = nullptr);
+    IPipelineStateLibrary* LoadShaderLibrary(
+        const std::filesystem::path&    shaderFile,
+        IPipelineInterface*             globalInterface = nullptr,
+        std::span<Association>          localInterfaces = {});
 
     struct HitGroupAllocation
     {

@@ -13,19 +13,141 @@ struct [raypayload] Payload
 };
 
 
+struct Reservoir
+{
+	uint sample;
+	float w;
+	uint m;
+};
+
+struct RNGState
+{
+	uint a;
+};
+
+float FRand(inout RNGState rng) // (0 -> 1)
+{
+    // Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs"
+	uint x = rng.a;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	rng.a = x;
+
+	return 1.0f / float(x % (2 ^ 22 - 1));
+}
+
+
+/************************************************************************************************/
+
+LocalRootSignature LightInterface =
+{
+	"RootConstants(num32BitConstants = 16, b0, space = 3),"
+    "SRV(t0, space = 3)"
+};
+
+cbuffer lightConstants : register(b0, space3)
+{
+	float4 rgbi;
+};
+
+
 [shader("anyhit")]
-void anyhit_main(inout Payload payload, in Attributes attr)
+void anyhit_light(inout Payload payload, in Attributes attr)
+{
+	payload.color = rgbi;
+}
+
+[shader("closesthit")]
+void closesthit_light(inout Payload payload, in Attributes attr)
+{
+	payload.color = float4(1, 1, 1, 0);
+}
+
+TriangleHitGroup LightMaterial =
+{
+	"anyhit_light",
+    "closesthit_light"
+};
+
+SubobjectToExportsAssociation DefaultLightInterfaceAssociation =
+{
+	"LightInterface",
+    "anyhit_light;closesthit_light"
+};
+
+
+/************************************************************************************************/
+
+
+LocalRootSignature DefaultMaterialInterface =
+{
+	"RootConstants(num32BitConstants = 16, b0, space = 2),"
+    "SRV(t0, space = 2),"	// index
+    "SRV(t1, space = 2),"	// position
+    "SRV(t2, space = 2)"	// normal
+};
+
+cbuffer lightConstants : register(b0, space2)
+{
+	float4 diffuse;
+};
+
+StructuredBuffer<uint>		indexBuffer		: register(t0, space2);
+StructuredBuffer<float3>	positionBuffer	: register(t1, space2);
+StructuredBuffer<float3>	normalBuffer	: register(t2, space2);
+
+[shader("anyhit")]
+void anyhit_material(inout Payload payload, in Attributes attr)
 {
 	payload.color = float4(attr.barycentrics, 0, 0);
 }
 
 
 [shader("closesthit")]
-void closesthit_main(inout Payload payload, in Attributes attr)
+void closesthit_material(inout Payload payload, in Attributes attr)
 {
-	payload.color = float4(attr.barycentrics, 1.0f - attr.barycentrics.x - attr.barycentrics.y, 0);
+	const uint idxBegin = PrimitiveIndex() * 3;
+	const uint i0 = indexBuffer[idxBegin + 1];
+	const uint i1 = indexBuffer[idxBegin + 2];
+	const uint i2 = indexBuffer[idxBegin + 0];
+
+	const float3 v0 = positionBuffer[i0];
+	const float3 v1 = positionBuffer[i1];
+	const float3 v2 = positionBuffer[i2];
+
+	const float3 n0 = normalBuffer[i0] / 2.0f + 0.5f;
+	const float3 n1 = normalBuffer[i1] / 2.0f + 0.5f;
+	const float3 n2 = normalBuffer[i2] / 2.0f + 0.5f;
+
+	payload.color =
+	    float4(
+	        v0 * attr.barycentrics.x +
+	        v1 * attr.barycentrics.y +
+	        v2 * (1.0f - (attr.barycentrics.x + attr.barycentrics.y)),
+	        0.0f);
 }
 
+TriangleHitGroup DefaultMaterial =
+{
+	"anyhit_material",
+    "closesthit_material"
+};
+
+SubobjectToExportsAssociation DefaultMaterialInterfaceAssociation =
+{
+	"DefaultMaterialInterface",
+    "DefaultMaterial"
+};
+
+
+/************************************************************************************************/
+
+
+LocalRootSignature MissInterface =
+{
+	"RootConstants(num32BitConstants = 16, b0, space = 1)"
+};
 
 cbuffer localconstants : register(b0, space1)
 {
@@ -40,8 +162,36 @@ void miss_main(inout Payload payload)
 	payload.color = rgb;
 }
 
-RWTexture2D<float4> rgba_out : register(u0);
-RaytracingAccelerationStructure tlas : register(t1);
+SubobjectToExportsAssociation MissInterfaceAssociation =
+{
+	"MissInterface",
+    "miss_main"
+};
+
+
+/************************************************************************************************/
+
+
+void UpdateReservoir(inout Reservoir r, uint E_i, float W_i, inout RNGState rng)
+{
+	r.m++;
+
+	r.w += W_i;
+	const float w_r = FRand(rng);
+    if (w_r < W_i / r.w)
+		r.sample = E_i;
+}
+
+GlobalRootSignature GlobalInterface =
+{
+	"RootConstants(num32BitConstants = 16, b0, space = 0),"  
+    "DescriptorTable(UAV(u0, numDescriptors=1), SRV(t1, numDescriptors=1))"
+};
+
+RWTexture2D<float4>				rgba_out		: register(u0);
+RaytracingAccelerationStructure tlas			: register(t1);
+//RWStructuredBuffer<Reservoir>	reservoirBuffer	: register(u1);
+//RWStructuredBuffer<RNGState>	RNGStates		: register(u2);
 
 cbuffer raygenerationconstants : register(b0, space4294967040)
 {
@@ -77,40 +227,12 @@ void raygen_main()
         tlas,
         0,
         0x000000ff,
-        1,
+        0,
         1,
         0,
         myRay,
         payload);
 
-	rgba_out[id.xy] = pow(float4(payload.color), 2.1f);
+	rgba_out[id.xy] = payload.color; //pow(float4(payload.color), 2.1f);
 }
 
-TriangleHitGroup defaultHitGroup =
-{
-    "anyhit_main",
-    "closesthit_main"
-};
-
-LocalRootSignature MyLocalRootSignature =
-{
-	"RootConstants(num32BitConstants = 16, b0, space = 1)"  // Cube constants 
-};
-
-GlobalRootSignature GlobalRoot =
-{
-	"RootConstants(num32BitConstants = 16, b0, space = 0),"  
-    "DescriptorTable(UAV(u0, numDescriptors=1), SRV(t1, numDescriptors=1))"
-};
-
-SubobjectToExportsAssociation localRootAssocation =
-{
-	"MyLocalRootSignature", 
-    "miss_main"
-};
-
-SubobjectToExportsAssociation globalRootAssocation =
-{
-	"GlobalRoot", 
-    "raygen_main"
-};

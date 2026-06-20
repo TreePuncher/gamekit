@@ -8,6 +8,8 @@
 #include <variant>
 #include <cstdint>
 
+#include "../../out/build/x64-debug/_deps/scn-src/src/scn/impl.h"
+
 namespace FlexKit
 {
 	struct iAllocator;
@@ -808,13 +810,13 @@ namespace FlexKit
 		void*	blob		= nullptr;
 		size_t	blobSize	= 0;
 	};
-
-
+	
 
 	struct ShaderExport
 	{
-		std::string_view function;
+		std::string_view id;
 	};
+
 
 	enum class HitGroupType
 	{
@@ -830,9 +832,17 @@ namespace FlexKit
 		std::string_view intersection;
 	};
 
+
 	struct LibraryPipeline
 	{
 
+	};
+
+	struct Association
+	{
+		std::wstring_view	id;
+		uint32_t			num;
+        const wchar_t**		associations;
 	};
 
 	struct LibraryRT
@@ -843,8 +853,9 @@ namespace FlexKit
 		uint8_t					payloadSize;
 		uint8_t					attributesByteSize;
 
-		std::span<ShaderExport> exports;
+		std::span<ShaderExport>	exports;
 		std::span<HitGroup>		hitGroups;
+		std::span<Association>	associations;
 	};
 
 	struct LibraryExecutable
@@ -2806,6 +2817,9 @@ namespace FlexKit
 		virtual const VertexBuffer			operator []		(uint8_t idx) const = 0;
 		        const VertexBuffer			At				(uint8_t idx) const { return (*this)[idx]; }
 				virtual uint8_t				GetIndexBufferIndex() const = 0;
+
+	    virtual DevicePointer				GetBufferPointer(VERTEXBUFFER_TYPE) const = 0;
+
 
 		virtual void CreateBuffer(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT, size_t byteSize) = 0;
 		virtual void ReleaseBuffer(VERTEXBUFFER_TYPE) = 0;

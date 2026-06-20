@@ -14,7 +14,10 @@ namespace FlexKit
         uint64_t IntersectionHit; // GPU shader program address
     };
 
-    IPipelineStateLibrary* LoadShaderLibrary(const std::filesystem::path& shaderFile, IPipelineInterface* globalInterface)
+    IPipelineStateLibrary* LoadShaderLibrary(
+        const std::filesystem::path&    shaderFile,
+        IPipelineInterface*             globalInterface,
+        std::span<Association>          localInterfaces)
     {
         if (!std::filesystem::exists(shaderFile))
         {
@@ -29,25 +32,29 @@ namespace FlexKit
         auto shader = renderSystem.LoadShaderLibrary(
                         shaderFile.string().c_str(),
                         ShaderOptions{ 
-                            .hlsl2021 = true, 
-                            .enableDebug = true });
+                            .hlsl2021       = true, 
+                            .enableDebug    = true });
 
         ShaderExport  exports[] = {
-            ShaderExport{ .function = "miss_main" },
-            ShaderExport{ .function = "raygen_main" },
-            ShaderExport{ .function = "anyhit_main" },
-            ShaderExport{ .function = "closesthit_main" },
-            ShaderExport{ .function = "MyLocalRootSignature" },
-            ShaderExport{ .function = "defaultHitGroup" },
-        };
+            ShaderExport{ .id = "anyhit_light" },
+            ShaderExport{ .id = "closesthit_light" },
+            ShaderExport{ .id = "anyhit_material" },
+            ShaderExport{ .id = "closesthit_material" },
 
-        HitGroup hitGroups[] = {
-            HitGroup{
-                .type       = HitGroupType::HitGroupType_Triangles,
-                .ID         = "defaultHitGroup",
-                .anyHit     = "anyhit_main",
-                .closestHit = "closesthit_main",
-            }
+            ShaderExport{ .id = "miss_main" },
+            ShaderExport{ .id = "raygen_main" },
+            
+            ShaderExport{ .id = "DefaultMaterial" },
+            ShaderExport{ .id = "LightMaterial" },
+            
+            ShaderExport{ .id = "LightInterface" },
+            ShaderExport{ .id = "DefaultLightInterfaceAssociation" },
+
+            ShaderExport{ .id = "MissInterface" },
+            ShaderExport{ .id = "MissInterfaceAssociation" },
+
+            ShaderExport{ .id = "DefaultMaterialInterface" },
+            ShaderExport{ .id = "DefaultMaterialInterfaceAssociation" },
         };
 
         LibrarySection rtLibrary = LibraryRT
@@ -58,7 +65,6 @@ namespace FlexKit
             .payloadSize        = 20,
             .attributesByteSize = 32,
             .exports            = std::span{ exports },
-            //.hitGroups          = std::span{ hitGroups }
         };
 
         return renderSystem.CreateLibrary(std::span{ &rtLibrary, 1 });

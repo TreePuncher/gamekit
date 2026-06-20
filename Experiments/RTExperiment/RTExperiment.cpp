@@ -8,18 +8,18 @@ using namespace FlexKit;
 RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	FrameworkState{ IN_framework },
 
-	brushes		{ GetAllocator() },
-	cameras		{ GetAllocator() },
-	lights		{ GetAllocator() },
-	materials	{ GetRenderSystem(), GetAllocator() },
-	visibility	{ GetAllocator() },
-	scene		{ GetAllocator() },
-	triggers	{ GetAllocator(), GetAllocator() },
-	gameObjects	{ GetAllocator(), 1024 },
+	brushes{ GetAllocator() },
+	cameras{ GetAllocator() },
+	lights{ GetAllocator() },
+	materials{ GetRenderSystem(), GetAllocator() },
+	visibility{ GetAllocator() },
+	scene{ GetAllocator() },
+	triggers{ GetAllocator(), GetAllocator() },
+	gameObjects{ GetAllocator(), 1024 },
 
-	sbt			{ GetAllocator() },
-	depthBuffer	{ GetRenderSystem(), { 800, 600 } },
-	persistent	{ 256, GetAllocator() },
+	sbt{ GetAllocator() },
+	depthBuffer{ GetRenderSystem(), { 800, 600 } },
+	persistent{ 256, GetAllocator() },
 	gpuAllocator{ 64 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, framework.core.GetBlockMemory() }
 {
 	InitiateSceneNodeBuffer(GetAllocator());
@@ -37,10 +37,11 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	globalInterface = builder.Build(GetAllocator());
 	renderWindow = CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
 
-	library = LoadShaderLibrary("assets/shaders/rtLibrary.hlsl", globalInterface);
-	raygenID = library->FindShaderFunction("raygen_main");
-	missID = library->FindShaderFunction("miss_main");
-	defaultGroup1 = library->FindShaderFunction("defaultHitGroup");
+	library			= LoadShaderLibrary("assets/shaders/rtLibrary.hlsl", globalInterface);
+	raygenID		= library->FindShaderFunction("raygen_main");
+	missID			= library->FindShaderFunction("miss_main");
+	defaultMaterial = library->FindShaderFunction("DefaultMaterial");
+	lightMaterial	= library->FindShaderFunction("LightMaterial");
 
 	GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 		[&](IRenderSystem& renderSystem, iAllocator& allocator)
@@ -402,10 +403,14 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 
 			auto rtPass = passes.GetData().GetPass(RTPass);
 
-			struct alignas(64) HitGroupData
+			struct alignas(128) HitGroupData
 			{
-				uint8_t programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
-				uint8_t test[5] = { 3, 0, 0, 3, 5 };
+				uint8_t		programID[D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES];
+				float4		color;
+				uint32_t	test[12] = { 3, 0, 0, 3, 5 };
+				uint64_t	index;
+				uint64_t	position;
+				uint64_t	normal;
 			};
 
 			Vector<HitGroupData>	hitGroupData{ threadLocalAllocator };
@@ -428,9 +433,29 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 					const uint32_t idx = (sbt.freeList.size()) ? sbt.freeList.pop_back() : sbt.GetIdx();
 					destination.push_back(idx);
 
+					auto meshHandle = brushView->meshes[0];
+					auto meshResource = GetMeshResource(meshHandle);
+
+					auto& lod = meshResource->GetLowestLoadedLod();
+					DevicePointer indexBuffer		= lod.bufferSet->GetBufferPointer(VERTEXBUFFER_TYPE::INDEX);
+					DevicePointer positionBuffer	= lod.bufferSet->GetBufferPointer(VERTEXBUFFER_TYPE::POSITION);
+					DevicePointer normalBuffer		= lod.bufferSet->GetBufferPointer(VERTEXBUFFER_TYPE::NORMAL);
+
 					HitGroupData data;
-					memset(data.programID, 0, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
-					memcpy(data.programID, (void*)defaultGroup1.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+					memset(&data, 0, sizeof(HitGroupData));
+					memcpy(data.programID, (void*)defaultMaterial.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+					float4 colors[] = {
+						float4(1, 0, 0, 0),
+						float4(0, 1, 0, 0),
+						float4(0, 0, 1, 0),
+						float4(1, 1, 0, 0),
+					};
+
+					data.color		= colors[idx % 4];
+					data.index		= indexBuffer;
+					data.normal		= normalBuffer;
+					data.position	= positionBuffer;
 
 					hitGroupData.push_back(data);
 
@@ -477,9 +502,9 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 								{1, 0, 0, 0},
 								{0, 1, 0, 0},
 								{0, 0, 1, 0} },
-							.InstanceID = (UINT)idx,
-							.InstanceMask = 0xffffffff,
-							.InstanceContributionToHitGroupIndex = 0,
+							.InstanceID		= (UINT)idx,
+							.InstanceMask	= 0xffffffff,
+							.InstanceContributionToHitGroupIndex = (uint32_t)idx,
 							.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
 							.AccelerationStructure = resources.GetDevicePointer(blas),
 						};
@@ -586,7 +611,7 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			};
 			rayDesc.HitGroupTable =
 				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{
-					hitTable.devicePtr, 64 * sbt.count, 64,
+					hitTable.devicePtr, 128 * sbt.count, 128,
 			};
 			rayDesc.MissShaderTable =
 				D3D12_GPU_VIRTUAL_ADDRESS_RANGE_AND_STRIDE{

@@ -95,7 +95,8 @@ struct RTExperimentState final : FrameworkState
 
 	ShaderID raygenID;
 	ShaderID missID;
-	ShaderID defaultGroup1;
+	ShaderID defaultMaterial;
+	ShaderID lightMaterial;
 
 	using DeviceAddressRange = FlexKit::DeviceAddressRange;
 	GPURange SBTMemory;
