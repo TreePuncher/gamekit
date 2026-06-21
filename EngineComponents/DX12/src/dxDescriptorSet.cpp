@@ -14,8 +14,6 @@ namespace dx_Internal
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
-		FK_ASSERT(TempMemory);
-
 		const size_t EntryCount = Layout_IN.size();
 		descriptorHeap	= ctx.ReserveSRV(EntryCount).value();
 		Layout			= &Layout_IN;
@@ -62,7 +60,6 @@ namespace dx_Internal
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
-		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount	= Layout_IN.size();
@@ -81,7 +78,6 @@ namespace dx_Internal
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
-		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size() * reserveCount;
@@ -100,7 +96,6 @@ namespace dx_Internal
 	{
 		auto& ctx = static_cast<dxDirectContext&>(ictx);
 
-		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory, reserveCount);
 
 		descriptorHeap = ctx.ReserveSRV(reserveCount).value();

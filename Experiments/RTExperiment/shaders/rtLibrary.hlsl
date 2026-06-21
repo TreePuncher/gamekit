@@ -38,6 +38,9 @@ float FRand(inout RNGState rng) // (0 -> 1)
 }
 
 
+RWTexture2D<float4>				rgba_out	: register(u0);
+RaytracingAccelerationStructure tlas		: register(t1);
+
 /************************************************************************************************/
 
 LocalRootSignature LightInterface =
@@ -55,13 +58,16 @@ cbuffer lightConstants : register(b0, space3)
 [shader("anyhit")]
 void anyhit_light(inout Payload payload, in Attributes attr)
 {
-	payload.color = rgbi;
+	payload.color = float4(1, 0, 0, 0);
 }
 
 [shader("closesthit")]
 void closesthit_light(inout Payload payload, in Attributes attr)
 {
-	payload.color = float4(1, 1, 1, 0);
+	const float t = RayTCurrent();
+	const float a = 10.0f / saturate(t * t);
+
+	payload.color = float4(1, 1, 1, 1) * a;
 }
 
 TriangleHitGroup LightMaterial =
@@ -88,7 +94,7 @@ LocalRootSignature DefaultMaterialInterface =
     "SRV(t2, space = 2)"	// normal
 };
 
-cbuffer lightConstants : register(b0, space2)
+cbuffer materialConstants : register(b0, space2)
 {
 	float4 diffuse;
 };
@@ -105,7 +111,7 @@ void anyhit_material(inout Payload payload, in Attributes attr)
 
 
 [shader("closesthit")]
-void closesthit_material(inout Payload payload, in Attributes attr)
+void closesthit_material(inout Payload out_payload, in Attributes attr)
 {
 	const uint idxBegin = PrimitiveIndex() * 3;
 	const uint i0 = indexBuffer[idxBegin + 1];
@@ -116,16 +122,48 @@ void closesthit_material(inout Payload payload, in Attributes attr)
 	const float3 v1 = positionBuffer[i1];
 	const float3 v2 = positionBuffer[i2];
 
-	const float3 n0 = normalBuffer[i0] / 2.0f + 0.5f;
-	const float3 n1 = normalBuffer[i1] / 2.0f + 0.5f;
-	const float3 n2 = normalBuffer[i2] / 2.0f + 0.5f;
+	const float3 n0 = normalBuffer[i0];
+	const float3 n1 = normalBuffer[i1];
+	const float3 n2 = normalBuffer[i2];
 
-	payload.color =
-	    float4(
+	const float3 pos_w =
 	        v0 * attr.barycentrics.x +
 	        v1 * attr.barycentrics.y +
-	        v2 * (1.0f - (attr.barycentrics.x + attr.barycentrics.y)),
-	        0.0f);
+	        v2 * (1.0f - (attr.barycentrics.x + attr.barycentrics.y));
+
+	const float3 n_w = n0;
+
+	const float3 r = -WorldRayDirection();
+	const float t = RayTCurrent();
+	const float a = lerp(0, 1, saturate(t * t)) * 0.04f / saturate(t * t);
+
+	RayDesc myRay;
+	myRay.Origin	= pos_w;
+	myRay.TMin		= 0.001f;
+	myRay.TMax		= 20.0f;
+	myRay.Direction = WorldRayDirection() - 2.0f * n_w * dot(WorldRayDirection(), n_w);
+
+	out_payload.color = float4((n_w * 0.5 + 0.5f) * saturate(dot(n_w, r)) * a, 0.0f);
+	//out_payload.color = float4(myRay.Direction * 0.5f + 0.5f, 0);
+
+	if (out_payload.c > 5)
+		return;
+
+	Payload payload;
+	payload.color	= float4(0, 0, 0, 0);
+	payload.c		= out_payload.c + 1;
+
+	TraceRay(
+        tlas,
+        0,
+        0x000000ff,
+        0,
+        1,
+        0,
+        myRay,
+        payload);
+
+	out_payload.color += saturate(payload.color) * normalize(dot(n_w, r)) * 0.5f;
 }
 
 TriangleHitGroup DefaultMaterial =
@@ -158,8 +196,7 @@ cbuffer localconstants : register(b0, space1)
 [shader("miss")]
 void miss_main(inout Payload payload)
 {
-	payload.c += 1;
-	payload.color = rgb;
+	payload.color = rgb * 0.0f;
 }
 
 SubobjectToExportsAssociation MissInterfaceAssociation =
@@ -188,8 +225,7 @@ GlobalRootSignature GlobalInterface =
     "DescriptorTable(UAV(u0, numDescriptors=1), SRV(t1, numDescriptors=1))"
 };
 
-RWTexture2D<float4>				rgba_out		: register(u0);
-RaytracingAccelerationStructure tlas			: register(t1);
+
 //RWStructuredBuffer<Reservoir>	reservoirBuffer	: register(u1);
 //RWStructuredBuffer<RNGState>	RNGStates		: register(u2);
 
@@ -220,7 +256,7 @@ void raygen_main()
 	                    lerp(btmLeft, btmRight, UV.x), UV.y));
 
 	Payload payload;
-	payload.color	= float4(float2(id.xy) / DispatchRaysDimensions().xy, 0, 0);
+	payload.color	= float4(0.0f, 0.0f, 0.0f, 0.0f);
 	payload.c		= 0;
 
 	TraceRay(

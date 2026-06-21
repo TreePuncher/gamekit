@@ -65,8 +65,8 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 				});
 			//builder.AddVertexShader("VMain");
 			//builder.AddPixelShader("PMain");
-			builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{ .enableDebug = true });
-			builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{ .enableDebug = true });
+			builder.AddVertexShader("VMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{});
+			builder.AddPixelShader("PMain", "assets/shaders/TestShader.hlsl",	ShaderOptions{});
 			builder.AddRasterizerState({
 				.CullMode = ECullMode::BACK,
 			});
@@ -443,7 +443,12 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 
 					HitGroupData data;
 					memset(&data, 0, sizeof(HitGroupData));
-					memcpy(data.programID, (void*)defaultMaterial.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+
+					auto property = materialView.GetProperty<float>(LightIrradiance);
+					if (property)
+						memcpy(data.programID, (void*)lightMaterial.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+					else
+				        memcpy(data.programID, (void*)defaultMaterial.id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
 
 					float4 colors[] = {
 						float4(1, 0, 0, 0),
@@ -452,10 +457,15 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 						float4(1, 1, 0, 0),
 					};
 
-					data.color		= colors[idx % 4];
-					data.index		= indexBuffer;
-					data.normal		= normalBuffer;
-					data.position	= positionBuffer;
+					if (property)
+						data.color = float4(1, 1, 1, 1);
+					else
+					{
+						data.color		= colors[idx % 4];
+						data.index		= indexBuffer;
+						data.normal		= normalBuffer;
+						data.position	= positionBuffer;
+					}
 
 					hitGroupData.push_back(data);
 
