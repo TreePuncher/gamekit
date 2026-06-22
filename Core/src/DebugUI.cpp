@@ -392,7 +392,7 @@ namespace FlexKit
 							(uint32_t)(cmd.ClipRect.z - clip_off.x),
 							(uint32_t)(cmd.ClipRect.w - clip_off.y) };
 
-						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
+						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.GetTexID() };
 
 						FlexKit::DescriptorSet heap;
 						heap.Init2(ctx, pipelineInterface->GetDescriptorSetLayout(0), 1, allocator);

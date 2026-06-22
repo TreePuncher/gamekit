@@ -2201,7 +2201,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		operator dxRenderSystem* () { return this; }
 
 		ID3D12Device1*		pDevice			= nullptr;
-		ID3D12Device14*		pDevice14		= nullptr;
+		ID3D12Device15*		pDevice15		= nullptr;
 		ID3D12CommandQueue*	GraphicsQueue	= nullptr;
 		ID3D12CommandQueue*	ComputeQueue	= nullptr;
 

@@ -62,7 +62,7 @@ namespace FlexKit
             .byteCode           = &shader,
             .globalInterface    = globalInterface,
             .maxRayDepth        = 8,
-            .payloadSize        = 20,
+            .payloadSize        = 24,
             .attributesByteSize = 32,
             .exports            = std::span{ exports },
         };

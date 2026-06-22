@@ -910,6 +910,7 @@ namespace FlexKit
 			RT_FeatureLevel_NOTAVAILABLE,
 			RT_FeatureLevel_1,
 			RT_FeatureLevel_1_1,
+			RT_FeatureLevel_1_2,
 		} RT_Level = Raytracing::RT_FeatureLevel_NOTAVAILABLE;
 
 		enum ConservativeRasterization

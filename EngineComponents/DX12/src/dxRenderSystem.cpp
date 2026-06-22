@@ -36,7 +36,7 @@
 extern "C" __declspec(dllexport) DWORD  NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) int    AmdPowerXpressRequestHighPerformance = 1;
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 615; }
+extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion    = 619; }
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath      = ".\\"; }
 
 
@@ -890,7 +890,7 @@ namespace dx_Internal
 			return nullptr;
 
 		ID3D12RootSignature* dxRootSig = nullptr;
-		HR = renderSystem.pDevice14->CreateRootSignature(0, buffer, bufferSize, IID_PPV_ARGS(&dxRootSig));
+		HR = renderSystem.pDevice15->CreateRootSignature(0, buffer, bufferSize, IID_PPV_ARGS(&dxRootSig));
 
 		if (FAILED(HR))
 			return nullptr;
@@ -1573,74 +1573,77 @@ namespace dx_Internal
 			FK_LOG_ERROR("Failed to enable Dred!");
 #endif
 
-		if(auto HR = Device->QueryInterface(IID_PPV_ARGS(&pDevice14)); FAILED(HR))
+		if(auto HR = Device->QueryInterface(IID_PPV_ARGS(&pDevice15)); FAILED(HR))
 			FK_LOG_ERROR("Device fails feature request!");
 
 		if(Debug)
 			Device->QueryInterface(IID_PPV_ARGS(&DebugDevice));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS2 options2 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS2, &options2, sizeof(options2));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS3 options3 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS3, &options3, sizeof(options3));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS4 options4 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS4, &options4, sizeof(options4));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS5 options5 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS5, &options5, sizeof(options5));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS6 options6 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS6, &options6, sizeof(options6));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS7 options7 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS7, &options7, sizeof(options7));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS8 options8 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS8, &options8, sizeof(options8));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS9 options9 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS9, &options9, sizeof(options9));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS10 options10 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS10, &options10, sizeof(options10));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS11 options11 = {};
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS11, &options11, sizeof(options11));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS12 options12;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS12, &options12, sizeof(options12));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS13 options13;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS13, &options13, sizeof(options13));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS14 options14;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS14, &options14, sizeof(options14));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS15 options15;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS15, &options15, sizeof(options15));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS15, &options15, sizeof(options15));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS16 options16;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS16, &options16, sizeof(options16));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS16, &options16, sizeof(options16));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS17 options17;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS17, &options17, sizeof(options17));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS18 options18;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS18, &options18, sizeof(options18));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS19 options19;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS19, &options19, sizeof(options19));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS19, &options19, sizeof(options19));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS20 options20;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS20, &options20, sizeof(options20));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS20, &options20, sizeof(options20));
 
 		D3D12_FEATURE_DATA_D3D12_OPTIONS21 options21;
-		pDevice14->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS21, &options21, sizeof(options21));
+
+		D3D12_FEATURE_DATA_D3D12_OPTIONS22 options22;
+		pDevice15->CheckFeatureSupport(D3D12_FEATURE::D3D12_FEATURE_D3D12_OPTIONS22, &options22, sizeof(options22));
 
 		if (!options12.EnhancedBarriersSupported)
 			FK_LOG_ERROR("Required Feature: 'Enhanced Barriers' not available.");
@@ -1652,6 +1655,9 @@ namespace dx_Internal
 			break;
 		case D3D12_RAYTRACING_TIER_1_1:
 			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1_1;
+			break;
+		case D3D12_RAYTRACING_TIER_1_2:
+			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_1_2;
 			break;
 		default:
 			features.RT_Level = AvailableFeatures::Raytracing::RT_FeatureLevel_NOTAVAILABLE;
@@ -2119,7 +2125,7 @@ namespace dx_Internal
 				.pSubobjects	= subObjects.data(),
 		};
 
-		if (auto HR = pDevice14->CreateStateObject(&descs, IID_PPV_ARGS(&stateObject)); FAILED(HR))
+		if (auto HR = pDevice15->CreateStateObject(&descs, IID_PPV_ARGS(&stateObject)); FAILED(HR))
 		{
 			FK_LOG_ERROR("DX: dxRenderSystem::BuildLibrary(): Failed to build Shader Libary!");
 			return nullptr;
@@ -2571,7 +2577,7 @@ namespace dx_Internal
 		inputs.Flags            = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_NONE;
 
 		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
-		pDevice14->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+		pDevice15->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
 		return {
 			.BLAS_byteSize          = info.ResultDataMaxSizeInBytes,
@@ -2747,7 +2753,7 @@ namespace dx_Internal
 					D3D12_RESOURCE_DESC Resource_DESC = GetD3D12ResourceDesc(desc);
 
 					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
-					HRESULT HR = pDevice14->CreateReservedResource2(
+					HRESULT HR = pDevice15->CreateReservedResource2(
 									&Resource_DESC,
 									initialLayout,
 									desc.clearValue.has_value() ? &clearValue : nullptr,
@@ -2767,7 +2773,7 @@ namespace dx_Internal
 					ProfileFunctionLabeled(Committed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
 
-					auto HR = pDevice14->CreateCommittedResource3(
+					auto HR = pDevice15->CreateCommittedResource3(
 						&heapProperties,
 						flags,
 						&Resource_DESC,
@@ -2792,7 +2798,7 @@ namespace dx_Internal
 					ProfileFunctionLabeled(Placed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
 
-					HRESULT HR = pDevice14->CreatePlacedResource2(
+					HRESULT HR = pDevice15->CreatePlacedResource2(
 						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : desc.placed.customHeap.As<ID3D12Heap>(),
 						desc.placed.offset,
 						&Resource_DESC,
@@ -2896,7 +2902,7 @@ namespace dx_Internal
 			{
 				ProfileFunctionLabeled(Placed);
 
-				HRESULT HR = pDevice14->CreatePlacedResource2(
+				HRESULT HR = pDevice15->CreatePlacedResource2(
 					desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : desc.placed.customHeap.As<ID3D12Heap>(),
 					desc.placed.offset,
 					&Resource_DESC,
@@ -4084,7 +4090,7 @@ namespace dx_Internal
 
 	Shader dxRenderSystem::LoadShaderLibrary(const char* file, const ShaderOptions& options)
 	{
-		return LoadShader("", "lib_6_8", file, options);
+		return LoadShader("", "lib_6_9", file, options);
 	}
 
 
@@ -6372,7 +6378,7 @@ namespace dx_Internal
 		}
 
 		ID3D12RootSignature* rootSignature = nullptr;
-		if (auto res = pDevice14->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)); FAILED(res))
+		if (auto res = pDevice15->CreateRootSignature(0, SignatureBlob->GetBufferPointer(), SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)); FAILED(res))
 		{
 			FK_LOG_ERROR("dxRenderSystem: Failed to create root signature!");
 			return nullptr;

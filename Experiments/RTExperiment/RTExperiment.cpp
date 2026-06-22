@@ -507,13 +507,20 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 						auto mesh = brushView->meshes.front();
 						auto blas = GetMeshResource(mesh)->GetHighestLoadedLod().blAS;
 
+						uint32_t flag = 0;
+						auto property = materialView.GetProperty<float>(LightIrradiance);
+						if (property)
+							flag = 0x02;
+						else 
+						    flag = 0x01;
+
 						D3D12_RAYTRACING_INSTANCE_DESC instance{
 							.Transform = {
 								{1, 0, 0, 0},
 								{0, 1, 0, 0},
 								{0, 0, 1, 0} },
 							.InstanceID		= (UINT)idx,
-							.InstanceMask	= 0xffffffff,
+							.InstanceMask	= flag,
 							.InstanceContributionToHitGroupIndex = (uint32_t)idx,
 							.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
 							.AccelerationStructure = resources.GetDevicePointer(blas),
@@ -648,10 +655,12 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			{
 				float4x4_GPU	PVI;
 				float			cameraPOS[3];
+				uint32_t		seed;
 			} viewportPoints
 		    {
 				.PVI		= constants.PVI,
 				.cameraPOS	= { pos.x, pos.y, pos.z },
+				.seed		= (uint32_t)rand()
 		    };
 
 			dxCtx.FlushBarriers();
