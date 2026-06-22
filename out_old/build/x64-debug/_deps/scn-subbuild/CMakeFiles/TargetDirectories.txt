@@ -1,3 +1,0 @@
-E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/scn-populate.dir
-E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/edit_cache.dir
-E:/repos/gamekit/out/build/x64-debug/_deps/scn-subbuild/CMakeFiles/rebuild_cache.dir

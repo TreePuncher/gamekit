@@ -85,8 +85,9 @@ namespace FlexKit
 		void			PushMesh(const TriMeshHandle mesh) noexcept;
 		void			RemoveMesh(const TriMeshHandle mesh) noexcept;
 
+		Brush* operator -> () { return &GetBrush();}
 
-		// Brush::Meshes has internal space for 16 meshes.
+	    // Brush::Meshes has internal space for 16 meshes.
 		// When more than 16 meshes are expected,
 		// set the optional allocator to allow for expansion
 		// Brush::Meshes can store up to 256 meshes. 
@@ -96,7 +97,7 @@ namespace FlexKit
 	};
 
 
-	template<IsConstCharStar ... TY>
+	//template<IsConstCharStar ... TY>
 	struct BrushReq	// Request gameobjects with Brushes
 	{
 		using Type		= BrushView&;

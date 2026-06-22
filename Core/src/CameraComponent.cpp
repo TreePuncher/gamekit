@@ -233,7 +233,7 @@ namespace FlexKit
 
 		updatedView	= Inverse(updatedWT);
 		updatedProj	= CreatePerspectiveRH(*this, invert);
-		updatedPV	= updatedProj * updatedView;
+		updatedPV	= updatedProj;
 		updatedIV	= updatedWT;
 
 		previous.WT     = WT;
@@ -262,7 +262,7 @@ namespace FlexKit
 		NewData.Proj			= proj;
 		NewData.View			= view;
 		NewData.ViewI			= WT;
-		NewData.PV				= proj * view;
+		NewData.PV				= proj;
 		NewData.PVI				= Inverse(NewData.PV);
 		NewData.MinZ			= minZ;
 		NewData.MaxZ			= maxZ;
@@ -914,6 +914,25 @@ namespace FlexKit
 	void CameraView::SetCameraFOV(float r)
 	{
 		GetComponent().SetCameraFOV(camera, r);
+		GetComponent().MarkDirty(camera);
+	}
+
+	/************************************************************************************************/
+
+
+	void CameraView::SetCameraNear(float n)
+	{
+		GetComponent().SetCameraNear(camera, n);
+		GetComponent().MarkDirty(camera);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CameraView::SetCameraFar(float m)
+	{
+		GetComponent().SetCameraFar(camera, m);
 		GetComponent().MarkDirty(camera);
 	}
 

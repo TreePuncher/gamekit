@@ -527,7 +527,7 @@ namespace VK_internal
     {}
 
 
-	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const struct DescriptorSet& DH)
+	void vkDirectContext::SetGraphicsDescriptorSet(size_t idx, const struct DescriptorSet& DH)
 	{
 		const auto& implDH = static_cast<const vkDescriptorSet&>(DH.GetImpl());
 		uint32_t indices[]	 = { 0 };
@@ -543,7 +543,7 @@ namespace VK_internal
 	}
 
 
-	void vkDirectContext::SetGraphicsDescriptorTable(size_t idx, const DescriptorRange& range)
+	void vkDirectContext::SetGraphicsDescriptorSet(size_t idx, const DescriptorRange& range)
     {}
 
 
@@ -555,15 +555,15 @@ namespace VK_internal
     {}
 
 
-	void vkDirectContext::SetComputeDescriptorTable(size_t idx)
+	void vkDirectContext::SetComputeDescriptorSet(size_t idx)
     {}
 
 
-	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const struct DescriptorSet& DH)
+	void vkDirectContext::SetComputeDescriptorSet(size_t idx, const struct DescriptorSet& DH)
     {}
 
 
-	void vkDirectContext::SetComputeDescriptorTable(size_t idx, const DescriptorRange& range)
+	void vkDirectContext::SetComputeDescriptorSet(size_t idx, const DescriptorRange& range)
     {}
 
 

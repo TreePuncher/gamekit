@@ -318,7 +318,7 @@ FlexKit::UpdateTask* TextureStreamingTest::Draw(FlexKit::UpdateTask* update, Fle
 	frameGraph.SubmitDirect(dispatcher, core.RenderSystem, core.GetTempMemoryMT());
 
 	if (streamingUpdates)
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetResourceWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 
 	return nullptr;
 }

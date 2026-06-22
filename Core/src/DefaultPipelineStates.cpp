@@ -12,7 +12,6 @@ namespace FlexKit
 		builder.AddVertexShader("DrawRect_VS", "assets\\shaders\\vshader.hlsl");
 		builder.AddPixelShader( "DrawRect", "assets\\shaders\\pshader.hlsl");
 
-		builder.AddRootSignature(irs.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 		builder.AddInputLayout({
 			.inputs = {
 			    { "POSITION",	0, DeviceFormat::R32G32_FLOAT,	 0, 0,	EInputClassification::PerVertex, 0 },

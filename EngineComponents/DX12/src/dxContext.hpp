@@ -53,6 +53,7 @@ namespace dx_Internal
 		void SetPipelineState			(const IPipelineState* const PSO) final;
 		void SetComputePipelineState	(const PSOHandle, iAllocator& temp) final;
 		void SetGraphicsPipelineState	(const PSOHandle, iAllocator& temp) final;
+		void SetRTStateObject			(ShaderID program, const IPipelineStateLibrary* const object) final;
 
 		void SetRenderTargets			(const static_vector<ResourceHandle> RTs, bool DepthStecil = false, ResourceHandle DepthStencil = InvalidHandle, const size_t MIPMapOffset = 0) final;
 		void SetRenderTargets2			(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV) final;
@@ -81,16 +82,16 @@ namespace dx_Internal
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB) final;
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsConstantBufferView	(size_t idx, DevicePointer) final;
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorSet& DH) final;
-		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorRange& range) final;
+		void SetGraphicsDescriptorSet		(size_t idx, const DescriptorSet& DH) final;
+		void SetGraphicsDescriptorSet		(size_t idx, const DescriptorRange& range) final;
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource& Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, ResourceHandle resource, size_t offset = 0) final;
 		void SetGraphicsUnorderedAccessView (size_t idx, ResourceHandle resource, size_t offset = 0) final;
 
 
-		void SetComputeDescriptorTable		(size_t idx) final;
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorSet& DH) final;
-		void SetComputeDescriptorTable		(size_t idx, const DescriptorRange& range) final;
+		void SetComputeDescriptorSet		(size_t idx) final;
+		void SetComputeDescriptorSet		(size_t idx, const DescriptorSet& DH) final;
+		void SetComputeDescriptorSet		(size_t idx, const DescriptorRange& range) final;
 
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset) final;
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB) final;
@@ -267,7 +268,7 @@ namespace dx_Internal
 		void BeginMarker(const char* str);
 		void EndMarker(const char* str);
 
-	private:
+	//private:
 
 		DescHeapPOS GetDepthDesciptor(ResourceHandle resource);
 
@@ -309,16 +310,11 @@ namespace dx_Internal
 		static_vector<DescriptorSet*>			DesciptorHeaps;
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 
-		struct StreamOutResource {
-			SOResourceHandle	handle;
-		};
-
 		struct RTV_View {
 			ResourceHandle	resource;
 			DescHeapPOS		descriptor;
 		};
 
-		static_vector<StreamOutResource, 128>		TrackedSOBuffers;
 		static_vector<Barrier, 128>					pendingBarriers; // Barriers potentially needed
 		static_vector<Barrier, 128>					queuedBarriers; // Barriers required
 		static_vector<RTV_View, 128>				renderTargetViews;

@@ -260,7 +260,7 @@ public:
 			core.GetTempMemoryMT()
 		);
 		
-		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetTextureWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
+		textureStreamingEngine.TextureFeedbackPass(dispatcher, frameGraph, activeCamera, core.RenderSystem.GetResourceWH(targets.RenderTarget), res.entityConstants, res.passes, res.animationResources, dT, core.GetTempMemoryMT());
 
 		framework.DrawDebugUI(dT, dispatcher, frameGraph, renderWindow->GetBackBuffer());
 

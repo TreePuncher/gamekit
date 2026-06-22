@@ -13,9 +13,9 @@ namespace VK_internal
         ~vkDescriptorSet() override;
         IDescriptorHeap& operator=(IDescriptorHeap&&) override;
 
-        void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, iAllocator& TempMemory) override;
-        void Init(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;   
-        void Init2(IContext& ctx, const DescriptorHeapLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;
+        void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, iAllocator& TempMemory) override;
+        void Init(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;   
+        void Init2(IContext& ctx, const DescriptorSetLayout& Layout_IN, const size_t reserveCount, iAllocator& TempMemory) override;
         void NullFill(IContext& ctx, const size_t end) override;
 
         void SetCBV(IContext& ctx, size_t idx, const ConstantBufferDataSet& constants) override;
@@ -47,7 +47,7 @@ namespace VK_internal
         struct vkRenderSystem& GetVKRS() noexcept;
 
         VkDescriptorSetLayout       apiLayout           = nullptr;
-        const DescriptorHeapLayout*  layout              = nullptr;
+        const DescriptorSetLayout*  layout              = nullptr;
         std::byte*                  descriptorBuffer    = nullptr;
         uint64_t                    size                = 0;
         uint32_t                    bufferOffset        = 0;

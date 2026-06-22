@@ -551,7 +551,7 @@ namespace dx_Internal
 		};
 
 		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+		auto HR = renderSystem.pDevice15->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		if (SUCCEEDED(HR))
 		{
@@ -560,7 +560,7 @@ namespace dx_Internal
 				for (auto& shader : shaders)
 				{
 					ID3D12RootSignature* dxRootSig = nullptr;
-					HR = renderSystem.pDevice14->CreateRootSignature(0, shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
+					HR = renderSystem.pDevice15->CreateRootSignature(0, shader.buffer, shader.bufferSize, IID_PPV_ARGS(&dxRootSig));
 
 					if (SUCCEEDED(HR))
 					{
@@ -569,7 +569,7 @@ namespace dx_Internal
 						if (!rootSig)
 						{
 							RootSignatureBuilder builder{ *renderSystem.allocator };
-							rootSig = builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, renderSystem, *renderSystem.allocator);
+							rootSig = (RootSignature*)builder.LoadSignatureFromBlob(shader.buffer, shader.bufferSize, *renderSystem.allocator);
 						}
 						break;
 					}
@@ -613,7 +613,7 @@ namespace dx_Internal
 		};
 
 		ID3D12PipelineState* pso = nullptr;
-		auto HR = renderSystem.pDevice14->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
+		auto HR = renderSystem.pDevice15->CreatePipelineState(&streamDesc, IID_PPV_ARGS(&pso));
 
 		return { pso, nullptr };
 	}

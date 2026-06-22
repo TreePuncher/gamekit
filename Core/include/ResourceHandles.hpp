@@ -22,7 +22,6 @@ namespace FlexKit
 	using SignalGroupHandle				= Handle_t<16u, GetTypeGUID(SignalGroupHandle)>;
 	using StreamingTexture2DHandle		= Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>;
 	using ShaderResourceHandle			= Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>;
-	using SOResourceHandle				= Handle_t<32u, GetTypeGUID(SOResourceHandle)>;
 	using StaticBodyHandle				= Handle_t<16u, GetTypeGUID(StaticBodyHandle)>;
 	using ResourceHandle				= Handle_t<32u, GetTypeGUID(ResourceHandle)>;
 	using RootSigHandle					= Handle_t<16u, GetTypeGUID(RootSignature)>;
@@ -75,6 +74,17 @@ namespace FlexKit
 
 		operator DevicePointer() const noexcept { return devicePtr; }
 	};
+
+	struct ProgramID
+	{
+		uint64_t id[4];
+	};
+
+	struct ShaderID
+	{
+		uint64_t id;
+	};
+
 }
 
 

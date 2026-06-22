@@ -1074,7 +1074,7 @@ namespace VK_internal
 
 
 		VkSampler* samplers = nullptr;
-		Vector<DescriptorHeapLayout> heapLayouts{ allocator };
+		Vector<DescriptorSetLayout> heapLayouts{ allocator };
 
 		uint32_t setCount = 0;
 		for (auto& descriptor : descriptors)

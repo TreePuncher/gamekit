@@ -207,10 +207,11 @@ namespace FlexKit
 
 		FrameworkState(GameFramework& in_framework) : framework(in_framework) {}
 
-		IRenderSystem&	GetRenderSystem()	{ return framework.GetRenderSystem(); }
-		iAllocator&		GetAllocator()		{ return framework.core.GetBlockMemory(); }
-		iAllocator&		GetTempAllocator()	{ return framework.core.GetTempMemory(); }
-		iAllocator&		GetTempAllocatorMT(){ return framework.core.GetTempMemory(); }
+		IRenderSystem&	GetRenderSystem()		{ return framework.GetRenderSystem(); }
+		iAllocator&		GetAllocator()			{ return framework.core.GetBlockMemory(); }
+		iAllocator&		GetAllocatorMT()		{ return framework.core.GetMTBlockMemory(); }
+		iAllocator&		GetTempAllocator()		{ return framework.core.GetTempMemory(); }
+		iAllocator&		GetTempAllocatorMT()	{ return framework.core.GetTempMemory(); }
 	};
 
 

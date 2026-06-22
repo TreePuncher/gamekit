@@ -1,106 +1,107 @@
 {
-    "name": "flexkit",
-    "version-string": "0.0.1",
-    "supports": "!x86 & windows & linux & android",
-    "dependencies": [
-        {
-            "name": "angelscript",
-            "features": [
-                "addons"
-            ],
-             "version>=": "2.38.0"
-        },
-        "boost-interprocess",
-        "boost-regex",
-        {
-            "name": "boost-process",
-            "platform": "!android"
-        },
-        {
-            "name": "directx-dxc",
-            "platform": "!android"
-        },
-        {
-            "name": "directxtk12",
-            "platform": "windows"
-        },
-        {
-            "name": "directx12-agility",
-            "platform": "windows"
-        },
-        {
-            "name": "directxmesh",
-            "platform": "!android"
-        },
-        {
-            "name": "directxtex",
-            "features": [
-                "dx12",
-                "openexr"
-            ],
-            "platform": "!android"
-        },
-        "fmt",
-        "fp16",
-        "imgui",
-        "imguizmo",
-        "implot",
-        "loguru",
-        {
-            "name": "ois",
-            "platform": "!android"
-        },
-        {
-            "name": "physx",
-            "platform": "!android"
-        },        
-        {
-            "name": "qtbase",
-            "platform": "windows"
-        },
-        "range-v3",
-        "recastnavigation",
-        "rmlui",
-        "scnlib",
-        "simde",
-        "spirv-cross",
-        "stb",
-        "tinygltf",
-        {
-            "name": "usd",
-            "platform": "windows"
-        },
-        "zlib-ng",
-        {
-            "name": "vulkan",
-            "platform": "!android"
-        },
-        "vk-bootstrap",
-        {
-            "name": "vulkan-loader",
-            "platform": "!android"
-        },
-        "vulkan-validationlayers",
-        {
-            "name": "vulkan-utility-libraries",
-            "platform": "!android"
-        },
-        {
-            "name": "vulkan-extensionlayer",
-            "platform": "!android"
-
-        },
-        {
-            "name": "vulkan-sdk-components",
-            "platform": "!android"
-        },
-        {
-            "name": "wayland",
-            "platform": "linux"
-        }
-    ],
-    "builtin-baseline": "0804e3b55b7e435c593707071052363fa876f170",
-    "configuration": {
-        "overlay-ports": [ "overlay-ports/dbus" ]
+  "name": "flexkit",
+  "version-string": "0.0.1",
+  "supports": "!x86 & windows & linux & android",
+  "dependencies": [
+    {
+      "name": "angelscript",
+      "features": [
+        "addons"
+      ],
+      "version>=": "2.38.0"
+    },
+    "boost-interprocess",
+    "boost-regex",
+    {
+      "name": "boost-process",
+      "platform": "!android"
+    },
+    {
+      "name": "directx-dxc",
+      "platform": "!android"
+    },
+    {
+      "name": "directxtk12",
+      "platform": "windows"
+    },
+    {
+      "name": "directx12-agility",
+      "platform": "windows"
+    },
+    {
+      "name": "directxmesh",
+      "platform": "!android"
+    },
+    {
+      "name": "directxtex",
+      "features": [
+        "dx12",
+        "openexr"
+      ],
+      "platform": "!android"
+    },
+    "fmt",
+    "fp16",
+    "imgui",
+    "imguizmo",
+    "implot",
+    "loguru",
+    {
+      "name": "ois",
+      "platform": "!android"
+    },
+    {
+      "name": "physx",
+      "platform": "!android"
+    },
+    {
+      "name": "qtbase",
+      "platform": "windows"
+    },
+    "range-v3",
+    "recastnavigation",
+    "rmlui",
+    "scnlib",
+    "simde",
+    "spirv-cross",
+    "stb",
+    "tinygltf",
+    {
+      "name": "usd",
+      "platform": "windows"
+    },
+    "zlib-ng",
+    {
+      "name": "vulkan",
+      "platform": "!android"
+    },
+    "vk-bootstrap",
+    {
+      "name": "vulkan-loader",
+      "platform": "!android"
+    },
+    "vulkan-validationlayers",
+    {
+      "name": "vulkan-utility-libraries",
+      "platform": "!android"
+    },
+    {
+      "name": "vulkan-extensionlayer",
+      "platform": "!android"
+    },
+    {
+      "name": "vulkan-sdk-components",
+      "platform": "!android"
+    },
+    {
+      "name": "wayland",
+      "platform": "linux"
     }
+  ],
+  "builtin-baseline": "b216ddff25a1f432870e6c340ce79357049ef86e",
+  "configuration": {
+    "overlay-ports": [
+      "overlay-ports/dbus"
+    ]
+  }
 }

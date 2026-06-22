@@ -184,8 +184,8 @@ namespace FlexKit
 				{
 					ctx.shaderOffset = endres;
 
-					auto [set, descriptorTags] = res.value();
-					handler.DefineDescriptorSet(set, descriptorTags, ctx);
+					auto [num, descriptorTags] = res.value();
+					handler.DefineDescriptorSet(num, descriptorTags, ctx);
 
 					continue;
 				}
@@ -195,6 +195,24 @@ namespace FlexKit
 				ctx.shaderOffset = endres;
 
 				auto [set, binding] = res->values();
+				handler.CBVBinding(set, binding, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::CBV(id={:[^)]})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id] = res->values();
+				handler.CBVRoot(id, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<uint32_t, uint32_t, uint32_t>(match, R"([[fk::Values(num={}, binding={}, set={})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [num, set, binding] = res->values();
 				handler.CBVBinding(set, binding, ctx);
 
 				continue;
@@ -271,7 +289,6 @@ namespace FlexKit
 
 				continue;
 			}
-			//else if (auto res = scn::scan<scn::regex_matches, uint32_t>(match, R"([[fk::InlineValues(id="{:/(\w|\d)*/}", num={})]])"); res)
 			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::PushConstants(num={})]])"); res)
 			{
 				ctx.shaderOffset = endres;
@@ -281,6 +298,15 @@ namespace FlexKit
 
 				continue;
 			}
+			else if (auto res = scn::scan<uint32_t, std::string_view>(match, R"([[fk::PushConstants(num={}, id={:[^)]})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [num, rootSigID] = res->values();
+				handler.LocalRootValues(num, rootSigID, ctx);
+
+				continue;
+				}
 			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::BeginRootSignatureDef(id={:[^)]})]])"))
 			{
 				ctx.shaderOffset = endres;
@@ -308,6 +334,42 @@ namespace FlexKit
 
 				continue;
 			}
+			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::LocalRootSignature(id={:[^)]})]])"))
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id] = res->values();
+				handler.LocalRootSignature(id, ctx);
+
+				continue;
+				}
+			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::AccelerationStructure(binding={}, set={}, id={:[^)]})]])"))
+			{
+				ctx.shaderOffset = endres;
+
+				auto [binding, set, id] = res->values();
+				handler.AccelerationStructure(id, binding, set, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::DefineRootSignature(id={:[^)]})]])"))
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id] = res->values();
+				handler.DefineRootSignature(id, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<std::string_view>(match, R"([[fk::UAVByteBuffer(id={:[^)]})]])"))
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id] = res->values();
+				handler.UAVByteBuffer(id, ctx);
+
+				continue;
+			}
 
 			shader.erase(res, endres - res);
 		}
@@ -317,6 +379,10 @@ namespace FlexKit
 
 	struct VulkanAttributeHandler
 	{
+		void LocalRootValues(uint32_t numValues, std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+		    
+		}
 		// push buffer
 		static void CBVPushBuffer(uint32_t binding, PreprocessorContext& ctx)
 		{
@@ -331,6 +397,13 @@ namespace FlexKit
 					.pipelineStage	= (uint32_t)ctx.type,
 					.id = id
 				});
+		}
+
+		// cbv in pipeline interface
+		static void CBVRoot(std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
 
 		// cbv in descriptor heap
@@ -463,6 +536,31 @@ namespace FlexKit
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
+
+		static void LocalRootSignature(std::string_view, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+		static void DefineRootSignature(std::string_view, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+		static void AccelerationStructure(std::string_view id, uint32_t set, uint32_t binding, PreprocessorContext& ctx)
+		{
+			auto line = std::format("RaytracingAccelerationStructure {} : register(t{}, space{})", id, binding, set);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
+		static void UAVByteBuffer(std::string_view id, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
 	};
 
 
@@ -475,15 +573,48 @@ namespace FlexKit
 			auto line = std::format("cbuffer {} : register(b{})", id, binding);
 			ctx.shader.replace(ctx.begin, ctx.end, line);
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
-
-			ctx.attributes.push_back(
-				ShaderAttributeConstantValues{
-					.binding		= (uint16_t)binding,
-					.pipelineStage	= (uint32_t)ctx.type,
-					.id				= id
-				});
 		}
 
+		void CBVRoot(std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+			auto res = std::find_if(
+				rootSignatures.begin(), rootSignatures.end(),
+                [&](const RootSignatureDefinition& definition) -> bool
+                {
+					return definition.name == rootSigID;
+                }
+			);
+
+			if (res != rootSignatures.end())
+			{
+				RootSignatureDefinition& definition = *res;
+				uint32_t entrySpace = 0xfffffeff - definition.entries.size();
+				uint32_t binding	= definition.entries.size();
+
+				while (definition.IsSpaceInUse(binding))
+					entrySpace--;
+
+				definition.spacesInUse.push_back(entrySpace);
+				definition.entries.push_back(RootSignatureEntryTypes::CBV);
+				definition.entrySpace.push_back(entrySpace);
+
+				std::string rootSignatureSection = std::format("CBV(b{0}, space={1}, visibility=SHADER_VISIBILITY_ALL, flags = DATA_STATIC_WHILE_SET_AT_EXECUTE)", binding, entrySpace);
+				if(definition.sections.size())
+					definition.sections += ", ";
+
+				definition.sections += rootSignatureSection;
+
+				std::string line = std::format("cbuffer buffer_{0}_{1} : register(b{0}, space{1})", binding, entrySpace);
+			    ctx.shader.replace(ctx.begin, ctx.end, line);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+			}
+			else
+			{
+				std::string_view error = "//root signature ID not defined!";
+				ctx.shader.replace(ctx.begin, ctx.end, error);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + error.size();
+			}
+		}
 
 		// cbv in descriptor heap
 		static void CBVBinding(uint32_t set, uint32_t binding, PreprocessorContext& ctx)
@@ -491,6 +622,108 @@ namespace FlexKit
 			auto line = std::format("cbuffer constants_{0}_{1} : register(b{0}, space{1})", set, binding);
 			ctx.shader.replace(ctx.begin, ctx.end, line);
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
+		//static void InlineValues(scn::regex_matches id_match, uint32_t lineLength, uint32_t numValues, PreprocessorContext& ctx)
+		void PushConstants(uint32_t lineLength, uint32_t numValues, PreprocessorContext& ctx)
+		{
+			std::string idStr = std::format("inline_{}", rand());
+			//auto id = id_match.at(0).and_then([](auto m) { return std::optional<std::string>{m.get()}; }).value_or(std::string{ "" });
+
+			static const std::regex structRegex{ R"(\{(\w|\d|\s|\;)*\};)" };
+
+			uint32_t space = 0xffffff00;
+
+			while (true)
+			{
+				TRYAGAIN:
+				for (auto& rootSig : rootSignatures)
+				{
+					if (rootSig.IsSpaceInUse(space))
+					{
+						space--;
+						goto TRYAGAIN;
+					}
+				}
+				break;
+			}
+
+			std::string signatureSegment = std::format(" RootConstants(num32BitConstants={}, b0, space={})", numValues, space);
+
+			for (auto& rootSig : rootSignatures)
+			{
+				rootSig.spacesInUse.push_back(space);
+				if (rootSig.sections.size())
+					rootSig.sections += ", ";
+
+				rootSig.sections += signatureSegment;
+
+				rootSig.entries.push_back(RootSignatureEntryTypes::Values);
+				rootSig.entrySpace.push_back(space);
+			}
+
+			std::string replacement = std::format("cbuffer {} : register(b0, space{})", idStr, space);
+
+			auto structBlock = std::sregex_iterator(
+				ctx.shader.begin() + ctx.shaderOffset,
+				ctx.shader.end(),
+				structRegex);
+
+			//auto pos = ctx.itr->position() + ctx.shaderOffset;
+			auto pos = ctx.shaderOffset;
+			auto posEnd = ctx.shaderOffset + lineLength;
+			auto block = structBlock->position();
+
+			if (posEnd + 2 >= block)
+			{	// formatted correctly? Maybe?
+				ctx.shader.replace(pos - lineLength, lineLength, replacement);
+			}
+
+			ctx.shaderOffset = pos - lineLength + replacement.size();
+		}
+
+		void LocalRootValues(uint32_t numValues, uint32_t binding, uint32_t space, PreprocessorContext& ctx)
+		{
+			auto& def = rootSignatures.back();
+			def.sections += std::format(" RootConstants(num={}, b{}, space{})", numValues, binding, space);
+			def.entries.push_back(RootSignatureEntryTypes::Values);
+			def.entrySpace.push_back(space);
+
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+		void LocalRootValues(uint32_t numValues, std::string_view rootSigID, PreprocessorContext& ctx)
+		{
+			if (
+			auto res = std::find_if(rootSignatures.begin(), rootSignatures.end(),
+				[&](RootSignatureDefinition& def)
+				{
+					return def.name == rootSigID;
+				}); res != rootSignatures.end())
+			{
+				auto& def = *res;
+				uint32_t binding = def.entries.size();
+				def.entries.push_back(RootSignatureEntryTypes::Values);
+
+				uint32_t space = 0xffff0000;
+				while (def.IsSpaceInUse(space))
+					space--;
+
+				def.sections += std::format(" RootConstants(num={}, b{}, space{})", numValues, binding, space);
+				def.entrySpace.push_back(space);
+
+				std::string idStr = std::format("localrootConsants_{}_{}", binding, space);
+				std::string replacement = std::format("cbuffer {} : register(b0, space{})", idStr, space);
+				ctx.shader.replace(ctx.begin, ctx.end, replacement);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + replacement.size();
+			}
+			else
+			{
+				std::string errorLine = std::format("// Failed to find RootSignatureID: {}", rootSigID);
+				ctx.shader.replace(ctx.begin, ctx.end, errorLine);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + errorLine.size();
+			}
 		}
 
 
@@ -554,10 +787,32 @@ namespace FlexKit
 		}
 
 
-		void DefineDescriptorSet(uint32_t set, std::vector<Tag> tags, PreprocessorContext& ctx)
+		void UAVByteBuffer(std::string_view id, PreprocessorContext& ctx)
+		{
+			auto& def = rootSignatures.back();
+
+			uint32_t space = 0xffffff00;
+			uint32_t binding = def.entries.size();
+			def.entries.push_back(RootSignatureEntryTypes::UAV);;
+			while (def.IsSpaceInUse(space))
+				space--;
+			def.entrySpace.push_back(space);
+			def.spacesInUse.push_back(space);
+			if (def.sections.size())
+				def.sections += ", ";
+			def.sections += std::format("UAV(u{}, space={})", binding, space);
+
+			auto line = std::format("RWByteAddressBuffer {} : register(u{}, space{});", id, binding, space);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
+
+		void DefineDescriptorSet(uint32_t num, std::vector<Tag> tags, PreprocessorContext& ctx)
 		{
 			std::flat_map<uint32_t, uint32_t>	spaces;
 			uint32_t							offsetCurrent = 0;
+			uint32_t							setCount = 0;
 
 			constexpr auto SplitString =
 				[](std::string_view target)
@@ -597,9 +852,9 @@ namespace FlexKit
 					std::string numStr;
 					uint32_t	num = 0;
 
-				    std::vector<std::string> visibilityStr;
-				
-				    for (const auto& arg : tag.arguments)
+					std::vector<std::string> visibilityStr;
+
+					for (const auto& arg : tag.arguments)
 					{
 						if (arg == "num=unbounded")
 						{
@@ -614,8 +869,8 @@ namespace FlexKit
 						}
 						else if (auto res = scn::scan<std::string_view>(arg, "visibility={}"); res)
 						{
-							auto [visibilityInputStr]	= res->values();
-							auto visibilityStages		= SplitString(visibilityInputStr);
+							auto [visibilityInputStr] = res->values();
+							auto visibilityStages = SplitString(visibilityInputStr);
 
 							for (const auto& v : visibilityStages)
 							{
@@ -712,14 +967,23 @@ namespace FlexKit
 
 					offsetCurrent += num;
 
+					uint32_t set = setCount++;
+					for (auto& spacesInUse = rootSignatures.back().spacesInUse;;)
+					{
+						if (std::ranges::find(spacesInUse, set) == spacesInUse.end())
+						{
+							spacesInUse.push_back(set);
+							break;
+						}
+						else
+							set++;
+					}
+
 					if (set != 0)
 					{
 						temp += std::format(", space = {}", set);
 					}
 
-					if (auto& spacesInUse = rootSignatures.back().spacesInUse;
-						std::ranges::find(spacesInUse, set) == spacesInUse.end())
-					    spacesInUse.push_back(set);
 
 					if (!flagStr.empty())
 						temp += std::format(", {}", flagStr);
@@ -824,66 +1088,15 @@ namespace FlexKit
 				}
 			}
 
-			rootSignatures.back().sections += std::format(" DescriptorTable({})", sections);
+			auto& definition = rootSignatures.back();
+			definition.entrySpace.push_back(0xffffffff);
+			definition.entries.push_back(RootSignatureEntryTypes::UAV);
+			definition.sections += std::format(" DescriptorTable({})", sections);
 
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
 
-
-		//static void InlineValues(scn::regex_matches id_match, uint32_t lineLength, uint32_t numValues, PreprocessorContext& ctx)
-		void PushConstants(uint32_t lineLength, uint32_t numValues, PreprocessorContext& ctx)
-		{
-			std::string idStr = std::format("inline_{}", rand());
-			//auto id = id_match.at(0).and_then([](auto m) { return std::optional<std::string>{m.get()}; }).value_or(std::string{ "" });
-
-			static const std::regex structRegex{ R"(\{(\w|\d|\s|\;)*\};)" };
-
-			uint32_t space;
-
-			while (true)
-			{
-				space = rand();
-				for (auto& rootSig : rootSignatures)
-				{
-					auto res = std::ranges::find(rootSig.spacesInUse, space);
-
-					if (res != rootSig.spacesInUse.end())
-						continue;
-				}
-
- 				std::string signatureSegment = std::format(" RootConstants(num32BitConstants={}, b0, space={})", numValues, space);
-
-				for (auto& rootSig : rootSignatures)
-				{
-					rootSig.spacesInUse.push_back(space);
-					if (rootSig.sections.size())
-						rootSig.sections += ", ";
-
-					rootSig.sections += signatureSegment;
-				}
-				break;
-			}
-
-			std::string replacement = std::format("cbuffer {} : register(b0, space{})", idStr, space);
-
-			auto structBlock = std::sregex_iterator(
-				ctx.shader.begin() + ctx.shaderOffset,
-				ctx.shader.end(),
-				structRegex);
-
-			//auto pos = ctx.itr->position() + ctx.shaderOffset;
-			auto pos	= ctx.shaderOffset;
-			auto posEnd = ctx.shaderOffset + lineLength;
-			auto block	= structBlock->position();
-			
-			if (posEnd + 2 >= block)
-			{	// formatted correctly? Maybe?
-				ctx.shader.replace(pos - lineLength, lineLength, replacement);
-			}
-			
-			ctx.shaderOffset = pos - lineLength + replacement.size();
-		}
 
 		void BeginRootSig(std::string_view ID, PreprocessorContext& ctx)
 		{
@@ -892,6 +1105,7 @@ namespace FlexKit
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
+
 
 		void RootFlags(std::string_view flags, PreprocessorContext& ctx)
 		{
@@ -942,7 +1156,7 @@ namespace FlexKit
 
 					}
 					else
-						line = "// !!ROOT SIGNATURE NOT DEFINED!!";
+					    line = std::format(R"(// !!ROOT SIGNATURE {} NOT DEFINED!!";)", signatureID);
 
 					ctx.shader.replace(ctx.begin, ctx.end, line);
 					ctx.shaderOffset += line.size();
@@ -955,12 +1169,87 @@ namespace FlexKit
 		}
 
 
+		void LocalRootSignature(std::string_view signatureID, PreprocessorContext& ctx)
+		{
+			for (auto& rootSigDef : rootSignatures)
+			{
+				if (rootSigDef.name == signatureID)
+				{
+					rootSigDef.local = true;
+
+					std::string rootSignature = rootSigDef.GetSignatureDefinition();
+					std::string line;
+
+					if (rootSignature.size())
+					{
+						line = std::format(R"([LocalRootSignature("{}")])", rootSignature);
+
+					}
+					else
+						line = std::format(R"(// !!ROOT SIGNATURE {} NOT DEFINED!!";)", signatureID);
+
+					ctx.shader.replace(ctx.begin, ctx.end, line);
+					ctx.shaderOffset += line.size();
+					return;
+				}
+			}
+
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+
+		void DefineRootSignature(std::string_view signatureID, PreprocessorContext& ctx) const
+		{
+			for (const auto& rootSigDef : rootSignatures)
+			{
+				if (rootSigDef.name == signatureID)
+				{
+					std::string rootSignature = rootSigDef.GetSignatureDefinition();
+					std::string line;
+
+					if (rootSignature.size())
+					{
+						line = std::format(R"(#define {} "{}")", signatureID, rootSignature);
+					}
+					else
+						line = std::format(R"(// !!ROOT SIGNATURE {} NOT DEFINED!!";)", signatureID);
+
+					ctx.shader.replace(ctx.begin, ctx.end, line);
+					ctx.shaderOffset += line.size();
+					return;
+				}
+			}
+
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+
+		static void AccelerationStructure(std::string_view id, uint32_t binding, uint32_t set, PreprocessorContext& ctx)
+		{
+			auto line = std::format("RaytracingAccelerationStructure {} : register(t{}, space{});", id, binding, set);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
+		enum class RootSignatureEntryTypes
+		{
+			Values, CBV, SRV, UAV, DescriptorHeap
+		};
+
+
 		struct RootSignatureDefinition
 		{
-			std::vector<std::string>	flags;
-			std::vector<uint32_t>		spacesInUse;
+			std::vector<RootSignatureEntryTypes>	entries;
+			std::vector<uint32_t>					entrySpace;
+			std::vector<std::string>				flags;
+			std::vector<uint32_t>					spacesInUse;
+
 			std::string	sections;
 			std::string	name;
+
+			bool local = false;
 
 			std::string GetSignatureDefinition() const
 			{
@@ -982,6 +1271,13 @@ namespace FlexKit
 
 				return out;
 			}
+
+			bool IsSpaceInUse(uint32_t space) const
+			{
+				auto res = std::ranges::find(spacesInUse, space);
+
+				return (res != spacesInUse.end());
+			}
 		};
 
 		std::vector<RootSignatureDefinition> rootSignatures;
@@ -994,7 +1290,23 @@ namespace FlexKit
 
 	PreprocessorResult DXShaderProprocessor(std::string& shader, const SHADER_TYPE type, iAllocator& allocator)
 	{
-		return ShaderProprocessor(shader, type, DirectXAttributeHandler{ .rootSignatures{} }, allocator);
+		auto handler = DirectXAttributeHandler{ .rootSignatures{} };
+		auto res = ShaderProprocessor(shader, type, handler, allocator);
+
+		for (auto& def : handler.rootSignatures)
+		{
+			if (def.local)
+			{
+				auto str = def.GetSignatureDefinition();
+				res.attributes.emplace_back(
+					ShaderAttributeLocalRootSignature{
+						.id = def.name, 
+						.rootSigDefinition = str
+					});
+			}
+		}
+
+		return res;
 	}
 }
 

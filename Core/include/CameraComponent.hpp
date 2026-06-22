@@ -181,13 +181,15 @@ namespace FlexKit
 		NodeHandle	GetNode() const;
 		NodeHandle	GetCameraNode() const;
 		float		GetCameraFov();
+		
 
 		operator CameraHandle ();
 
 	    void SetCameraAspectRatio(float AspectRatio);
 	    void SetCameraNode(NodeHandle Node);
 		void SetCameraFOV(float r);
-
+		void SetCameraNear(float);
+		void SetCameraFar(float);
 		void MarkCameraDirty();
 
 		CameraHandle camera;

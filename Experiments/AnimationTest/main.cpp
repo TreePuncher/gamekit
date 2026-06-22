@@ -31,7 +31,7 @@ struct TestState : FrameworkState
 		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), { 800, 600 }, DeviceFormat::R8G8B8A8_UNORM);
 #endif
 
-		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::ShaderResource({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
+		//testTexture		= GetRenderSystem().CreateGPUResource(GPUResourceDesc::SRV({ 1024, 1024 }, DeviceFormat::R8G8B8A8_UNORM));
 
 		GetRenderSystem().RegisterPSOLoader(GetTypeGUID(Trangle),
 			[](IRenderSystem& renderSystem, iAllocator& allocator)
@@ -150,7 +150,7 @@ struct TestState : FrameworkState
 				//const auto cb1Set = ConstantBufferDataSet{ constants1, cb };
 
 				const IPipelineInterface* pipelineInterface = resources.GetPipelineState(GetTypeGUID(Trangle), threadLocalAllocator)->GetInterface();
-				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescHeap(0), threadLocalAllocator};
+				DescriptorSet descriptorSet{ ctx, pipelineInterface->GetDescriptorSetLayout(0), threadLocalAllocator};
 				descriptorSet.SetCBV(ctx, 0, cb0Set);
 
 				ctx.SetGraphicsPipelineState(GetTypeGUID(Trangle), threadLocalAllocator);
@@ -165,7 +165,7 @@ struct TestState : FrameworkState
 				ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) });
 				//ctx.SetGraphicsConstantValue(0, 8, &constants0);
 				//ctx.SetGraphicsConstantBufferView(0, cb1Set);
-				ctx.SetGraphicsDescriptorTable(0, descriptorSet);
+				ctx.SetGraphicsDescriptorSet(0, descriptorSet);
 
 				//ctx.SetGraphicsConstantBufferView(0, cBuffer, 0);
 

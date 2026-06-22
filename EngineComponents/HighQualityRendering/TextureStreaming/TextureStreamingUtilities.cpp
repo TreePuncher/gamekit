@@ -533,7 +533,7 @@ namespace FlexKit
 		PipelineInterfaceBuilder builder{ *IN_allocator };
 		builder.AllowIA = true;
 
-		DescriptorHeapLayout srvHeap;
+		DescriptorSetLayout srvHeap;
 		srvHeap.SetParameterAsSRV(0, 0, -1);
 		FK_ASSERT(srvHeap.Check());
 
@@ -542,7 +542,7 @@ namespace FlexKit
 		builder.SetParameterAsUINT(2, 17, 2, 0, PIPELINE_DEST_PS);
 		builder.SetParameterAsUAV(3, 0, 0, PIPELINE_DEST_PS);
 		builder.SetParameterAsSRV(4, 0, 0, PIPELINE_DEST_VS);
-		builder.SetParameterAsDescriptorTable(5, srvHeap, -1, PIPELINE_DEST_PS);
+		builder.SetParameterAsDescriptorSet(5, srvHeap, -1, PIPELINE_DEST_PS);
 
 		feedbackPassRootSignature = builder.Build(*IN_allocator);
 		FK_ASSERT(feedbackPassRootSignature != nullptr, "Failed to create feedbackPassRootSignature");
@@ -1151,7 +1151,7 @@ namespace FlexKit
 		{
 			if (texture != InvalidHandle)
 			{
-				const uint2 WH				= textureStreamEngine.renderSystem.GetTextureWH(texture);
+				const uint2 WH				= textureStreamEngine.renderSystem.GetResourceWH(texture);
 				const uint2 XY				= textureStreamEngine.renderSystem.GetTextureTilingWH(texture, 0);
 				const auto packedBlockInfo	= textureStreamEngine.renderSystem.GetPackedTileInfo(texture);
 				const auto mipCount			= textureStreamEngine.renderSystem.GetTextureMipCount(texture);

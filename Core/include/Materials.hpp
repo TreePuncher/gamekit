@@ -75,10 +75,10 @@ namespace FlexKit
 		MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE = &NullTextureManager) :
 			textureManager	{ IN_TSE },
 			renderSystem	{ IN_renderSystem },
-			materials		{ IN_allocator },
-			textures		{ IN_allocator },
-			handles			{ IN_allocator },
-			activePasses	{ IN_allocator },
+			materials		{ IN_allocator	},
+			textures		{ IN_allocator	},
+			handles			{ IN_allocator	},
+			activePasses	{ IN_allocator	},
 			allocator		{ *IN_allocator }
 		{
 			materials.reserve(256);
@@ -274,12 +274,44 @@ namespace FlexKit
 		return MaterialComponent::GetComponent().GetProperty<TY>(material, ID);
 	}
 
+	template<IsConstCharStar ... TY>
+	struct MaterialQuery
+	{
+		using Type		= MaterialView&;
+		using ValueType = MaterialView;
+		static constexpr bool IsConst() { return false; }
+
+		bool					IsValid(const MaterialView&) { return true; }
+		bool					Available(const GameObject& gameObject) { return gameObject.hasView(MaterialComponentID); }
+		MaterialView&			GetValue(GameObject& gameObject) { return GetView<MaterialView>(gameObject); }
+	};
+
+
+	struct MaterialPassQuery
+	{
+		MaterialPassQuery(PassHandle IN_pass) : pass{ IN_pass } {}
+
+		PassHandle pass;
+
+		using Type		= MaterialView&;
+		using ValueType = MaterialView;
+		static constexpr bool	IsConst() { return false; }
+
+		bool					IsValid(const MaterialView& view)
+		{
+			auto passes = view.GetPasses();
+		    return std::find(passes.begin(), passes.end(), pass) != passes.end();
+		}
+
+		bool					Available(const GameObject& gameObject) { return gameObject.hasView(MaterialComponentID); }
+		MaterialView&			GetValue(GameObject& gameObject) { return GetView<MaterialView>(gameObject); }
+	};
 
 }	/************************************************************************************************/
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2023 Robert May
+Copyright (c) 2015 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
