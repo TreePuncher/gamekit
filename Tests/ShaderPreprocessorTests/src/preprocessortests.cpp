@@ -19,8 +19,9 @@ static bool RootSignatureDescriptorSetTest()
     std::string exampleShader = R"(
 [[fk::BeginRootSignatureDef(id=rootsig1)]]
 [[fk::RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
-[[fk::DescriptorSet(CBV(num=unbounded) CBV( num = 10, flags = static, visibility=pixel|vertex) CBV(num=3, flags=ASDF))]]
+[[fk::DescriptorSet(CBV(num=unbounded))]]
 [[fk::DescriptorSet(CBV(num=10, flags=static , visibility = pixel | vertex) SRV(num=3) UAV(num=4))]]
+[[fk::DescriptorSet(SRV(num=3))]]
 
 [[fk::PushConstants(num=4)]] 
 {
@@ -46,6 +47,8 @@ VOut VMain(VIN vin, uint vertexID : SV_VertexID)
 
 	return OUT;
 }
+
+[[fk::AccelerationStructure(binding=0, set=2, id=AccelerationStructure)]]
 
 [[fk::RootSignature(id=rootsig1)]]
 float4 PMain() : SV_Target

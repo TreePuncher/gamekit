@@ -1,7 +1,0 @@
-# This is a generated file and its contents are an internal implementation detail.
-# The patch step will be re-executed if anything in this file changes.
-# No other meaning or use of this file is supported.
-
-command (connected)=C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe;-Dcan_fetch=YES;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;E:/repos/gamekit/out/build/x64-debug/_deps/fast_float-subbuild/fast_float-populate-prefix/tmp/fast_float-populate-gitupdate.cmake
-command (disconnected)=C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe;-Dcan_fetch=NO;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;E:/repos/gamekit/out/build/x64-debug/_deps/fast_float-subbuild/fast_float-populate-prefix/tmp/fast_float-populate-gitupdate.cmake
-work_dir=E:/repos/gamekit/out/build/x64-debug/_deps/fast_float-src

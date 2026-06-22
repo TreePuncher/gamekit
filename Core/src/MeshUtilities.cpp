@@ -479,8 +479,8 @@ namespace FlexKit
 			uint32_t indices[3];
 			if (flip)
 			{
-				indices[0] = tri.vertices[0];
-				indices[1] = tri.vertices[2];
+				indices[0] = tri.vertices[2];
+				indices[1] = tri.vertices[0];
 				indices[2] = tri.vertices[1];
 			}
 			else

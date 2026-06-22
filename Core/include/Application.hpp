@@ -23,9 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#ifndef FKAPPLICATION_H
-#define FKAPPLICATION_H
-
+#pragma once
 #include "BuildSettings.hpp"
 #include "EngineCore.hpp"
 #include "GameFramework.hpp"
@@ -79,4 +77,3 @@ namespace FlexKit
 
 }
 
-#endif

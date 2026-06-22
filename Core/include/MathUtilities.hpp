@@ -2251,7 +2251,7 @@ namespace FlexKit
 
 	inline float3		operator * (const Quaternion P, const float3 V) noexcept
 	{
-		auto v = -1 * P.XYZ();
+		auto v = 1.0f * P.XYZ();
 		auto vXV = v.cross(V);
 		auto ret = float3(V + (vXV * (2 * P.w)) + (v.cross(vXV) * 2));
 
@@ -2939,10 +2939,7 @@ namespace FlexKit
 	}
 
 
-	inline float4x4 Inverse(const float4x4& m)
-	{
-		return {};
-	}
+	float4x4 Inverse(const float4x4& m);
 
 
 	/************************************************************************************************/
@@ -3007,9 +3004,9 @@ namespace FlexKit
 	int			Testing();
 
 
-	inline float3 GetTranslation(const float4x4&)
+	inline float3 GetTranslation(const float4x4& xyz)
 	{
-		return float3{ 0, 0, 0 };
+		return float3{ xyz[0][3], xyz[1][3], xyz[2][3] };
 	}
 
 	void printfloat2(const float2& in);

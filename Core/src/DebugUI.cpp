@@ -306,7 +306,7 @@ namespace FlexKit
 		ImGuiIO& io         = ImGui::GetIO();
 		auto*   drawData    = ImGui::GetDrawData();
 		
-		const auto WH   = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+		const auto WH   = frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
 
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
 		io.DeltaTime    = dT;
@@ -343,14 +343,14 @@ namespace FlexKit
 				};
 
 
-				auto constantBuffer	= frameResources.ReserveCB(1024);
-				auto constants		= ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
-				auto rootSig		= frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault);
+				auto constantBuffer				= frameResources.ReserveCB(1024);
+				auto constants					= ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
+				const auto pipelineState		= frameResources.GetPipelineState(DRAW_imgui, allocator);
+				const auto pipelineInterface    = pipelineState->GetInterface();
 
 				// Setup draw State
 				auto SetupState = [&] {
-					ctx.SetRootSignature(rootSig);
-					ctx.SetPipelineState(frameResources.GetPipelineState(DRAW_imgui, allocator));
+					ctx.SetPipelineState(pipelineState);
 					ctx.SetScissorAndViewports({ renderTarget });
 					ctx.SetRenderTargets({ renderTarget }, false);
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
@@ -392,13 +392,13 @@ namespace FlexKit
 							(uint32_t)(cmd.ClipRect.z - clip_off.x),
 							(uint32_t)(cmd.ClipRect.w - clip_off.y) };
 
-						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.TextureId };
+						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.GetTexID() };
 
 						FlexKit::DescriptorSet heap;
-						heap.Init2(ctx, rootSig->GetDescHeap(0), 1, allocator);
+						heap.Init2(ctx, pipelineInterface->GetDescriptorSetLayout(0), 1, allocator);
 						heap.SetSRV(ctx, 0, texture);
 
-						ctx.SetGraphicsDescriptorTable(4, heap);
+						ctx.SetGraphicsDescriptorSet(4, heap);
 						ctx.SetScissorRects(std::span{ &r, 1});
 						ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 					}

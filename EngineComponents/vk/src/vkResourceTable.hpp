@@ -65,7 +65,7 @@ namespace VK_internal
 
     struct vkResourceTable
     {
-        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, TextureDimension, DeviceLayout, uint4, uint32_t, vkResourceViews, VkClearValue, void*>;
+        using MultiFieldType = MultiField<vkResourceEntry, DeviceFormat, ResourceDimension, DeviceLayout, uint4, uint32_t, vkResourceViews, VkClearValue, void*>;
 
         vkResourceTable(iAllocator& IN_allocator) :
             fields  { IN_allocator },

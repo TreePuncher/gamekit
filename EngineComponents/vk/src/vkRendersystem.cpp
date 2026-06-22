@@ -476,7 +476,7 @@ namespace VK_internal
 		        };
 	}
 
-	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DescriptorHeapLayout& layout, iAllocator& allocator)
+	VkDescriptorSetLayout CreateDescriptorSetLayout(VkDevice device, const FlexKit::DescriptorSetLayout& layout, iAllocator& allocator)
 	{
 		Vector<VkDescriptorSetLayoutBinding>	bindings		{ allocator };
 
@@ -485,13 +485,13 @@ namespace VK_internal
 			VkDescriptorType type;
 			switch (entry.type)
 			{
-			case DescHeapEntryType::ConstantBuffer:
+			case DescHeapEntryType::CBV:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 				break;
-			case DescHeapEntryType::ShaderResourceBuffer:
+			case DescHeapEntryType::SRVBuffer:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 				break;
-			case DescHeapEntryType::ShaderResourceImage:
+			case DescHeapEntryType::SRVImage:
 				type = VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				break;
 			case DescHeapEntryType::UAVBuffer:
@@ -1478,7 +1478,7 @@ namespace VK_internal
 	}
 
 
-	size_t vkRenderSystem::GetTextureElementSize(ResourceHandle handle) const
+	size_t vkRenderSystem::GetResourceElementSize(ResourceHandle handle) const
 	{
 		auto format = resources.Get<ResourceFieldID::Format>(handle);
 
@@ -1489,7 +1489,7 @@ namespace VK_internal
 	}
 
 
-	uint2 vkRenderSystem::GetTextureWH(ResourceHandle handle) const
+	uint2 vkRenderSystem::GetResourceWH(ResourceHandle handle) const
 	{
 		uint4 xyzw = resources.Get<ResourceFieldID::XYZW>(handle);
 
@@ -1523,9 +1523,9 @@ namespace VK_internal
 	}
 
 
-	TextureDimension vkRenderSystem::GetTextureDimension(ResourceHandle handle) const
+	ResourceDimension vkRenderSystem::GetResourceDimension(ResourceHandle handle) const
 	{
-		return TextureDimension::Unknown;
+		return ResourceDimension::Unknown;
 	}
 
 
@@ -2052,12 +2052,6 @@ namespace VK_internal
 
 
 	ResourceHandle vkRenderSystem::CreateUAVTextureResource(const uint2 WH, const DeviceFormat, const bool RenderTarget)
-	{
-		return InvalidHandle;
-	}
-
-
-	SOResourceHandle vkRenderSystem::CreateStreamOutResource(size_t bufferHandle, bool tripleBuffer)
 	{
 		return InvalidHandle;
 	}

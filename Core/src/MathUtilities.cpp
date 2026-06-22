@@ -267,15 +267,14 @@ namespace FlexKit
 	float4x4 CreatePerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio)
 	{
 		float TwoNearZ	= minZ + minZ;
-		float fRange	= maxZ / (minZ - maxZ);
+		float fRange	= maxZ / (maxZ - minZ);
 
-
-		float sinFOV = std::sin(0.5f * FOV);
-		float cosFOV = std::cos(0.5f * FOV);
+		float sinFOV	= std::sin(0.5f * FOV);
+		float cosFOV	= std::cos(0.5f * FOV);
 
 		float height	= cosFOV / sinFOV;
 		float width		= height / aspectRatio;
-		float range		= maxZ / (minZ - maxZ);
+		float range		= maxZ / (maxZ - minZ);
 
 		float4x4 m = float4x4::Identity();
 		m(0, 0) = width;
@@ -290,12 +289,12 @@ namespace FlexKit
 
 		m(2, 0) = 0.0f;
 		m(2, 1) = 0.0f;
-		m(2, 2) = fRange;
+		m(2, 2) = -fRange;
 		m(2, 3) = -1.0f;
 
 		m(3, 0) = 0.0f;
 		m(3, 1) = 0.0f;
-		m(3, 2) = range * minZ;
+		m(3, 2) = -range * minZ;
 		m(3, 3) = 0.0f;
 
 		return m;

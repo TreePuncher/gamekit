@@ -311,8 +311,8 @@ namespace FlexKit
 	ShadowMapper::ShadowMapper(IRenderSystem& renderSystem, iAllocator& allocator) :
 		resourcePool    { &allocator }
 	{
-		DescriptorHeapLayout heapLayout;
-		heapLayout.SetParameterAsShaderUAV(0, 0, 1);	// output
+		DescriptorSetLayout heapLayout;
+		heapLayout.SetParameterAsUAV(0, 0, 1);	// output
 
 		PipelineInterfaceBuilder builder{ allocator };
 		builder.AllowIA = true;
@@ -320,7 +320,7 @@ namespace FlexKit
 		builder.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
 		builder.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
 		builder.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
-		builder.SetParameterAsDescriptorTable(4, heapLayout);
+		builder.SetParameterAsDescriptorSet(4, heapLayout);
 
 		rootSignature = builder.Build(allocator);
 		FK_ASSERT(rootSignature != nullptr, "Failed to create Root Signature!");
@@ -554,7 +554,7 @@ namespace FlexKit
 					break;
 				}
 
-				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout::ShaderResource);
+				//ctx.renderSystem->SetObjectLayout(pass.renderTarget, DeviceLayout::SRV);
 			}
 		};
 
@@ -1002,10 +1002,10 @@ namespace FlexKit
 			DeviceLayout::RenderTarget,	DeviceLayout::UnorderedAccess,
 			Sync_RenderTarget,			Sync_Compute);
 
-		DescriptorSet heap{ ctx, rootSignature.GetDescHeap(0), allocator };
+		DescriptorSet heap{ ctx, rootSignature.GetDescriptorSetLayout(0), allocator };
 		heap.SetUAVTexture(ctx, 0, target);
 
-		ctx.SetComputeDescriptorTable(4, heap);
+		ctx.SetComputeDescriptorSet(4, heap);
 		ctx.Dispatch(rowPSO, { 1, 1024, 1});
 
 		ctx.AddUAVBarrier(target, -1, DeviceLayout::UnorderedAccess);

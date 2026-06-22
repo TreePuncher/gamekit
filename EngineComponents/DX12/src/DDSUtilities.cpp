@@ -1311,7 +1311,7 @@ namespace dx_Internal
 
 		ResourceHandle Texture = RS->CreateGPUResource(
 			GPUResourceDesc::BuildFromMemory(
-				GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, TextureDimension::Texture2D),
+				GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, ResourceDimension::Texture2D),
 				&resource, 1));
 
 		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");

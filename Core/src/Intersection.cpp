@@ -320,21 +320,22 @@ namespace FlexKit
 			const auto N = F.Planes[EPlane_FAR].n;
 
 			const float NdP	= N.dot(P);
-			Far			    = NdP <= r;
+			Far			    = NdP - r < 0.0;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_NEAR].o;
 			const auto N = F.Planes[EPlane_NEAR].n;
 
 			const float NdP	= N.dot(P);
-			Near		    = NdP <= r;
+			Near		    = NdP - r < 0.0;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_TOP].o;
 			const auto N = F.Planes[EPlane_TOP].n;
 
 			const float NdP	= N.dot(P);
-			Top			    = NdP <= r;
+			Top			    = NdP - r < 0.0;
+			int x = 0;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_BOTTOM].o;
@@ -342,21 +343,21 @@ namespace FlexKit
 
 			const auto temp = N.magnitude();
 			const float NdP	= N.dot(P);
-			Bottom		    = NdP <= r;
+			Bottom			= NdP - r < 0.0;
 		}
 		{
 			auto P = V - F.Planes[EPlane_LEFT].o;
 			auto N = F.Planes[EPlane_LEFT].n;
 
 			const float NdP	= N.dot(P);
-			Left		    = NdP <= r;
+			Left		    = NdP - r < 0.0;
 		}
 		{
 			const auto P = V - F.Planes[EPlane_RIGHT].o;
 			const auto N = F.Planes[EPlane_RIGHT].n;
 
 			const float NdP	= N.dot(P);
-			Right		    = NdP <= r;
+			Right		    = NdP - r < 0.0;
 		}
 
 		return (Bottom & Near & Far & Left & Right & Top);
@@ -394,14 +395,14 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	Frustum GetFrustum(
+	
+    Frustum GetFrustum(
 		const float AspectRatio, 
 		const float FOV, 
 		const float Near, 
 		const float Far, 
-		float3 Position, 
-		Quaternion Q) noexcept
+		float3		Position, 
+		Quaternion	Q) noexcept
 	{
 		float3 FTL(0);
 		float3 FTR(0);
@@ -456,28 +457,28 @@ namespace FlexKit
 			float3 N1 = DirectionVector(FTL, FTR);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_TOP].o = Position;
-			Out.Planes[EPlane_TOP].n = -N1.cross(N2).normal();
+			Out.Planes[EPlane_TOP].o = NTR;
+			Out.Planes[EPlane_TOP].n = N2.cross(N1).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBL, FBR);
 			float3 N2 = DirectionVector(FBL, NBL);
 
-			Out.Planes[EPlane_BOTTOM].o = Position;
+			Out.Planes[EPlane_BOTTOM].o = NBL;
 			Out.Planes[EPlane_BOTTOM].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FTL, FBL);
 			float3 N2 = DirectionVector(FTL, NTL);
 
-			Out.Planes[EPlane_LEFT].o = Position;
+			Out.Planes[EPlane_LEFT].o = NBL;
 			Out.Planes[EPlane_LEFT].n = N1.cross(N2).normal();
 		}
 		{
 			float3 N1 = DirectionVector(FBR, FTR);
 			float3 N2 = DirectionVector(FTR, NTR);
 
-			Out.Planes[EPlane_RIGHT].o = Position;
+			Out.Planes[EPlane_RIGHT].o = NBR;
 			Out.Planes[EPlane_RIGHT].n = N1.cross(N2).normal();
 		}
 

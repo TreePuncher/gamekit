@@ -55,6 +55,14 @@ namespace dx_Internal
 		return MD.IndexBuffer_Index;
 	}
 
+	DevicePointer dxVertexBufferSet::GetBufferPointer(VERTEXBUFFER_TYPE type) const
+	{
+		if (auto res = Find(type); res)
+		    return DevicePointer{ res.value().resource.As<ID3D12Resource>()->GetGPUVirtualAddress() };
+		else 
+		    return {};
+	}
+
 	void dxVertexBufferSet::CreateBuffer(VERTEXBUFFER_TYPE type, VERTEXBUFFER_FORMAT format, size_t byteSize)
 	{
 		auto& dxRS = static_cast<dxRenderSystem&>(dxRenderSystem::GetInstance());

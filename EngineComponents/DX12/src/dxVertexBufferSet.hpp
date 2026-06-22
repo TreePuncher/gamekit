@@ -47,6 +47,8 @@ namespace dx_Internal
 		virtual const VertexBuffer			operator []	(uint8_t idx) const override;
 		virtual uint8_t						GetIndexBufferIndex() const override;
 
+		virtual DevicePointer				GetBufferPointer(VERTEXBUFFER_TYPE) const override;
+
 		virtual void CreateBuffer(VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT, size_t byteSize) override;
 		virtual void ReleaseBuffer(VERTEXBUFFER_TYPE) override;
 
