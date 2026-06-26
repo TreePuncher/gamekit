@@ -5,6 +5,7 @@
 #include "EditorViewport.h"
 #include <RenderSystemInterface.hpp>
 
+using namespace FlexKit;
 
 /************************************************************************************************/
 
@@ -295,14 +296,14 @@ uint32_t ExtrudeFace(uint32_t faceIdx, float z, ModifiableShape& shape)
 /************************************************************************************************/
 
 
-static_vector<Vertex, 24> CreateWireframeCube(const float halfW)
+static_vector<::Vertex, 24> CreateWireframeCube(const float halfW)
 {
 	using FlexKit::float2;
 	using FlexKit::float3;
 	using FlexKit::float4;
 
 
-	const static_vector<Vertex, 24> vertices = {
+	const static_vector<::Vertex, 24> vertices = {
 		// Top
 		{ float4{ -halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 		{ float4{  halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
@@ -350,13 +351,13 @@ static_vector<Vertex, 24> CreateWireframeCube(const float halfW)
 }
 
 
-std::vector<Vertex> CreateWireframeCube2(const float halfW)
+std::vector<::Vertex> CreateWireframeCube2(const float halfW)
 {
 	using FlexKit::float2;
 	using FlexKit::float3;
 	using FlexKit::float4;
 
-	const std::vector<Vertex> vertices = {
+	const std::vector<::Vertex> vertices = {
 		// Top
 		{ float4{ -halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
 		{ float4{  halfW,  halfW,  halfW, 1 }, float4{ 1, 1, 1, 1 }, float2{ 0, 0 } },
@@ -1202,12 +1203,12 @@ public:
 		}
 	}
 
-	void Draw(FlexKit::UpdateDispatcher& dispatcher, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ResourceHandle depthBuffer) final
+	void Draw(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, ResourceHandle renderTarget, ResourceHandle depthBuffer) final
 	{
 		struct DrawHUD
 		{
-			FlexKit::FrameResourceHandle            renderTarget;
-			FlexKit::FrameResourceHandle            depthBuffer;
+			FrameResourceHandle            renderTarget;
+			FrameResourceHandle            depthBuffer;
 		};
 
 
@@ -1220,30 +1221,30 @@ public:
 					data.renderTarget   = builder.RenderTarget(renderTarget);
 					data.depthBuffer    = builder.DepthTarget(depthBuffer);
 				},
-				[&](DrawHUD& data, FlexKit::ResourceHandler& resources, FlexKit::IDirectContext& ctx, auto& allocator)
+				[&](DrawHUD& data, ResourceHandler& resources, IDirectContext& ctx, auto& allocator)
 				{
 					ctx.BeginEvent_DEBUG("Draw CSG HUD");
 
-					const auto& brushes = selection.GetData().brushes;
-					static auto rootSig = resources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
+					const auto& brushes		= selection.GetData().brushes;
+					static const auto* state		= resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO, allocator);
+					static const auto& heapLayout	= state->GetDescriptorSetLayout(0);
 
 					// Setup state
-					FlexKit::DescriptorHeap descHeap;
+					DescriptorSet descHeap;
 					descHeap.Init(
 						ctx,
-						rootSig->GetDescHeap(0),
-						&allocator);
+						heapLayout,
+						allocator);
 					descHeap.NullFill(ctx);
 
-					ctx.SetRootSignature(rootSig);
-					ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_TRI3D_PSO, allocator));
+					ctx.SetPipelineState(state);
 
 					ctx.SetScissorAndViewports({ resources.GetResource(data.renderTarget) });
 					ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, true, resources.GetResource(data.depthBuffer));
 
 					ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
-					ctx.SetGraphicsDescriptorTable(0, descHeap);
+					ctx.SetGraphicsDescriptorSet(0, descHeap);
 
 					ctx.NullGraphicsConstantBufferView(3);
 					ctx.NullGraphicsConstantBufferView(4);
@@ -1253,21 +1254,21 @@ public:
 
 					struct DrawConstants
 					{
-						FlexKit::float4     unused1;
-						FlexKit::float4     unused2;
-						FlexKit::float4x4   transform;
+						float4     unused1;
+						float4     unused2;
+						float4x4   transform;
 					};
 
 					auto constantBuffer = resources.ReserveCB(
-						FlexKit::AlignedSize<FlexKit::Camera::ConstantBuffer>() +
-						FlexKit::AlignedSize<DrawConstants>() * brushes.size());
+						AlignedSize<FlexKit::Camera::ConstantBuffer>() +
+						AlignedSize<DrawConstants>() * brushes.size());
 
 					FlexKit::ConstantBufferDataSet cameraConstants{ FlexKit::GetCameraConstants(viewport.GetViewportCamera()), constantBuffer };
 					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 
 					const size_t selectedNodeIdx    = selection.GetData().selectedBrush;
-					FlexKit::VBPushBuffer TBBuffer  = resources.ReserveVB(sizeof(Vertex) * 1024 * brushes.size());
-					FlexKit::VBPushBuffer LBBuffer  = resources.ReserveVB(sizeof(Vertex) * 1024 * brushes.size());
+					VBPushBuffer TBBuffer  = resources.ReserveVB(sizeof(::Vertex) * 1024 * brushes.size());
+					VBPushBuffer LBBuffer  = resources.ReserveVB(sizeof(::Vertex) * 1024 * brushes.size());
 
 					size_t idx = 0;
 
@@ -1291,7 +1292,7 @@ public:
 						const float r       = aabb.Dim()[aabb.LongestAxis()];
 						const auto offset   = aabb.MidPoint();
 
-						std::vector<Vertex> verts;
+						std::vector<::Vertex> verts;
 
 						for (size_t faceIdx = 0; faceIdx < brush.shape.wFaces.size(); faceIdx++)
 						{
@@ -1299,7 +1300,7 @@ public:
 							FlexKit::float4 Color = colors[faceIdx % 8];
 
 
-							Vertex v;
+							::Vertex v;
 							v.UV = FlexKit::float2(1, 1);
 							auto temp = brush.shape.GetFaceGeometry(faceIdx);
 
@@ -1337,7 +1338,7 @@ public:
 
 						for (auto& intersection : brush.intersections)
 						{
-							Vertex v;
+							::Vertex v;
 							v.Color     = FlexKit::float4(1, 0, 0, 1);
 							v.UV        = FlexKit::float2(1, 1);
 
@@ -1361,9 +1362,9 @@ public:
 						ctx.SetVertexBuffers({ vbDataSet });
 
 						const DrawConstants CB_Data = {
-							.unused1    = FlexKit::float4{ 1, 1, 1, 1 },
-							.unused2    = FlexKit::float4{ 1, 1, 1, 1 },
-							.transform  = FlexKit::TranslationMatrix(brush.position)
+							.unused1    = float4{ 1, 1, 1, 1 },
+							.unused2    = float4{ 1, 1, 1, 1 },
+							.transform  = TranslationMatrix(brush.position)
 						};
 
 						const FlexKit::ConstantBufferDataSet constants{ CB_Data, constantBuffer };
@@ -1382,13 +1383,13 @@ public:
 						ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
 						ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
 
-						Vertex v;
+						::Vertex v;
 						v.Color = FlexKit::float4{ 0, 0, 0, 0 };
 						v.UV    = FlexKit::float2{ 1, 1 };
 
 						auto& shape = brush.shape;
 
-						std::vector<Vertex> verts;
+						std::vector<::Vertex> verts;
 
 						for (uint32_t faceIdx = 0; faceIdx < shape.wFaces.size(); faceIdx++)
 						{
@@ -1424,23 +1425,23 @@ public:
 									const auto B        = A + triangle.Normal();
 
 									verts.push_back(
-										Vertex{
+										::Vertex{
 											.Position   = A,
-											.Color      = FlexKit::float4{ 1, 1, 1, 1 },
-											.UV         = FlexKit::float2{ 0, 0 }
+											.Color      = float4{ 1, 1, 1, 1 },
+											.UV         = float2{ 0, 0 }
 										});
 
 									verts.push_back(
-										Vertex{
+										::Vertex{
 											.Position   = B,
-											.Color      = FlexKit::float4{ 1, 1, 1, 1 },
-											.UV         = FlexKit::float2{ 1, 1 }
+											.Color      = float4{ 1, 1, 1, 1 },
+											.UV         = float2{ 1, 1 }
 										});
 								}
 							}
 						}
 
-						const FlexKit::VertexBufferDataSet vbDataSet{ verts, TBBuffer };
+						const VertexBufferDataSet vbDataSet{ verts, TBBuffer };
 
 						ctx.SetVertexBuffers({ vbDataSet });
 						ctx.Draw(verts.size());
@@ -1578,10 +1579,10 @@ public:
 			{
 				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
-				FlexKit::Event mouseEvent;
-				mouseEvent.InputSource  = FlexKit::Event::Mouse;
-				mouseEvent.Action       = FlexKit::Event::Pressed;
-				mouseEvent.mType        = FlexKit::Event::Input;
+				Event mouseEvent;
+				mouseEvent.InputSource  = Event::Mouse;
+				mouseEvent.Action       = Event::Pressed;
+				mouseEvent.mType        = Event::Input;
 
 				mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
 				hud.HandleInput(mouseEvent);
@@ -1590,12 +1591,12 @@ public:
 			{
 				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
-				FlexKit::Event mouseEvent;
-				mouseEvent.InputSource  = FlexKit::Event::Mouse;
-				mouseEvent.Action       = FlexKit::Event::Pressed;
-				mouseEvent.mType        = FlexKit::Event::Input;
+				Event mouseEvent;
+				mouseEvent.InputSource  = Event::Mouse;
+				mouseEvent.Action       = Event::Pressed;
+				mouseEvent.mType        = Event::Input;
 
-				mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+				mouseEvent.mData1.mKC[0] = KC_MOUSERIGHT;
 				hud.HandleInput(mouseEvent);
 			}
 			return true;
@@ -1611,10 +1612,10 @@ public:
 			{
 				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
-				FlexKit::Event mouseEvent;
-				mouseEvent.InputSource  = FlexKit::Event::Mouse;
-				mouseEvent.Action       = FlexKit::Event::Release;
-				mouseEvent.mType        = FlexKit::Event::Input;
+				Event mouseEvent;
+				mouseEvent.InputSource  = Event::Mouse;
+				mouseEvent.Action       = Event::Release;
+				mouseEvent.mType        = Event::Input;
 
 				mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSELEFT;
 				hud.HandleInput(mouseEvent);
@@ -1623,12 +1624,12 @@ public:
 			{
 				previousMousePosition = FlexKit::int2{ -160000, -160000 };
 
-				FlexKit::Event mouseEvent;
-				mouseEvent.InputSource  = FlexKit::Event::Mouse;
-				mouseEvent.Action       = FlexKit::Event::Release;
-				mouseEvent.mType        = FlexKit::Event::Input;
+				Event mouseEvent;
+				mouseEvent.InputSource  = Event::Mouse;
+				mouseEvent.Action       = Event::Release;
+				mouseEvent.mType        = Event::Input;
 
-				mouseEvent.mData1.mKC[0] = FlexKit::KC_MOUSERIGHT;
+				mouseEvent.mData1.mKC[0] = KC_MOUSERIGHT;
 				hud.HandleInput(mouseEvent);
 			}
 			return true;
@@ -1766,9 +1767,9 @@ public:
 	{
 		SelectionPrimitive mode = SelectionPrimitive::Disabled;
 
-		CSGBrush*   brush           = nullptr;
-		ModifiableShape*   shape           = nullptr;
-		uint32_t selectedElement    = -1;
+		CSGBrush*			brush           = nullptr;
+		ModifiableShape*	shape			= nullptr;
+		uint32_t			selectedElement = -1;
 
 		std::vector<CSGBrush::RayCast_result> selectedPrimitives;
 
@@ -1817,7 +1818,7 @@ public:
 			shape           = const_cast<ModifiableShape*>(hit.shape);
 		}
 
-		void GetSelectionUIGeometry(std::vector<Vertex>& verts) const
+		void GetSelectionUIGeometry(std::vector<::Vertex>& verts) const
 		{
 			if (!shape)
 				return;
@@ -1839,7 +1840,7 @@ public:
 
 					tri = tri.Offset(tri.Normal() * 0.001f + brush->position);
 
-					Vertex v;
+					::Vertex v;
 					v.Color = FlexKit::float4(1, 0, 0, 1);
 					v.UV    = FlexKit::float2(1, 1);
 
@@ -1861,13 +1862,13 @@ public:
 					{
 						tri = tri.Offset(n * 0.001f + brush->position);
 
-						Vertex v;
-						v.Color = FlexKit::float4(1, 0, 0, 1);
-						v.UV = FlexKit::float2(1, 1);
+						::Vertex v;
+						v.Color = float4(1, 0, 0, 1);
+						v.UV	= float2(1, 1);
 
 						for (size_t idx = 0; idx < 3; idx++)
 						{
-							v.Position = FlexKit::float4(tri[idx], 1);
+							v.Position = float4(tri[idx], 1);
 							verts.emplace_back(v);
 						}
 					}
@@ -1882,10 +1883,10 @@ public:
 
 	bool drawNormals = false;
 
-	EditorViewport&				viewport;
-	CSGView&					selection;
-	FlexKit::ImGUIIntegrator&	hud;
-	FlexKit::int2				previousMousePosition = FlexKit::int2{ -160000, -160000 };
+	EditorViewport&		viewport;
+	CSGView&			selection;
+	ImGUIIntegrator&	hud;
+	int2				previousMousePosition = int2{ -160000, -160000 };
 };
 
 
@@ -1925,11 +1926,11 @@ public:
 		CSGMode.keyReleaseEvent(evt);
 	}
 
-	CSGEditMode&				CSGMode;
-	EditorViewport&				viewport;
-	CSGView&					selection;
-	FlexKit::ImGUIIntegrator&	hud;
-	FlexKit::int2				previousMousePosition = FlexKit::int2{ -160000, -160000 };
+	CSGEditMode&		CSGMode;
+	EditorViewport&		viewport;
+	CSGView&			selection;
+	ImGUIIntegrator&	hud;
+	int2				previousMousePosition = int2{ -160000, -160000 };
 };
 
 /************************************************************************************************/
@@ -1971,9 +1972,9 @@ void UpdateCSGComponent(CSGComponentData& brushComponent)
 
 
 
-FlexKit::Blob EditorComponentCSG::GetBlob()
+Blob EditorComponentCSG::GetBlob()
 {
-	FlexKit::SaveArchiveContext archive;
+	SaveArchiveContext archive;
 
 	Serialize(archive);
 
@@ -1984,12 +1985,12 @@ FlexKit::Blob EditorComponentCSG::GetBlob()
 /************************************************************************************************/
 
 
-void CSGComponentEventHandler::OnCreateView(FlexKit::GameObject& gameObject, FlexKit::ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+void CSGComponentEventHandler::OnCreateView(GameObject& gameObject, ValueMap values, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
 {
 	std::vector<CSGBrush>   brushes;
 
-	FlexKit::Blob blob{ (const char*)buffer, bufferSize };
-	FlexKit::LoadBlobArchiveContext archive(blob);
+	Blob blob{ (const char*)buffer, bufferSize };
+	LoadBlobArchiveContext archive(blob);
 
 	auto& csgView = !gameObject.hasView(CSGComponentID) ? gameObject.AddView<CSGView>() : static_cast<CSGView&>(*gameObject.GetView(CSGComponentID));
 
@@ -2013,7 +2014,7 @@ struct CSGEditorComponent final : public IEditorComponent
 	const std::string&		ComponentName()	const noexcept { return name; }
 
 
-	void Inspect(ComponentViewPanelContext& panelCtx, FlexKit::GameObject& gameObject, FlexKit::ComponentViewBase& view, bool remoteObject) override
+	void Inspect(ComponentViewPanelContext& panelCtx, GameObject& gameObject, ComponentViewBase& view, bool remoteObject) override
 	{
 		CSGView& csgView = static_cast<CSGView&>(view);
 
@@ -2105,7 +2106,7 @@ struct CSGEditorComponent final : public IEditorComponent
 	}
 
 
-	FlexKit::ComponentViewBase* Construct(FlexKit::GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
+	ComponentViewBase* Construct(GameObject& gameObject, ComponentConstructionContext& ctx, bool remote)
 	{
 		if (remote)
 			return nullptr;
@@ -2116,7 +2117,7 @@ struct CSGEditorComponent final : public IEditorComponent
 	inline static const std::string name = "CSG";
 
 
-	static void Update(FlexKit::EntityComponent& component, FlexKit::ComponentViewBase& base, ViewportSceneContext& scene)
+	static void Update(EntityComponent& component, ComponentViewBase& base, ViewportSceneContext& scene)
 	{
 		auto& editorCSGComponent	= static_cast<EditorComponentCSG&>(component);
 		auto& csgView				= static_cast<CSGView&>(base);

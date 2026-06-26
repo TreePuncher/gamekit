@@ -1,14 +1,17 @@
 #include "PCH.h"
 #include "DXRenderWindow.h"
-
+#include <FrameGraph.hpp>
+#include <RenderSystemInterface.hpp>
 #include <fmt/format.h>
 #include <qevent.h>
 
 
+using namespace FlexKit;
+
 /************************************************************************************************/
 
 
-DXRenderWindow::DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent) :
+DXRenderWindow::DXRenderWindow(IRenderSystem& renderSystem, QWidget *parent) :
 	QWidget         { parent },
 	renderWindow    { FlexKit::CreateWin32RenderWindowFromHWND(renderSystem, (uint64_t)winId()) }
 {
@@ -55,7 +58,7 @@ void DXRenderWindow::Release()
 /************************************************************************************************/
 
 
-void DXRenderWindow::Draw(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ThreadSafeAllocator& threadSafeAllocator)
+void DXRenderWindow::Draw(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph, ThreadSafeAllocator& threadSafeAllocator)
 {
 	if (resizeFinished)
 	{

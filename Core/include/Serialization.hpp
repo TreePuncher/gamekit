@@ -367,7 +367,7 @@ namespace FlexKit
 		!SerializableValue<TY, TY_archive> &&
 		!SerializableStruct<TY, TY_archive>;
 
-	template<typename TY> concept SerializableInterfacePointer = std::is_base_of_v<SerializableBase, TY>;//&& std::is_abstract_v<TY>;
+	template<typename TY> concept SerializableInterfacePointer = std::is_base_of_v<SerializableBase, TY>;
 
 	struct PointerValue
 	{

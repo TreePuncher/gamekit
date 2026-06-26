@@ -302,24 +302,24 @@ namespace FlexKit
 				};
 
 
-			AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.points);
+			AddSubMeshBuffer(VERTEXBUFFER_TYPE::POSITION, VERTEXBUFFER_FORMAT::R32G32B32, optimizedBuffer.points);
 
 			if (lod.subMeshs[0].UV)
-				AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32, optimizedBuffer.textureCoordinates);
+				AddSubMeshBuffer(VERTEXBUFFER_TYPE::UV, VERTEXBUFFER_FORMAT::R32G32, optimizedBuffer.textureCoordinates);
 
 			if (lod.subMeshs[0].Normals)
-				AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.normals);
+				AddSubMeshBuffer(VERTEXBUFFER_TYPE::NORMAL, VERTEXBUFFER_FORMAT::R32G32B32, optimizedBuffer.normals);
 
 			if (lod.subMeshs[0].Tangents)
-				AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.tangents);
+				AddSubMeshBuffer(VERTEXBUFFER_TYPE::TANGENT, VERTEXBUFFER_FORMAT::R32G32B32, optimizedBuffer.tangents);
 
 			if (lod.subMeshs[0].Weights)
 			{
-				AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, optimizedBuffer.jointWeights);
-				AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, optimizedBuffer.jointIndexes);
+				AddSubMeshBuffer(VERTEXBUFFER_TYPE::ANIMATION1, VERTEXBUFFER_FORMAT::R32G32B32, optimizedBuffer.jointWeights);
+				AddSubMeshBuffer(VERTEXBUFFER_TYPE::ANIMATION2, VERTEXBUFFER_FORMAT::R16G16B16A16, optimizedBuffer.jointIndexes);
 			}
 
-			const auto indexBuffer  = AddSubMeshBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, optimizedBuffer.indexes);
+			const auto indexBuffer  = AddSubMeshBuffer(VERTEXBUFFER_TYPE::INDEX, VERTEXBUFFER_FORMAT::R32, optimizedBuffer.indexes);
 
 			newLod.IndexBuffer_Idx  = indexBuffer;
 			newLod.IndexCount       = optimizedBuffer.indexes.size() / 4;

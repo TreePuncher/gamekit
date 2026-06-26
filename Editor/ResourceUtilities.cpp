@@ -27,7 +27,7 @@ namespace FlexKit
 		iAllocator*		MemoryOut;
 		iAllocator*		TempMem;
 		iAllocator*		LevelMem;
-		RenderSystem*	RS;
+		IRenderSystem*	RS;
 	};
 
 
@@ -37,7 +37,7 @@ namespace FlexKit
 	size_t CalculateTriResourceMeshSize(TriMeshResource* TriMesh)
 	{
 		size_t Size = 0;
-		for (auto B : TriMesh->Buffers)
+		for (auto B : TriMesh->buffers)
 			Size += B ? B->GetBufferSizeRaw() : 0;
 
 		return Size;
@@ -54,10 +54,10 @@ namespace FlexKit
 
 		while (I)
 		{
-			for (size_t II = 0; II < I->Clip.FrameCount; ++II)
+			for (size_t II = 0; II < I->Clip.frameCount; ++II)
 			{
-				Size += I->Clip.Frames[II].JointCount * sizeof(JointPose);
-				Size += I->Clip.Frames[II].JointCount * sizeof(JointHandle);
+				Size += I->Clip.frames[II].JointCount * sizeof(JointPose);
+				Size += I->Clip.frames[II].JointCount * sizeof(JointHandle);
 			}
 			I = I->Next;
 		}
@@ -359,7 +359,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2021 Robert May
+Copyright (c) 2015 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -6,12 +6,13 @@
 #include <scn/scan.h>
 #include <string_view>
 
-#include "Win32Graphics.hpp"
-#include "Serialization.hpp"
+#include <Win32Graphics.hpp>
+#include <Serialization.hpp>
+#include <DepthBuffer.hpp>
+#include <WorldRender.hpp>
+
 #include "EditorPlayer.h"
 #include "EditorProject.h"
-#include "DepthBuffer.hpp"
-#include "WorldRender.hpp"
 
 using namespace boost::interprocess;
 using namespace FlexKit;
@@ -23,7 +24,7 @@ void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared)
 	SendResource(resource, shared, shared.idGenerator());
 }
 
-struct EditorSendResourceMessage : public FlexKit::Serializable<EditorSendResourceMessage, MessageInterface, GetTypeGUID(ResourceMessage)>
+struct EditorSendResourceMessage : public Serializable<EditorSendResourceMessage, MessageInterface, GetTypeGUID(ResourceMessage)>
 {
 	void Do(EditorPlayerState& player) override
 	{
@@ -35,7 +36,7 @@ struct EditorSendResourceMessage : public FlexKit::Serializable<EditorSendResour
 		archive& blob;
 	}
 
-	FlexKit::Blob blob;
+	Blob blob;
 };
 
 void SendResource(FlexKit::iResource& resource, SharedEngineMemory& shared, uint64_t uuid)
@@ -58,12 +59,12 @@ EditorPlayerState::EditorPlayerState(GameFramework & in_framework, SharedEngineM
 	renderWindow		{ FlexKit::CreateWin32RenderWindowFromHWND(framework.GetRenderSystem(), (uint64_t)shared->targetWindow) },
 	constantBuffer		{ in_framework.GetRenderSystem().CreateConstantBuffer(16 * MEGABYTE, false) },
 	vertexBuffer		{ in_framework.GetRenderSystem().CreateVertexBuffer(16 * MEGABYTE, false) },
-	textureStreaming	{ in_framework.GetRenderSystem(), in_framework.core.GetBlockMemory() },
-	renderer			{ in_framework.GetRenderSystem(), textureStreaming, in_framework.core.GetBlockMemory() },
+	textureStreaming	{ in_framework.GetRenderSystem(), in_framework.core.Threads, GetAllocator() },
+	renderer			{ in_framework.GetRenderSystem(), GetAllocator() },
 	depthBuffer			{ in_framework.GetRenderSystem(), { 400, 400 } },
 	gbuffer				{ { 400, 400 }, in_framework.GetRenderSystem() },
 	activeCamera		{ CameraComponent::GetComponent().CreateCamera() },
-	materials			{ in_framework.GetRenderSystem(), textureStreaming, in_framework.core.GetBlockMemory() }
+	materials			{ in_framework.GetRenderSystem(), GetAllocator(), &textureStreaming }
 {
 	FlexKit::EventNotifier<>::Subscriber sub;
 	sub.Notify	= &FlexKit::EventsWrapper;

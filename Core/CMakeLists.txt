@@ -28,10 +28,10 @@ find_package(PkgConfig)
 
 set(SCN_REGEX_BACKEND "Boost")
 
-#add_library(AngelScriptComponents
-#    "src/AngelScriptAddons.cpp")
+add_library(AngelScriptComponents
+    "src/AngelScriptAddons.cpp")
 
-#target_link_libraries(AngelScriptComponents PUBLIC Angelscript::angelscript)
+target_link_libraries(AngelScriptComponents PUBLIC Angelscript::angelscript)
 
 add_library(flex
     "src/AnimationComponents.cpp"

@@ -212,6 +212,8 @@ namespace FlexKit
 		iAllocator&		GetAllocatorMT()		{ return framework.core.GetMTBlockMemory(); }
 		iAllocator&		GetTempAllocator()		{ return framework.core.GetTempMemory(); }
 		iAllocator&		GetTempAllocatorMT()	{ return framework.core.GetTempMemory(); }
+
+		auto& GetThreads() { return framework.core.Threads; }
 	};
 
 

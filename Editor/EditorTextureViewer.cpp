@@ -7,6 +7,9 @@
 #include <qevent.h>
 
 
+using namespace FlexKit;
+
+
 /************************************************************************************************/
 
 
@@ -34,9 +37,9 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
 	renderWindow = renderer.CreateRenderWindow();
 	renderWindow->SetOnDraw(
-		[&](FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& frameGraph, FlexKit::ResourceHandle renderTarget, FlexKit::ThreadSafeAllocator& allocator)
+		[&](UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph, ResourceHandle renderTarget, ThreadSafeAllocator& allocator)
 		{
-			FlexKit::ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
+			ClearBackBuffer(frameGraph, renderTarget, { 1, 0, 1, 1 });
 
 			if (texture == FlexKit::InvalidHandle)
 				return;
@@ -44,57 +47,57 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
 			struct DrawTexture
 			{
-				FlexKit::FrameResourceHandle                renderTarget;
+				FrameResourceHandle                renderTarget;
 			};
 
 
 			auto& draw = frameGraph.AddNode<DrawTexture>(
 				DrawTexture{ FlexKit::InvalidHandle },
-				[&](FlexKit::FrameGraphNodeBuilder& Builder, DrawTexture& data)
+				[&](FrameGraphNodeBuilder& Builder, DrawTexture& data)
 				{
 					data.renderTarget = Builder.RenderTarget(renderTarget);
 				},
-				[=](DrawTexture& data, const FlexKit::ResourceHandler& frameResources, FlexKit::IDirectContext& context, FlexKit::iAllocator& allocator)
+				[=](DrawTexture& data, const ResourceHandler& frameResources, IDirectContext& context, iAllocator& allocator)
 				{
 					auto XY = frameResources.GetTextureWH(data.renderTarget);
 					float aspectRatio = (XY[0]) / float(XY[1]);
 
-					FlexKit::float4 Color   { FlexKit::WHITE };
-					FlexKit::float2 WH      = (aspectRatio < 1.0f ) ? float2{ 1.0,	aspectRatio } : FlexKit::float2{ 1.0f / aspectRatio, 1.0f };
-					FlexKit::float2 POS     = (aspectRatio < 1.0f) ? float2{ 0,	(1 - WH[1]) / 2.0f} : float2{ (1 - WH[0])/ 2.0f, 0.0f };
+					float4 Color   { FlexKit::WHITE };
+					float2 WH      = (aspectRatio < 1.0f ) ? float2{ 1.0,	aspectRatio } : FlexKit::float2{ 1.0f / aspectRatio, 1.0f };
+					float2 POS     = (aspectRatio < 1.0f) ? float2{ 0,	(1 - WH[1]) / 2.0f} : float2{ (1 - WH[0])/ 2.0f, 0.0f };
 
 					fmt::print("aspectration: {}\n", aspectRatio);
 
-					FlexKit::float2 RectUpperLeft   = POS;
-					FlexKit::float2 RectBottomRight = POS + WH;
-					FlexKit::float2 RectUpperRight  = { RectBottomRight.x,	RectUpperLeft.y };
-					FlexKit::float2 RectBottomLeft  = { RectUpperLeft.x,	RectBottomRight.y };
+					float2 RectUpperLeft   = POS;
+					float2 RectBottomRight = POS + WH;
+					float2 RectUpperRight  = { RectBottomRight.x,	RectUpperLeft.y };
+					float2 RectBottomLeft  = { RectUpperLeft.x,	RectBottomRight.y };
 
 					struct Vertex
 					{
-						FlexKit::float4 POS;
+						float4 POS;
 					};
 
-					const FlexKit::ShapeVert verticeData[] = {
-						FlexKit::ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
-						FlexKit::ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color },
-						FlexKit::ShapeVert{ Position2SS(RectBottomLeft),	{ 0.0f, 1.0f }, Color },
+					const ShapeVert verticeData[] = {
+						ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomLeft),	{ 0.0f, 1.0f }, Color },
 
-						FlexKit::ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
-						FlexKit::ShapeVert{ Position2SS(RectUpperRight),	{ 1.0f, 0.0f }, Color },
-						FlexKit::ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color } };
+						ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
+						ShapeVert{ Position2SS(RectUpperRight),	{ 1.0f, 0.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color } };
 
 					struct
 					{
-						FlexKit::float4 Color;
-						FlexKit::float4 Specular;
+						float4 Color;
+						float4 Specular;
 					} constants;
 
-					FlexKit::VBPushBuffer           vertexBuffer = frameResources.ReserveVB(1024);
-					FlexKit::VertexBufferDataSet    vertexBufferSet{verticeData, sizeof(verticeData), vertexBuffer };
+					VBPushBuffer           vertexBuffer = frameResources.ReserveVB(1024);
+					VertexBufferDataSet    vertexBufferSet{verticeData, sizeof(verticeData), vertexBuffer };
 
-					FlexKit::CBPushBuffer           constantBuffer = frameResources.ReserveCB(1024);
-					FlexKit::ConstantBufferDataSet  constantBufferSet{ constants, constantBuffer };
+					CBPushBuffer           constantBuffer = frameResources.ReserveCB(1024);
+					ConstantBufferDataSet  constantBufferSet{ constants, constantBuffer };
 
 					context.ClearRenderTarget(frameResources.GetResource(data.renderTarget));
 
@@ -103,18 +106,18 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 						{ frameResources.GetResource(data.renderTarget) },
 						false);
 
-					context.SetRootSignature(frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs));
-					context.SetPipelineState(frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO, allocator));
+					static const auto drawTexturedState = frameResources.GetPipelineState(FlexKit::DRAW_TEXTURED_PSO, allocator);
+					context.SetPipelineState(drawTexturedState);
 					context.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
-					FlexKit::DescriptorHeap descHeap;
-					auto& desciptorTableLayout = frameResources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescHeap(0);
+					DescriptorSet descHeap;
+					auto& desciptorTableLayout = drawTexturedState->GetDescriptorSetLayout(0);
 
-					descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
+					descHeap.Init2(context, desciptorTableLayout, 1, allocator);
 					descHeap.NullFill(context, 1);
 					descHeap.SetSRV(context, 0, texture);
 
-					context.SetGraphicsDescriptorTable(0, descHeap);
+					context.SetGraphicsDescriptorSet(0, descHeap);
 					context.SetVertexBuffers({ vertexBufferSet });
 
 					context.SetGraphicsConstantBufferView(2, constantBufferSet);
@@ -163,7 +166,7 @@ void TextureViewer::resizeEvent(QResizeEvent* event)
 /************************************************************************************************/
 
 
-void Render(FlexKit::FrameGraph& frameGraph)
+void TextureViewer::Render(FrameGraph& frameGraph)
 {
 
 }
@@ -174,7 +177,7 @@ void Render(FlexKit::FrameGraph& frameGraph)
 
 /**********************************************************************
 
-Copyright (c) 2019-2021 Robert May
+Copyright (c) 2019-2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

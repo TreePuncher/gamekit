@@ -7,7 +7,6 @@
 #include "ui_EditorViewport.h"
 
 #include <DebugUI.hpp>
-#include <GraphicsComponents.hpp>
 #include <WorldRender.hpp>
 
 #include <QtWidgets/QWidget>

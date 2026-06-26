@@ -2,7 +2,7 @@
 #include <GameFramework.hpp>
 #include <DepthBuffer.hpp>
 #include <Serialization.hpp>
-#include <TextureStreamingUtilities.hpp>
+#include <TextureStreaming/TextureStreamingUtilities.hpp>
 #include <WorldRender.hpp>
 
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "TextureManager.hpp"
-#include "MemoryUtilities.hpp"
-#include "Scene.hpp"
-#include "TextureUtilities.hpp"
+#include <TextureManager.hpp>
+#include <MemoryUtilities.hpp>
+#include <Scene.hpp>
+#include <TextureUtilities.hpp>
 #include "ThreadUtilities.hpp"
 #include <optional>
 #include <span>

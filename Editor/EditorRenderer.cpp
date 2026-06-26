@@ -1,5 +1,6 @@
 #include "PCH.h"
 #include "EditorRenderer.h"
+#include <Application.hpp>
 #include <SharedEngineMemory.hpp>
 #include <DefaultPipelineStates.hpp>
 
@@ -11,12 +12,13 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	FrameworkState	{ IN_framework		},
 	QtApplication	{ IN_QtApplication	},
 	application		{ IN_application	},
-	vertexBuffer	{ IN_framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 32, false) },
-	constantBuffer	{ IN_framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
-	textureEngine	{ IN_framework.core.RenderSystem, IN_framework.core.GetBlockMemory() },
-	worldRender		{ IN_framework.core.RenderSystem, textureEngine, IN_framework.core.GetBlockMemory(), {}, { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
+	vertexBuffer	{ GetRenderSystem().CreateVertexBuffer(MEGABYTE * 32, false) },
+	constantBuffer	{ GetRenderSystem().CreateConstantBuffer(MEGABYTE * 128, false) },
+	textureEngine	{ GetRenderSystem(), GetThreads(), GetAllocator() },
+	worldRender		{ GetRenderSystem(), GetAllocator(), {}, 
+	    PoolSizes { .UAVPoolByteSize = 512 * MEGABYTE, .RTPoolByteSize = 2 * GIGABYTE, .UAVTexturePoolByteSize = 2 * GIGABYTE }},
 
-	materialComponent	{ IN_framework.GetRenderSystem(), textureEngine, IN_framework.core.GetBlockMemory() },
+	materialComponent	{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory(), &textureEngine },
 
 	physX				{ IN_framework.core.Threads, IN_framework.core.GetBlockMemory() },
 	staticBodies		{ physX },
@@ -26,14 +28,14 @@ EditorRenderer::EditorRenderer(FlexKit::GameFramework& IN_framework, FlexKit::FK
 	csg				{ IN_framework.core.GetBlockMemory() }
 {
 	auto& renderSystem = framework.GetRenderSystem();
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,	FlexKit::CreateTexturedTriStatePSO);
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_3D_PSO,		FlexKit::CreateDrawTriStatePSO);
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_TRI3D_PSO,		FlexKit::CreateDrawTri3DStatePSO);
-	renderSystem.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,		FlexKit::CreateDrawLineStatePSO);
+	renderSystem.RegisterPSOLoader(DRAW_TEXTURED_PSO,	CreateTexturedTriStatePSO);
+	renderSystem.RegisterPSOLoader(DRAW_3D_PSO,			CreateDrawTriStatePSO);
+	renderSystem.RegisterPSOLoader(DRAW_TRI3D_PSO,		CreateDrawTri3DStatePSO);
+	renderSystem.RegisterPSOLoader(DRAW_LINE_PSO,		CreateDrawLineStatePSO);
 
-	renderSystem.QueuePSOLoad(FlexKit::DRAW_3D_PSO);
-	renderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
-	renderSystem.QueuePSOLoad(FlexKit::DRAW_TRI3D_PSO);
+	renderSystem.QueuePSOLoad(DRAW_3D_PSO);
+	renderSystem.QueuePSOLoad(DRAW_LINE_PSO);
+	renderSystem.QueuePSOLoad(DRAW_TRI3D_PSO);
 
 	allocator.Init((std::byte*)temporaryBuffer->buffer, sizeof(TempBuffer));
 
@@ -114,7 +116,7 @@ void EditorRenderer::DrawRenderWindow(DXRenderWindow* renderWindow)
 /************************************************************************************************/
 
 
-FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
+TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 {
 	auto& renderSystem	= framework.GetRenderSystem();
 	auto  copyContext	= renderSystem.GetImmediateCopyQueue();
@@ -122,7 +124,7 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 	TriMesh newMesh;
 
 	auto meshBlob = mesh.CreateBlob();
-	FlexKit::TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(copyContext, meshBlob.buffer, meshBlob.bufferSize);
+	TriMeshHandle handle = FlexKit::LoadTriMeshIntoTable(copyContext, meshBlob.buffer, meshBlob.bufferSize);
 
 	return handle;
 }
@@ -131,7 +133,7 @@ FlexKit::TriMeshHandle EditorRenderer::LoadMesh(FlexKit::MeshResource& mesh)
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask& EditorRenderer::UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT)
+UpdateTask& EditorRenderer::UpdatePhysx(UpdateDispatcher& dispatcher, double dT)
 {
 	return physX.Update(dispatcher, dT);
 }
@@ -140,7 +142,7 @@ FlexKit::UpdateTask& EditorRenderer::UpdatePhysx(FlexKit::UpdateDispatcher& disp
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* EditorRenderer::Update(FlexKit::EngineCore& Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+UpdateTask* EditorRenderer::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 	renderWindows.erase(std::remove_if(std::begin(renderWindows), std::end(renderWindows),
 		[](auto& I)
@@ -156,11 +158,11 @@ FlexKit::UpdateTask* EditorRenderer::Update(FlexKit::EngineCore& Engine, FlexKit
 /************************************************************************************************/
 
 
-FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+UpdateTask* EditorRenderer::Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	drawInProgress = true;
 
-	FlexKit::ClearVertexBuffer(frameGraph, vertexBuffer);
+	ClearVertexBuffer(frameGraph, vertexBuffer);
 
 	frameGraph.AddConstantBuffer(constantBuffer);
 	frameGraph.AddVertexBuffer(vertexBuffer);
@@ -178,12 +180,12 @@ FlexKit::UpdateTask* EditorRenderer::Draw(FlexKit::UpdateTask* update, FlexKit::
 /************************************************************************************************/
 
 
-void EditorRenderer::PostDrawUpdate(FlexKit::EngineCore& core, double dT)
+void EditorRenderer::PostDrawUpdate(EngineCore& core, double dT)
 {
 	for (auto renderWindow : renderWindows)
 		renderWindow->Present();
 
-	core.RenderSystem.ResetConstantBuffer(constantBuffer);
+	GetRenderSystem().ResetConstantBuffer(constantBuffer);
 	drawInProgress = false;
 }
 

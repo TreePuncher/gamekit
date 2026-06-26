@@ -372,7 +372,7 @@ EmptyAnimatorObject@ InitiateAnimator(GameObject@)
 
 	auto brushComponent		= std::make_shared<FlexKit::EntityBrushComponent>();
 	auto skeletonComponent	= std::make_shared<FlexKit::EntitySkeletonComponent>();
-	auto animatorComponent	= std::make_shared<AnimatorComponent>();
+	auto animatorComponent	= std::make_shared<EntityAnimatorComponent>();
 
 	brushComponent->meshes.push_back(meshResource->GetResourceGUID());
 	skeletonComponent->skeletonResourceID	= skeleton->resource->GetResourceGUID();
@@ -488,7 +488,7 @@ void EditorPrefabEditor::Load(ProjectResource* projectObj)
 
 	if (auto res = components.FindComponent(FlexKit::AnimatorComponentID); res)
 	{
-		auto animator = std::static_pointer_cast<AnimatorComponent>(res);
+		auto animator = std::static_pointer_cast<EntityAnimatorComponent>(res);
 		localSelection->animator = animator.get();
 
 		auto resource	= loadRes(animator->scriptResource);
@@ -581,7 +581,7 @@ EditorPrefabEditor::~EditorPrefabEditor()
 
 /**********************************************************************
 
-Copyright (c) 2021 - 2022 Robert May
+Copyright (c) 2021 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

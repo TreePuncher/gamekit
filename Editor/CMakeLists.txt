@@ -85,10 +85,11 @@ if(WIN32)
 	target_include_directories(editor PRIVATE "${FLEX_ROOT}/ThirdParty/cmp/include")
 	target_include_directories(editor PRIVATE $<BUILD_INTERFACE:${AUTOGEN_INCLUDE_DIR}>)
 
+	target_link_libraries(editor PUBLIC flex Qt::Core Qt::Widgets Qt::Gui)
 	target_link_libraries(editor PRIVATE EditorReflection)
-	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
-	target_link_libraries(editor PRIVATE ar arch gf js tf kind ndr pcp plug sdf tf ts usd usdProc vt work)
+	target_link_libraries(editor PRIVATE ar arch gf js tf kind pcp plug sdf tf ts usd usdProc vt work sdr)
 	target_link_libraries(editor PRIVATE Boost::process)
+	target_link_libraries(editor PRIVATE dxBackend AngelScriptComponents PhysxComponent HighQualityRenderingComponent TextureStreaming)
 	add_dependencies(editor ASSETS)
 
 	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
@@ -108,6 +109,6 @@ if(WIN32)
 
 	add_custom_command(
 		TARGET editor POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/resources $<TARGET_FILE_DIR:editor>/resources
+		COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/Resources $<TARGET_FILE_DIR:editor>/Resources
 		COMMAND Qt6::windeployqt ARGS $<TARGET_FILE:editor>)
 endif()

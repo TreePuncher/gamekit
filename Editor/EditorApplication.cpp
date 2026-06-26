@@ -16,13 +16,14 @@
 #include <filesystem>
 #include <QKeySequence>
 #include <TextureUtilities.hpp>
+#include <dxBackend.hpp>
 
 
 /************************************************************************************************/
 // Forward Declarations
 
 using namespace std::chrono_literals;
-
+using namespace FlexKit;
 
 void ReleaseUndoStack();
 
@@ -122,6 +123,9 @@ struct TextureResourceViewer : public IResourceViewer
 		renderer		{ IN_renderer			},
 		parent			{ parent_widget			} {}
 
+
+	virtual ~TextureResourceViewer() {}
+
 	EditorRenderer&		renderer;
 	QWidget*			parent;
 
@@ -181,7 +185,8 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 		FlexKit::CreateEngineMemory(),
 		{	.GPUdebugMode	= ops.enableAPIDebugging,
 			.GPUValidation	= ops.enableAPIDebugging,
-			.GPUSyncQueues	= ops.enableAPIDebugging } },
+			.GPUSyncQueues	= ops.enableAPIDebugging, 
+		.CreateRenderSystem = CreateDX } },
 
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
@@ -336,7 +341,7 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 		mainWindow.RegisterGadget(&gadget);
 
 
-	FlexKit::SetLoadFailureHandler(
+	SetLoadFailureHandler(
 		[&](FlexKit::AssetIdentifier identifier) -> FlexKit::AssetHandle
 		{
 			auto loadAsset = [&](FlexKit::iResource* resource)  -> FlexKit::AssetHandle

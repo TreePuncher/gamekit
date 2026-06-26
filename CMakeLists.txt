@@ -27,10 +27,10 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
     add_custom_target(ASSETS ALL
         COMMAND mklink /j ${ASSETDSTPATH} ${ASSETSRCPATH} || echo "")
 	
-    if(BuildEditor)
+    if(BuildEditor AND NOT ANDROID)
         message("Building Editor")
-        #add_subdirectory(EditorReflection)
-        #add_subdirectory(Editor)
+        add_subdirectory(EditorReflection)
+        add_subdirectory(Editor)
     endif()
 
     if(BuildExamples)

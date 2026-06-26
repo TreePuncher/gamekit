@@ -4,7 +4,7 @@
 #include "EditorPrefabObject.h"
 #include "EditorScriptEngine.h"
 
-class AnimatorComponent;
+class EntityAnimatorComponent;
 class EditorScriptEngine;
 
 struct EditorSelectedPrefabObject
@@ -13,7 +13,7 @@ struct EditorSelectedPrefabObject
 	uint64_t					ID			= (uint64_t)-1;
 	uint64_t					resourceID;
 
-	::AnimatorComponent*			animator;
+	::EntityAnimatorComponent*		animator;
 	ScriptResource_ptr				resource;
 	PrefabGameObjectResource_ptr	prefab;
 	FlexKit::LayerHandle			layer;

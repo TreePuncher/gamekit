@@ -1,5 +1,4 @@
-#ifndef TEXTUREUTILITIES_H
-#define TEXTUREUTILITIES_H
+#pragma once
 
 #include "BuildSettings.hpp"
 #include "Containers.hpp"
@@ -269,7 +268,7 @@ namespace FlexKit
 
 	bool IsDDS(DeviceFormat format);
 
-	constexpr size_t BlockSize(DeviceFormat format);
+	size_t BlockSize(DeviceFormat format);
 
 	struct DDSLevelInfo
 	{
@@ -316,6 +315,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-
-
-#endif

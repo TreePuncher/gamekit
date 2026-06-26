@@ -5,7 +5,6 @@
 #include "ResourceUtilities.h"
 
 #include <BuildSettings.hpp>
-#include <XMMathConversion.hpp>
 
 
 namespace FlexKit

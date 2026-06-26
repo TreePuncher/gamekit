@@ -3,8 +3,6 @@
 #include "EditorProject.h"
 
 #include <any>
-#include <GraphicsComponents.hpp>
-#include <PhysicsUtilities.hpp>
 #include <Intersection.hpp>
 #include <Signals.hpp>
 

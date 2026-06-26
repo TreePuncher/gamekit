@@ -4,6 +4,7 @@
 #include <WorldRender.hpp>
 
 #include "TextureStreamingUtilities.hpp"
+#include <TextureUtilities.hpp>
 
 #include <mutex>
 #include <ranges>
@@ -534,25 +535,25 @@ namespace FlexKit
 		builder.AllowIA = true;
 
 		DescriptorSetLayout srvHeap;
-		srvHeap.SetParameterAsSRV(0, 0, -1);
+		srvHeap.AddSRVs(-1);
 		FK_ASSERT(srvHeap.Check());
 
-		builder.SetParameterAsCBV(0, 0);
-		builder.SetParameterAsCBV(1, 1, 0);
-		builder.SetParameterAsUINT(2, 17, 2, 0, PIPELINE_DEST_PS);
-		builder.SetParameterAsUAV(3, 0, 0, PIPELINE_DEST_PS);
-		builder.SetParameterAsSRV(4, 0, 0, PIPELINE_DEST_VS);
-		builder.SetParameterAsDescriptorSet(5, srvHeap, -1, PIPELINE_DEST_PS);
+		builder.SetParameterAsCBV(0);
+		builder.SetParameterAsCBV(1);
+		builder.SetParameterAsUINT(2, 17);
+		builder.SetParameterAsUAVBuffer(3);
+		builder.SetParameterAsSRVBuffer(4);
+		builder.SetParameterAsDescriptorSet(5, srvHeap, PIPELINE_DEST_PS);
 
 		feedbackPassRootSignature = builder.Build(*IN_allocator);
 		FK_ASSERT(feedbackPassRootSignature != nullptr, "Failed to create feedbackPassRootSignature");
 		//SETDEBUGNAME(*feedbackPassRootSignature, "textureFeedbackPassSignature");
 
 		builder.AllowIA = true;
-		builder.SetParameterAsUINT(0, 16, 0, 0);
-		builder.SetParameterAsSRV(1, 0);
-		builder.SetParameterAsSRV(2, 1);
-		builder.SetParameterAsUAV(3, 0, 0);
+		builder.SetParameterAsUINT(0, 16);
+		builder.SetParameterAsSRVBuffer(1);
+		builder.SetParameterAsSRVBuffer(2);
+		builder.SetParameterAsUAVBuffer(3);
 
 		sortingRootSignature = builder.Build(*IN_allocator);
 		FK_ASSERT(sortingRootSignature != nullptr, "Failed to create root signature!");
@@ -853,7 +854,7 @@ namespace FlexKit
 
 							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
 							ctx.SetGraphicsConstantValue(2, 17, &passConstants);
-							ctx.SetGraphicsDescriptorTable(5, textureDescriptors);
+							ctx.SetGraphicsDescriptorSet(0, textureDescriptors);
 							ctx.DrawIndexed(lod.GetIndexCount());
 						}
 					}
@@ -893,7 +894,7 @@ namespace FlexKit
 								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
 								ctx.SetGraphicsConstantValue(2, 1, &passConstants.bias, 0);
 								ctx.SetGraphicsConstantValue(2, 4, &passConstants.offsets, 1);
-								ctx.SetGraphicsDescriptorTable(5, subMaterial.textureDescriptors);
+								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 								ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
 							}
 						}
@@ -1013,7 +1014,7 @@ namespace FlexKit
 
 							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
 							ctx.SetGraphicsConstantValue(2, 17, &passConstants);
-							ctx.SetGraphicsDescriptorTable(5, textureDescriptors);
+							ctx.SetGraphicsDescriptorSet(0, textureDescriptors);
 							ctx.DrawIndexed(lod.GetIndexCount());
 						}
 					}
@@ -1044,7 +1045,7 @@ namespace FlexKit
 
 								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
 								ctx.SetGraphicsConstantValue(2, 17, &passConstants);
-								ctx.SetGraphicsDescriptorTable(5, subMaterial.textureDescriptors);
+								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 								ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);
 							}
 						}

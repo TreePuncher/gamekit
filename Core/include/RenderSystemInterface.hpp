@@ -2794,6 +2794,7 @@ namespace FlexKit
 	{
 		virtual DevicePipelineState_ptr		GetDevicePipeState() const = 0;
 		virtual const IPipelineInterface*	GetInterface() const noexcept = 0;
+		        const DescriptorSetLayout&	GetDescriptorSetLayout(uint32_t idx) const noexcept { return GetInterface()->GetDescriptorSetLayout(idx); };
 	};
 
 

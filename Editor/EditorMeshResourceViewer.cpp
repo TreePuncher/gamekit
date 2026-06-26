@@ -201,36 +201,36 @@ void EditorMeshResourceViewer::UpdateAttributes()
 		switch (formatE)
 		{
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R8:
+		case VERTEXBUFFER_FORMAT::R8:
 			typeWidget->setCurrentIndex(0);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R8G8B8:
+		case VERTEXBUFFER_FORMAT::R8G8B8:
 			typeWidget->setCurrentIndex(1);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R8G8B8A8:
+		case VERTEXBUFFER_FORMAT::R8G8B8A8:
 			typeWidget->setCurrentIndex(2);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16:
-			if(typeE == FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+		case VERTEXBUFFER_FORMAT::R16:
+			if(typeE == VERTEXBUFFER_TYPE::INDEX)
 				typeWidget->setCurrentIndex(14);
 			else
 				typeWidget->setCurrentIndex(5);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16:
-			if (typeE == FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+		case FlexKit::VERTEXBUFFER_FORMAT::R16G16:
+			if (typeE == FlexKit::VERTEXBUFFER_TYPE::INDEX)
 				typeWidget->setCurrentIndex(15);
 			else
 				typeWidget->setCurrentIndex(6);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16:
+		case FlexKit::VERTEXBUFFER_FORMAT::R16G16B16:
 			typeWidget->setCurrentIndex(7);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32:
+		case FlexKit::VERTEXBUFFER_FORMAT::R32G32B32:
 			typeWidget->setCurrentIndex(11);
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32A32:
+		case FlexKit::VERTEXBUFFER_FORMAT::R32G32B32A32:
 			typeWidget->setCurrentIndex(12);
 			break;
-		case FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_MATRIX:
+		case FlexKit::VERTEXBUFFER_FORMAT::MATRIX:
 			typeWidget->setCurrentIndex(13);
 			break;
 		default:

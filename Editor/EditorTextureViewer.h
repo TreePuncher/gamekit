@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QtWidgets/qwidget.h>
-#include <QtWidgets/qmenubar.h>
 #include "DXRenderWindow.h"
 
 #include "ui_TextureViewer.h"
@@ -17,21 +16,21 @@ class DXRenderWindow;
 /************************************************************************************************/
 
 
-class TextureViewer : public QWidget
+class TextureViewer final : public QWidget
 {
 	Q_OBJECT
 
 public:
 	TextureViewer(EditorRenderer& renderer, QWidget *parent = Q_NULLPTR, FlexKit::ResourceHandle resource = FlexKit::InvalidHandle);
-	~TextureViewer();
+	virtual ~TextureViewer() override;
 
-    void resizeEvent(QResizeEvent* event);
-    void closeEvent(QCloseEvent* event);
+    void resizeEvent(QResizeEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 
 
 private:
 
-    void Render(FlexKit::FrameGraph& frameGraph);
+    void Render(class FlexKit::FrameGraph& frameGraph);
 
 	Ui::textureViewer       ui;
     QMenuBar*               menuBar;

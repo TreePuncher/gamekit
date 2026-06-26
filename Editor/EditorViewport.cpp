@@ -1436,7 +1436,7 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Fl
 			.gbuffer	= gbuffer,
 
 			.debugDisplay	= DebugVisMode::Disabled,
-			.BVHVisMode		= BVHVisMode::BoundingVolumes,
+			.bvhMode		= BVHVisMode::BoundingVolumes,
 			.debugDrawMode	= ClusterDebugDrawMode::Clusters,
 
 			.transformDependency	= transforms,
@@ -1490,17 +1490,17 @@ void EditorViewport::Render(FlexKit::UpdateDispatcher& dispatcher, double dT, Fl
 /************************************************************************************************/
 
 
-void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
+void EditorViewport::DrawSceneOverlays(UpdateDispatcher& Dispatcher, FrameGraph& frameGraph, EditorViewport::DrawSceneOverlay_Desc& desc)
 {
 	if (!isVisible())
 		return;
 
 	struct DrawOverlay
 	{
-		const FlexKit::DrawList&                brushes;
-		const FlexKit::PointLightHandleList&    lights;
+		const BrushDrawList&			brushes;
+		const PointLightHandleList&		lights;
 
-		FlexKit::FrameResourceHandle    renderTarget;
+		FrameResourceHandle renderTarget;
 	};
 
 	frameGraph.AddNode<DrawOverlay>(
@@ -1516,8 +1516,8 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 		[&, viewportCamera = viewportCamera](DrawOverlay& data, FlexKit::ResourceHandler& resources, FlexKit::IDirectContext& ctx, auto& allocator)
 		{
 			ctx.BeginEvent_DEBUG("Editor HUD");
-			static auto rootSiag = resources.renderSystem().Library(FlexKit::ROOTLIBRARYSIG::RS6CBVs4SRVs);
-
+			static const auto* drawLinePSO		= resources.GetPipelineState(DRAW_LINE3D_PSO, allocator);
+			static const auto& descSetLayout	= drawLinePSO->GetDescriptorSetLayout(0);
 			struct Vertex
 			{
 				float3 Position;
@@ -1527,25 +1527,24 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			auto& PVS = data.brushes;
 			auto& pointLights = data.lights;
 
-			auto& visibilityComponent = FlexKit::SceneVisibilityComponent::GetComponent();
-			auto& pointLightComponent = FlexKit::LightComponent::GetComponent();
+			auto& visibilityComponent = SceneVisibilityComponent::GetComponent();
+			auto& pointLightComponent = LightComponent::GetComponent();
 
-			FlexKit::DescriptorHeap descHeap;
+			DescriptorSet descHeap;
 			descHeap.Init(
 				ctx,
-				rootSiag->GetDescHeap(0),
-				&allocator);
+				descSetLayout,
+				allocator);
 			descHeap.NullFill(ctx);
 
-			ctx.SetRootSignature(rootSiag);
-			ctx.SetPipelineState(resources.GetPipelineState(FlexKit::DRAW_LINE3D_PSO, allocator));
+			ctx.SetPipelineState(drawLinePSO);
 
 			auto scaling	= renderWindow->GetDPIScaling();
 			auto size		= renderWindow->size();
 			auto w			= size.width() * scaling;
 			auto h			= size.height() * scaling;
 
-			FlexKit::Viewport vp;
+			Viewport vp;
 			vp.Height	= h;
 			vp.Width	= w;
 			vp.Max = 1.0f;
@@ -1553,7 +1552,7 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 			vp.X = 0;
 			vp.Y = 0;
 
-			FlexKit::Rect rect;
+			Rect rect;
 			rect.right	= w;
 			rect.bottom = h;
 			rect.left	= 0;
@@ -1564,9 +1563,9 @@ void EditorViewport::DrawSceneOverlays(FlexKit::UpdateDispatcher& Dispatcher, Fl
 
 			ctx.SetRenderTargets({ resources.GetResource(data.renderTarget) }, false);
 
-			ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVELINELIST);
+			ctx.SetInputPrimitive(INPUTPRIMITIVELINELIST);
 
-			ctx.SetGraphicsDescriptorTable(0, descHeap);
+			ctx.SetGraphicsDescriptorSet(0, descHeap);
 
 			ctx.NullGraphicsConstantBufferView(3);
 			ctx.NullGraphicsConstantBufferView(4);

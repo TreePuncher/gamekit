@@ -55,7 +55,7 @@ using FlexKit::Brush;
 using FlexKit::Quaternion;
 using FlexKit::Pair;
 using FlexKit::Resource;
-using FlexKit::RenderSystem;
+using FlexKit::IRenderSystem;
 using FlexKit::TriMesh;
 
 typedef FlexKit::Handle_t<16> ShaderSetHandle;

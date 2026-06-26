@@ -1,10 +1,10 @@
 #pragma once
 
-#include <QtWidgets/qwidget>
 #include "Application.hpp"
-#include "Win32Graphics.hpp"
+#include "RenderSystemInterface.hpp"
 #include <functional>
 #include <memory>
+#include <QtWidgets/qwidget>
 
 class FlexKit::UpdateDispatcher;
 class FlexKit::FrameGraph;
@@ -19,7 +19,7 @@ class DXRenderWindow : public QWidget
 	Q_OBJECT
 
 public:
-	DXRenderWindow(FlexKit::RenderSystem& renderSystem, QWidget *parent = Q_NULLPTR);
+	DXRenderWindow(FlexKit::IRenderSystem& renderSystem, QWidget *parent = Q_NULLPTR);
 	~DXRenderWindow();
 
 	void Release();
@@ -72,7 +72,7 @@ private:
 
 /**********************************************************************
 
-Copyright (c) 2021-2022 Robert May
+Copyright (c) 2021-2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

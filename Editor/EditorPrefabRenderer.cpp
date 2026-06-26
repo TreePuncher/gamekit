@@ -8,6 +8,7 @@
 #include "EditorSelectedPrefabObject.h"
 #include "SharedEngineMemory.hpp"
 #include <RenderSystemInterface.hpp>
+#include <Scene.hpp>
 
 #if 0
 #define BOOST_ASIO_NO_WIN32_LEAN_AND_MEAN
@@ -17,12 +18,15 @@
 #include "Serialization.hpp"
 #include <type_traits>
 
+
+using namespace FlexKit;
+
 /************************************************************************************************/
 
 
 FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllocator&)
 {
-	auto& RS = static_cast<RenderSystem&>(irs);
+	auto& RS = static_cast<IRenderSystem&>(irs);
 	auto DrawRectVShader = RS.LoadShader("ForwardSkinned_VS",	"vs_6_0", "assets\\shaders\\forwardRender.hlsl");
 	auto DrawRectPShader = RS.LoadShader("GreyPolys",			"ps_6_0", "assets\\shaders\\forwardRender.hlsl");
 
@@ -38,7 +42,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllo
 	UINT InstanceDataStepRate;
 	} 	D3D12_INPUT_ELEMENT_DESC;
 	*/
-
+	/*
 	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -88,8 +92,10 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllo
 	FK_ASSERT(SUCCEEDED(HR));
 
 	SETDEBUGNAME(PSO, "DrawGrayPrefab");
-
 	return { PSO, rootSig };
+    */
+
+	return { nullptr, nullptr };
 }
 
 
@@ -98,7 +104,7 @@ FlexKit::LoadPipelineStateRes CreateFlatSkinnedPassPSO(IRenderSystem& irs, iAllo
 
 FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 {
-	auto& RS = static_cast<RenderSystem&>(irs);
+	auto& RS = static_cast<IRenderSystem&>(irs);
 	auto DrawRectVShader = RS.LoadShader("Forward_VS",	"vs_6_0", R"(assets\shaders\forwardRender.hlsl)");
 	auto DrawRectPShader = RS.LoadShader("GreyPolys",	"ps_6_0", R"(assets\shaders\forwardRender.hlsl)");
 
@@ -115,6 +121,7 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 	} 	D3D12_INPUT_ELEMENT_DESC;
 	*/
 
+	/*
 	D3D12_INPUT_ELEMENT_DESC InputElements[] = {
 		{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -157,6 +164,9 @@ FlexKit::LoadPipelineStateRes CreateFlatPassPSO(IRenderSystem& irs, iAllocator&)
 	SETDEBUGNAME(PSO, "DrawFlatPrefab");
 
 	return { PSO, rootSignature };
+    */
+
+	return { nullptr, nullptr };
 }
 
 
@@ -175,7 +185,7 @@ struct LoadEntityContext : public LoadEntityContextInterface
 		EditorViewport&						IN_viewport,
 		FlexKit::Scene&						IN_scene,
 		FlexKit::GameObject&				IN_gameObject,
-		FlexKit::MaterialHandle				IN_defaultMaterial)
+		MaterialHandle						IN_defaultMaterial)
 		: nodes				{ IN_nodes				}
 		, viewportscene		{ IN_viewportscene		}
 		, viewport			{ IN_viewport			}
@@ -494,7 +504,7 @@ void EditorPrefabPreview::RenderStatic(
 		FlexKit::FrameResourceHandle poseBuffer;
 	};
 
-	auto WH = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+	auto WH = frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
 	FlexKit::SetCameraAspectRatio(previewCamera, (float)WH[0] / (float)WH[1]);
 	FlexKit::MarkCameraDirty(previewCamera);
 
@@ -522,10 +532,12 @@ void EditorPrefabPreview::RenderStatic(
 				singleStep = false;
 			}
 		},
-		[=, &gameObject](Pass& data, const FlexKit::ResourceHandler& frameResources, FlexKit::IDirectContext& ctx, FlexKit::iAllocator& allocator)
+		[=, &gameObject](Pass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& tempAllocator)
 		{
 			using namespace FlexKit;
-			auto brush = GetBrush(gameObject);
+			static const auto flatSkinnedPSO = frameResources.GetPipelineState(FLATSKINNED_PSO, tempAllocator);
+		    
+		    auto brush = GetBrush(gameObject);
 
 			if (!brush || brush->meshes.empty())
 				return;
@@ -534,8 +546,8 @@ void EditorPrefabPreview::RenderStatic(
 			auto constants		= brush->GetConstants();
 			auto WH				= frameResources.GetTextureWH(data.renderTarget);
 
-			auto skeleton	= FlexKit::GetSkeleton(gameObject);
-			auto poseState	= FlexKit::GetPoseState(gameObject);
+			auto skeleton	= GetSkeleton(gameObject);
+			auto poseState	= GetPoseState(gameObject);
 
 			struct ForwardDrawConstants
 			{
@@ -568,17 +580,14 @@ void EditorPrefabPreview::RenderStatic(
 			const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(previewCamera), passConstantBuffer};
 			const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ .LightCount = 1, .t = 1, .WH = WH }, passConstantBuffer };
 
-			auto rootSignature = frameResources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs);
-			ctx.SetRootSignature(rootSignature);
-
-			DescriptorHeap emptyHeap(ctx, rootSignature->GetDescHeap(0), allocator);
-			emptyHeap.NullFill(ctx);
-			ctx.SetGraphicsDescriptorTable(0, emptyHeap);
+			DescriptorSet emptySet(ctx, flatSkinnedPSO->GetDescriptorSetLayout(0), tempAllocator);
+			emptySet.NullFill(ctx);
+			ctx.SetGraphicsDescriptorSet(0, emptySet);
 
 			if (poseState)
 			{
-				ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO, allocator));
-				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
+				ctx.SetPipelineState(frameResources.GetPipelineState(FLATSKINNED_PSO, tempAllocator));
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
 				ctx.SetRenderTargets(
@@ -588,7 +597,7 @@ void EditorPrefabPreview::RenderStatic(
 				auto poseSize	= poseState->JointCount * sizeof(float4x4_GPU);
 				auto poseBuffer = ctx.ReserveDirectUploadSpace(poseSize);
 
-				FlexKit::UpdatePose(*poseState, allocator);
+				UpdatePose(*poseState, tempAllocator);
 
 				for (size_t I = 0; I < poseState->JointCount; I++)
 					reinterpret_cast<float4x4_GPU*>(poseBuffer.buffer)[I] = poseState->CurrentPose[I] * skeleton->IPose[I];
@@ -599,7 +608,8 @@ void EditorPrefabPreview::RenderStatic(
 				ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
 				ctx.SetGraphicsConstantBufferView(3, passConstants);
 
-				ctx.SetGraphicsShaderResourceView(7, frameResources.PixelShaderResource(data.poseBuffer, ctx, FlexKit::DeviceSyncPoint::Sync_Copy, FlexKit::DeviceSyncPoint::Sync_VertexShader));
+				ctx.SetGraphicsShaderResourceView(7, frameResources.PixelShaderResource(data.poseBuffer, ctx,
+					DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_VertexShader));
 
 				for (auto mesh : brush->meshes)
 				{
@@ -612,12 +622,12 @@ void EditorPrefabPreview::RenderStatic(
 						triMesh,
 						lodLevel,
 						{
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+							VERTEXBUFFER_TYPE::POSITION,
+							VERTEXBUFFER_TYPE::NORMAL,
+							VERTEXBUFFER_TYPE::TANGENT,
+							VERTEXBUFFER_TYPE::UV,
+							VERTEXBUFFER_TYPE::ANIMATION1,
+							VERTEXBUFFER_TYPE::ANIMATION2,
 						}
 					);
 
@@ -626,7 +636,7 @@ void EditorPrefabPreview::RenderStatic(
 			}
 			else
 			{
-				ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO, allocator));
+				ctx.SetPipelineState(frameResources.GetPipelineState(FLAT_PSO, tempAllocator));
 				ctx.SetInputPrimitive(FlexKit::INPUTPRIMITIVETRIANGLELIST);
 
 				ctx.SetScissorAndViewports({ renderTarget });
@@ -648,10 +658,10 @@ void EditorPrefabPreview::RenderStatic(
 						triMesh,
 						lodLevel,
 						{
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+							VERTEXBUFFER_TYPE::POSITION,
+							VERTEXBUFFER_TYPE::NORMAL,
+							VERTEXBUFFER_TYPE::TANGENT,
+							VERTEXBUFFER_TYPE::UV,
 						}
 					);
 
@@ -672,7 +682,7 @@ void EditorPrefabPreview::RenderAnimated(
 	FlexKit::ResourceHandle			renderTarget,
 	FlexKit::ThreadSafeAllocator&	allocator)
 {
-	if (!isVisible() || renderer.GetRenderSystem().GetTextureWH(renderTarget).Product() == 0)
+	if (!isVisible() || renderer.GetRenderSystem().GetResourceWH(renderTarget).Product() == 0)
 		return;
 
 	FlexKit::ClearBackBuffer(frameGraph, renderTarget, FlexKit::float4{ 0, 0, 0, 0 });
@@ -692,10 +702,10 @@ void EditorPrefabPreview::RenderAnimated(
 
 		RenderStatic(dispatcher, frameGraph, object.gameObject, dT, renderTarget, allocator);
 			
-		if (const auto pose = FlexKit::GetPoseState(object.gameObject); skeletonOverlay && pose)
+		if (const auto pose = GetPoseState(object.gameObject); skeletonOverlay && pose)
 		{
-			const auto		node	= FlexKit::GetSceneNode(object.gameObject);
-			const float4x4	PV		= FlexKit::GetCameraPV(previewCamera);
+			const auto		node	= GetSceneNode(object.gameObject);
+			const float4x4	PV		= GetCameraPV(previewCamera);
 
 			FlexKit::LineSegments lines = FlexKit::DEBUG_DrawPoseState(*pose, node, allocator);
 
@@ -734,7 +744,7 @@ void EditorPrefabPreview::RenderAnimated(
 			renderTarget,
 			allocator);
 
-	const auto HW			= frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
+	const auto HW			= frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
 	QPoint globalCursorPos	= QCursor::pos();
 	auto localPosition		= renderWindow->mapFromGlobal(globalCursorPos);
 	auto scaling			= renderWindow->GetDPIScaling();
@@ -1001,11 +1011,11 @@ void EditorPrefabPreview::RenderOverlays(
 	}
 
 	DrawShapes(
-		FlexKit::DRAW_LINE_PSO,
+		DRAW_LINE_PSO,
 		frameGraph,
 		renderTarget,
 		allocator,
-		FlexKit::LineShape{ lines });
+		LineShape{ lines });
 }
 
 
@@ -1020,8 +1030,8 @@ void EditorPrefabPreview::CenterCamera()
 	if (meshes.empty())
 		return;
 
-	auto aabb				= FlexKit::GetAABBFromMesh(gameObject);
-	const FlexKit::Camera c = FlexKit::CameraComponent::GetComponent().GetCamera(previewCamera);
+	auto aabb		= GetAABBFromMesh(gameObject);
+	const Camera c	= CameraComponent::GetComponent().GetCamera(previewCamera);
 
 	const auto target			= aabb.MidPoint();
 	const auto desiredDistance	= 2.5f * aabb.Span().magnitude() / std::tan(c.FOV);
@@ -1054,10 +1064,10 @@ void EditorPrefabPreview::mousePressEvent(QMouseEvent* event)
 	const auto ratio	= screen->devicePixelRatio();
 
 	FlexKit::Event mouseEvent;
-	mouseEvent.InputSource		= FlexKit::Event::Mouse;
-	mouseEvent.Action			= FlexKit::Event::Pressed;
-	mouseEvent.mType			= FlexKit::Event::Input;
-	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
+	mouseEvent.InputSource		= Event::Mouse;
+	mouseEvent.Action			= Event::Pressed;
+	mouseEvent.mType			= Event::Input;
+	mouseEvent.mData1.mKC[0]	= KC_MOUSELEFT;
 
 	renderer.framework.debugUI->HandleInput(mouseEvent);
 }
@@ -1079,10 +1089,10 @@ void EditorPrefabPreview::mouseReleaseEvent(QMouseEvent* event)
 	const auto ratio	= screen->devicePixelRatio();
 
 	FlexKit::Event mouseEvent;
-	mouseEvent.InputSource		= FlexKit::Event::Mouse;
-	mouseEvent.Action			= FlexKit::Event::Release;
-	mouseEvent.mType			= FlexKit::Event::Input;
-	mouseEvent.mData1.mKC[0]	= FlexKit::KC_MOUSELEFT;
+	mouseEvent.InputSource		= Event::Mouse;
+	mouseEvent.Action			= Event::Release;
+	mouseEvent.mType			= Event::Input;
+	mouseEvent.mData1.mKC[0]	= KC_MOUSELEFT;
 
 	renderer.framework.debugUI->HandleInput(mouseEvent);
 }
@@ -1091,7 +1101,7 @@ void EditorPrefabPreview::mouseReleaseEvent(QMouseEvent* event)
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2025 Robert May
+Copyright (c) 2015 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

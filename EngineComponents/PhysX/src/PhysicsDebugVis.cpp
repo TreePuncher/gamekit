@@ -172,15 +172,15 @@ namespace FlexKit
 
 					const auto rt	= resources.GetResource(pass.renderTarget);
 					static auto PSO = resources.GetPipelineState(Wireframe, allocator);
-					ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 					ctx.SetScissorAndViewports({ rt });
 					ctx.SetRenderTargets({ rt }, true, resources.GetResource(pass.depthTarget));
 					ctx.SetVertexBuffers({ vertices });
+
+					ctx.SetPipelineState(resources.GetPipelineState(Solid, allocator));
 					ctx.SetGraphicsConstantBufferView(1, cameraConstants);
 					ctx.SetGraphicsConstantBufferView(2, entityConstants);
 
 					// Draw triangles
-					ctx.SetPipelineState(resources.GetPipelineState(Solid, allocator));
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 					ctx.Draw(layer_ref.debugTriCount);
 

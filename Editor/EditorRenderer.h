@@ -10,11 +10,11 @@
 #include <DebugUI.hpp>
 #include <GameFramework.hpp>
 #include <Materials.hpp>
+#include <PhysicsUtilities.hpp>
 #include <Scene.hpp>
-#include <TextureStreamingUtilities.hpp>
 #include <TriggerComponent.hpp>
-//#include <SharedEngineMemory.hpp>
 #include <WorldRender.hpp>
+#include <TextureStreaming/TextureStreamingUtilities.hpp>
 
 class QWidget;
 class SharedEngineMemory;
@@ -31,7 +31,7 @@ public:
 	void DrawRenderWindow(DXRenderWindow* renderWindow);
 
 	FlexKit::TriMeshHandle LoadMesh(FlexKit::MeshResource& mesh);
-	FlexKit::RenderSystem& GetRenderSystem() { return framework.core.RenderSystem; }
+	FlexKit::IRenderSystem& GetRenderSystem() { return *framework.core.RenderSystem; }
 
 	FlexKit::UpdateTask& UpdatePhysx(FlexKit::UpdateDispatcher& dispatcher, double dT);
 

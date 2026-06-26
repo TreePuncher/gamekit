@@ -34,11 +34,11 @@ struct AnimationInput
 };
 
 
-class AnimatorComponent :
-	public FlexKit::Serializable<::AnimatorComponent, FlexKit::EntityComponent, FlexKit::AnimatorComponentID>
+class EntityAnimatorComponent :
+	public FlexKit::Serializable<::EntityAnimatorComponent, FlexKit::EntityComponent, FlexKit::AnimatorComponentID>
 {
 public:
-	AnimatorComponent() :
+	EntityAnimatorComponent() :
 		Serializable{ FlexKit::AnimatorComponentID } {}
 
 	FlexKit::Blob GetBlob() override;
@@ -55,7 +55,7 @@ public:
 	std::vector<AnimationInput> inputs;
 
 
-	inline static RegisterConstructorHelper<::AnimatorComponent, FlexKit::AnimatorComponentID> registered{};
+	inline static RegisterConstructorHelper<::EntityAnimatorComponent, FlexKit::AnimatorComponentID> registered{};
 };
 
 

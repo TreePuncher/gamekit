@@ -401,7 +401,7 @@ namespace FlexKit
 		}
 	}
 
-	constexpr size_t BlockSize(DeviceFormat format)
+	size_t BlockSize(DeviceFormat format)
 	{
 		switch (format)
 		{

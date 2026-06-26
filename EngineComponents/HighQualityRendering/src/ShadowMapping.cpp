@@ -312,19 +312,18 @@ namespace FlexKit
 		resourcePool    { &allocator }
 	{
 		DescriptorSetLayout heapLayout;
-		heapLayout.SetParameterAsUAV(0, 0, 1);	// output
+		heapLayout.AddUAVs(1);	// output
 
 		PipelineInterfaceBuilder builder{ allocator };
 		builder.AllowIA = true;
-		builder.SetParameterAsUINT(   0, 40,  3, 0,   PIPELINE_DEST_ALL);
-		builder.SetParameterAsCBV(    1, 0,   0,      PIPELINE_DEST_ALL);
-		builder.SetParameterAsUINT(   2, 16,  1, 0,   PIPELINE_DEST_ALL);
-		builder.SetParameterAsCBV(    3, 2,   0,      PIPELINE_DEST_ALL);
+		builder.SetParameterAsUINT(0, 40);
+		builder.SetParameterAsCBV(1);
+		builder.SetParameterAsUINT(2, 16);
+		builder.SetParameterAsCBV(3);
 		builder.SetParameterAsDescriptorSet(4, heapLayout);
 
 		rootSignature = builder.Build(allocator);
 		FK_ASSERT(rootSignature != nullptr, "Failed to create Root Signature!");
-
 
 		renderSystem.RegisterPSOLoader(SHADOWMAPPASS,			{ this, &ShadowMapper::CreateShadowMapPass });
 		renderSystem.RegisterPSOLoader(SHADOWMAPANIMATEDPASS,	{ this, &ShadowMapper::CreateShadowMapAnimatedPass });

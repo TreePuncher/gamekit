@@ -12,7 +12,6 @@ namespace FlexKit
 	{
 		return PipelineBuilder{ rs, allocator }.
 			AddComputeShader("tiledLightCulling", "assets\\shaders\\lightPass.hlsl").
-			AddRootSignature(rs.Library(ROOTLIBRARYSIG::ComputeSignature)).
 			Build(rs, allocator);
 	}
 
@@ -666,9 +665,9 @@ namespace FlexKit
 			//transparency				{ renderSystem, *persistent },
 			passHistories				{ *persistent }
 	{
-		FlexKit::DescriptorSetLayout layout{};
-		layout.SetParameterAsSRV(0, 0, 2, 0);
-		layout.SetParameterAsUAV(1, 1, 1, 0);
+		FlexKit::DescriptorSetLayout layout{ *persistent };
+		layout.AddSRVs(2);
+		layout.AddUAVs(1);
 
 #if 0
 		RootSignatureBuilder builder{ renderSystem, persistent };
@@ -1161,14 +1160,16 @@ namespace FlexKit
 			{
 				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
+				auto pipelineState = resources.GetPipelineState(DEPTHPREPASS, allocator);
+				auto& dsLayout = pipelineState->GetInterface()->GetDescriptorSetLayout(0);
+
 				DescriptorSet heap{
 					ctx,
-					resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetDescriptorSetLayout(0),
+					dsLayout,
 					allocator };
 
 				heap.NullFill(ctx);
 
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RS6CBVs4SRVs));
 				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS, allocator));
 
 				ctx.SetScissorAndViewports({ data.depthPassTarget });
@@ -1246,8 +1247,11 @@ namespace FlexKit
 			},
 			[=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, IDirectContext& ctx, iAllocator& tempAllocator)
 			{
+				auto* envPass = frameResources.GetPipelineState(ENVIRONMENTPASS, tempAllocator);
+				auto* envInterface = envPass->GetInterface();
+
 				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 20, tempAllocator);
+				descHeap.Init2(ctx, envInterface->GetDescriptorSetLayout(0), 20, tempAllocator);
 				//descHeap.SetSRV(ctx, 6, data.diffuseMap);
 				descHeap.NullFill(ctx, 20);
 
@@ -1277,7 +1281,6 @@ namespace FlexKit
 						(float)WH[0],
 						(float)WH[1]) };
 
-				ctx.SetRootSignature(frameResources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, tempAllocator));
 				ctx.SetGraphicsDescriptorSet(5, descHeap);
 
@@ -1353,8 +1356,11 @@ namespace FlexKit
 					float  t;
 				}passConstants = { float2(WH[0], WH[1]), t };
 
+				static auto* envPass = frameResources.GetPipelineState(ENVIRONMENTPASS, allocator);
+				static auto* envInterface = envPass->GetInterface();
+
 				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 20, allocator);
+				descHeap.Init2(ctx, envInterface->GetDescriptorSetLayout(0), 20, allocator);
 
 				descHeap.SetSRV(ctx, 0, frameResources.GetResource(data.AlbedoTargetObject));
 				descHeap.SetSRV(ctx, 1, frameResources.GetResource(data.MRIATargetObject));
@@ -1362,7 +1368,6 @@ namespace FlexKit
 				descHeap.SetSRV(ctx, 4, frameResources.GetResource(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
 				descHeap.NullFill(ctx, 20);
 
-				ctx.SetRootSignature(renderSystem.Library(ROOTLIBRARYSIG::RSDefault));
 				ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS, allocator));
 				ctx.SetGraphicsDescriptorSet(5, descHeap);
 
@@ -1435,17 +1440,20 @@ namespace FlexKit
 					float2 WH;
 				}passConstants = { float2(WH[0], WH[1]) };
 
-				DescriptorSet descHeap;
-				descHeap.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 5, allocator);
+				static const auto* horizontalPass	= resources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator);
+				static const auto* hpinterface		= horizontalPass->GetInterface();
+				static const auto& ds0Layout		= hpinterface->GetDescriptorSetLayout(0);
 
-				descHeap.SetSRV(ctx, 0, resources.GetResource(data.Source));
-				descHeap.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
-				descHeap.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
-				descHeap.NullFill(ctx, 3);
+				DescriptorSet dset0;
+				dset0.Init2(ctx, ds0Layout, 5, allocator);
 
-				ctx.SetRootSignature(resources.renderSystem().Library(ROOTLIBRARYSIG::RSDefault));
-				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSHORIZONTAL, allocator));
-				ctx.SetGraphicsDescriptorSet(5, descHeap);
+				dset0.SetSRV(ctx, 0, resources.GetResource(data.Source));
+				dset0.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
+				dset0.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
+				dset0.NullFill(ctx, 3);
+
+				ctx.SetPipelineState(horizontalPass);
+				ctx.SetGraphicsDescriptorSet(5, dset0);
 
 				ctx.SetScissorAndViewports({ destination });
 				ctx.SetRenderTargets({ resources.GetResource(data.TempObject1), resources.GetResource(data.TempObject2) }, false);
@@ -1454,16 +1462,20 @@ namespace FlexKit
 
 				ctx.Draw(6);
 
-				DescriptorSet descHeap2;
-				descHeap2.Init2(ctx, renderSystem.Library(ROOTLIBRARYSIG::RSDefault)->GetDescriptorSetLayout(0), 5, allocator);
+				static const auto* verticalPass		= resources.GetPipelineState(BILATERALBLURPASSVERTICAL, allocator);
+				static const auto* vpinterface		= horizontalPass->GetInterface();
+				static const auto& ds1Layout		= vpinterface->GetDescriptorSetLayout(0);
 
-				descHeap2.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
-				descHeap2.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
-				descHeap2.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
-				descHeap2.SetSRV(ctx, 3, resources.PixelShaderResource(data.TempObject2, ctx));
+				DescriptorSet dset1;
+				dset1.Init2(ctx, ds1Layout, 5, allocator);
 
-				ctx.SetPipelineState(resources.GetPipelineState(BILATERALBLURPASSVERTICAL, allocator));
-				ctx.SetGraphicsDescriptorSet(5, descHeap2);
+				dset1.SetSRV(ctx, 0, resources.PixelShaderResource(data.TempObject1, ctx));
+				dset1.SetSRV(ctx, 1, resources.GetResource(data.NormalSource));
+				dset1.SetSRV(ctx, 2, resources.GetResource(data.DepthSource), DeviceFormat::R32_FLOAT);
+				dset1.SetSRV(ctx, 3, resources.PixelShaderResource(data.TempObject2, ctx));
+
+				ctx.SetPipelineState(verticalPass);
+				ctx.SetGraphicsDescriptorSet(5, dset1);
 				ctx.SetRenderTargets({ resources.GetResource(data.DestinationObject) }, false);
 				ctx.Draw(6);
 			});

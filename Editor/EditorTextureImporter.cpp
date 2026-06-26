@@ -8,6 +8,9 @@
 #include "qlayout.h"
 #include <stb_image.h>
 
+
+using namespace FlexKit;
+
 EditorTextureImporter::EditorTextureImporter(EditorProject& IN_proj, EditorRenderer& IN_renderer) :
 	project		{ IN_proj		},
 	renderer	{ IN_renderer	}
@@ -16,17 +19,16 @@ EditorTextureImporter::EditorTextureImporter(EditorProject& IN_proj, EditorRende
 
 struct TextureImporterDialog
 {
-	TextureImporterDialog(EditorRenderer& renderer, void* _ptr, FlexKit::uint2 wh, uint8_t channelCount, FlexKit::RenderSystem& renderSystem)
+	TextureImporterDialog(EditorRenderer& renderer, void* _ptr, uint2 wh, uint8_t channelCount, IRenderSystem& renderSystem)
 	{
 		size_t rowPitch		= FlexKit::AlignedSize(wh[0] * 4);
 		size_t bufferSize	= rowPitch * wh[1];
 
-		converted = FlexKit::TextureBuffer{ wh, 4, bufferSize , FlexKit::SystemAllocator };
+		converted = TextureBuffer{ wh, 4, bufferSize , FlexKit::SystemAllocator };
 
-		//FlexKit::TextureBuffer buffer							{ wh, 4, bufferSize , FlexKit::SystemAllocator };
-		FlexKit::TextureBuffer buffer							{ wh, (std::byte*)_ptr, 3 };
-		FlexKit::TextureBufferView<FlexKit::RGB>	inputView	{ buffer };
-		FlexKit::TextureBufferView<FlexKit::RGBA>	outputView	{ converted, rowPitch };
+		TextureBuffer buffer					{ wh, (std::byte*)_ptr, 3 };
+		TextureBufferView<RGB>		inputView	{ buffer };
+		TextureBufferView<RGBA>		outputView	{ converted, rowPitch };
 
 		memset(converted.Buffer, 0, converted.BufferSize());
 
@@ -39,7 +41,8 @@ struct TextureImporterDialog
 			}
 		}
 
-		auto textureHandle = FlexKit::LoadTexture(&converted, renderSystem.GetImmediateCopyQueue(), renderSystem, FlexKit::SystemAllocator);
+		
+		auto textureHandle = renderSystem.LoadTexture(&converted, renderSystem.GetImmediateCopyQueue(), DeviceFormat::R8G8B8A8_UNORM, SystemAllocator);
 
 		viewer = new TextureViewer{ renderer, nullptr, textureHandle };
 		auto layout = new QBoxLayout(QBoxLayout::Down);
@@ -55,9 +58,9 @@ struct TextureImporterDialog
 	std::string				neededFormat;
 	QDialog*				dialog			= new QDialog{};
 	TextureViewer*			viewer			= nullptr;
-	FlexKit::ResourceHandle	texture			= FlexKit::InvalidHandle;
+	FlexKit::ResourceHandle	texture			= InvalidHandle;
 	Ui_TextureImportDialog	UI;
-	FlexKit::TextureBuffer	converted;// { {4096, 4096}, 4, FlexKit::SystemAllocator };
+	TextureBuffer			converted;
 };
 
 bool EditorTextureImporter::Import(const std::string& fileDir)

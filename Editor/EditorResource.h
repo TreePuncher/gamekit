@@ -1,18 +1,13 @@
 #pragma once
-#include "ResourceHandles.hpp"
-#include "MathUtilities.hpp"
-#include "MemoryUtilities.hpp"
 #include "Assets.hpp"
-#include "XMMathConversion.hpp"
 #include "ResourceIDs.h"
 #include "Serialization.hpp"
 
-#include <DirectXMath.h>
-
+#ifdef WIN32
 #pragma comment(lib, "Ole32.lib")
 #pragma comment(lib, "oleaut32.lib")
 #pragma comment(lib, "Shell32.lib")
-
+#endif
 
 namespace FlexKit
 {   /************************************************************************************************/

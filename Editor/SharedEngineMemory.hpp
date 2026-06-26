@@ -6,7 +6,7 @@
 #include <boost/interprocess/sync/scoped_lock.hpp>
 
 #include <AnimationComponents.hpp>
-#include <CameraUtilities.hpp>
+#include <CameraComponent.hpp>
 #include <Components.hpp>
 #include <MemoryUtilities.hpp>
 #include <Serialization.hpp>

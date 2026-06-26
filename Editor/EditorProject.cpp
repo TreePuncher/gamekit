@@ -12,7 +12,6 @@
 #include <regex>
 #include <Serialization.hpp>
 
-
 using namespace FlexKit;
 using namespace std::filesystem;
 
@@ -490,6 +489,8 @@ void EditorProject::ReconfigureCMake() const
 
 	std::print("{}\n", configCommand);
 
+	FK_ASSERT(false, "Not implemented");
+    #if 0
 	try
 	{
 		boost::process::ipstream pipe_stream_out;
@@ -505,6 +506,7 @@ void EditorProject::ReconfigureCMake() const
 	{
 		FK_LOG_ERROR("EditorProject::ReconfigureCMake: %s", error.what());
 	}
+    #endif
 }
 
 
@@ -525,6 +527,8 @@ void EditorProject::BuildDebug() const
 
 	std::print("{}\n", buildCommand);
 
+	FK_ASSERT(false, "Not Implemented");
+#if 0
 	boost::process::ipstream pipe_stream;
 	boost::process::child c{ buildCommand, boost::process::std_out > pipe_stream};
 
@@ -534,6 +538,7 @@ void EditorProject::BuildDebug() const
 		std::print("{}\n", line);
 
 	c.wait();
+#endif
 }
 
 
@@ -550,6 +555,8 @@ int EditorProject::RunBuildCommand(const std::string& commandStr) const
 
 	std::print("{}\n", command);
 
+	FK_ASSERT(false, "Not Implemented!");
+#if 0
 	boost::process::ipstream pipe_stream;
 	boost::process::child c{ command, boost::process::std_out > pipe_stream };
 
@@ -560,6 +567,8 @@ int EditorProject::RunBuildCommand(const std::string& commandStr) const
 
 	c.wait();
 	return c.exit_code();
+#endif
+	return 0;
 }
 
 
