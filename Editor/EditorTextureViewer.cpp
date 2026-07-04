@@ -80,12 +80,12 @@ TextureViewer::TextureViewer(EditorRenderer& IN_renderer, QWidget *parent, FlexK
 
 					const ShapeVert verticeData[] = {
 						ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
-						ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color },
-						ShapeVert{ Position2SS(RectBottomLeft),	{ 0.0f, 1.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomRight),	{ 1.0f, 1.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomLeft),		{ 0.0f, 1.0f }, Color },
 
 						ShapeVert{ Position2SS(RectUpperLeft),	    { 0.0f, 0.0f }, Color },
-						ShapeVert{ Position2SS(RectUpperRight),	{ 1.0f, 0.0f }, Color },
-						ShapeVert{ Position2SS(RectBottomRight),   { 1.0f, 1.0f }, Color } };
+						ShapeVert{ Position2SS(RectUpperRight),		{ 1.0f, 0.0f }, Color },
+						ShapeVert{ Position2SS(RectBottomRight),	{ 1.0f, 1.0f }, Color } };
 
 					struct
 					{

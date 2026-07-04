@@ -2,10 +2,6 @@
 #include <imgui.h>
 #include <implot.h>
 
-#ifdef WIN32
-//#define WIN32_WINDOW 1
-//#include "Win32Graphics.hpp"
-#endif
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -19,7 +15,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes Create_DrawImGUI(IRenderSystem& irs, iAllocator& allocator)
+	LoadPipelineStateRes Create_DrawImGUI(IRenderSystem& renderSystem, iAllocator& localAllocator)
 	{
 #if 0
 		auto& renderSystem = static_cast<RenderSystem&>(irs);
@@ -75,7 +71,35 @@ namespace FlexKit
 
 		return { PSO, renderSystem.Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
-		return {};
+
+		PipelineBuilder builder{ renderSystem, localAllocator };
+		builder.AddInputTopology(ETopology::EIT_TRIANGLE)
+			.AddInputLayout({
+				.inputs = {
+					{ "POSITION",	0, DeviceFormat::R32G32_FLOAT,	 0, 0,		EInputClassification::PerVertex, 0 },
+					{ "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 0, 8,		EInputClassification::PerVertex, 0 },
+					{ "COLOR",		0, DeviceFormat::R8G8B8A8_UNORM,  0, 16,	EInputClassification::PerVertex, 0 },
+				},
+				.count = 3
+				}).
+
+			AddVertexShader("ImGui_VS", R"(assets\shaders\imgui\imguiShaders.hlsl)").
+			AddPixelShader("ImGui_PS",  R"(assets\shaders\imgui\imguiShaders.hlsl)").
+
+			AddRenderTargetState({ .targetCount = 1, .targetFormats = { DeviceFormat::R16G16B16A16_FLOAT } }).
+			AddBlendState({ .alphaToCoverageEnable = false, .independentBlendEnable = false, .renderTarget = {
+				RenderTargetStateDesc{ 
+				    .blendEnable	= true, 
+				    .logicOpEnable	= false, 
+				    .srcBlend		= EBlend::SRC_ALPHA, 
+				    .dstBlend		= EBlend::INV_SRC_ALPHA,
+				    .blendOp		= EBlendOP::ADD, 
+				    .srcBlendAlpha	= EBlend::SRC_ALPHA, 
+				    .dstBlendAlpha	= EBlend::INV_SRC_ALPHA, 
+				    .blendOpAlpha	= EBlendOP::ADD }
+			} });
+
+		return builder.Build(renderSystem, localAllocator);
 	}
 
 
@@ -93,7 +117,7 @@ namespace FlexKit
 
 		//ImPlot::GetStyle().AntiAliasedLines = true;
 
-		FlexKit::CopyContextHandle  uploadQueue = renderSystem.GetImmediateCopyQueue();
+		CopyContextHandle	uploadQueue = renderSystem.GetImmediateCopyQueue();
 		ImGuiIO& io                     = ImGui::GetIO();
 		io.FontGlobalScale              = 1.5f;
 
@@ -105,7 +129,7 @@ namespace FlexKit
 		int             tex_h;
 
 		io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
-		FlexKit::TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (std::byte*)tex_pixels, 4 };
+		TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (std::byte*)tex_pixels, 4 };
 
 
 		imGuiFont = MoveTextureBuffersToVRAM(
@@ -113,7 +137,7 @@ namespace FlexKit
 			uploadQueue,
 			&buffer,
 			1,
-			FlexKit::DeviceFormat::R8G8B8A8_UNORM);
+			DeviceFormat::R8G8B8A8_UNORM);
 
 		io.Fonts->TexID = TextreHandleToIM(imGuiFont);
 	}
@@ -140,7 +164,6 @@ namespace FlexKit
 
 
 #ifdef WIN32
-#if 0
 		ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
 		if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
 		{
@@ -166,24 +189,23 @@ namespace FlexKit
 			::SetCursor(::LoadCursor(NULL, win32_cursor));
 		}
 #endif
-#endif
 	}
 
 
 
 	void ImGUIIntegrator::Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 	{
-#ifdef WIN32_WINDOW
 		const auto WH   = window.GetWH();
-		HWND hwnd       = (HWND)INTERNAL_WindowHandle(&window);
+		
+		HWND hwnd       = (HWND)window.GetWindowHandle();
 
 		ImGuiIO& io     = ImGui::GetIO();
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
 		io.DeltaTime    = dT;
 
 
-		//if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
-		//    return;
+		if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
+		    return;
 
 		ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
 		if (imgui_cursor == ImGuiMouseCursor_None || io.MouseDrawCursor)
@@ -226,7 +248,6 @@ namespace FlexKit
 			if (active_window == hwnd || ::IsChild(active_window, hwnd))
 				if (::GetCursorPos(&pos) && ::ScreenToClient(hwnd, &pos))
 					io.MousePos = ImVec2((float)pos.x, (float)pos.y);
-#endif
 
 	}
 
@@ -275,11 +296,11 @@ namespace FlexKit
 
 				switch (evt.mData1.mKC[0])
 				{
-					case FlexKit::KC_MOUSELEFT:
+					case KC_MOUSELEFT:
 						KC = 0; break;
-					case FlexKit::KC_MOUSEMIDDLE:
+					case KC_MOUSEMIDDLE:
 						KC = 2; break;
-					case FlexKit::KC_MOUSERIGHT:
+					case KC_MOUSERIGHT:
 						KC = 1; break;
 				}
 
@@ -303,17 +324,17 @@ namespace FlexKit
 
 	void ImGUIIntegrator::DrawImGui(const double dT, UpdateDispatcher&, FrameGraph& frameGraph, ResourceHandle renderTarget)
 	{
-		ImGuiIO& io         = ImGui::GetIO();
-		auto*   drawData    = ImGui::GetDrawData();
+		ImGuiIO&	io			= ImGui::GetIO();
+		ImDrawData*	drawData	= ImGui::GetDrawData();
 		
-		const auto WH   = frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
+		const uint2 WH	= frameGraph.GetRenderSystem().GetResourceWH(renderTarget);
 
 		io.DisplaySize  = ImVec2(WH[0], WH[1]);
 		io.DeltaTime    = dT;
 
 		struct DrawImGui_data
 		{
-			FlexKit::uint2                  WH;
+			uint2 WH;
 		};
 
 		auto& UI_Pass = frameGraph.AddNode<DrawImGui_data>(
@@ -339,7 +360,7 @@ namespace FlexKit
 
 				struct alignas(256) Constants
 				{
-					FlexKit::uint2 WidthHeight;
+					uint2 WidthHeight;
 				};
 
 
@@ -354,26 +375,24 @@ namespace FlexKit
 					ctx.SetScissorAndViewports({ renderTarget });
 					ctx.SetRenderTargets({ renderTarget }, false);
 					ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-					ctx.SetGraphicsConstantBufferView(0, constants);
+					ctx.SetGraphicsConstantValue(0, 2, &pass.WH);
 				};
 
 				SetupState();
 
 				for (int32_t i = 0; i < cmdCount; ++i)
 				{
-					auto&                           cmdList     = cmdLists[i];
-					auto&                           cmdBuffer   = cmdList->CmdBuffer;
+					auto& cmdList     = cmdLists[i];
+					auto& cmdBuffer   = cmdList->CmdBuffer;
 
-					auto _debug = (ImDrawVert*)cmdList->VtxBuffer.Data;
-
-					FlexKit::VBPushBuffer           VBSpace = frameResources.ReserveVB(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t) + 1024);
-					FlexKit::VertexBufferDataSet    VBSet{ (ImDrawVert*)cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size * sizeof(ImDrawVert), VBSpace };
-					FlexKit::VertexBufferDataSet    IBSet{ (ImDrawIdx*)cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size * sizeof(ImDrawIdx), VBSpace };
+					VBPushBuffer           VBSpace = frameResources.ReserveVB(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t) + 1024);
+					VertexBufferDataSet    VBSet{ (ImDrawVert*)cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size * sizeof(ImDrawVert), VBSpace };
+					VertexBufferDataSet    IBSet{ (ImDrawIdx*)cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size * sizeof(ImDrawIdx), VBSpace };
 
 					ctx.SetVertexBuffers({ VBSet });
 					ctx.SetIndexBuffer(
 						IBSet,
-						sizeof(ImDrawIdx) == 2 ? FlexKit::DeviceFormat::R16_UINT : FlexKit::DeviceFormat::R32_UINT);
+						sizeof(ImDrawIdx) == 2 ? DeviceFormat::R16_UINT : DeviceFormat::R32_UINT);
 
 
 					for (auto& cmd : cmdBuffer)
@@ -392,13 +411,13 @@ namespace FlexKit
 							(uint32_t)(cmd.ClipRect.z - clip_off.x),
 							(uint32_t)(cmd.ClipRect.w - clip_off.y) };
 
-						auto texture = FlexKit::ResourceHandle{ (size_t)cmd.GetTexID() };
-
-						FlexKit::DescriptorSet heap;
+						auto texture = ResourceHandle{ (size_t)cmd.GetTexID() };
+						
+					    DescriptorSet heap;
 						heap.Init2(ctx, pipelineInterface->GetDescriptorSetLayout(0), 1, allocator);
 						heap.SetSRV(ctx, 0, texture);
 
-						ctx.SetGraphicsDescriptorSet(4, heap);
+						ctx.SetGraphicsDescriptorSet(0, heap);
 						ctx.SetScissorRects(std::span{ &r, 1});
 						ctx.DrawIndexed(cmd.ElemCount, cmd.IdxOffset, cmd.VtxOffset);
 					}

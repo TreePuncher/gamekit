@@ -286,7 +286,7 @@ namespace FlexKit
 		deferredFrees.clear();
 
 		// Memory -----------------------------------------------------------------------------------
-		//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
+		//Engine->GetBlockMemory().largeBlockAlloc.Collapse(); // Coalesce blocks
 	}
 
 

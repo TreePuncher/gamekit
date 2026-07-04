@@ -217,6 +217,20 @@ inline void NullCheck(TY* _ptr)
 #endif
 }
 
+#define ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF) \
+template<typename... Args> \
+inline auto highLevelF(Args&&... args) -> decltype(lowLevelF(std::forward<Args>(args)...)) \
+{ \
+    return lowLevelF(std::forward<Args>(args)...); \
+}
+
+
+#define CONST_ALIAS_TEMPLATE_FUNCTION(highLevelF, lowLevelF) \
+template<typename... Args> \
+inline auto highLevelF(Args&&... args) const -> decltype(lowLevelF(std::forward<Args>(args)...)) \
+{ \
+    return lowLevelF(std::forward<Args>(args)...); \
+}
 
 using std::size_t;
 static const size_t gCORECOUNT	= 4;

@@ -964,7 +964,7 @@ namespace FlexKit
 
 			void AddWeightToken(WeightIndexPair in, TokenList& out)
 			{
-				out.push_back(JointWeightToken{ float4{ (float3)in, 0 } });
+				out.push_back(JointWeightToken{ float4{ in.Get<0>(), 0 } });
 				out.push_back(JointIndexToken{ in.Get<1>() });
 			}
 

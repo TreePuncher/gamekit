@@ -120,6 +120,16 @@ namespace FlexKit
 	void Trigger	(GameObject& gameObject, uint32_t id, void* _ptr = nullptr, uint64_t _ptr_id = NullTypeID);
 	void TriggerSlot(GameObject& gameObject, uint32_t id, void* _ptr = nullptr, uint64_t _ptr_id = NullTypeID);
 
+	void Trigger	(GameObject& gameObject, uint32_t triggerID, const auto& args, uint64_t id) requires(!std::is_same_v<decltype(args), void*>)
+	{
+		Trigger(gameObject, triggerID, (void*)&args, id);
+	}
+
+	void Trigger	(GameObject& gameObject, uint32_t triggerID, auto&& args, uint64_t id) requires(!std::is_same_v<decltype(args), void*>)
+	{
+		Trigger(gameObject, triggerID, (void*)&args, id);
+	}
+
 	void ConnectTrigger(GameObject& triggerObject, uint32_t triggerID, uint32_t slotID);
 	void ConnectTrigger(GameObject& triggerObject, uint32_t triggerID, GameObject& slotObject, uint32_t slotID);
 }
@@ -127,7 +137,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2023 Robert May
+Copyright (c) 2023 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

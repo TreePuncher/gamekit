@@ -20,7 +20,7 @@ if(WIN32)
 	file (GLOB CPP_FILES "*.h")
 	file (GLOB resources_FILES "EditorResources/*")
 
-	add_executable(editor
+	qt_add_executable(editor
 		CSGComponent.cpp
 		CSGRendering.cpp
 		DXRenderWindow.cpp
@@ -85,12 +85,11 @@ if(WIN32)
 	target_include_directories(editor PRIVATE "${FLEX_ROOT}/ThirdParty/cmp/include")
 	target_include_directories(editor PRIVATE $<BUILD_INTERFACE:${AUTOGEN_INCLUDE_DIR}>)
 
-	target_link_libraries(editor PUBLIC flex Qt::Core Qt::Widgets Qt::Gui)
+	target_link_libraries(editor PRIVATE flex Qt::Core Qt::Widgets Qt::Gui)
 	target_link_libraries(editor PRIVATE EditorReflection)
 	target_link_libraries(editor PRIVATE ar arch gf js tf kind pcp plug sdf tf ts usd usdProc vt work sdr)
 	target_link_libraries(editor PRIVATE Boost::process)
 	target_link_libraries(editor PRIVATE dxBackend AngelScriptComponents PhysxComponent HighQualityRenderingComponent TextureStreaming)
-	add_dependencies(editor ASSETS)
 
 	set_target_properties(editor PROPERTIES UNITY_BUILD ON)
 	target_compile_definitions(editor PUBLIC UNICODE)
@@ -104,8 +103,20 @@ if(WIN32)
 		target_link_libraries(editor PRIVATE ${FLEX_ROOT}/ThirdParty/cmp/lib/bin/x64/CMP_Core_MD.lib)
 	endif()
 
+	qt_generate_deploy_app_script(
+		TARGET editor
+		OUTPUT_SCRIPT deploy_script
+		NO_UNSUPPORTED_PLATFORM_ERROR
+	)
+	install(SCRIPT ${deploy_script})
+
+	add_dependencies(editor ASSETS)
+
 	Flex_LinkAssets(editor)
 	Flex_CopyReflectionLibraries(editor)
+
+	find_program(WINDEPLOYQT_EXECUTABLE NAMES windeployqt windeployqt.exe
+		HINTS "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/tools/qt6/bin")
 
 	add_custom_command(
 		TARGET editor POST_BUILD

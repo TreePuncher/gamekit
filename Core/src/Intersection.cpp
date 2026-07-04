@@ -88,8 +88,8 @@ namespace FlexKit
 
 	AABB& AABB::operator +=(this AABB& lhs, const BoundingSphere& rhs) noexcept
 	{
-		auto lowerBound = rhs.xyz() -= rhs.w;
-		auto upperBound = rhs.xyz() += rhs.w;
+		float3 lowerBound = rhs.Slice<0, 3>() - float3(rhs.w);
+		float3 upperBound = rhs.Slice<0, 3>() - float3(rhs.w);
 
 		AABB A;
 		A.Min = lowerBound;
@@ -158,7 +158,7 @@ namespace FlexKit
 	AABB::operator BoundingSphere() const noexcept
 	{
 		const float3 center = (Min + Max) / 2;
-		const float  r		= (Max - Min).magnitude() / 2;
+		const float  r		= (Max - Min).Magnitude() / 2;
 
 		return { center, r };
 	}
@@ -288,7 +288,7 @@ namespace FlexKit
 	{
 		const BoundingSphere BS = aabb;
 
-		const float3	V		= BS.xyz() - c.O;
+		const float3	V		= BS.Slice<0, 3>() - c.O;
 		const float		VlenSq	= dot(V, V);
 		const float		V1len	= dot(V, c.D);
 		const float		distanceClosestPoint = cos(c.theta) * sqrt(VlenSq - V1len * V1len) - V1len * sin(c.theta);
@@ -312,7 +312,7 @@ namespace FlexKit
 		bool Left	= false;
 		bool Right	= false;
 		bool Top	= false;
-		const float3 V = BS.xyz();
+		const float3 V = BS.Slice<0, 3>();
 		const float  r = BS.w;
 
 		{
@@ -369,9 +369,7 @@ namespace FlexKit
 
 	bool Intersects(const BoundingSphere bs, const AABB aabb)
 	{
-		auto POS = bs.xyz();
-
-		aabb.Min;
+		float3 POS = bs.Slice<0, 3>();
 
 		float3 closestPoint = clamp(aabb.Min, POS, aabb.Max);
 

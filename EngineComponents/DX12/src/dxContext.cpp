@@ -13,21 +13,7 @@ namespace dx_Internal
 	    auto res = FindBufferEntry(Mesh, lod, type);
 
 	    if (!res)
-	    {
-#ifdef _DBUG
 			return false;
-#else
-
-			D3D12_VERTEX_BUFFER_VIEW VBView;
-
-			VBView.BufferLocation	= 0;
-			VBView.SizeInBytes		= 0;
-			VBView.StrideInBytes	= 0;
-			out.push_back(VBView);
-
-			return true;
-#endif
-		}
 
 		auto&& VB = res.value();
 		out.emplace_back(
@@ -2889,7 +2875,7 @@ namespace dx_Internal
 			freeResources.push_back(uploadBuffer.Resize(newSize));
 		};
 
-		// Buffer too Small
+		// Buffer too small
 		auto temp = reserveSize + GetOffset();
 		if (uploadBuffer.position + reserveSize + GetOffset() > uploadBuffer.size)
 			ResizeBuffer();

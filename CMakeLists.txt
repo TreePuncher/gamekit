@@ -33,8 +33,9 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
         add_subdirectory(Editor)
     endif()
 
-    if(BuildExamples)
+    if(BuildExamples AND NOT ANDROID)
         message("Building Examples")
+	add_subdirectory(Examples)
     endif()
 
     if(BuildExperiments)

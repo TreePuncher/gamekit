@@ -269,8 +269,8 @@ namespace FlexKit
 			const float4 VA = (WT * (JT * Zero));
 			const float4 VB = (WT * (PT * Zero));
 
-			const float3 A = VA.xyz();
-			const float3 B = VB.xyz();
+			const float3 A = VA.Slice<0, 3>();
+			const float3 B = VB.Slice<0, 3>();
 
 			M[I] = P_T;
 
@@ -283,7 +283,7 @@ namespace FlexKit
 			{
 				const float4 V      = WT * (PT * debugLines[itr]);
 				const float4 color  = Colors[itr];
-				lines.emplace_back(B, color.xyz(), V.xyz(), color.xyz());
+				lines.emplace_back(B, color.Slice<0, 3>(), V.Slice<0, 3>(), color.Slice<0, 3>());
 			}
 		}
 
@@ -317,10 +317,10 @@ namespace FlexKit
 			const float4 Y = (WT * (PT * float4{ 0.0f, 0.3f, 0.0f, 1.0f }));
 			const float4 Z = (WT * (PT * float4{ 0.0f, 0.0f, 0.3f, 1.0f }));
 
-			lines.push_back({ A.xyz(), WHITE,	B.xyz(), PURPLE	});
-			lines.push_back({ B.xyz(), RED,		X.xyz(), RED		});
-			lines.push_back({ B.xyz(), GREEN,	Y.xyz(), GREEN	});
-			lines.push_back({ B.xyz(), BLUE,	Z.xyz(), BLUE		});
+			lines.push_back({ A.Slice<0, 3>(), WHITE,	B.Slice<0, 3>(), PURPLE	});
+			lines.push_back({ B.Slice<0, 3>(), RED,		X.Slice<0, 3>(), RED	});
+			lines.push_back({ B.Slice<0, 3>(), GREEN,	Y.Slice<0, 3>(), GREEN	});
+			lines.push_back({ B.Slice<0, 3>(), BLUE,	Z.Slice<0, 3>(), BLUE	});
 		}
 
 		return lines;

@@ -67,9 +67,8 @@ namespace dx_Internal
 
 	void dxPipelineStateObject::Release(iAllocator* allocator)
 	{
-		FK_ASSERT(0);
-		//if(PSO.state)
-		//	PSO.state->Release();
+		if (PSO.state)
+			PSO.state->Release();
 
 		PSO.state = nullptr;
 

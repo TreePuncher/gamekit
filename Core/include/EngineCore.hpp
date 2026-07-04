@@ -86,16 +86,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct EngineMemory
+	struct EngineMemory : NoCopy, NoMove
 	{
-		EngineMemory(BlockAllocator_desc& desc, size_t tempAllocatorSize = TEMPBUFFERSIZE) :
-			blockAllocator	{},
-			tempAllocator	{},
-			tempAllocatorMT	{ tempAllocator }
-		{
-			blockAllocator.Init(desc);
-			tempAllocator.Init((std::byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), tempAllocatorSize);
-		}
+		EngineMemory(BlockAllocator_desc& desc, size_t tempAllocatorSize = TEMPBUFFERSIZE);
+		~EngineMemory();
 
 		BlockAllocator		blockAllocator;
 		ThreadSafeAllocator	blockAllocatorMT{ blockAllocator };
@@ -106,6 +100,8 @@ namespace FlexKit
 		auto GetBlockMemory() -> auto&	{ return blockAllocator;	}
 		auto GetTempMemory() -> auto&	{ return tempAllocator;		}
 		auto GetTempMemoryMT() -> auto&	{ return tempAllocatorMT;	}
+
+		void* internalMemory;
 	};
 
 
@@ -160,12 +156,9 @@ namespace FlexKit
 	};
 
 
-	EngineMemory*	CreateEngineMemory();
-	EngineMemory*	CreateEngineMemory(bool&);
+	EngineMemory CreateEngineMemory();
 
-
-	void ReleaseEngineMemory(EngineMemory* Memory);
-	void PushCmdArg			(EngineCore* Engine,		const char* arg);
+	void PushCmdArg(EngineCore* Engine, const char* arg);
 
 
 }	/************************************************************************************************/

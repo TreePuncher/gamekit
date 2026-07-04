@@ -512,6 +512,12 @@ namespace FlexKit
 		}
 
 
+		uint64_t GetWindowHandle() const noexcept
+		{
+		    return (uint64_t)WindowHandle();
+		}
+
+
 		void ShowSystemCursor()
 		{
 			ShowCursor(true);

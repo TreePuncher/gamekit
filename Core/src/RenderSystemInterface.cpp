@@ -436,6 +436,9 @@ namespace FlexKit
 
 	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, iAllocator& tempMemory)
 	{
+		auto& instance = IRenderSystem::GetInstance();
+		instance.CreateDescriptorSet(internal, sizeof(internal));
+
 		auto& impl = GetImpl();
 	    impl.Init(ctx, layout_IN, *tempMemory);
 
@@ -445,6 +448,9 @@ namespace FlexKit
 
 	IDescriptorHeap& DescriptorSet::Init(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
+		auto& instance = IRenderSystem::GetInstance();
+		instance.CreateDescriptorSet(internal, sizeof(internal));
+
 		auto& impl = GetImpl();
 		impl.Init(ctx, layout_IN, reserveCount, tempMemory);
 
@@ -454,6 +460,9 @@ namespace FlexKit
 
 	IDescriptorHeap& DescriptorSet::Init2(IContext& ctx, const DescriptorSetLayout& layout_IN, const size_t reserveCount, iAllocator& tempMemory)
 	{
+		auto& instance = IRenderSystem::GetInstance();
+		instance.CreateDescriptorSet(internal, sizeof(internal));
+
 		auto& impl = GetImpl();
 		impl.Init2(ctx, layout_IN, reserveCount, tempMemory);
 

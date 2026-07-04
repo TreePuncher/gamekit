@@ -107,7 +107,7 @@ namespace dx_Internal
 			return (offset == alignment) ? 0 : offset;
 			};
 
-		// buffer too Small
+		// buffer too small
 		if (position + reserveSize + GetOffset() > size)
 			return std::unexpected{ ReserveErrors::OutOfSpace };
 

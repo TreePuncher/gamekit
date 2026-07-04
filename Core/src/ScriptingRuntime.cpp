@@ -728,6 +728,65 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	float3& float3_opAddAssignVector(void* lhs, const float3& rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref += rhs;
+
+		return lhs_ref;
+	}
+
+	float3& float3_opDivAssignVector(void* lhs, const float3& rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref /= rhs;
+		return lhs_ref;
+	}
+
+	float3& float3_opMulAssignVector(void* lhs, const float3& rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref *= rhs;
+		return lhs_ref;
+	}
+	
+	float3& float3_opAddAssignScaler(void* lhs, const float rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref += rhs;
+
+		return lhs_ref;
+	}
+
+	float3& float3_opDivAssignScaler(void* lhs, const float rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref /= rhs;
+		return lhs_ref;
+	}
+
+	float3& float3_opMulAssignScaler(void* lhs, const float rhs)
+	{
+		auto& lhs_ref = *reinterpret_cast<float3*>(lhs);
+		lhs_ref *= rhs;
+		return lhs_ref;
+	}
+
+	float3 float3_dot(void* rhs, const float3& lhs)
+	{
+		auto& rhs_ref = *reinterpret_cast<float3*>(rhs);
+		return rhs_ref.dot(lhs);
+	}
+
+	float3 float3_compare(const float3& lhs, const float3& rhs, float e)
+	{
+		return lhs.Compare(rhs, e);
+	}
+
+
+    /************************************************************************************************/
+
+
 	void RegisterMathTypes(asIScriptEngine* scriptEngine, iAllocator* IN_allocator)
 	{
 		allocator = IN_allocator;
@@ -794,31 +853,32 @@ namespace FlexKit
 		res = scriptEngine->RegisterObjectType("float3", sizeof(float3), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																				FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAssign(float3)",				asMETHODPR(float3, operator =, (const float3&) noexcept, float3&), asCALL_THISCALL);			FK_ASSERT(res >= 0);
 
-		res = scriptEngine->RegisterObjectMethod("float3", "float3 opAdd(const float3)",			asMETHODPR(float3, operator+, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3 opSub(const float3)",			asMETHODPR(float3, operator -, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3 opMul(const float3)",			asMETHODPR(float3, operator *, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3 opDiv(const float3)",			asMETHODPR(float3, operator *, (const float3) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opAdd(const float3)",			asMETHODPR(float3, operator+,  (const float3&) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opSub(const float3)",			asMETHODPR(float3, operator -, (const float3&) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opMul(const float3)",			asMETHODPR(float3, operator *, (const float3&) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3 opDiv(const float3)",			asMETHODPR(float3, operator *, (const float3&) const noexcept, float3),	asCALL_THISCALL);		FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(const float3)",		asMETHODPR(float3, operator +=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(float)",			asMETHODPR(float3, operator +=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(const float3)",		asMETHODPR(float3, operator -=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(float)",			asMETHODPR(float3, operator -=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(const float3)",		asMETHODPR(float3, operator *=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(float)",			asMETHODPR(float3, operator *=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(const float3)",		asMETHODPR(float3, operator /=, (const float3) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(float)",			asMETHODPR(float3, operator /=, (const float) noexcept,		float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(const float3&)",	asMETHODPR(float3, operator +=, (const float3&) noexcept,	float3&),	asCALL_THISCALL);		FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opAddAssign(float)",			asFUNCTION(float3_opAddAssignScaler), asCALL_CDECL_OBJFIRST);									FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterObjectMethod("float3", "float3	Inverse()",				asMETHOD(float3, inverse),		asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3	Cross(float3)",			asMETHOD(float3, cross),		asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float	Dot(float3)",			asMETHOD(float3, dot),			asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float	Magnitude()",			asMETHOD(float3, magnitude),	asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float	MagnitudeSq()",			asMETHOD(float3, magnitudeSq),	asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Abs()",					asMETHOD(float3, abs),			asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(const float3)",		asMETHODPR(float3, operator -=, (const float3&) noexcept,	float3&), asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opSubAssign(float)",			asMETHODPR(float3, operator -=, (const float) noexcept,		float3&), asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(const float3&)",	asMETHODPR(float3, operator *=, (const float) noexcept,		float3&), asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opMulAssign(float)",			asMETHODPR(float3, operator *=, (const float) noexcept,		float3&), asCALL_THISCALL);			FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(const float3&)",	asFUNCTION(float3_opDivAssignVector), asCALL_CDECL_OBJFIRST);									FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3& opDivAssign(float)",			asFUNCTION(float3_opDivAssignScaler), asCALL_CDECL_OBJFIRST);									FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("float3", "float3	Cross(float3&)",			asMETHOD(float3, Cross),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float	Dot(float3&)",				asFUNCTION(float3_dot),		asCALL_CDECL_OBJFIRST);													FK_ASSERT(res > 0);
+
+		res = scriptEngine->RegisterObjectMethod("float3", "float	Magnitude()",			asMETHOD(float3, Magnitude),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float	MagnitudeSq()",			asMETHOD(float3, MagnitudeSq),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Abs()",					asMETHOD(float3, Abs),			asCALL_THISCALL);														FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterObjectMethod("float3", "bool	isNan()",				asMETHOD(float3, isNaN),		asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "void	Normalize()",			asMETHOD(float3, normalize),	asCALL_THISCALL);														FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Normal()",				asMETHOD(float3, normal),		asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "void	Normalize()",			asMETHOD(float3, Normalize),	asCALL_THISCALL);														FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float3", "float3&	Normal()",				asMETHOD(float3, Normal),		asCALL_THISCALL);														FK_ASSERT(res > 0);
 
-		res = scriptEngine->RegisterGlobalFunction("bool Compare(float3, float3, float)",	asFUNCTION(float3::Compare),	asCALL_CDECL);															FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterGlobalFunction("bool Compare(float3, float3, float)",	asFUNCTION(float3_compare),		asCALL_CDECL);															FK_ASSERT(res > 0);
 		res = scriptEngine->RegisterGlobalFunction("float3 Zero()",							asFUNCTION(float3::Zero),		asCALL_CDECL);															FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterObjectProperty("float3", "float x", asOFFSET(float3, x));																										FK_ASSERT(res >= 0);
@@ -831,15 +891,15 @@ namespace FlexKit
 
 		res = scriptEngine->RegisterObjectType("float4", sizeof(float4), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS);																				FK_ASSERT(res > 0);
 		
-		res = scriptEngine->RegisterObjectMethod("float4", "float4 opAdd(float4)", asMETHODPR(float4, operator +, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4 opSub(float4)", asMETHODPR(float4, operator -, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4 opMul(float4)", asMETHODPR(float4, operator *, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4 opDiv(float4)", asMETHODPR(float4, operator /, (const float4) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opAdd(float4)", asMETHODPR(float4, operator +, (const float4&) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opSub(float4)", asMETHODPR(float4, operator -, (const float4&) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opMul(float4)", asMETHODPR(float4, operator *, (const float4&) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4 opDiv(float4)", asMETHODPR(float4, operator /, (const float4&) const noexcept, float4), asCALL_THISCALL);							FK_ASSERT(res > 0);
 			
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opAddAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opSubAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opMulAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
-		res = scriptEngine->RegisterObjectMethod("float4", "float4& opDivAssign(float4)", asMETHODPR(float4, operator *=, (const float4) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opAddAssign(float4)", asMETHODPR(float4, operator *=, (const float4&) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opSubAssign(float4)", asMETHODPR(float4, operator *=, (const float4&) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opMulAssign(float4)", asMETHODPR(float4, operator *=, (const float4&) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
+		res = scriptEngine->RegisterObjectMethod("float4", "float4& opDivAssign(float4)", asMETHODPR(float4, operator *=, (const float4&) noexcept, float4&), asCALL_THISCALL);				FK_ASSERT(res > 0);
 
 		res = scriptEngine->RegisterObjectProperty("float4", "float x", asOFFSET(float4, x));																										FK_ASSERT(res >= 0);
 		res = scriptEngine->RegisterObjectProperty("float4", "float y", asOFFSET(float4, y));																										FK_ASSERT(res >= 0);

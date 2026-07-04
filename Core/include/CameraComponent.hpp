@@ -131,36 +131,9 @@ namespace FlexKit
 		Camera::ConstantBuffer			GetCameraPreviousConstants	(CameraHandle);
 		float4x4						GetCameraPV					(CameraHandle);
 
-		auto&	QueueCameraUpdate(UpdateDispatcher& dispatcher)
-		{
-			auto& task = dispatcher.Add<_CameraUpdate>(
-				[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
-				{
-					Builder.SetDebugString("QueueCameraUpdate");
-				},
-				[this](auto& Data, iAllocator& threadAllocator)
-				{
-					ProfileFunction();
-
-					FK_LOG_9("Updating Cameras");
-
-					size_t End = Cameras.size();
-					for (size_t I = 0; I < End; ++I)
-					{
-						if (DirtyFlags[I])
-						{
-							Cameras[I].UpdateMatrices();
-							DirtyFlags[I] = false;
-						}
-					}
-
-					return;
-				});
-
-			return task;
-		}
-
-		Vector<bool>								DirtyFlags;
+		UpdateTaskTyped<_CameraUpdate>&	QueueCameraUpdate(UpdateDispatcher& dispatcher);
+		
+	    Vector<bool>								DirtyFlags;
 		Vector<Camera>								Cameras;
 		Vector<CameraHandle>						handleRef;
 		HandleUtilities::HandleTable<CameraHandle>	handles;
@@ -252,7 +225,7 @@ namespace FlexKit
 		void Roll				(float Degree);
 		void Rotate				(float3 xyz); // Three Angles
 
-		bool HandleEvent(const FlexKit::Event& evt);
+		bool HandleEvent(const Event& evt);
 
 		Quaternion	GetOrientation();
 		float3		GetForwardVector();

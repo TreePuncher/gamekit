@@ -946,7 +946,7 @@ namespace FlexKit
 			{
 				temp[I].r       *= subPose.jointPose[I].r;
 				temp[I].ts.w    *= subPose.jointPose[I].ts.w;
-				temp[I].ts      += subPose.jointPose[I].ts.xyz();
+				temp[I].ts      += subPose.jointPose[I].ts;
 			}
 		}
 

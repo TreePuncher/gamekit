@@ -6,7 +6,7 @@
 
 namespace FlexKit
 {
-	inline int Exp( int32_t Number, uint32_t exp )
+	inline int Exp(int32_t Number, uint32_t exp)
 	{
 		if( exp != 0) {
 			int Origin = Number;
@@ -27,7 +27,7 @@ namespace FlexKit
 		float3 QV = Q.XYZ();
 
 		float3 OP = PV.cross(QV);
-		float  IP = DotProduct3(PV, QV);
+		float  IP = PV.dot(QV);
 
 		float3  Vout = (PV * Q.w) + (QV * P.w) + OP;
 		float   Wout = P.w * Q.w - IP;
@@ -39,9 +39,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion	MatrixToQuat(const Matrix<4, 4>& m)
+	Quaternion	MatrixToQuat(const float4x4& m)
 	{
-		float tr = m(0, 0) + m(1, 1) + m(2, 2);
+		float tr = m[0, 0] + m[1, 1] + m[2, 2];
 		float qw, qx, qy, qz;
 
 		if (tr > 0)
@@ -74,6 +74,55 @@ namespace FlexKit
 		return { qx, qy, qz, qw };
 	}
 
+
+	/************************************************************************************************/
+
+
+	float saturate(float x) noexcept
+	{
+		return clamp(0.0f, x, 1.0f);
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 saturate(float3 v) noexcept
+	{
+		float3 out = v;
+		v.x = Min(Max(v.x, 0.0f), 1.0f);
+		v.y = Min(Max(v.y, 0.0f), 1.0f);
+		v.z = Min(Max(v.z, 0.0f), 1.0f);
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 TripleProduct(const float3 A, const float3 B, const float3 C) noexcept
+	{
+		return (B - A).cross(C - A);
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 operator* (float s, float3 V) noexcept
+	{
+		return V * float3{ s };
+	}
+
+	
+	/************************************************************************************************/
+
+
+	float3 RotateVectorAxisAngle(float3 N, float a, float3 V) noexcept
+	{
+		return V * cos(a) + (V.dot(N) * N * (1 - cos(a)) + (N.cross(V) * sin(a)));
+	}
 
 
 	/************************************************************************************************/
@@ -230,6 +279,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	float3 GetTranslation(const float4x4&)
+	{
+		return float3{ 0, 0, 0 };
+	}
+
+
+	float dot(const float3 lhs, const float3 rhs)
+	{
+		return DotProduct3(lhs, rhs);
+	}
+
+
+	float dot(const float4 lhs, const float4 rhs)
+	{
+		return DotProduct4(lhs, rhs);
+	}
+
+
+	/************************************************************************************************/
+
+
 	float4x4 Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3& Right)
 	{
 		float4x4 Out = float4x4::Identity();
@@ -261,20 +331,32 @@ namespace FlexKit
 	}
 
 
+
+	Quaternion PointAt(float3 A, float3 B, const float3 UpV)
+	{
+		float3 Dir = (B - A).normal();
+		Dir = { Dir.z, Dir.y, -Dir.x };
+		const float3 DirXUpV = Dir.cross(UpV);
+
+		return Vector2Quaternion(Dir, DirXUpV.cross(Dir), DirXUpV);
+	}
+
+
 	/************************************************************************************************/
 
 
-	float4x4 CreatePerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio)
+	float4x4 PerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio)
 	{
 		float TwoNearZ	= minZ + minZ;
-		float fRange	= maxZ / (maxZ - minZ);
+		float fRange	= maxZ / (minZ - maxZ);
 
-		float sinFOV	= std::sin(0.5f * FOV);
-		float cosFOV	= std::cos(0.5f * FOV);
+
+		float sinFOV = std::sin(0.5f * FOV);
+		float cosFOV = std::cos(0.5f * FOV);
 
 		float height	= cosFOV / sinFOV;
 		float width		= height / aspectRatio;
-		float range		= maxZ / (maxZ - minZ);
+		float range		= maxZ / (minZ - maxZ);
 
 		float4x4 m = float4x4::Identity();
 		m(0, 0) = width;
@@ -289,12 +371,12 @@ namespace FlexKit
 
 		m(2, 0) = 0.0f;
 		m(2, 1) = 0.0f;
-		m(2, 2) = -fRange;
+		m(2, 2) = fRange;
 		m(2, 3) = -1.0f;
 
 		m(3, 0) = 0.0f;
 		m(3, 1) = 0.0f;
-		m(3, 2) = -range * minZ;
+		m(3, 2) = range * minZ;
 		m(3, 3) = 0.0f;
 
 		return m;
@@ -358,32 +440,57 @@ namespace FlexKit
 		_Dest = Tmp;
 	}
 
-	/************************************************************************************************/
 
 	void printfloat2(const float2& in)
 	{
 		printf("{%f, %f}", in[0], in[1]);
 	}
 
-	/************************************************************************************************/
 
 	void printfloat3(const float3& in)
 	{
 		printf("{%f, %f, %f}", in[0], in[1], in[2]);
 	}
 
-	/************************************************************************************************/
-	
+
 	void printfloat4(const float4& in)
 	{
 		printf("{%f, %f, %f, %f}", in[0], in[1], in[2], in[3]);
 	}
 
-	/************************************************************************************************/
 
 	void printQuaternion(const Quaternion in)
 	{
 		printf("{%f, %f, %f, %f}", in[0], in[1], in[2], in[3]);
+	}
+
+
+
+	std::ostream& operator << (std::ostream& stream, float2 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << " }";
+		return stream;
+	}
+
+
+	std::ostream& operator << (std::ostream& stream, float3 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << ", " << xyz.z << " }";
+		return stream;
+	}
+
+
+	std::ostream& operator << (std::ostream& stream, float4 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << ", " << xyz.z << ", " << xyz.w << " }";
+		return stream;
+	}
+
+
+	std::ostream& operator << (std::ostream& stream, Quaternion q)
+	{
+		stream << "{ i * " << q.x << ", j * " << q.y << ", k * " << q.z << ", " << q.w << " }";
+		return stream;
 	}
 
 

@@ -583,9 +583,9 @@ namespace FlexKit
 
 				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
 				
-			    LT =	TranslationMatrix(TRS.T) *
+			    LT =	TranslationMatrix(TRS.T.xyz()) *
 			            Quaternion2Matrix(TRS.R) *
-                        ScaleMatrix(sf ? TRS.S : float4(1.0f, 1.0f, 1.0f, 0.0f));
+					    ScaleMatrix(sf ? TRS.S : float3{ 1.0f, 1.0f, 1.0f });
 
 				auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent);
 				auto PT = SceneNodeTable.WT[ParentIndex].m4x4;
@@ -958,7 +958,7 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(node));
 
-		Local.T += XYZ;
+		Local.T += float4{ XYZ, 0 };
 
 		SetLocal(node, &Local);
 	}

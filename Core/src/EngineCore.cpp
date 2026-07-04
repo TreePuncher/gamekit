@@ -92,26 +92,37 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EngineMemory* CreateEngineMemory()
+	EngineMemory::EngineMemory(BlockAllocator_desc& desc, size_t tempAllocatorSize) :
+		blockAllocator{},
+		tempAllocator{},
+		tempAllocatorMT{ tempAllocator }, 
+	    internalMemory{ desc._ptr }
+	{
+		blockAllocator.Init(desc);
+		tempAllocator.Init((std::byte*)_aligned_malloc(TEMPBUFFERSIZE, 0x10), tempAllocatorSize);
+	}
+
+
+	EngineMemory::~EngineMemory()
+	{
+		DEBUGBLOCK(PrintBlockStatus(&GetBlockMemory()));
+
+		_aligned_free(internalMemory);// VirtualFree(Memory, 0, MEM_RELEASE);
+	}
+
+
+	EngineMemory CreateEngineMemory()
 	{
 		BlockAllocator_desc BAdesc;
 		BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
 		BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
 		BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
-		const auto preallocationSize = sizeof(EngineMemory);
-		auto allocation		= _aligned_malloc(preallocationSize, 64);//VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
-		auto* Memory		= new(allocation) EngineMemory{ BAdesc };
-
-		
-
-		FK_ASSERT(Memory != nullptr, "Memory Allocation Error!");
-
-		if (Memory == nullptr) {
-			return nullptr;
-		}
-
-		return Memory;
+		auto allocation		= malloc(BAdesc.PoolSize);//VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
+		FK_ASSERT(allocation != nullptr, "Memory Allocation Error!");
+		BAdesc._ptr = (std::byte*)allocation;
+	    
+		return EngineMemory{ BAdesc };
 	}
 
 
@@ -121,6 +132,7 @@ namespace FlexKit
 	void ReleaseEngineMemory(EngineMemory* Memory)
 	{
 		DEBUGBLOCK(PrintBlockStatus(&Memory->GetBlockMemory()));
+
 		_aligned_free(Memory);// VirtualFree(Memory, 0, MEM_RELEASE);
 	}
 
@@ -164,7 +176,6 @@ namespace FlexKit
 		ReleaseGeometryTable();
 
 		Threads.Release();
-		delete& RenderSystem;
 
 		Memory = nullptr;
 	}

@@ -2284,7 +2284,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			void operator ()(RootSignature* _ptr)
 			{
 #ifdef _DEBUG
-				FK_LOG_INFO("DX: freeing root signature!");
+				std::string msg = std::format("DX: freeing root signature! {}", (uint64_t)_ptr);
+				FK_LOG_INFO(msg.c_str());
 #endif
 				_ptr->Release();
 			};

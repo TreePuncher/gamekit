@@ -2205,6 +2205,8 @@ namespace FlexKit
 
 		operator ResourceHandle () { return GetBackBuffer(); }
 
+		uint64_t GetWindowHandle() const noexcept { return 0; }
+
 		float2  GetPixelSize() const	{ return float2{ 1.0f, 1.0f } / GetWH(); }
 		float   GetAspectRatio() const	{ const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
 	};

@@ -182,7 +182,7 @@ struct SceneResourceViewer : public IResourceViewer
 EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions& ops) :
 	qtApp				{ IN_qtApp },
 	fkApplication		{
-		FlexKit::CreateEngineMemory(),
+		CreateEngineMemory(),
 		{	.GPUdebugMode	= ops.enableAPIDebugging,
 			.GPUValidation	= ops.enableAPIDebugging,
 			.GPUSyncQueues	= ops.enableAPIDebugging, 
@@ -191,9 +191,9 @@ EditorApplication::EditorApplication(QApplication& IN_qtApp, const EditorOptions
 	editorRenderer		{ fkApplication.PushState<EditorRenderer>(fkApplication, IN_qtApp) },
 	mainWindow			{ editorRenderer, *scripts, project, qtApp	},
 	scripts				{ std::make_unique<EditorScriptEngine>()	},
-	gltfImporter		{ std::make_unique<::gltfImporter>(project, fkApplication.GetCore().Threads) },
+	
+    gltfImporter		{ std::make_unique<::gltfImporter>(project, fkApplication.GetCore().Threads) },
 	usdImporter			{ std::make_unique<::USDImporter>(project, fkApplication.GetCore().Threads) },
-
 	textureImporter		{ std::make_unique<EditorTextureImporter>(project, editorRenderer) },
 
 	gameResExporter		{ std::make_unique<GameResExporter>( project ) },

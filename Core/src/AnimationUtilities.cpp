@@ -11,7 +11,7 @@ namespace FlexKit
 	{
 		const auto rotation		= Quaternion2Matrix(P.r);
 		const auto scaling		= ScaleMatrix({ P.ts[3], P.ts[3], P.ts[3] });
-		const auto translation	= TranslationMatrix(P.ts.xyz());
+		const auto translation	= TranslationMatrix(P.ts.Slice<0, 3>());
 
 		return translation * (rotation * scaling);
 	}

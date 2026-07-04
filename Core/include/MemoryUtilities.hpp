@@ -767,8 +767,8 @@ namespace FlexKit
 
 	struct BlockAllocatorStats
 	{
-		size_t smallBlocksAllocated = -1;
-		size_t totalSmallBlocks		= -1;
+		size_t smallBlocksAllocated		= -1;
+		size_t totalSmallBlocks			= -1;
 
 		size_t mediumBlocksAllocated	= -1;
 		size_t totalMediumBlocks		= -1;
@@ -780,15 +780,7 @@ namespace FlexKit
 
 	struct BlockAllocator
 	{
-		BlockAllocator() noexcept :
-			SmallBlockAlloc{},
-			MediumBlockAlloc{},
-			LargeBlockAlloc{},
-
-			Small{0}, 
-			Medium{0}, 
-			Large{0}
-		{}
+		BlockAllocator() noexcept;
 
 		BlockAllocator(BlockAllocator&) = delete;
 		BlockAllocator& operator = (const BlockAllocator&) = delete;
@@ -802,7 +794,6 @@ namespace FlexKit
 		std::byte* malloc_debug		(const size_t size, const char* Debug, size_t DebugSize, bool Aligned);
 		std::byte* _aligned_malloc	(size_t s, size_t alignment = 0x10, bool MarkDebugMetaData = false);
 		
-		void free(void* _ptr);
 
 		template<typename TY>
 		void Delete(TY* _ptr)
@@ -814,20 +805,8 @@ namespace FlexKit
 			free(_ptr);
 		}
 
-		void _aligned_free(void* _ptr)
-		{
-			if (!_ptr)
-				return;
-
-			std::unique_lock ul(mu);
-
-			if (InSmallRange((std::byte*)_ptr))
-				SmallBlockAlloc._aligned_free(_ptr);
-			if (InMediumRange(static_cast<std::byte*>(_ptr)))
-				MediumBlockAlloc._aligned_free(_ptr);
-			else if (InLargeRange(static_cast<std::byte*>(_ptr)))
-				LargeBlockAlloc._aligned_free(_ptr);
-		}
+		void free(void* _ptr);
+		void _aligned_free(void* _ptr);
 
 		template<typename T, size_t a = 16>
 		T& allocate_aligned()
@@ -872,107 +851,48 @@ namespace FlexKit
 			free(&I);
 		}
 
-		SmallBlockAllocator		SmallBlockAlloc;
-		MediumBlockAllocator	MediumBlockAlloc;
-		LargeBlockAllocator		LargeBlockAlloc;
+		SmallBlockAllocator		smallBlockAlloc;
+		MediumBlockAllocator	mediumBlockAlloc;
+		LargeBlockAllocator		largeBlockAlloc;
 		std::mutex				mu;
 
-		std::byte* Buffer_ptr = nullptr;
-		size_t	Small, Medium, Large;
+		std::byte* buffer_ptr = nullptr;
+		uint64_t smallBufferSize;
+		uint64_t mediumBufferSize;
+		uint64_t largeBufferSize;
 
-		bool InSmallRange(std::byte* a_ptr)
-		{
-			size_t bottom = (size_t)(Buffer_ptr);
-			size_t top    = (size_t)(Buffer_ptr) + Small;
+		bool InSmallRange(std::byte* a_ptr);
+		bool InMediumRange(std::byte* a_ptr);
+		bool InLargeRange(std::byte* a_ptr);
 
-			return (bottom <= (size_t)a_ptr) && ((size_t)a_ptr < top);
-		}
+		BlockAllocatorStats GetStats() const;
 
-		bool InMediumRange(std::byte* a_ptr)
-		{
-			size_t bottom = ((size_t)Buffer_ptr) + Small;
-			size_t top    = ((size_t)Buffer_ptr) + Small + Medium;
-
-			return(bottom <= (size_t)a_ptr && (size_t)a_ptr < top);
-		}
-
-		bool InLargeRange(std::byte* a_ptr)
-		{
-			size_t bottom = ((size_t)Buffer_ptr) + Small + Medium;
-			size_t top    = ((size_t)Buffer_ptr) + Small + Medium + Large;
-
-			return(bottom <= (size_t)a_ptr && (size_t)a_ptr < top);
-		}
-
-		BlockAllocatorStats GetStats() const
-		{
-			BlockAllocatorStats stats;
-			stats.totalSmallBlocks		= SmallBlockAlloc.Size;
-			stats.smallBlocksAllocated	= SmallBlockAlloc.allocated;
-
-			stats.totalMediumBlocks		= MediumBlockAlloc.Size;;
-			stats.mediumBlocksAllocated = MediumBlockAlloc.blocksAllocated;
-
-			stats.totalLargeBlocks		= LargeBlockAlloc.Size;
-			stats.largeBlocksAllocated	= LargeBlockAlloc.allocatedBlockCount;
-
-			return stats;
-		}
+		operator iAllocator* ();
+		operator iAllocator& ();
 
 		struct iBlockAllocator : public iAllocator
 		{
 			explicit iBlockAllocator(BlockAllocator* parent = nullptr) noexcept : ParentAllocator(parent){}
 
-			void* malloc(size_t size) override
-			{
-				return ParentAllocator->malloc(size);
-			}
-
-			void free(void* _ptr) override
-			{
-				ParentAllocator->free(_ptr);
-			}
-
-			void* _aligned_malloc(size_t size, size_t A) override
-			{
-				return ParentAllocator->_aligned_malloc(size, A);
-			}
-
-			void _aligned_free(void* _ptr) override
-			{
-				ParentAllocator->_aligned_free(_ptr);
-			}
-
-			void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize) override
-			{
-				return ParentAllocator->malloc_debug(n, MD, MDSectionSize, true);
-			}
-
-
-			BlockAllocator* ParentAllocator;
+			void*	malloc(size_t size) override;
+			void	free(void* _ptr) override;
+			void*	_aligned_malloc(size_t size, size_t A) override;
+			void	_aligned_free(void* _ptr) override;
+			void*	malloc_Debug(size_t n, const char* MD, size_t MDSectionSize) override;
+			
+		    BlockAllocator* ParentAllocator;
 
 			operator iAllocator* ()	{ return this; }
-		}AllocatorInterface;
-
-		operator iAllocator* ()
-		{ 
-			return &AllocatorInterface; 
-		}
-
-		operator iAllocator& ()
-		{
-			return AllocatorInterface;
-		}
+		}	AllocatorInterface;
 	};
 
 
 	/************************************************************************************************/
 
-
-	FLEXKITAPI void		PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
-	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, std::byte* out, size_t strlenmax, bool textfile = true);
-	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
-	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
+	void	PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
+	bool	LoadFileIntoBuffer	(const char* strLoc, std::byte* out, size_t strlenmax, bool textfile = true);
+	size_t	GetFileSize			(const char* strLoc);
+	size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
 
 
 	/************************************************************************************************/
@@ -1152,7 +1072,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2022 Robert May
+Copyright (c) 2015 - 2026 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -148,9 +148,7 @@ namespace FlexKit
 			}
 		}
 
-		struct __{
-			__() = default;
-
+		struct {
 			float3 NTL;
 			float3 NTR;
 			float3 NBL;

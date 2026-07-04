@@ -76,18 +76,18 @@ namespace FlexKit
 		FustrumPoints Out;
 
 #if 0
-		Out.FTL.z = -C->Far;
-		Out.FTL.y = tan(C->FOV) * C->Far;
-		Out.FTL.x = -Out.FTL.y * C->AspectRatio;
+		Out.FTL.z = -Far;
+		Out.FTL.y = tan(FOV) * Far;
+		Out.FTL.x = -Out.FTL.y * AspectRatio;
 
 		Out.FTR = { -Out.FTL.x,  Out.FTL.y, Out.FTL.z };
 		Out.FBL = {  Out.FTL.x, -Out.FTL.y, Out.FTL.z };
 		Out.FBR = { -Out.FTL.x, -Out.FTL.y, Out.FTL.z };
 
 
-		Out.NTL.z = -C->Near;
-		Out.NTL.y = tan(C->FOV / 2) * C->Near;
-		Out.NTL.x = -Out.NTL.y  * C->AspectRatio;
+		Out.NTL.z = Near;
+		Out.NTL.y = tan(FOV / 2) * Near;
+		Out.NTL.x = -Out.NTL.y  * AspectRatio;
 
 		Out.NTR = { -Out.NTL.x,  Out.NTL.y, Out.NTL.z };
 		Out.NBL = { -Out.NTL.x, -Out.NTL.y, Out.NTL.z };
@@ -104,32 +104,31 @@ namespace FlexKit
 		Out.NBR = Position + (Q * Out.NBR);
 
 #else
-		float4x4 InverseView = IV;
+		const float4x4 InverseView = IV;
 
 		// Far Field
 		{
 			const float4 TopRight		{  1.0f,  1.0f, 0.0f, 1.0f };
 			const float4 TopLeft		{ -1.0f,  1.0f, 0.0f, 1.0f };
 			const float4 BottomRight	{  1.0f, -1.0f, 0.0f, 1.0f };
-			const float4 BottomLeft	{ -1.0f, -1.0f, 0.0f, 1.0f };
+			const float4 BottomLeft		{ -1.0f, -1.0f, 0.0f, 1.0f };
 			{
-				FK_ASSERT(0);
-				//const float4 V1 = DirectX::XMVector4Transform(TopRight,		Float4x4ToXMMATIRX(&InverseView));
-				//const float4 V2 = DirectX::XMVector4Transform(TopLeft,		Float4x4ToXMMATIRX(&InverseView));
-				//const float3 V3 = V1.xyz() / V1.w;
-				//const float3 V4 = V2.xyz() / V2.w;
-				//
-				//Out.FTL	= V4;
-				//Out.FTR = V3;
+				const float4 V1 = InverseView * TopRight;
+			    const float4 V2 = InverseView * TopLeft;
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
+				
+				Out.FTL	= V4;
+				Out.FTR = V3;
 			}
 			{
-				//const float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
-				//const float4 V2 = DirectX::XMVector4Transform(BottomLeft,		Float4x4ToXMMATIRX(&InverseView));
-				//const float3 V3 = V1.xyz() / V1.w;
-				//const float3 V4 = V2.xyz() / V2.w;
-				//
-				//Out.FBL = V4;
-				//Out.FBR = V3;
+				const float4 V1 = InverseView * BottomRight;
+				const float4 V2 = InverseView * BottomLeft;
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
+				
+				Out.FBL = V4;
+				Out.FBR = V3;
 			}
 		}
 		// Near Field
@@ -140,22 +139,22 @@ namespace FlexKit
 			const float4 BottomLeft		{ -1.0f, -1.0f, 0.1f, 1.0f };
 
 			{
-				//const float4 V1 = DirectX::XMVector4Transform(TopRight,		Float4x4ToXMMATIRX(&InverseView));
-				//const float4 V2 = DirectX::XMVector4Transform(TopLeft,		Float4x4ToXMMATIRX(&InverseView));
-				//const float3 V3 = V1.xyz() / V1.w;
-				//const float3 V4 = V2.xyz() / V2.w;
-				//
-				//Out.NTL = V4;
-				//Out.NTR = V3;
+				const float4 V1 = InverseView * TopRight;
+				const float4 V2 = InverseView * TopLeft;
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
+				
+				Out.NTL = V4;
+				Out.NTR = V3;
 			}
 			{
-				//const float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
-				//const float4 V2 = DirectX::XMVector4Transform(BottomLeft,	Float4x4ToXMMATIRX(&InverseView));
-				//const float3 V3 = V1.xyz() / V1.w;
-				//const float3 V4 = V2.xyz() / V2.w;
-				//
-				//Out.NBL = V4;
-				//Out.NBR = V3;
+				const float4 V1 = InverseView * BottomRight;
+				const float4 V2 = InverseView * BottomLeft;
+				const float3 V3 = V1.xyz() / V1.w;
+				const float3 V4 = V2.xyz() / V2.w;
+				
+				Out.NBL = V4;
+				Out.NBR = V3;
 			}
 		}
 
@@ -200,7 +199,7 @@ namespace FlexKit
 			return float4x4::Identity();
 		}
 
-		float4x4 projection = CreatePerspectiveRH(camera.FOV, camera.Near, camera.Far, camera.AspectRatio);
+		float4x4 projection = PerspectiveRH(camera.FOV, camera.Near, camera.Far, camera.AspectRatio);
 		if (invert)
 		{
 			float4x4 invertPersepective = float4x4::Identity();
@@ -256,7 +255,7 @@ namespace FlexKit
 	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT)
 	{
 		const float4x4 view	= Inverse(WT);
-		const float4x4 proj	= CreatePerspectiveRH(FOV, aspectRatio, minZ, maxZ);
+		const float4x4 proj	= PerspectiveRH(FOV, aspectRatio, minZ, maxZ);
 
 		Camera::ConstantBuffer NewData;
 		NewData.Proj			= proj;
@@ -878,6 +877,39 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	UpdateTaskTyped<_CameraUpdate>& CameraComponent::QueueCameraUpdate(UpdateDispatcher& dispatcher)
+	{
+		auto& task = dispatcher.Add<_CameraUpdate>(
+			[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
+			{
+				Builder.SetDebugString("QueueCameraUpdate");
+			},
+			[this](auto& Data, iAllocator& threadAllocator)
+			{
+				ProfileFunction();
+
+				FK_LOG_9("Updating Cameras");
+
+				size_t End = Cameras.size();
+				for (size_t I = 0; I < End; ++I)
+				{
+					if (DirtyFlags[I])
+					{
+						Cameras[I].UpdateMatrices();
+						DirtyFlags[I] = false;
+					}
+				}
+
+				return;
+			});
+
+		return task;
+	}
+
+
+	/************************************************************************************************/
+
+
 	CameraView::CameraView(GameObject& go, CameraHandle IN_camera) :
 		camera{ IN_camera } {
 	}
@@ -986,11 +1018,11 @@ namespace FlexKit
 
 	Ray ViewRay(CameraHandle camera, const float2 UV)
 	{
-		const auto cameraConstants		= FlexKit::GetCameraConstants(camera);
-		const auto cameraOrientation	= FlexKit::GetOrientation(FlexKit::GetCameraNode(camera));
+		const auto cameraConstants		= GetCameraConstants(camera);
+		const auto cameraOrientation	= GetOrientation(GetCameraNode(camera));
 
-		const FlexKit::float3 v_dir	= cameraOrientation * (Inverse(cameraConstants.Proj) * FlexKit::float4{ UV.x, UV.y,  1.0f, 1.0f }).xyz().normal();
-		const FlexKit::float3 v_o	= cameraConstants.WPOS.xyz();
+		const float3 v_dir	= cameraOrientation * (Inverse(cameraConstants.Proj) * float4{ UV.x, UV.y,  1.0f, 1.0f }).xyz().normal();
+		const float3 v_o	= cameraConstants.WPOS.xyz();
 
 		return { .D = v_dir, .O = v_o };
 	}

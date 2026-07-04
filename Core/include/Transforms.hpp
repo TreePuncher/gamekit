@@ -23,8 +23,7 @@ namespace FlexKit
 	{
 		float4		T;
 		Quaternion	R;
-		float4		S;
-		float4		Padding;
+		float3		S;
 
 		static LT_Entry Zero()
 		{

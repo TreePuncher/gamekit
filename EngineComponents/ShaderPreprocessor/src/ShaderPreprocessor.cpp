@@ -262,16 +262,17 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(ID={}, set={}, binding={}, type={})]])"); res)
+			//else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[Texture2D(ID={:/[[:alnum:]]+(^,\s)?/n}, binding={}, set={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(ID={:/[[:alnum:]]+/n}, binding={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
-			    auto [ID, set, binding, type] = res->values();
+			    auto [ID, binding, set, type] = res->values();
 				handler.Texture2DBinding(ID, set, binding, type, ctx);
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture3D(ID={}, set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture3D(ID={}, set={}, binding={}, type={:[^)]})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
@@ -743,10 +744,26 @@ namespace FlexKit
 		}
 
 
-		static void Texture2DBinding(std::string_view ID, uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		void Texture2DBinding(std::string_view ID, uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
 		{
-			auto line = std::format("Texture2D<{}> {} : register(s{}, space{})", type, ID, set, binding);
+			auto& def			= rootSignatures.back();
+			uint32_t space		= 0xffffff00;
 
+
+			for (auto [e, s] : zip(def.entries, def.entrySpace))
+			{
+				if (e == RootSignatureEntryTypes::DescriptorHeap)
+				{
+					if (set == 0)
+					{
+						space = s;
+						break;
+					}
+					else set--;
+				}
+			}
+
+			auto line = std::format("Texture2D<{}> {} : register(t{}, space{});", type, ID, binding, space);
 			ctx.shader.replace(ctx.begin, ctx.end, line);
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
 		}
@@ -846,7 +863,7 @@ namespace FlexKit
 				};
 
 			auto ProcessArgs =
-				[&](const Tag& tag, const std::string_view& bindingSpace) -> std::string
+				[&](const Tag& tag, const std::string_view& bindingSpace, uint32_t s) -> std::string
 				{
 					std::string flagStr;
 					std::string numStr;
@@ -966,7 +983,8 @@ namespace FlexKit
 					temp += std::format("{}({}{}, {}", type, bindingSpace, offsetCurrent, numStr);
 
 					offsetCurrent += num;
-
+				    
+#if 0
 					uint32_t set = setCount++;
 					for (auto& spacesInUse = rootSignatures.back().spacesInUse;;)
 					{
@@ -983,6 +1001,9 @@ namespace FlexKit
 					{
 						temp += std::format(", space = {}", set);
 					}
+#endif
+
+					temp += std::format(", space = {}", s);
 
 
 					if (!flagStr.empty())
@@ -1002,95 +1023,91 @@ namespace FlexKit
 					}
 				};
 
+			auto& definition = rootSignatures.back();
+
+			uint32_t space = 0xffffff00;
+			while (definition.IsSpaceInUse(space))
+				space--;
 
 		    std::string sections;
 			for (auto& tag : tags)
 			{
 			    if (std::string_view{ tag.idBegin, tag.idEnd } == "CBV")
 			    {
-					auto res = ProcessArgs(tag, "b");
+					auto res = ProcessArgs(tag, "b", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 			    }
-				else if (std::string_view{ tag.idBegin, tag.idEnd } == "SRVTextured")
+				else if (std::string_view{ tag.idBegin, tag.idEnd } == "SRVTexture")
 				{
-					auto res = ProcessArgs(tag, "t");
+					auto res = ProcessArgs(tag, "t", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "SRVBuffer")
 				{
-					auto res = ProcessArgs(tag, "t");
+					auto res = ProcessArgs(tag, "t", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "SRVStructured")
 				{
-					auto res = ProcessArgs(tag, "t");
+					auto res = ProcessArgs(tag, "t", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "UAVBuffer")
 				{
-					auto res = ProcessArgs(tag, "u");
+					auto res = ProcessArgs(tag, "u", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "UAVTexture")
 				{
-					auto res = ProcessArgs(tag, "u");
+					auto res = ProcessArgs(tag, "u", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "UAVStructured")
 				{
-					auto res = ProcessArgs(tag, "u");
+					auto res = ProcessArgs(tag, "u", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 				else if (std::string_view{ tag.idBegin, tag.idEnd } == "Sampler")
 				{
-					auto res = ProcessArgs(tag, "s");
+					auto res = ProcessArgs(tag, "s", space);
 
 					if (sections.size())
 						sections += ", ";
 
 					sections += res;
-					int x = 0;
 				}
 			}
 
-			auto& definition = rootSignatures.back();
-			definition.entrySpace.push_back(0xffffffff);
-			definition.entries.push_back(RootSignatureEntryTypes::UAV);
+			definition.entrySpace.push_back(space);
+			definition.entries.push_back(RootSignatureEntryTypes::DescriptorHeap);
 			definition.sections += std::format(" DescriptorTable({})", sections);
 
 			ctx.shader.replace(ctx.begin, ctx.end, "");
@@ -1268,6 +1285,11 @@ namespace FlexKit
 					out += ", ";
 
 				out += sections;
+
+
+				if (out.size())
+					out += ", ";
+				out += R"(StaticSampler( s0, filter = FILTER_MIN_MAG_MIP_POINT), StaticSampler(s1, filter = FILTER_MIN_MAG_POINT_MIP_LINEAR))";
 
 				return out;
 			}

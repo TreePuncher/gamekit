@@ -1907,19 +1907,22 @@ namespace dx_Internal
 		if(pGIFactory)		pGIFactory->Release();
 		if(pDXGIAdapter)	pDXGIAdapter->Release();
 		if(pDevice)			pDevice->Release();
+		if(pDevice15)		pDevice15->Release();
 		if(directFence)		directFence->Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
 		if (pDebugDevice && pDebug)
 		{
-			pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
+			pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY | D3D12_RLDO_DETAIL | D3D12_RLDO_IGNORE_INTERNAL);
 			pDebugDevice->Release();
 			pDebug->Release();
 		}
 #endif
 
+		auto alloctemp = allocator;
 		allocator = nullptr;
+		alloctemp->release(this);
 	}
 
 
@@ -3978,7 +3981,7 @@ namespace dx_Internal
 		if (!std::filesystem::exists(filePath))
 			return {};
 
-		auto shaderFileSize = FlexKit::GetFileSize(filePath.string().c_str()) + 1;
+		auto shaderFileSize = GetFileSize(filePath.string().c_str()) + 1;
 		std::string shaderStr;
 		shaderStr.resize(shaderFileSize);
 
@@ -5599,14 +5602,12 @@ namespace dx_Internal
 	[[nodiscard]] ID3D12DescriptorHeap* dxRenderSystem::_CreateShaderVisibleHeap(const size_t numDescriptors)
 	{
 		ID3D12DescriptorHeap* heap;
-
-		HRESULT HR;
 		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapdesc;
 		descriptorHeapdesc.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 		descriptorHeapdesc.NumDescriptors	= (uint32_t)numDescriptors;
 		descriptorHeapdesc.NodeMask			= 0u;
 		descriptorHeapdesc.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		HR									= pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&heap));
+		HRESULT HR							= pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&heap));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
 		return heap;
@@ -7149,6 +7150,7 @@ namespace dx_Internal
 			viewDesc.Texture1D.MipLevels			= mipCount;
 			viewDesc.Texture1D.MostDetailedMip		= 0;
 			viewDesc.Texture1D.ResourceMinLODClamp	= 0;
+			break;
 		case ResourceDimension::Texture2D:
 			viewDesc.ViewDimension = (arraySize <= 1) ? D3D12_SRV_DIMENSION_TEXTURE2D : D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
 			viewDesc.Texture2DArray.MipLevels			= Max(mipCount, 1);
@@ -7156,6 +7158,7 @@ namespace dx_Internal
 			viewDesc.Texture2DArray.PlaneSlice			= 0;
 			viewDesc.Texture2DArray.ResourceMinLODClamp = 0;
 			viewDesc.Texture2DArray.ArraySize			= (UINT)arraySize;
+			break;
 		case ResourceDimension::Texture3D:
 			viewDesc.ViewDimension						= D3D12_SRV_DIMENSION_TEXTURE3D;
 			viewDesc.Texture3D.MipLevels			= Max(mipCount, 1);
