@@ -492,95 +492,21 @@ namespace FlexKit
 
 	struct MediumBlockAllocator
 	{
-		void Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
-		{
-			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
-			Size		= (BufferSize / AllocationFootPrint) - 1;
-			Blocks		= reinterpret_cast<Block*>(Buffer);
-			BlockTable	= reinterpret_cast<BlockData*>(Blocks + Size + 1);
-
-			for (size_t I = 0; I < Size; ++I)
-				BlockTable[I].state = BlockData::Free;
-
-			blocksAllocated = 0;
-		}
+		void Initialise(size_t byteSize, std::byte* Buffer);
 
 		// TODO: maybe Multi-Thread?
-		std::byte* malloc(size_t size, bool ALIGNED = false, bool DebugMetaData = false)
-		{
-#ifdef _DEBUG
-			if (size > MaxBlockSize())
-			{
-				FK_ASSERT(0);
-				return nullptr;
-			}
-#endif
-
-			for (size_t i = 0; i < Size; ++i)
-				if (BlockTable[i].state == BlockData::Free)
-				{
-					BlockTable[i].state = 
-						BlockData::Allocated | 
-						(ALIGNED		? BlockData::Aligned : 0) | 
-						(DebugMetaData	? BlockData::DebugMD : 0);
-
-					blocksAllocated++;
-					return (std::byte*)&Blocks[i];
-				}
-
-			throw(std::bad_alloc());
-
-			return nullptr;
-		}
+		std::byte* malloc(size_t size, bool ALIGNED = false, bool DebugMetaData = false);
 
 
-		static size_t MaxBlockSize()
-		{
-			return sizeof(Block);
-		}
-		
-		void free(void* _ptr)
-		{
-			const size_t temp  = (size_t)_ptr;
-			const size_t temp2 = (size_t)Blocks;
-			const size_t index = (temp - temp2) / sizeof(Block);
+		static size_t MaxBlockSize();
 
-			if (index > Size)
-				throw(std::runtime_error("Invalid Free"));
-
-			blocksAllocated--;
-			BlockTable[index].state = BlockData::Free;
-		}
-
-		void _aligned_free(void* _ptr)
-		{
-			const size_t temp  = (size_t)_ptr;
-			const size_t temp2 = (size_t)Blocks;
-			const size_t index = (temp - temp2) / sizeof(Block);
-
-			if (index > Size)
-				throw(std::runtime_error("Invalid Free"));
-
-#if USING(STACKTRACEMALLOC)
-			if (BlockTable[index].state & BlockData::DebugMD)
-			{
-				auto str = reinterpret_cast<std::string*>(Blocks[index].data);
-				str->~basic_string();
-			}
-#endif
-
-#ifdef _DEBUG
-			FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
-#endif
-
-			blocksAllocated--;
-			BlockTable[index].state = BlockData::Free;
-		}
+		void free(void* _ptr);
+		void _aligned_free(void* _ptr);
 
 		struct Block
 		{
 			std::byte data[2048];
-		}*Blocks;
+		}*blocks;
 
 		struct BlockData
 		{
@@ -592,9 +518,9 @@ namespace FlexKit
 				DebugMD		= 0x04,
 			};
 			uint8_t state;
-		}*BlockTable;
+		}*blockTable;
 
-		size_t Size;
+		size_t blockCount;
 		size_t blocksAllocated;
 	};
 
@@ -604,130 +530,13 @@ namespace FlexKit
 
 	struct LargeBlockAllocator
 	{
-		void Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
-		{
-			FK_ASSERT(BufferSize < (size_t)uint32_t(-1));
+		void Initialise(size_t byteSize, std::byte* Buffer);
+		
+		std::byte* malloc(size_t requestsize, bool aligned = false); // TODO: maybe add thread safety?
 
-			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
-			Size		= BufferSize / AllocationFootPrint;
-			Blocks		= reinterpret_cast<Block*>(Buffer);
-			size_t temp = (size_t)(Blocks + Size);
-
-			BlockTable	= reinterpret_cast<BlockData*>(temp + (temp & 0x3f));
-
-			for (size_t itr = 0; itr < Size; ++itr)
-				BlockTable[itr] = { BlockData::UNUSED, 0 };
-
-			BlockTable[0] = { BlockData::Free, 0, uint16_t(BufferSize / AllocationFootPrint) };
-
-			allocatedBlockCount = 0;
-		}
-
-		// TODO: maybe Multi-Thread?
-		std::byte* malloc(size_t requestsize, bool aligned = false)
-		{
-			size_t BlocksNeeded = requestsize / sizeof(Block) + ( ( requestsize % sizeof(Block) ) > 0 );
-			FK_ASSERT(BlocksNeeded);
-
-			for (size_t i = 0; i < Size;i += BlockTable[i].AllocationSize)
-			{
-				if (!BlockTable[i].AllocationSize)
-					break;
-				if (BlockTable[i].state == BlockData::Free && BlockTable[i].AllocationSize > BlocksNeeded)
-				{
-					BlockTable[i].state = (BlockData::Flags)(BlockData::Allocated | (aligned ? BlockData::Aligned : 0));
-					if (BlockTable[i].AllocationSize > BlocksNeeded)
-					{
-						size_t currentBlock  = i;
-						size_t NextBlockData = i + BlocksNeeded;
-						//for ( size_t II = i; II < NextBlockData; ++II )
-						//{
-						//	BlockTable[II].state  = BlockTable[i].state;
-						//	BlockTable[II].Parent = currentBlock;
-						//}
-						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
-						{// Split Block
-							BlockTable[NextBlockData].state				= BlockData::Free;
-							BlockTable[NextBlockData].AllocationSize	= static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
-							BlockTable[currentBlock].AllocationSize		= static_cast<uint16_t>(BlocksNeeded);
-
-							FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
-						}
-					}
-
-					allocatedBlockCount += BlocksNeeded;
-					return (std::byte*)Blocks[i].data;
-				}
-			}
-
-#ifdef _DEBUG
-			auto LB = BlockTable;
-			size_t LB_size_t = Size;
-			for (size_t I = 0; I < LB_size_t;)
-			{
-				if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
-				{
-					printf( "Block: %i : %i : ", (int)I, (int)BlockTable[I].AllocationSize);
-					if (LB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
-						printf("Allocated and Aligned\n");
-					else
-						printf("Allocated\n");
-				}
-				I += LB[I].AllocationSize;
-			}
-			FK_ASSERT(0, "MEMORY ALLOCATION ERROR!");
-#endif
-			return nullptr;
-		}
-
-
-		void free(void* _ptr)
-		{
-			size_t temp  = (size_t)_ptr;
-			size_t temp2 = (size_t)Blocks;
-			size_t index = (temp - temp2) / sizeof(Block);
-
-#if _DEBUG
-			FK_ASSERT((index < Size), "LargeBlockAllocator: Invalid Pointer Detected!\n");
-			FK_ASSERT(BlockTable[index].state != BlockData::Free,  "LargeBlockAllocator: Double Free Detected!\n");
-#endif
-
-#if USING(STACKTRACEMALLOC)
-			std::destroy_at(reinterpret_cast<std::string*>(Blocks[index].data));
-#endif
-
-			allocatedBlockCount -= BlockTable[index].AllocationSize;
-
-			BlockTable[index].state = BlockData::Free;
-			Collapse(index);
-		}
-
-
-		void _aligned_free(void* _ptr)
-		{
-			size_t temp  = (size_t)_ptr;
-			size_t temp2 = (size_t)Blocks;
-			size_t index = (temp - temp2) / sizeof(Block);
-
-			BlockTable[index].state = BlockData::Free;
-			Collapse(index);
-		}
-
-
-		void Collapse(size_t block = 0)
-		{
-			while (true)
-			{
-				size_t next = block + BlockTable[block].AllocationSize;
-				if (next < Size && BlockTable[next].state == BlockData::Free)
-				{
-					BlockTable[block].AllocationSize += BlockTable[next].AllocationSize;
-					BlockTable[next].state			= BlockData::UNUSED;
-				}
-				else break;
-			}
-		}
-
+		void free(void* _ptr);
+		void _aligned_free(void* _ptr);
+		void Collapse(size_t block = 0);
 
 		struct Block
 		{

@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transforms.hpp"
 #include "RenderSystemInterface.hpp"
 #include "TriMeshResource.hpp"
-
+#include <print>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -103,6 +103,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	EngineMemory::~EngineMemory()
 	{
 		DEBUGBLOCK(PrintBlockStatus(&GetBlockMemory()));
@@ -114,10 +117,12 @@ namespace FlexKit
 	EngineMemory CreateEngineMemory()
 	{
 		BlockAllocator_desc BAdesc;
+		BAdesc.PoolSize		= PRE_ALLOC_SIZE;
 		BAdesc.SmallBlock   = BLOCKALLOCSIZE / 4;
 		BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
 		BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
+		std::print("Pool Size: {}\n", BAdesc.PoolSize);
 		auto allocation		= malloc(BAdesc.PoolSize);//VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
 		FK_ASSERT(allocation != nullptr, "Memory Allocation Error!");
 		BAdesc._ptr = (std::byte*)allocation;

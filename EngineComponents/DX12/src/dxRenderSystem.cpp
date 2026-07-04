@@ -2489,9 +2489,12 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ResourceHandle dxRenderSystem::LoadTexture(TextureBuffer* Buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator)
+	ResourceHandle dxRenderSystem::LoadTexture(TextureBuffer* buffer, CopyContextHandle handle, DeviceFormat format, iAllocator* allocator)
 	{
-		return InvalidHandle;
+		auto texture = CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
+		UploadTexture(texture, handle, buffer->Buffer, buffer->BufferSize());
+
+		return texture;
 	}
 
 	void dxRenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, std::byte* buffer, size_t bufferSize)
@@ -3339,9 +3342,10 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxRenderSystem::CreateTextureView(ResourceHandle, DescHeapPOS)
+	void dxRenderSystem::CreateTextureView(ResourceHandle resource, DescHeapPOS pos)
 	{
-		FK_LOG_ERROR("DX: CreateTextureView unimplemented!");
+		auto dxgiFormat = GetResourceDeviceFormat(resource);
+		PushTextureToDescHeap(*this, dxgiFormat, resource, pos);
 	}
 
 

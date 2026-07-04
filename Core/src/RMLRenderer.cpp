@@ -120,7 +120,7 @@ namespace FlexKit
 		~RmlUI();
 		FlexKit::UpdateTask* Update(Rml::Context* ctx, struct EngineCore&, UpdateDispatcher&, double dT);
 
-		void* Draw(Rml::Context* ctx, struct FlexKit::UpdateTask* update, struct EngineCore& core, RmlPassData& passData, double dT, class FrameGraph& frameGraph);
+		void* Draw(Rml::Context* ctx, struct FlexKit::UpdateTask* update, struct EngineCore& core, const RmlPassData& passData, double dT, class FrameGraph& frameGraph);
 
 		void HandleEvent(Rml::Context* ctx, const FlexKit::Event& evt);
 
@@ -134,10 +134,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	RmlRenderer::RmlRenderer(IRenderSystem& IN_renderSystem, iAllocator& allocator) :
+	RmlRenderer::RmlRenderer(IRenderSystem& IN_renderSystem, iAllocator& IN_allocator) :
 		renderSystem	{ &IN_renderSystem },
-		textures		{ allocator	},
-		geometry		{ allocator	}
+		textures		{ IN_allocator },
+		geometry		{ IN_allocator }, 
+	    allocator		{ IN_allocator }
 	{
 		renderSystem->RegisterPSOLoader(RMLDrawPSO,
 			[&](IRenderSystem& rs, iAllocator& allocator) -> LoadPipelineStateRes
@@ -199,8 +200,8 @@ namespace FlexKit
 								},
 							},
 							.count		= 3 })
-					.AddVertexShader("VMain", R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
-					.AddPixelShader	("TexturedPMain", R"(assets/shaders/RMLUI/Pixel.hlsl)")
+					.AddVertexShader("VMain",			R"(assets/shaders/RMLUI/Vertex.hlsl)", { .enable16BitTypes = true })
+					.AddPixelShader	("TexturedPMain",	R"(assets/shaders/RMLUI/Pixel.hlsl)")
 					.AddBlendState	(BlendState::Blend())
 					.AddRasterizerState({
 						.CullMode = ECullMode::NONE })
@@ -335,7 +336,7 @@ namespace FlexKit
 		else if (auto resource = textures.find(texture); resource)
 		{
 			ctx->SetGraphicsPipelineState(RMLDraw2PSO, *allocator);
-			ctx->SetGraphicsDescriptorSet(1u, *resource);
+			ctx->SetGraphicsDescriptorSet(0u, *resource);
 		}
 		else
 			return;
@@ -520,7 +521,6 @@ namespace FlexKit
 				return false;
 
 			renderSystem->CreateTextureView(resource, res.value());
-			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t textureHandle = std::hash<uint64_t>{}(resource);
 			textures.insert(textureHandle, { res.value(), resource });
@@ -559,7 +559,6 @@ namespace FlexKit
 				return false;
 
 			renderSystem->CreateTextureView(resource, res.value());
-			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t texture_handle = std::hash<uint64_t>{}(resource);
 			textures.insert(texture_handle, { res.value(), resource });
@@ -585,7 +584,6 @@ namespace FlexKit
 				return false;
 
 			renderSystem->CreateTextureView(resource, res.value());
-			//PushTextureToDescHeap(renderSystem, DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM, resource, res.value());
 
 			uint64_t texture_handle = xorshift64(randState);
 			textures.insert(texture_handle, { res.value(), resource });
@@ -658,7 +656,7 @@ namespace FlexKit
 		if (!context)
 			throw std::runtime_error{ CreateRuntimeErrorMessage("Failed to create RmlUI Context") };
 
-		if(!Rml::LoadFontFace(R"(assets/fonts/RobotoCondensed-Regular.ttf)"))
+		if(!Rml::LoadFontFace(R"(assets/fonts/CreatoDisplay-Black.otf)"))
 			throw std::runtime_error{ CreateRuntimeErrorMessage("Failed to load default font") };
 
 		Rml::Debugger::Initialise(context);
@@ -690,7 +688,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void* RmlUI::Draw(Rml::Context* uiCtx, FlexKit::UpdateTask* update, FlexKit::EngineCore& core, RmlPassData& passData, double dT, FlexKit::FrameGraph& frameGraph)
+	void* RmlUI::Draw(Rml::Context* uiCtx, FlexKit::UpdateTask* update, FlexKit::EngineCore& core, const RmlPassData& passData, double dT, FlexKit::FrameGraph& frameGraph)
 	{
 		auto& node = frameGraph.AddNode<BeginResources> (
 			BeginResources{
@@ -787,7 +785,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void* RmlIntegrator::Draw(class UpdateTask* update, class EngineCore& core, RmlPassData& passData, double dT, class FrameGraph& frameGraph)
+	void* RmlIntegrator::Draw(class UpdateTask* update, class EngineCore& core, const RmlPassData& passData, double dT, class FrameGraph& frameGraph)
 	{
 		if (impl)
 			return impl->Draw(impl->context, update, core, passData, dT, frameGraph);
@@ -836,6 +834,15 @@ namespace FlexKit
 	{
 		if (impl)
 			impl->HandleEvent(uiCtx, evt);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RmlIntegrator::ShowDebugger(bool show)
+	{
+		Rml::Debugger::SetVisible(show);
 	}
 
 

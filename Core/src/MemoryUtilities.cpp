@@ -1,6 +1,5 @@
 #include "MemoryUtilities.hpp"
 
-#include <cstring>
 #include <fstream>
 #include <iostream>
 
@@ -10,6 +9,7 @@
 #endif
 
 #include <format>
+#include <print>
 
 namespace FlexKit
 {
@@ -170,6 +170,248 @@ namespace FlexKit
 		}
 
 		return 0;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MediumBlockAllocator::Initialise(size_t byteSize, std::byte* buffer)// Size in Bytes
+	{
+		constexpr size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
+		blockCount	= (byteSize / AllocationFootPrint) - 1;
+		blocks		= reinterpret_cast<Block*>(buffer);
+		blockTable	= reinterpret_cast<BlockData*>(buffer + blockCount + 1);
+
+		for (size_t I = 0; I < blockCount; ++I)
+		{
+			blockTable[I].state = BlockData::Free;
+		}
+
+		blocksAllocated = 0;
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::byte* MediumBlockAllocator::malloc(size_t size, bool ALIGNED, bool DebugMetaData)
+	{
+#ifdef _DEBUG
+		if (size > MaxBlockSize())
+		{
+			FK_ASSERT(0);
+			return nullptr;
+		}
+#endif
+
+		for (size_t i = 0; i < blockCount; ++i)
+			if (blockTable[i].state == BlockData::Free)
+			{
+				blockTable[i].state =
+					BlockData::Allocated |
+					(ALIGNED ? BlockData::Aligned : 0) |
+					(DebugMetaData ? BlockData::DebugMD : 0);
+
+				blocksAllocated++;
+				return (std::byte*)&blocks[i];
+			}
+
+		throw(std::bad_alloc());
+
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t MediumBlockAllocator::MaxBlockSize()
+	{
+		return sizeof(Block);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MediumBlockAllocator::free(void* _ptr)
+	{
+		const size_t temp = (size_t)_ptr;
+		const size_t temp2 = (size_t)blocks;
+		const size_t index = (temp - temp2) / sizeof(Block);
+
+		if (index > blockCount)
+			throw(std::runtime_error("Invalid Free"));
+
+		blocksAllocated--;
+		blockTable[index].state = BlockData::Free;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MediumBlockAllocator::_aligned_free(void* _ptr)
+	{
+		const size_t temp = (size_t)_ptr;
+		const size_t temp2 = (size_t)blocks;
+		const size_t index = (temp - temp2) / sizeof(Block);
+
+		if (index > blockCount)
+			throw(std::runtime_error("Invalid Free"));
+
+#if USING(STACKTRACEMALLOC)
+		if (BlockTable[index].state & BlockData::DebugMD)
+		{
+			auto str = reinterpret_cast<std::string*>(Blocks[index].data);
+			str->~basic_string();
+		}
+#endif
+
+#ifdef _DEBUG
+		FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
+#endif
+
+		blocksAllocated--;
+		blockTable[index].state = BlockData::Free;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LargeBlockAllocator::Initialise(size_t BufferSize, std::byte* Buffer)// Size in Bytes
+	{
+		FK_ASSERT(BufferSize < (size_t)uint32_t(-1));
+
+		size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
+		Size = BufferSize / AllocationFootPrint;
+		Blocks = reinterpret_cast<Block*>(Buffer);
+		size_t temp = (size_t)(Blocks + Size);
+
+		BlockTable = reinterpret_cast<BlockData*>(temp + (temp & 0x3f));
+
+		for (size_t itr = 0; itr < Size; ++itr)
+			BlockTable[itr] = { BlockData::UNUSED, 0 };
+
+		BlockTable[0] = { BlockData::Free, 0, uint16_t(BufferSize / AllocationFootPrint) };
+
+		allocatedBlockCount = 0;
+	}
+
+
+	std::byte* LargeBlockAllocator::malloc(size_t requestsize, bool aligned)
+	{
+		size_t BlocksNeeded = requestsize / sizeof(Block) + ((requestsize % sizeof(Block)) > 0);
+		FK_ASSERT(BlocksNeeded);
+
+		for (size_t i = 0; i < Size; i += BlockTable[i].AllocationSize)
+		{
+			if (!BlockTable[i].AllocationSize)
+				break;
+			if (BlockTable[i].state == BlockData::Free && BlockTable[i].AllocationSize > BlocksNeeded)
+			{
+				BlockTable[i].state = (BlockData::Flags)(BlockData::Allocated | (aligned ? BlockData::Aligned : 0));
+				if (BlockTable[i].AllocationSize > BlocksNeeded)
+				{
+					size_t currentBlock = i;
+					size_t NextBlockData = i + BlocksNeeded;
+					//for ( size_t II = i; II < NextBlockData; ++II )
+					//{
+					//	BlockTable[II].state  = BlockTable[i].state;
+					//	BlockTable[II].Parent = currentBlock;
+					//}
+					if (NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
+					{// Split Block
+						BlockTable[NextBlockData].state = BlockData::Free;
+						BlockTable[NextBlockData].AllocationSize = static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
+						BlockTable[currentBlock].AllocationSize = static_cast<uint16_t>(BlocksNeeded);
+
+						FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
+					}
+				}
+
+				allocatedBlockCount += BlocksNeeded;
+				return (std::byte*)Blocks[i].data;
+			}
+		}
+
+#ifdef _DEBUG
+		auto LB = BlockTable;
+		size_t LB_size_t = Size;
+		for (size_t I = 0; I < LB_size_t;)
+		{
+			if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
+			{
+				printf("Block: %i : %i : ", (int)I, (int)BlockTable[I].AllocationSize);
+				if (LB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
+					printf("Allocated and Aligned\n");
+				else
+					printf("Allocated\n");
+			}
+			I += LB[I].AllocationSize;
+		}
+		FK_ASSERT(0, "MEMORY ALLOCATION ERROR!");
+#endif
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LargeBlockAllocator::free(void* _ptr)
+	{
+		size_t temp  = (size_t)_ptr;
+		size_t temp2 = (size_t)Blocks;
+		size_t index = (temp - temp2) / sizeof(Block);
+
+#if _DEBUG
+		FK_ASSERT((index < Size), "LargeBlockAllocator: Invalid Pointer Detected!\n");
+		FK_ASSERT(BlockTable[index].state != BlockData::Free, "LargeBlockAllocator: Double Free Detected!\n");
+#endif
+
+#if USING(STACKTRACEMALLOC)
+		std::destroy_at(reinterpret_cast<std::string*>(Blocks[index].data));
+#endif
+
+		allocatedBlockCount -= BlockTable[index].AllocationSize;
+
+		BlockTable[index].state = BlockData::Free;
+		Collapse(index);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LargeBlockAllocator::_aligned_free(void* _ptr)
+	{
+		size_t temp = (size_t)_ptr;
+		size_t temp2 = (size_t)Blocks;
+		size_t index = (temp - temp2) / sizeof(Block);
+
+		BlockTable[index].state = BlockData::Free;
+		Collapse(index);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LargeBlockAllocator::Collapse(size_t block)
+	{
+		while (true)
+		{
+			size_t next = block + BlockTable[block].AllocationSize;
+			if (next < Size && BlockTable[next].state == BlockData::Free)
+			{
+				BlockTable[block].AllocationSize += BlockTable[next].AllocationSize;
+				BlockTable[next].state = BlockData::UNUSED;
+			}
+			else break;
+		}
 	}
 
 
@@ -364,14 +606,14 @@ namespace FlexKit
 		{
 			std::cout << "Medium Blocks Allocated\n";
 
-			auto MB				= BlockAlloc->mediumBlockAlloc.BlockTable;
-			size_t MB_size_t	= BlockAlloc->mediumBlockAlloc.Size;
+			auto MB				= BlockAlloc->mediumBlockAlloc.blockTable;
+			size_t MB_size_t	= BlockAlloc->mediumBlockAlloc.blockCount;
 			for (size_t I = 0; I < MB_size_t; ++I)
 			{
 				if (!MB[I].state)
 					continue;
 
-				std::cout << "Block: " << I << " : " << BlockAlloc->mediumBlockAlloc.Blocks + I;
+				std::cout << "Block: " << I << " : " << BlockAlloc->mediumBlockAlloc.blocks + I;
 				if (MB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
 					std::cout << " Aligned\n";
 				else
@@ -386,7 +628,7 @@ namespace FlexKit
 
 					std::cout << *str << "\n";
 #else
-					std::cout << (const char*)BlockAlloc->mediumBlockAlloc.Blocks[I].data << "\n";
+					std::cout << (const char*)BlockAlloc->mediumBlockAlloc.blocks[I].data << "\n";
 #endif
 				}
 			}
@@ -480,7 +722,7 @@ namespace FlexKit
 		stats.totalSmallBlocks		= smallBlockAlloc.Size;
 		stats.smallBlocksAllocated	= smallBlockAlloc.allocated;
 
-		stats.totalMediumBlocks		= mediumBlockAlloc.Size;;
+		stats.totalMediumBlocks		= mediumBlockAlloc.blockCount;;
 		stats.mediumBlocksAllocated	= mediumBlockAlloc.blocksAllocated;
 
 		stats.totalLargeBlocks		= largeBlockAlloc.Size;

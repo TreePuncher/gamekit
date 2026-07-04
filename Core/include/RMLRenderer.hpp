@@ -42,13 +42,15 @@ namespace FlexKit
 		~RmlIntegrator();
 
 		class UpdateTask*	Update	(class EngineCore&, class UpdateDispatcher&, double dT);
-		void*				Draw	(class UpdateTask* update, class EngineCore& core, RmlPassData& passData, double dT, class FrameGraph& frameGraph);
+		void*				Draw	(class UpdateTask* update, class EngineCore& core, const RmlPassData& passData, double dT, class FrameGraph& frameGraph);
 
 		class UpdateTask*	Update	(Rml::Context* ctx, class EngineCore&,			class UpdateDispatcher&, double dT);
 		void*				Draw	(Rml::Context* ctx, class UpdateTask* update,	class EngineCore& core, RmlPassData& passData, double dT, class FrameGraph& frameGraph);
 
-		void				HandleEvent(const FlexKit::Event& evt);
-		void				HandleEvent(Rml::Context* uiCtx, const FlexKit::Event& evt);
+		void				HandleEvent(const Event& evt);
+		void				HandleEvent(Rml::Context* uiCtx, const Event& evt);
+
+		void			ShowDebugger(bool show);
 
 		Rml::Context*	GetMainContext();
 		Rml::Context*	CreateContext(const char* id, const uint2& WH);

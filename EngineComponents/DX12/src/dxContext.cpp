@@ -2859,7 +2859,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	UploadReservation CopyContext::Reserve(const size_t reserveSize, const size_t reserveAlignement)
+	UploadReservation CopyContext::Reserve(const size_t reserveSize, const uint32_t reserveAlignement)
 	{
 		// Not enough remaining space in Buffer GOTO Beginning if space in front of upload buffer is available
 		if	(uploadBuffer.position + reserveSize > uploadBuffer.size && uploadBuffer.last != 0)

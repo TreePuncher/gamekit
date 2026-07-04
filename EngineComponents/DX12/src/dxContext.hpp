@@ -339,7 +339,7 @@ private:
 		void                Barrier(ID3D12Resource* destination, DeviceAccessState before, DeviceAccessState after);
 		void                Barrier(ResourceHandle destination, DeviceAccessState before, DeviceAccessState after) final;
 
-		UploadReservation   Reserve(const size_t reserveSize, const size_t reserveAignement = 256);
+		UploadReservation   Reserve(const size_t reserveSize, const uint32_t alignment = 256) override;
 
 		void                CopyBuffer(GPURange dest, void* source_ptr, uint64_t size);
 		void                CopyBuffer(ResourceHandle , const size_t destinationOffset, UploadReservation);
