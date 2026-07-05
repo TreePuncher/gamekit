@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 
 add_subdirectory(BackendShared)
 add_subdirectory(ShaderPreprocessor)
+add_subdirectory(OBJLoader)
 
 if(WIN32)
 add_subdirectory(DX12)

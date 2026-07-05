@@ -34,18 +34,18 @@ struct SignalExampleState final : ExampleState
 		triggerView->Connect(TriggerID, SlotID);
 	}
 
-	virtual ~SignalExampleState() 
+	virtual ~SignalExampleState() override
 	{
 		ReleaseGameObject(*object0);
 	}
 
-	struct UpdateTask* Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) final
+	struct UpdateTask* Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) override
 	{
 		t += dt;
 		return nullptr;
 	}
 
-	void DrawUI() final
+	void DrawUI() override
 	{
 		Trigger(*object0, TriggerID, TestInput{ .t = t }, InputTypeID);
 	}
