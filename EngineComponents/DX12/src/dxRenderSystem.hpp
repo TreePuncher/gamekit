@@ -2150,7 +2150,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		std::optional<DescriptorRange>	CreateDescriptorRange(const uint32_t size) final;
 		void							ReleaseDescriptorRange(DescriptorRange range, uint64_t lockIdx);
 
-		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle);
+		void				_PushDelayReleasedResource(ID3D12Resource*);
+		void				_PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle);
 
 		void				_ForceReleaseTexture(ResourceHandle handle);
 

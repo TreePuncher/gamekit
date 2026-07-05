@@ -105,12 +105,13 @@ namespace FlexKit
 			Handle = GeometryTable.Handles.GetNewHandle();
 			GeometryTable.Handles[Handle] = (index_t)Index;
 
-			GeometryTable.Geometry.push_back(TriMesh());
+			GeometryTable.Geometry.push_back(TriMesh{});
 			GeometryTable.GeometryIDs.push_back(nullptr);
 			GeometryTable.Guids.push_back(GUID);
 			GeometryTable.ReferenceCounts.push_back(1);
 			GeometryTable.Handle.push_back(Handle);
 
+			GeometryTable.Geometry.back().allocator = GeometryTable.allocator;
 		}
 		else
 		{
@@ -336,12 +337,9 @@ namespace FlexKit
 
 	void DelayedReleaseTriMesh(IRenderSystem* RS, TriMesh* T)
 	{
-		FK_ASSERT(0);
-
-#if 0
 		for (auto& detailLevel : T->lods)
 		{
-			DelayedRelease(RS, detailLevel.bufferSet);
+			detailLevel.bufferSet->Release();
 
 			for (auto& B : detailLevel.views)
 			{
@@ -355,7 +353,6 @@ namespace FlexKit
 		}
 
 		T->allocator->free((void*)T->ID);
-#endif
 	}
 
 
@@ -364,12 +361,11 @@ namespace FlexKit
 
 	void ReleaseTriMesh(TriMesh* T)
 	{
-		FK_ASSERT(0);
-
-#if 0
-		if (T->allocator) {
-			for (auto& details : T->lods) {
-				Release(&details.bufferSet);
+		if (T->allocator)
+		{
+			for (auto& details : T->lods)
+			{
+				details.bufferSet->Release();
 
 				for (auto& view : details.views)
 				{
@@ -381,7 +377,6 @@ namespace FlexKit
 			}
 			T->allocator->free((void*)T->ID);
 		}
-#endif
 	}
 
 

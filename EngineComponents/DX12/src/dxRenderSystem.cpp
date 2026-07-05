@@ -5562,6 +5562,16 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	void dxRenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource)
+	{
+		dxRenderSystem::FreeEntry entry{
+			.Resource	= resource,
+			.Counter	= GetCurrentCounter(),
+		};
+
+	    FreeList_GraphicsQueue.push_back(entry);
+	}
+
 	void dxRenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
 	{
 		if (uploadQueue != InvalidHandle)

@@ -104,6 +104,18 @@ namespace dx_Internal
 
 	void dxVertexBufferSet::Release()
 	{
+		auto& dxRS = static_cast<dxRenderSystem&>(dxRenderSystem::GetInstance());
+		
+		dxRS.LockedResourceOperation(
+			[&]
+			{
+				for (auto& buf : buffers)
+					dxRS._PushDelayReleasedResource(buf.apiResource);
+		        
+			    buffers.clear();
+			});
+
+		dxRS.allocator->free(this);
 	}
 
 	const VertexBuffer dxVertexBufferSet::operator []	(uint8_t idx) const

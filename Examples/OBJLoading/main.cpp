@@ -35,7 +35,7 @@ struct ObjLoaderExample : ExampleState
 				builder.AddRasterizerState();
 				builder.AddRenderTargetState({
 						.targetCount	= 1,
-						.targetFormats	= { DeviceFormat::R8G8B8A8_UNORM },
+						.targetFormats	= { DeviceFormat::R16G16B16A16_FLOAT },
 					});
 
 				return builder.Build(renderSystem, allocator);

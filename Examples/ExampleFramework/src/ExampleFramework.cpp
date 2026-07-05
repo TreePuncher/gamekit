@@ -3,6 +3,7 @@
 #include <TriggerComponent.hpp>
 #include <imgui.h>
 
+#include <print>
 #include <Win32Graphics.hpp>
 #include <dxBackend.hpp>
 
@@ -142,7 +143,6 @@ namespace FlexKit
 	struct ExampleApplication
     {
 		ExampleApplication(const ExampleDescription& desc) :
-			memoryPools{ CreateEngineMemory() },
 			fkApp{
 				std::make_unique<FKApplication>(
 				&memoryPools,
@@ -166,10 +166,12 @@ namespace FlexKit
 
 		~ExampleApplication()
 		{
+			exampleState->exampleState.reset();
 			fkApp->PopState();
+			fkApp.reset();
 		}
 
-		EngineMemory					memoryPools;
+		EngineMemory					memoryPools = CreateEngineMemory();
 		std::unique_ptr<FKApplication>	fkApp;
 		BaseExampleState*				exampleState = nullptr;
     };
@@ -183,7 +185,9 @@ namespace FlexKit
 
 	void ReleaseExampleApplication()
 	{
-		app.release();
+		app.reset();
+
+		int x = 0;
 	}
 
 	int RunExampleApplication()

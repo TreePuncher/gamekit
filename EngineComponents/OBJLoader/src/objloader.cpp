@@ -87,7 +87,7 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 	MeshUtilityFunctions::OptimizedBuffer optimizedBuffer{ optimized };
 
 	size_t VertexBufferSize = optimizedBuffer.points.ByteSize() + sizeof(VertexBufferView);// pos
-	size_t IndexBufferSize = optimizedBuffer.indexes.ByteSize() + sizeof(VertexBufferView);// index
+	size_t IndexBufferSize	= optimizedBuffer.indexes.ByteSize() + sizeof(VertexBufferView);// index
 
 	lod0.views[0] = CreateVertexBufferView(SystemAllocator, VertexBufferSize);
 	lod0.views[1] = CreateVertexBufferView(SystemAllocator, IndexBufferSize);
