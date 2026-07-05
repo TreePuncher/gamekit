@@ -1,6 +1,5 @@
 #include "RTExperiment.hpp"
 #include "OBJLoader.hpp"
-#include <print>
 
 using namespace FlexKit;
 
@@ -8,18 +7,18 @@ using namespace FlexKit;
 RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	FrameworkState{ IN_framework },
 
-	brushes{ GetAllocator() },
-	cameras{ GetAllocator() },
-	lights{ GetAllocator() },
-	materials{ GetRenderSystem(), GetAllocator() },
-	visibility{ GetAllocator() },
-	scene{ GetAllocator() },
-	triggers{ GetAllocator(), GetAllocator() },
-	gameObjects{ GetAllocator(), 1024 },
+	brushes		{ GetAllocator() },
+	cameras		{ GetAllocator() },
+	lights		{ GetAllocator() },
+	materials	{ GetRenderSystem(), GetAllocator() },
+	visibility	{ GetAllocator() },
+	scene		{ GetAllocator() },
+	triggers	{ GetAllocator(), GetAllocator() },
+	gameObjects	{ GetAllocator(), 1024 },
 
-	sbt{ GetAllocator() },
-	depthBuffer{ GetRenderSystem(), { 800, 600 } },
-	persistent{ 256, GetAllocator() },
+	sbt			{ GetAllocator() },
+	depthBuffer	{ GetRenderSystem(), { 800, 600 } },
+	persistent	{ 256, GetAllocator() },
 	gpuAllocator{ 128 * MEGABYTE, 64 * KILOBYTE, DeviceHeapFlags::UAVTextures | DeviceHeapFlags::UAVBuffer, framework.core.GetBlockMemory() }
 {
 	InitiateSceneNodeBuffer(GetAllocator());
@@ -640,7 +639,7 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			rayDesc.Depth	= 1;
 
 			auto constants = GetCameraConstants(activeCamera);
-			float3 pos = constants.WPOS;
+			float3 pos = constants.WPOS.Slice<0, 3>();
 
 			ctx.DiscardResource(resources.GetResource(data.traceBuffer));
 			ctx.ClearUAVTextureFloat(resources.GetResource(data.traceBuffer));

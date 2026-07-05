@@ -21,7 +21,7 @@ if(NOT ANDROID)
     "RTExperiment.hpp"
     "ShaderBindingTable.hpp"
     "PersistentGPUAllocator.hpp"
-    "OBJLoader.hpp"
+    
     )
 
     target_include_directories(
@@ -32,7 +32,7 @@ if(NOT ANDROID)
 
 
 #    set_property(TARGET BasicRaytracer PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    target_link_libraries(BasicRaytracer PRIVATE flex dxBackend dxHeaders)
+    target_link_libraries(BasicRaytracer PRIVATE flex dxBackend dxHeaders objloader)
     add_dependencies(BasicRaytracer ASSETS)
 
     if(NOT EXISTS ${PROJECT_BINARY_DIR}/assets)

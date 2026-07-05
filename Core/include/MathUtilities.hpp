@@ -1871,6 +1871,19 @@ namespace FlexKit
 			return *this;
 		}
 
+		template<Vector_t TY_2>
+		constexpr THISTYPE& operator = (const TY_2& rhs) noexcept requires(TY_2::size() >= SIZE)
+		{
+			size_t itr = 0;
+			for (auto n : rhs)
+			{
+				vector[itr++] = n;
+				if (itr > SIZE)
+					break;
+			}
+			return *this;
+		}
+
 
 		constexpr THISTYPE operator << (const Scaler_t auto sl) const noexcept
 		{

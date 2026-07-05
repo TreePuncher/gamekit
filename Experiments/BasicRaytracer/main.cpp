@@ -1,22 +1,23 @@
-#include <print>
 #include <Application.hpp>
 #include <RTExperiment.hpp>
 #include <dxBackend.hpp>
+
+using namespace FlexKit;
 
 int main()
 {
 	try
 	{
-		auto* allocator = FlexKit::CreateEngineMemory();
-		EXITSCOPE(ReleaseEngineMemory(allocator));
+		auto memoryPools = CreateEngineMemory();
 
-		auto app = std::make_unique<FlexKit::FKApplication>(allocator,
-			FlexKit::CoreOptions{
+		auto app = std::make_unique<FKApplication>(
+			&memoryPools,
+			CoreOptions{
 				.GPUdebugMode		= false,
 				.GPUValidation		= false,
 				.GPUSyncQueues		= false,
 				.CreateRenderSystem	= CreateDX,
-			}, FlexKit::FrameworkOptions{
+			}, FrameworkOptions{
 				.integrateIMGUI		= false
 			});
 
