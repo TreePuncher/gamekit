@@ -10,7 +10,7 @@ add_executable(
     main.cpp
 )
 
-target_link_libraries(signalsexample PRIVATE flex dxBackend)
+target_link_libraries(signalsexample PRIVATE exampleframework)
 
 if(NOT EXISTS ${PROJECT_BINARY_DIR}/assets)
     file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)

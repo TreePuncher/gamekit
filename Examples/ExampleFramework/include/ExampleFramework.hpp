@@ -1,3 +1,4 @@
+#pragma once
 #include <type_traits>
 #include <memory>
 #include <ResourceHandles.hpp>
@@ -6,7 +7,7 @@ namespace FlexKit
 {
 	class FrameGraph;
 
-	struct ExampleState
+	struct ExampleState : NoCopy, NoMove
 	{
 		virtual ~ExampleState() {}
 
@@ -63,6 +64,8 @@ namespace FlexKit
 		return rc;
     }
 }
+
+
 /**********************************************************************
 
 Copyright (c) 2015 - 2026 Robert May
