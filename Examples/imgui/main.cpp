@@ -1,16 +1,11 @@
 #include <ExampleFramework.hpp>
 #include <imgui.h>
-#include <print>
 
 using namespace FlexKit;
 
 struct imguiExampleState : ExampleState
 {
-	imguiExampleState()
-	{}
-
-	virtual UpdateTask*			Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) { return nullptr; }
-	virtual void				DrawUI()
+	virtual void DrawUI()
 	{
 		if (ImGui::Begin("Hello"))
 		{
@@ -18,8 +13,6 @@ struct imguiExampleState : ExampleState
 		}	ImGui::End();
 
 	}
-	virtual struct UpdateTask*	Draw(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt, struct FrameGraph& frameGraph) { return nullptr; }
-	virtual bool				EventHandler(struct Event& evt)	{ return false; }
 };
 
 

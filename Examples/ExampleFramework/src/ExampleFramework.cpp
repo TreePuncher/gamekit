@@ -105,7 +105,7 @@ namespace FlexKit
 	    ClearBackBuffer(frameGraph, renderTarget);
 
 		if (exampleState)
-			exampleState->Draw(core, dispatcher, dt, frameGraph);
+			exampleState->Draw(update, core, dispatcher, dt, frameGraph);
 
 	    framework.DrawDebugUI(dt, dispatcher, frameGraph, renderTarget);
 	    PresentBackBuffer(frameGraph, *renderWindow);
@@ -255,12 +255,12 @@ namespace FlexKit
 		SetMouseCapture(b, &window);
     }
 
-	static GameObject& AllocateGameObject()
+	GameObject& ExampleState::AllocateGameObject()
     {
 		return app->exampleState->objectPool.Allocate();
 	}
 
-	static void ReleaseGameObject(GameObject& go)
+	void ExampleState::ReleaseGameObject(GameObject& go)
     {
 		app->exampleState->objectPool.Release(go);
     }

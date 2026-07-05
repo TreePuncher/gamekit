@@ -13,7 +13,7 @@ add_executable(
 )
 
 set_property(TARGET rmluiexample PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-target_link_libraries(rmluiexample PRIVATE flex dxBackend)
+target_link_libraries(rmluiexample PRIVATE flex exampleframework)
 
 if(NOT EXISTS ${PROJECT_BINARY_DIR}/assets)
     file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/assets)

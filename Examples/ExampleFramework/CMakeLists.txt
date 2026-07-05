@@ -16,5 +16,5 @@ target_include_directories(flex
    include
     )
 
-target_link_libraries(exampleframework PRIVATE flex dxBackend)
+target_link_libraries(exampleframework PUBLIC flex dxBackend)
 

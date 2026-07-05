@@ -4,12 +4,7 @@
 
 namespace FlexKit
 {
-	struct EngineCore;
-	struct ExampleResources;
-	struct Event;
-	struct FrameGraph;
-	struct UpdateTask;
-	struct UpdateDispatcher;
+	class FrameGraph;
 
 	struct ExampleState
 	{
@@ -21,17 +16,18 @@ namespace FlexKit
 		            FrameResourceHandle	renderTarget;
 	    };
 
-		virtual UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) { return nullptr; }
-	    virtual void		DrawUI() {}
-		virtual UpdateTask* Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph) { return nullptr; }
-		virtual bool		EventHandler(Event& evt) { return false; }
+		virtual struct UpdateTask*	Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) { return nullptr; }
+	    virtual void				DrawUI() {}
+		virtual struct UpdateTask*	Draw(class UpdateTask*, EngineCore& core, class UpdateDispatcher& dispatcher, double dt, class FrameGraph& frameGraph) { return nullptr; }
+		
+	    virtual bool				EventHandler(struct Event& evt) { return false; }
 
 		static struct IRenderSystem&	GetRenderSystem();
-		static struct iAllocator&		GetAllocator();
-		static struct iAllocator&		GetAllocatorMT();
-		static struct iAllocator&		GetTempAllocator();
-		static struct iAllocator&		GetTempAllocatorMT();
-		static struct ThreadManager&	GetThreads();
+		static class  iAllocator&		GetAllocator();
+		static class  iAllocator&		GetAllocatorMT();
+		static class  iAllocator&		GetTempAllocator();
+		static class  iAllocator&		GetTempAllocatorMT();
+		static class  ThreadManager&	GetThreads();
 		static struct IRenderWindow&	GetRenderWindow();
 		static		  uint2				GetWH();
 		static struct MouseInputState&	GetMouseState();

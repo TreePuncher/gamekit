@@ -3,7 +3,6 @@
 #include "MathUtilities.hpp"
 #include "MemoryUtilities.hpp"
 #include "ResourceHandles.hpp"
-#include <chrono>
 
 // Rml Forward declarations
 namespace Rml
@@ -16,16 +15,10 @@ namespace FlexKit
 	constexpr PSOHandle RMLDrawPSO	= PSOHandle{ GetCRCGUID(RMLDrawPSO) };
 	constexpr PSOHandle RMLDraw2PSO	= PSOHandle{ GetCRCGUID(RMLDraw2PSO) };
 
-	class Context;
-	class Event;
-	class RenderSystem;
-
-
 	struct RmlPassData
 	{
 		ResourceHandle	renderTarget;
 	};
-
 
 	struct RMLVertex
 	{
@@ -38,22 +31,22 @@ namespace FlexKit
 	class RmlIntegrator : NoCopy
 	{
 	public:
-		RmlIntegrator(IRenderSystem& renderSystem, iAllocator& allocator);
+		RmlIntegrator(struct IRenderSystem& renderSystem, iAllocator& allocator);
 		~RmlIntegrator();
 
-		class UpdateTask*	Update	(class EngineCore&, class UpdateDispatcher&, double dT);
-		void*				Draw	(class UpdateTask* update, class EngineCore& core, const RmlPassData& passData, double dT, class FrameGraph& frameGraph);
+		struct UpdateTask*	Update	(struct EngineCore&, struct UpdateDispatcher&, double dT);
+		void*				Draw	(UpdateTask* update, EngineCore& core, const RmlPassData& passData, double dT, struct FrameGraph& frameGraph);
 
-		class UpdateTask*	Update	(Rml::Context* ctx, class EngineCore&,			class UpdateDispatcher&, double dT);
-		void*				Draw	(Rml::Context* ctx, class UpdateTask* update,	class EngineCore& core, RmlPassData& passData, double dT, class FrameGraph& frameGraph);
+		UpdateTask*			Update	(Rml::Context* ctx, EngineCore&,		UpdateDispatcher&, double dT);
+		void*				Draw	(Rml::Context* ctx, UpdateTask* update,	EngineCore& core, RmlPassData& passData, double dT, FrameGraph& frameGraph);
 
 		void				HandleEvent(const Event& evt);
 		void				HandleEvent(Rml::Context* uiCtx, const Event& evt);
 
-		void			ShowDebugger(bool show);
+		void				ShowDebugger(bool show);
 
-		Rml::Context*	GetMainContext();
-		Rml::Context*	CreateContext(const char* id, const uint2& WH);
+		Rml::Context*		GetMainContext();
+		Rml::Context*		CreateContext(const char* id, const uint2& WH);
 	private:
 		struct RmlUI*	impl		= nullptr;
 		iAllocator*		allocator	= nullptr;

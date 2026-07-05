@@ -769,15 +769,16 @@ namespace FlexKit
 		impl		= nullptr;
 		allocator	= nullptr;
 	}
-
+	
 
 	/************************************************************************************************/
 
 
-	class UpdateTask* RmlIntegrator::Update(class EngineCore& core, class UpdateDispatcher& dispatcher, double dT)
+	UpdateTask* RmlIntegrator::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
 		if (impl)
 			return impl->Update(impl->context, core, dispatcher, dT);
+
 		return nullptr;
 	}
 
@@ -785,7 +786,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void* RmlIntegrator::Draw(class UpdateTask* update, class EngineCore& core, const RmlPassData& passData, double dT, class FrameGraph& frameGraph)
+	void* RmlIntegrator::Draw(UpdateTask* update, FlexKit::EngineCore& core, const RmlPassData& passData, double dT, FrameGraph& frameGraph)
 	{
 		if (impl)
 			return impl->Draw(impl->context, update, core, passData, dT, frameGraph);

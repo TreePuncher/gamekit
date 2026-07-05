@@ -1,13 +1,8 @@
-#include <Application.hpp>
-#include <RenderSystemInterface.hpp>
-#include <FrameGraph.hpp>
-
-#include <Win32Graphics.hpp>
-#include <dxBackend.hpp>
-#include <imgui.h>
+#include <ExampleFramework.hpp>
+#include <Events.hpp>
 #include <RMLRenderer.hpp>
 #include <RmlUi/Core.h>
-#include <print>
+#include <FrameGraph.hpp>
 
 using namespace FlexKit;
 
@@ -25,15 +20,11 @@ struct Button0PressHandler : Rml::EventListener
 	TypeErasedCallable<void (Rml::Event&)> callback;
 };
 
-struct rmluiExampleState : FrameworkState
+struct rmluiExampleState : ExampleState
 {
-	rmluiExampleState(GameFramework& IN_framework) : 
-		FrameworkState		{ IN_framework },
-		rml					{ GetRenderSystem(), GetAllocator() }
+	rmluiExampleState() : 
+        rml{ GetRenderSystem(), GetAllocator() }
 	{
-		Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 1600, 1200 }, DeviceFormat::R16G16B16A16_FLOAT);
-		renderWindow = CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
-
 		rmlCtx = rml.GetMainContext();
 		rmlCtx->SetDensityIndependentPixelRatio(1.4f);
 		rmlCtx->SetDimensions({ 1600, 1200 });
@@ -75,138 +66,45 @@ struct rmluiExampleState : FrameworkState
 
 		document->UpdateDocument();
 		document->Show();
-
-		EventNotifier<>::Subscriber sub;
-		sub.Notify	= &EventsWrapper;
-		sub._ptr	= &framework;
-		Subscribe(renderWindow, sub);
-
-		vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
-		cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
 	}
 
 	virtual ~rmluiExampleState()
 	{
 		document->Close();
-		renderWindow->Release();
-		GetRenderSystem().ReleaseVB(vBuffer);
-		GetRenderSystem().ReleaseCB(cBuffer);
 	}
 
-	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt)
+	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) override
 	{
-		t += dt;
-
-		Win32UpdateInput();
-		framework.UpdateDebugUI(*renderWindow, core, dispatcher, dt);
-
 		document->UpdateDocument();
-
-		ImGui::NewFrame();
-		/*
-		if (ImGui::Begin("Hello"))
-		{
-			ImGui::SetWindowSize({ 500, 500 });
-			ImGui::Text("Hello world!");
-		}	ImGui::End();
-        */
-		ImGui::EndFrame();
-		ImGui::Render();
-
 		auto update = rml.Update(core, dispatcher, dt);
 
 		return update;
 	}
 
 
-	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph)
+	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph) override
 	{
-		auto renderTarget = renderWindow->GetBackBuffer();
-		frameGraph.AddOutput(renderTarget);
-		frameGraph.AddConstantBuffer(cBuffer);
-		frameGraph.AddVertexBuffer(vBuffer);
-
-		ClearBackBuffer(frameGraph, renderTarget);
-
-		framework.DrawDebugUI(dt, dispatcher, frameGraph, renderTarget);
-
+		auto renderTarget = GetRenderWindow().GetBackBuffer();
 	    rml.Draw(update, core, RmlPassData{ .renderTarget = renderTarget }, dt, frameGraph);
-
-		PresentBackBuffer(frameGraph, *renderWindow);
 		return nullptr;
 	}
 
 
-	bool EventHandler(Event evt) override
+	bool EventHandler(Event& evt) override
 	{
-		if (evt.InputSource == Event::E_SystemEvent && evt.mType == Event::EventType::Internal && evt.Action == Event::InputAction::Exit)
-		{
-			framework.quit = true;
-			return true;
-		}
 		rml.HandleEvent(evt);
-		return framework.HandleDebugInput(evt);
+		return true;
 	}
-
-	void PostDrawUpdate(EngineCore& core, double dT) override
-	{
-		renderWindow->Present();
-		core.RenderSystem->ResetConstantBuffer(cBuffer);
-		core.RenderSystem->ResetVertexBuffer(vBuffer);
-	}
-
-	double					t = 0.0;
-	size_t					vertexCount		= 0;
-	IRenderWindow*			renderWindow	= nullptr;
-	VertexBufferHandle		vBuffer			= InvalidHandle;
-	ConstantBufferHandle	cBuffer			= InvalidHandle;
-	TriMeshHandle			shape			= InvalidHandle;
-	UniqueResourceHandle	testTexture		= InvalidHandle;
 
 	RmlIntegrator			rml;
 	Rml::Context*			rmlCtx		= nullptr;
 	Rml::ElementDocument*	document	= nullptr;
-
-	Button0PressHandler eventHandler;
+	Button0PressHandler		eventHandler;
 };
 
 int main()
 {
-	try
-	{
-		{
-			auto memoryPools = CreateEngineMemory();
-
-			auto app = std::make_unique<FKApplication>(
-				&memoryPools,
-				CoreOptions{
-					.GPUdebugMode		= false,
-					.GPUValidation		= false,
-					.GPUSyncQueues		= false,
-					.CreateRenderSystem = CreateDX,
-				},
-				FrameworkOptions{
-					.integrateIMGUI = true
-				});
-
-			app->PushState<rmluiExampleState>();
-			app->GetCore().FPSLimit = 144;
-			app->GetCore().FrameLock = true;
-			app->GetCore().vSync = true;
-			app->Run();
-		}
-		int x = 0;
-	}
-	catch (std::runtime_error runtimeError)
-	{
-		FK_LOG_ERROR("Exception Caught!\n%s", runtimeError.what());
-	}
-	catch (...)
-	{
-		FK_LOG_ERROR("Exception Caught!");
-		return -1;
-	}
-	return 0;
+	return FlexKit::RunExample<rmluiExampleState>();
 }
 
 
