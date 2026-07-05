@@ -512,7 +512,7 @@ namespace FlexKit
 		}
 
 
-		uint64_t GetWindowHandle() const noexcept
+		uint64_t GetWindowHandle() const noexcept override
 		{
 		    return (uint64_t)WindowHandle();
 		}
@@ -967,6 +967,16 @@ namespace FlexKit
 	{
 		Win32RenderWindow* window = static_cast<Win32RenderWindow*>(iwindow);
 		window->ToggleMouseCapture();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetMouseCapture(IRenderWindow* window, bool b)
+	{
+		Win32RenderWindow* win32window = static_cast<Win32RenderWindow*>(window);
+		win32window->EnableCaptureMouse(b);
 	}
 
 

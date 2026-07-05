@@ -262,15 +262,15 @@ namespace FlexKit
 			throw(std::runtime_error("Invalid Free"));
 
 #if USING(STACKTRACEMALLOC)
-		if (BlockTable[index].state & BlockData::DebugMD)
+		if (blockTable[index].state & BlockData::DebugMD)
 		{
-			auto str = reinterpret_cast<std::string*>(Blocks[index].data);
+			auto str = reinterpret_cast<std::string*>(blocks[index].data);
 			str->~basic_string();
 		}
 #endif
 
 #ifdef _DEBUG
-		FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
+		FK_ASSERT(blockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
 #endif
 
 		blocksAllocated--;
@@ -623,8 +623,8 @@ namespace FlexKit
 					std::cout << "Meta Data Found: \n";
 
 #if USING(STACKTRACEMALLOC)
-					BlockAlloc->mediumBlockAlloc.Blocks[I].data[0x41] = (std::byte)'\0';
-					auto str = reinterpret_cast<std::string*>(BlockAlloc->mediumBlockAlloc.Blocks[I].data);
+					BlockAlloc->mediumBlockAlloc.blocks[I].data[0x41] = (std::byte)'\0';
+					auto str = reinterpret_cast<std::string*>(BlockAlloc->mediumBlockAlloc.blocks[I].data);
 
 					std::cout << *str << "\n";
 #else

@@ -193,7 +193,7 @@ namespace FlexKit
 
 
 
-	void ImGUIIntegrator::Update(IRenderWindow& window, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
+	void ImGUIIntegrator::Update(IRenderWindow& window, EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
 		const auto WH   = window.GetWH();
 		
@@ -262,6 +262,12 @@ namespace FlexKit
 
 		ImGuiIO& io = ImGui::GetIO();
 
+		if (!ImGui::IsAnyMouseDown())
+		{
+			if (!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+				return false;
+		}
+
 		switch (evt.InputSource)
 		{
 			case Event::Keyboard:
@@ -296,12 +302,12 @@ namespace FlexKit
 
 				switch (evt.mData1.mKC[0])
 				{
-					case KC_MOUSELEFT:
-						KC = 0; break;
-					case KC_MOUSEMIDDLE:
-						KC = 2; break;
-					case KC_MOUSERIGHT:
-						KC = 1; break;
+				case KC_MOUSELEFT:
+					KC = 0; break;
+				case KC_MOUSEMIDDLE:
+					KC = 2; break;
+				case KC_MOUSERIGHT:
+					KC = 1; break;
 				}
 
 				if (KC != -1 && evt.Action == Event::Pressed || evt.Action == Event::Release)

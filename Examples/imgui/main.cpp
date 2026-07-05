@@ -1,135 +1,31 @@
-#include <Application.hpp>
-#include <RenderSystemInterface.hpp>
-#include <FrameGraph.hpp>
-
-#include <Win32Graphics.hpp>
-#include <dxBackend.hpp>
+#include <ExampleFramework.hpp>
 #include <imgui.h>
+#include <print>
 
 using namespace FlexKit;
 
-struct imguiExampleState : FrameworkState
+struct imguiExampleState : ExampleState
 {
-	imguiExampleState(GameFramework& IN_framework) : FrameworkState(IN_framework)
+	imguiExampleState()
+	{}
+
+	virtual UpdateTask*			Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) { return nullptr; }
+	virtual void				DrawUI()
 	{
-		Win32RenderWindowDesc windowDesc = DefaultWindowDesc({ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT);
-		renderWindow	= CreateWin32RenderWindow(GetRenderSystem(), windowDesc);
-		
-		EventNotifier<>::Subscriber sub;
-		sub.Notify	= &EventsWrapper;
-		sub._ptr	= &framework;
-		Subscribe(renderWindow, sub);
-
-		vBuffer = GetRenderSystem().CreateVertexBuffer(512 * KILOBYTE, false);
-		cBuffer = GetRenderSystem().CreateConstantBuffer(512 * KILOBYTE, false);
-	}
-
-	~imguiExampleState()
-	{
-		renderWindow->Release();
-		GetRenderSystem().ReleaseVB(vBuffer);
-		GetRenderSystem().ReleaseCB(cBuffer);
-	}
-
-	UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt)
-	{
-		t += dt;
-
-		Win32UpdateInput();
-		framework.UpdateDebugUI(*renderWindow, core, dispatcher, dt);
-
-		ImGui::NewFrame();
 		if (ImGui::Begin("Hello"))
 		{
-			ImGui::SetWindowSize({ 500, 500 });
-			ImGui::Text("Hello world!");
+		    ImGui::Text("Hello World!");
 		}	ImGui::End();
-		ImGui::EndFrame();
-		ImGui::Render();
 
-	    return nullptr;
 	}
-
-
-	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph)
-	{
-		auto renderTarget = renderWindow->GetBackBuffer();
-		frameGraph.AddOutput(renderTarget);
-		frameGraph.AddConstantBuffer(cBuffer);
-		frameGraph.AddVertexBuffer(vBuffer);
-
-		ClearBackBuffer(frameGraph, renderTarget);
-
-		framework.DrawDebugUI(dt, dispatcher, frameGraph, renderTarget);
-
-		PresentBackBuffer(frameGraph, *renderWindow);
-	    return nullptr;
-	}
-
-
-    bool EventHandler(Event evt) override
-	{
-		if (evt.InputSource == Event::E_SystemEvent && evt.mType == Event::EventType::Internal && evt.Action == Event::InputAction::Exit)
-		{
-			framework.quit = true;
-			return true;
-		}
-		return framework.HandleDebugInput(evt);
-	}
-
-	void PostDrawUpdate(EngineCore& core, double dT) override
-	{
-		renderWindow->Present();
-		core.RenderSystem->ResetConstantBuffer(cBuffer);
-		core.RenderSystem->ResetVertexBuffer(vBuffer);
-	}
-
-	double					t				= 0.0;
-	size_t					vertexCount		= 0;
-	IRenderWindow*			renderWindow	= nullptr;
-	VertexBufferHandle		vBuffer			= InvalidHandle;
-	ConstantBufferHandle	cBuffer			= InvalidHandle;
-	TriMeshHandle			shape			= InvalidHandle;
-	UniqueResourceHandle	testTexture		= InvalidHandle;
+	virtual struct UpdateTask*	Draw(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt, struct FrameGraph& frameGraph) { return nullptr; }
+	virtual bool				EventHandler(struct Event& evt)	{ return false; }
 };
+
 
 int main()
 {
-	try
-	{
-		{
-			auto memoryPools = CreateEngineMemory();
-
-			auto app = std::make_unique<FKApplication>(
-				&memoryPools,
-				CoreOptions{
-					.GPUdebugMode		= true,
-					.GPUValidation		= true,
-					.GPUSyncQueues		= true,
-					.CreateRenderSystem = CreateDX,
-				},
-				FrameworkOptions{
-					.integrateIMGUI = true
-				});
-
-			app->PushState<imguiExampleState>();
-			app->GetCore().FPSLimit		= 144;
-			app->GetCore().FrameLock	= true;
-			app->GetCore().vSync		= true;
-			app->Run();
-		}
-		int x = 0;
-	}
-	catch (std::runtime_error runtimeError)
-	{
-		FK_LOG_ERROR("Exception Caught!\n%s", runtimeError.what());
-	}
-	catch (...)
-	{
-		FK_LOG_ERROR("Exception Caught!");
-		return -1;
-	}
-	return 0;
+	return RunExample<imguiExampleState>();
 }
 
 
