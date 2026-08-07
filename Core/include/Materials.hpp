@@ -43,17 +43,20 @@ namespace FlexKit
 
 	struct MaterialComponentData
 	{
-		uint32_t							refCount;
-		MaterialHandle						handle;
-		MaterialHandle						parent;
-		DescriptorRange						textureDescriptors;
-		uint64_t							lastUsed = -1;
+		uint32_t								refCount;
+		MaterialHandle							handle;
+		MaterialHandle							parent;
+		DescriptorRange							textureDescriptors;
+		uint64_t								lastUsed = -1;
 
 		Vector<PassHandle, 4, uint8_t>			passes;
-		Vector<MaterialProperty, 0, uint8_t>	properties;
 		Vector<ResourceHandle, 0, uint8_t>		textures;
 		Vector<uint32_t, 0, uint32_t>			textureTags;
 		Vector<MaterialHandle, 0, uint8_t>		subMaterials;
+		
+		Vector<uint16_t, 0, uint8_t>			propertyOffsets;
+		Vector<uint32_t, 0, uint8_t>			propertyIDs;
+		Vector<std::byte, 0, uint16_t>			propertyBuffer;
 
 		bool HasTexture(uint32_t tag) const noexcept;
 	};
@@ -72,21 +75,11 @@ namespace FlexKit
 
 	struct MaterialComponent final : public Component<MaterialComponent, MaterialComponentID>
 	{
-		MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE = &NullTextureManager) :
-			textureManager	{ IN_TSE },
-			renderSystem	{ IN_renderSystem },
-			materials		{ IN_allocator	},
-			textures		{ IN_allocator	},
-			handles			{ IN_allocator	},
-			activePasses	{ IN_allocator	},
-			allocator		{ *IN_allocator }
-		{
-			materials.reserve(256);
-		}
+		MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE = &NullTextureManager);
 
-		virtual ~MaterialComponent() {}
+		virtual ~MaterialComponent();
 
-		void FreeComponentView(void* _ptr) final { static_cast<MaterialView*>(_ptr)->Release(); }
+		void FreeComponentView(void* _ptr) final;
 
 
 		MaterialComponentData operator [](const MaterialHandle handle) const;
@@ -144,9 +137,9 @@ namespace FlexKit
 			DescriptorRange				GetTextureDescriptors() const;
 			void						UpdateTextureDescriptors();
 
-			bool						HasSubMaterials() const;
-			std::span<MaterialHandle>	GetSubMaterials() const;
-			MaterialHandle				CreateSubMaterial();
+			bool							HasSubMaterials() const;
+			std::span<const MaterialHandle>	GetSubMaterials() const;
+			MaterialHandle					CreateSubMaterial();
 
 			operator MaterialHandle () const noexcept { return handle; }
 
@@ -176,46 +169,68 @@ namespace FlexKit
 		Vector<PassHandle, 16, uint8_t>	GetPasses(MaterialHandle material) const;
 		Vector<PassHandle>				GetActivePasses(iAllocator& allocator) const;
 
-
-		void SetProperty(MaterialHandle& material, const uint32_t ID, auto&& value)
+		template<MaterialValue TY>
+		void SetProperty(MaterialHandle& materialHndl, const uint32_t ID, TY&& value)
 		{
-			if (materials[handles[material]].refCount > 1)
+			if (materials[handles[materialHndl]].refCount > 1)
 			{
-				auto newHandle = CloneMaterial(material);
-				ReleaseMaterial(material);
+				auto newHandle = CloneMaterial(materialHndl);
+				ReleaseMaterial(materialHndl);
 
-				material = newHandle;
+				materialHndl = newHandle;
 			}
 
-			auto& properties = materials[handles[material]].properties;
-
-			if (MaterialProperty* prop =
-					std::find_if(
-						properties.begin(), properties.end(),
-						[&](auto& prop) { return prop.ID == ID;}); prop != properties.end())
-				prop->value = value;
+			auto& material		= materials[handles[materialHndl]];
+			auto& propertyIDs	= material.propertyIDs;
+			auto& offsets		= material.propertyOffsets;
+			auto& buffer		= material.propertyBuffer;
+			
+		    if (uint32_t* prop =
+				std::find_if(
+					propertyIDs.begin(), propertyIDs.end(),
+					[&](uint32_t& prop) { return prop == ID; }); prop != propertyIDs.end())
+			{
+				auto idx				= std::distance(propertyIDs.begin(), prop);
+				const size_t byteOffset	= offsets[idx];
+				const size_t byteSize	= (((idx + 1) < offsets.size()) ? offsets[idx + 1] : buffer.size()) - byteOffset;
+				memcpy(buffer.data() + byteOffset, &value, byteSize);
+			}
 			else
-				properties.emplace_back(ID, value);
+			{
+				const size_t byteOffset = buffer.size();
+				propertyIDs.emplace_back(ID);
+				offsets.push_back(byteOffset);
+				buffer.resize(buffer.size() + sizeof(value));
+				memcpy(buffer.data() + byteOffset, &value, sizeof(value));
+			}
 		}
 
 
 		template<MaterialValue TY>
 		std::optional<TY> GetProperty(MaterialHandle handle, const uint32_t ID) const
 		{
-			auto& material		= materials[handles[handle]];
-			auto& properties	= material.properties;
+			const auto& material	= materials[handles[handle]];
+			const auto& propertyIDs	= material.propertyIDs;
+			const auto& offsets		= material.propertyOffsets;
+			const auto& buffer		= material.propertyBuffer;
 
-			if (auto res = std::find_if(
-					properties.begin(), properties.end(),
-					[&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
+			if (const uint32_t* prop =
+				std::find_if(
+					propertyIDs.begin(), propertyIDs.end(),
+					[&](const uint32_t& prop) { return prop == ID; }); prop != propertyIDs.end())
 			{
-				if (auto* property = std::get_if<TY>(&res->value))
-					return { *property };
-				else
+				const auto idx			= std::distance(propertyIDs.begin(), prop);
+				const size_t byteOffset = offsets[idx];
+				const size_t byteSize	= (((idx + 1) == offsets.size()) ? buffer.size() : offsets[idx + 1]) - byteOffset;
+
+				if (byteSize != sizeof(TY))
 					return {};
+
+				TY out;
+				memcpy(&out, buffer.data() + byteOffset, byteSize);
+
+				return { out };
 			}
-			else if (material.parent != InvalidHandle)
-				return GetProperty<TY>(material.parent, ID);
 			else
 				return {};
 		}
@@ -224,22 +239,7 @@ namespace FlexKit
 		template<MaterialValue TY>
 		TY GetPropertyOr(MaterialHandle handle, const uint32_t ID, const TY& orValue) const
 		{
-			auto& material		= materials[handles[handle]];
-			auto& properties	= material.properties;
-
-			if (auto res = std::ranges::find_if(
-				properties,
-				[&](const auto& prop) -> bool { return prop.ID == ID; }); res != properties.end())
-			{
-				if (auto* property = std::get_if<TY>(&res->value))
-					return { *property };
-				else
-					return orValue;
-			}
-			else if (material.parent != InvalidHandle)
-				return GetPropertyOr<TY>(material.parent, ID, orValue);
-			else
-				return orValue;
+			return GetProperty<TY>(handle, ID).value_or(orValue);
 		}
 
 

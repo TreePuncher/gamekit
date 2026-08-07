@@ -25,6 +25,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	MaterialComponent::MaterialComponent(IRenderSystem& IN_renderSystem, iAllocator* IN_allocator, ITextureManager* IN_TSE) :
+		textureManager	{ IN_TSE },
+		renderSystem	{ IN_renderSystem },
+		materials		{ IN_allocator },
+		textures		{ IN_allocator },
+		handles			{ IN_allocator },
+		activePasses	{ IN_allocator },
+		allocator		{ *IN_allocator }
+	{
+		materials.reserve(256);
+	}
+
+
+	/************************************************************************************************/
+
+
+	MaterialComponent::~MaterialComponent() {}
+
+
+	void MaterialComponent::FreeComponentView(void* _ptr) { static_cast<MaterialView*>(_ptr)->Release(); }
+
+
+	/************************************************************************************************/
+
+
 	MaterialHandle MaterialComponent::CreateMaterial(MaterialHandle IN_parent)
 	{
 		std::scoped_lock lock{ m };
@@ -37,10 +62,12 @@ namespace FlexKit
 				.parent		= IN_parent,
 				.lastUsed	= size_t(-1),
 				.passes			{ allocator },
-				.properties		{ allocator },
 				.textures		{ allocator },
 				.textureTags	{ allocator },
-				.subMaterials	{ allocator }});
+				.subMaterials	{ allocator }, 
+				.propertyOffsets{ allocator },
+				.propertyIDs	{ allocator },
+				.propertyBuffer { allocator } });
 
 		if(IN_parent != InvalidHandle)
 			AddRef(IN_parent);
@@ -571,6 +598,16 @@ namespace FlexKit
 	bool MaterialComponent::MaterialView::HasSubMaterials() const
 	{
 		return !GetComponent()[handle].subMaterials.empty();
+	}
+
+
+	/************************************************************************************************/
+
+
+	std::span<const MaterialHandle>	MaterialComponent::MaterialView::GetSubMaterials() const
+	{
+		const auto& subMaterials = GetComponent()[handle].subMaterials;
+		return std::span<const MaterialHandle>{ subMaterials.data(), subMaterials.size() };
 	}
 
 

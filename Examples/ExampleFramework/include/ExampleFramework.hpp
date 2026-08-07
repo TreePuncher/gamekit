@@ -23,15 +23,16 @@ namespace FlexKit
 		
 	    virtual bool				EventHandler(struct Event& evt) { return false; }
 
-		static struct IRenderSystem&	GetRenderSystem();
-		static class  iAllocator&		GetAllocator();
-		static class  iAllocator&		GetAllocatorMT();
-		static class  iAllocator&		GetTempAllocator();
-		static class  iAllocator&		GetTempAllocatorMT();
-		static class  ThreadManager&	GetThreads();
-		static struct IRenderWindow&	GetRenderWindow();
-		static		  uint2				GetWH();
-		static struct MouseInputState&	GetMouseState();
+		static struct IRenderSystem&		GetRenderSystem();
+		static class  iAllocator&			GetAllocator();
+		static class  iAllocator&			GetAllocatorMT();
+		static class  iAllocator&			GetTempAllocator();
+		static class  ThreadSafeAllocator&	GetTempAllocatorMT();
+		static class  ThreadManager&		GetThreads();
+		static struct IRenderWindow&		GetRenderWindow();
+		static		  uint2					GetWH();
+		static struct MouseInputState&		GetMouseState();
+		static		  double				GetRunningTime();
 
 		static void						ToggleMouse(bool);
 

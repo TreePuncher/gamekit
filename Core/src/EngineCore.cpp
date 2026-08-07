@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transforms.hpp"
 #include "RenderSystemInterface.hpp"
 #include "TriMeshResource.hpp"
-#include <print>
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -122,7 +121,6 @@ namespace FlexKit
 		BAdesc.MediumBlock  = BLOCKALLOCSIZE / 4;
 		BAdesc.LargeBlock   = BLOCKALLOCSIZE / 2;
 
-		std::print("Pool Size: {}\n", BAdesc.PoolSize);
 		auto allocation		= _aligned_malloc(BAdesc.PoolSize, 64);//VirtualAlloc(nullptr, preallocationSize, MEM_COMMIT, PAGE_READWRITE);;
 		FK_ASSERT(allocation != nullptr, "Memory Allocation Error!");
 		BAdesc._ptr = (std::byte*)allocation;

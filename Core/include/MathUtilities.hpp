@@ -562,6 +562,7 @@ namespace FlexKit
 		float x, y;
 
 		constexpr static size_t Size() { return 2; }
+		constexpr static size_t size() { return Size(); }
 	};
 
 
@@ -1128,7 +1129,7 @@ namespace FlexKit
 
 
 		template<typename TY_2, bool RHS_Padded, size_t RHS_size>
-		constexpr Vect(const Vect<RHS_size, TY_2, RHS_Padded>& in) noexcept requires(RHS_size <= SIZE)
+		constexpr Vect(const Vect<RHS_size, TY_2, RHS_Padded>& in) noexcept
 		{
 			for (size_t I = 0; I < SIZE; ++I)
 				vector[I] = static_cast<TY>(in[I]);
@@ -1137,6 +1138,25 @@ namespace FlexKit
 				vector[I] = 0;
 		}
 
+		template<Scaler_t TY>
+		constexpr Vect(const std::initializer_list<TY> in) noexcept
+		{
+			for (size_t I = 0; I < SIZE; ++I)
+				vector[I] = static_cast<Type>(in.begin()[I]);
+
+			for (size_t I = in.size(); I < SIZE; ++I)
+				vector[I] = static_cast<Type>(0);
+		}
+
+		template<Vector_t TY_V>
+		constexpr Vect(const TY_V in) noexcept
+		{
+			for (size_t I = 0; I < in.size(); ++I)
+				vector[I] = static_cast<Type>(in[I]);
+
+			for (size_t I = in.size(); I < SIZE; ++I)
+				vector[I] = static_cast<Type>(0);
+		}
 
 		template<typename ... TY_ARGS>
 		constexpr Vect(TY_ARGS ... args) noexcept requires(sizeof ... (TY_ARGS) > 1)
@@ -1726,8 +1746,8 @@ namespace FlexKit
 		}
 
 
-		template<typename TY_2>
-		constexpr THISTYPE& operator = (const Vect<SIZE, TY_2>& in) noexcept
+		template<typename TY_2, bool RHS_PAD>
+		constexpr THISTYPE& operator = (const Vect<SIZE, TY_2, RHS_PAD>& in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				vector[I] = in[I];
@@ -1760,7 +1780,7 @@ namespace FlexKit
 		{
 			THISTYPE temp = *this;
 
-			return temp * THISTYPE{ rhs };
+			return temp * static_cast<THISTYPE>(rhs);
 		}
 
 
@@ -1864,12 +1884,13 @@ namespace FlexKit
 			size_t itr = 0;
 			for (auto n : il)
 			{
-				vector[itr++] = n;
+				vector[itr++] = static_cast<TY>(n);
 				if (itr > SIZE)
 					break;
 			}
 			return *this;
 		}
+
 
 		template<Vector_t TY_2>
 		constexpr THISTYPE& operator = (const TY_2& rhs) noexcept requires(TY_2::size() >= SIZE)
@@ -1884,6 +1905,14 @@ namespace FlexKit
 			return *this;
 		}
 
+		template<Scaler_t TY_2>
+		constexpr THISTYPE& operator = (const TY_2& rhs) noexcept
+		{
+			size_t itr = 0;
+			for (auto& n : vector)
+				n = static_cast<TY>(rhs);
+			return *this;
+		}
 
 		constexpr THISTYPE operator << (const Scaler_t auto sl) const noexcept
 		{

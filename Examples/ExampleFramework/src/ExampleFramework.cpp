@@ -73,8 +73,6 @@ namespace FlexKit
 
     UpdateTask* BaseExampleState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt)
     {
-	    t += dt;
-
 	    Win32UpdateInput();
 		mouseState = UpdateCapturedMouseInput(dt, renderWindow);
 
@@ -117,6 +115,7 @@ namespace FlexKit
 
     void BaseExampleState::PostDrawUpdate(FlexKit::EngineCore& core, double dt)
     {
+		t += dt;
 	    renderWindow->Present();
 	    core.RenderSystem->ResetVertexBuffer(vBuffer);
 	    core.RenderSystem->ResetConstantBuffer(cBuffer);
@@ -228,7 +227,7 @@ namespace FlexKit
 		return app->exampleState->framework.core.GetTempMemory();
 	}
 
-	iAllocator& ExampleState::GetTempAllocatorMT()
+	ThreadSafeAllocator& ExampleState::GetTempAllocatorMT()
 	{
 		return app->exampleState->framework.core.GetTempMemoryMT();
 	}
@@ -251,6 +250,11 @@ namespace FlexKit
 	MouseInputState& ExampleState::GetMouseState()
     {
 		return app->exampleState->mouseState;
+    }
+
+	double ExampleState::GetRunningTime()
+    {
+		return app->exampleState->t;
     }
 
 	void ExampleState::ToggleMouse(bool b)

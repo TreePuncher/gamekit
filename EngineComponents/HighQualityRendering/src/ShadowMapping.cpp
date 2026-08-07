@@ -254,7 +254,7 @@ namespace FlexKit
 		const float4x4 viewTranslation	= TranslationMatrix(pos);
 		const float4x4 viewI			= viewOrientation * viewTranslation;
 		const float4x4 view				= viewOrientation.Transpose() * TranslationMatrix(-pos);
-		const float4x4 perspective		= CreatePerspectiveRH(a, 0.01f, r, 1.0f);
+		const float4x4 perspective		= PerspectiveRH(a, 0.01f, r, 1.0f);
 		const float4x4 pv				= perspective * view;
 
 		return { pv, view };

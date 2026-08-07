@@ -10,6 +10,7 @@
 #include "FrameGraph.hpp"
 //#include "GILightingUtilities.hpp"
 #include "OcclusionCulling.hpp"
+#include "PersistentGPUAllocator.hpp"
 #include "RenderSystemInterface.hpp"
 #include "Scene.hpp"
 #include "ShadowMapping.hpp"
@@ -66,7 +67,7 @@ namespace FlexKit
 		const double        t;  // running time
 
 		// Resources
-		GBuffer&                        gbuffer;
+		GBuffer&                gbuffer;
 
 		DebugVisMode            debugDisplay    = DebugVisMode::Disabled;
 		BVHVisMode              bvhMode			= BVHVisMode::Both;
@@ -297,11 +298,11 @@ namespace FlexKit
 
 	struct DrawOutputs
 	{
-		GatherPassesTask&			passes;
-		BrushConstants&				entityConstants;
-		const ResourceAllocation&	animationResources;
-		GatherVisibleLightsTask&	pointLights;
-		FrameResourceHandle			visibilityBuffer;
+		//GatherPassesTask&			passes;
+		//BrushConstants&				entityConstants;
+		//const ResourceAllocation&	animationResources;
+		//GatherVisibleLightsTask&	pointLights;
+		//FrameResourceHandle			visibilityBuffer;
 	};
 
 
@@ -451,12 +452,12 @@ namespace FlexKit
 		ShadowMapper				shadowMapping;
 		//Transparency				transparency;
 		//GlobalIlluminationEngine	lightingEngine;
-
+		PersistentAllocator			persistent;
 		PassHistoryTable			passHistories;
 
-		static_vector<RenderTask>	pendingGPUTasks; // Tasks must be completed prior to rendering
 
-		CircularBuffer<ReadBackResourceHandle, 6> readBackBuffers;
+		CircularBuffer<ReadBackResourceHandle, 6>	readBackBuffers;
+		Vector<RenderTask>							pendingGPUTasks; // Tasks must be completed prior to rendering
 
 		const IPipelineInterface*		rootSignatureToneMapping;
 

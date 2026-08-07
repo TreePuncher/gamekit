@@ -183,10 +183,7 @@ namespace FlexKit
 		blocks		= reinterpret_cast<Block*>(buffer);
 		blockTable	= reinterpret_cast<BlockData*>(buffer + blockCount + 1);
 
-		for (size_t I = 0; I < blockCount; ++I)
-		{
-			blockTable[I].state = BlockData::Free;
-		}
+		memset(blockTable, BlockData::Free, blockCount + 1);
 
 		blocksAllocated = 0;
 	}

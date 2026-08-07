@@ -1,9 +1,8 @@
 #include "RTExperiment.hpp"
 #include "OBJLoader.hpp"
-#include "Win32Graphics.hpp"
-#include "FrameGraph.hpp"
 
 using namespace FlexKit;
+
 
 RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	FrameworkState{ IN_framework },
@@ -111,7 +110,6 @@ RTExperimentState::RTExperimentState(GameFramework& IN_framework) :
 	lightMaterial.SetProperty(LightIrradiance, 1.0f);
 	roomMaterial.SetProperty(DiffuseColor, float3{ 0.5f, 0.5f, 0.5 });
 	suzanneMaterial.SetProperty(DiffuseColor, float3{ 0.5f, 0.0f, 0.5 });
-	suzanneMaterial.SetProperty(1234, DescriptorRange{ {19, 123 }, 1, 2 });
 
 	auto& cameraView = cameraObj->AddView<CameraView>();
 	auto& cameraNode = cameraObj->AddView<SceneNodeView>(GetZeroedNode());

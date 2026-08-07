@@ -446,7 +446,7 @@ namespace FlexKit
 			const size_t rowPitch	= AlignedSize(w * sizeof(RGBA), 256);
 			const size_t bufferSize = rowPitch * h;
 
-			TextureBuffer sourceBuffer{ { w, h }, (std::byte*)img, (size_t)Max(channels, 3)};
+			TextureBuffer sourceBuffer{ { w, h }, (std::byte*)img, static_cast<size_t>(Max(channels, 3))};
 
 			TextureBuffer buffer{
 				uint2{ (uint32_t)w, (uint32_t)h },
@@ -542,7 +542,7 @@ namespace FlexKit
 			auto resource = renderSystem->CreateGPUResource(
 				GPUResourceDesc::ShaderResource({ source_dimensions.x, source_dimensions.y }, DeviceFormat::R8G8B8A8_UNORM));
 
-			uint2 wh{ source_dimensions.x * source_dimensions.y };
+			uint2 wh{ source_dimensions.x, source_dimensions.y };
 			size_t bufferSize	= wh.Product() * 4;
 			auto uploadSpace	= ctx->ReserveDirectUploadSpace(bufferSize);
 

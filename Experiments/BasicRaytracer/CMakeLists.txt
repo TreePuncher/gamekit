@@ -10,7 +10,10 @@ if(NOT ANDROID)
 
     add_executable(
         BasicRaytracer
-        ${CPP_FILES}
+        main.cpp
+        OBJLoader.cpp
+        ShaderBindingTable.cpp
+        RTExperiment.cpp
     )
 
     target_sources(
@@ -20,8 +23,6 @@ if(NOT ANDROID)
     FILES
     "RTExperiment.hpp"
     "ShaderBindingTable.hpp"
-    "PersistentGPUAllocator.hpp"
-    
     )
 
     target_include_directories(

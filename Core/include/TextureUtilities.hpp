@@ -168,18 +168,21 @@ namespace FlexKit
 
 	inline bool CheckerBoard(const int TileXSize, const int TileYSize, TextureBufferView<Vect<4, uint8_t>>& view)
 	{
-		FK_ASSERT(TileXSize > 0);
+		using ViewType = TextureBufferView<Vect<4, uint8_t>>;
+		using elementType = ViewType::value_type;
+
+	    FK_ASSERT(TileXSize > 0);
 		FK_ASSERT(TileYSize > 0);
 
 		const auto WH = view.Texture.WH;
 
-		for (size_t y = 0; y < WH[1]; ++y)
+		for (uint32_t y = 0; y < WH[1]; ++y)
 		{
-			for (size_t x = 0; x < WH[0]; ++x)
+			for (uint32_t x = 0; x < WH[0]; ++x)
 			{
 				uint8_t val = ((x / TileXSize + (y / TileYSize % 2)) % 2) * 255;
 
-				view[{x, y}] = { val, val, val };
+				view[uint2{ x, y }] = val;
 			}
 		}
 

@@ -1,109 +1,111 @@
-#include <Application.hpp>
+#pragma once
+#include <cstdint>
+#include <BuildSettings.hpp>
+#include <Components.hpp>
+#include <Containers.hpp>
+#include <EngineCore.hpp>
+#include <GameFramework.hpp>
+#include <Handle.hpp>
+#include <ResourceHandles.hpp>
 #include <Scene.hpp>
 #include <RenderSystemInterface.hpp>
-#include <FrameGraph.hpp>
-#include <filesystem>
 #include <PersistentGPUAllocator.hpp>
 #include <Transforms.hpp>
 #include <Type.hpp>
 
-#include <Win32Graphics.hpp>
-#include <dxContext.hpp>
 #include <dxRenderSystem.hpp>
 
 #include "CameraComponent.hpp"
 #include "DepthBuffer.hpp"
 #include "ShaderBindingTable.hpp"
 
-using namespace FlexKit;
 
-constexpr GUID_t VertexShaderAssetID = GetCRCGUID(VertexShader);
-constexpr GUID_t PixelShaderAssetID = GetCRCGUID(PixelShader);
-
-constexpr PassHandle RTPass			= GetCRC32("RTPass");
+constexpr FlexKit::GUID_t		VertexShaderAssetID	= GetCRCGUID(VertexShader);
+constexpr FlexKit::GUID_t		PixelShaderAssetID	= GetCRCGUID(PixelShader);
+constexpr FlexKit::PassHandle	RTPass				= GetCRC32("RTPass");
 
 constexpr uint32_t DiffuseColor		= GetCRC32("Diffuse");
 constexpr uint32_t LightIrradiance	= GetCRC32("Irradiance");
 
 struct ForwardPassData
 {
-	FrameResourceHandle renderTarget;
-	FrameResourceHandle depthTarget;
+	FlexKit::FrameResourceHandle renderTarget;
+	FlexKit::FrameResourceHandle depthTarget;
 };
 
 struct UpdateSBTData
 {
-	FrameGraphNodeHandle	node;
-	FrameResourceHandle		sbtBuffer;
+	FlexKit::FrameGraphNodeHandle	node;
+	FlexKit::FrameResourceHandle	sbtBuffer;
 };
 
 struct TracePassData
 {
-	FrameResourceHandle sbtBuffer;
-	FrameResourceHandle tlas;
-	FrameResourceHandle traceBuffer;
-	FrameResourceHandle renderTarget;
+	FlexKit::FrameResourceHandle sbtBuffer;
+	FlexKit::FrameResourceHandle tlas;
+	FlexKit::FrameResourceHandle traceBuffer;
+	FlexKit::FrameResourceHandle renderTarget;
 };
 
-struct RTExperimentState final : FrameworkState
+struct RTExperimentState final : FlexKit::FrameworkState
 {
-	RTExperimentState(GameFramework& IN_framework);
+	RTExperimentState(FlexKit::GameFramework& IN_framework);
 
 	~RTExperimentState() override;
 
-	UpdateTask* Update(EngineCore&, UpdateDispatcher&, double dT) override;
+	FlexKit::UpdateTask* Update(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT) override;
 
-	UpdateTask* Draw(UpdateTask* update, EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override;
+	FlexKit::UpdateTask* Draw(FlexKit::UpdateTask* update, FlexKit::EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph) override;
 
-	ForwardPassData&	ForwardPass		(FrameGraph& framegraph, ResourceHandle renderTarget, GatherPassesTask& passes, CameraUpdateTask& cameraUpdate);
-	UpdateSBTData&		UpdateSBT		(FrameGraph& frameGraph, GatherPassesTask& passes);
-	TracePassData&		PathTracePass	(FrameGraph& frameGraph, GatherPassesTask& passes, CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, ResourceHandle renderTarget);
+	ForwardPassData&	ForwardPass		(FlexKit::FrameGraph& framegraph, FlexKit::ResourceHandle renderTarget, FlexKit::GatherPassesTask& passes, FlexKit::CameraUpdateTask& cameraUpdate);
+	UpdateSBTData&		UpdateSBT		(FlexKit::FrameGraph& frameGraph, FlexKit::GatherPassesTask& passes);
+	TracePassData&		PathTracePass	(FlexKit::FrameGraph& frameGraph, FlexKit::GatherPassesTask& passes, FlexKit::CameraUpdateTask& cameraUpdate, UpdateSBTData& sbtUpdate, FlexKit::ResourceHandle renderTarget);
 
-    void PostDrawUpdate(EngineCore&, double dT) override;
+    void PostDrawUpdate(FlexKit::EngineCore&, double dT) override;
 
-	SceneNodeComponent			transforms;
-	BrushComponent				brushes;
-	CameraComponent				cameras;
-	LightComponent				lights;
-	MaterialComponent			materials;
-	SceneVisibilityComponent	visibility;
-	TriggerComponent			triggers;
-	ObjectPool<GameObject>		gameObjects;
+	FlexKit::SceneNodeComponent			transforms;
+	FlexKit::BrushComponent				brushes;
+	FlexKit::CameraComponent				cameras;
+	FlexKit::LightComponent				lights;
+	FlexKit::MaterialComponent			materials;
+	FlexKit::SceneVisibilityComponent	visibility;
+	FlexKit::TriggerComponent			triggers;
+	FlexKit::ObjectPool<FlexKit::GameObject>		gameObjects;
 
-	Scene					scene;
-	CameraHandle			activeCamera;
-	GameObject*				cameraObj;
+	FlexKit::Scene					scene;
+	FlexKit::CameraHandle			activeCamera;
+	FlexKit::GameObject*				cameraObj;
 
 	double					t = 0.0;
-	IRenderWindow*			renderWindow = nullptr;
-	VertexBufferHandle		vBuffer = InvalidHandle;
-	ConstantBufferHandle	cBuffer = InvalidHandle;
+	FlexKit::IRenderWindow*			renderWindow = nullptr;
+	FlexKit::VertexBufferHandle		vBuffer			= FlexKit::InvalidHandle;
+	FlexKit::ConstantBufferHandle	cBuffer			= FlexKit::InvalidHandle;
 
-	TriMeshHandle			suzanneMesh		= InvalidHandle;
-	TriMeshHandle			roomMesh		= InvalidHandle;
-	TriMeshHandle			lightMesh		= InvalidHandle;
+	FlexKit::TriMeshHandle			suzanneMesh		= FlexKit::InvalidHandle;
+	FlexKit::TriMeshHandle			roomMesh		= FlexKit::InvalidHandle;
+	FlexKit::TriMeshHandle			lightMesh		= FlexKit::InvalidHandle;
 
 	dx_Internal::MemoryPoolAllocator gpuAllocator;
 
-	DepthBuffer				depthBuffer;
-	PersistentAllocator		persistent;
-	IPipelineInterface*		globalInterface = nullptr;
-	IPipelineStateLibrary*	library			= nullptr;
-	ShaderBindingTable		sbt;
+	FlexKit::DepthBuffer			depthBuffer;
+	FlexKit::PersistentAllocator	persistent;
+	FlexKit::IPipelineInterface*	globalInterface = nullptr;
+	FlexKit::IPipelineStateLibrary*	library			= nullptr;
+	FlexKit::ShaderBindingTable		sbt;
 
 	bool	trace = true;
 
-	ShaderID raygenID;
-	ShaderID missID;
-	ShaderID defaultMaterial;
-	ShaderID lightMaterial;
+	FlexKit::ShaderID raygenID;
+	FlexKit::ShaderID missID;
+	FlexKit::ShaderID defaultMaterial;
+	FlexKit::ShaderID lightMaterial;
 
 	using DeviceAddressRange = FlexKit::DeviceAddressRange;
-	GPURange SBTMemory;
-	GPURange hitTable;
-	GPURange missTable;
-	GPURange rayGenerator;
-	GPURange sceneInstances;
+	FlexKit::GPURange	SBTMemory;
+	FlexKit::GPURange	hitTable;
+	FlexKit::GPURange	missTable;
+	FlexKit::GPURange	rayGenerator;
+	FlexKit::GPURange	sceneInstances;
 };
 
 

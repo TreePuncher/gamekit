@@ -57,12 +57,21 @@ namespace FlexKit
 		virtual void* malloc_Debug(size_t, const char* MD, size_t MDSectionSize) = 0;
 
 		template<typename T, typename ... Params>
-		T& allocate(Params&& ... Args)
+		T& allocate(Params&& ... Args) requires(!std::is_array_v<T>)
 		{
 			auto mem = malloc(sizeof(T));
 
 			auto t = new (mem) T( std::forward<Params>(Args)... );
 			return *t;
+		}
+
+		template<typename T>
+		std::decay_t<T> allocate() requires(std::is_array_v<T>)
+		{
+			auto mem = malloc(sizeof(T));
+
+			auto t = new (mem) T;
+			return t;
 		}
 
 		template<typename T, size_t a = 16, typename ... Params>

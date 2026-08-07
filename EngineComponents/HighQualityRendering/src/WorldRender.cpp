@@ -662,10 +662,11 @@ namespace FlexKit
 			//lightingEngine				{ renderSystem, *persistent, options.GI },
 			shadowMapping				{ renderSystem, *persistent },
 			clusteredRender				{ renderSystem, *persistent },
-			//transparency				{ renderSystem, *persistent },
-			passHistories				{ *persistent }
+			//transparency				{ renderSystem, *persist,ent },
+			passHistories				{ *persistent },
+		    pendingGPUTasks				{ *persistent }
 	{
-		FlexKit::DescriptorSetLayout layout{ *persistent };
+		DescriptorSetLayout layout{ *persistent };
 		layout.AddSRVs(2);
 		layout.AddUAVs(1);
 
@@ -840,6 +841,7 @@ namespace FlexKit
 				passes,
 				temporary);
 
+		/*
 		auto& animationResources =
 			AcquirePoseResources(
 				frameGraph,
@@ -894,7 +896,6 @@ namespace FlexKit
 					animationResources,
 					temporary);
 		}
-
 		ExtraGBufferPassInputs extraGPassInputs{
 			.frameGraph		= frameGraph,
 			.dispatcher		= dispatcher,
@@ -903,7 +904,9 @@ namespace FlexKit
 			.depthTarget	= depthTarget.Get(),
 			.activeCamera	= drawSceneDesc.camera
 		};
+        */
 
+		/*
 		for (auto& pass : drawSceneDesc.additionalGbufferPasses)
 			pass(extraGPassInputs);
 
@@ -929,6 +932,7 @@ namespace FlexKit
 				depthTarget.Get(),
 				temporary,
 				drawSceneDesc.debugDisplay != DebugVisMode::ClusterVIS);
+        */
 
 #if 0
 		auto updateVolumes =
@@ -938,7 +942,7 @@ namespace FlexKit
 				passes,
 				temporary);
 #endif
-
+		/*
 		auto& shadingPass =
 			clusteredRender.ClusteredShading(
 				dispatcher,
@@ -951,7 +955,7 @@ namespace FlexKit
 				lightPass,
 				(float)t,
 				temporary);
-
+        */
 #if 0
 		lightingEngine.RayTrace(
 				dispatcher,
@@ -984,6 +988,7 @@ namespace FlexKit
 #endif
 
 
+		/*
 		auto& toneMapped =
 			RenderPBR_ToneMapping(
 				dispatcher,
@@ -992,7 +997,6 @@ namespace FlexKit
 				renderTarget,
 				(float)drawSceneDesc.dt,
 				temporary);
-		/*
 		if (drawSceneDesc.debugDisplay == DebugVisMode::ClusterVIS)
 		{
 			clusteredRender.DEBUGVIS_DrawLightBVH(
@@ -1020,6 +1024,7 @@ namespace FlexKit
 		}
 		*/
 
+		/*
 		ExtraForwardPassInputs extraFPassInputs{
 			.frameGraph		= frameGraph,
 			.dispatcher		= dispatcher,
@@ -1033,13 +1038,14 @@ namespace FlexKit
 			forwardPass(extraFPassInputs);
 
 		passHistories.GetHistory(renderSystem, drawSceneDesc.camera)->EndFrame();
+        */
 
 		return DrawOutputs{
-					.passes				= passes,
-					.entityConstants	= staticConstants,
-					.animationResources	= animationResources,
-					.pointLights		= visableLights,
-					//occlutionConstants.ZPyramid
+					//.passes				= passes,
+					//.entityConstants	= staticConstants,
+					//.animationResources	= animationResources,
+					//.pointLights		= visableLights,
+					////occlutionConstants.ZPyramid
 		};
 	}
 
@@ -1599,7 +1605,9 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Tone Mapping");
 
 				const uint2 WH = resources.GetTextureWH(data.sourceTarget);
-				const uint2 XY = (float2{ (float)WH[0], (float)WH[1] } / 512.0f).ceil();
+				auto temp = (float2{ (float)WH[0], (float)WH[1] } / 512.0f);;
+
+				const uint2 XY = uint2(float2{ (float)WH[0], (float)WH[1] } / 512.0f);// .ceil();
 
 				DescriptorSet heap1{};
 				heap1.Init(ctx, rootSignatureToneMapping->GetDescriptorSetLayout(0), allocator);

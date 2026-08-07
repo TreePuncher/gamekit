@@ -29,7 +29,9 @@ int main()
 	}
 	catch (std::runtime_error runtimeError)
 	{
-		FK_LOG_ERROR("Exception Caught!\n%s", runtimeError.what());
+		auto msg = runtimeError.what();
+		auto formatted = std::format("{}", msg);
+		FK_LOG_ERROR("Exception Caught!\n%s", formatted.c_str());
 	}
 	catch (...)
 	{
