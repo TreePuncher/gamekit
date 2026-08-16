@@ -4,7 +4,7 @@
 #include <ShadowMapping.hpp>
 #include <Transforms.hpp>
 #include "CameraComponent.hpp"
-
+#include <objloader.hpp>
 
 using namespace FlexKit;
 
@@ -21,10 +21,62 @@ struct HighQualityRenderingState : ExampleState
         shadowMaps              { GetAllocatorMT() },
         lights                  { GetAllocator() },
         scene                   { GetAllocator() }, 
+        brushes                 { GetAllocator() },
 
         gbuffer                 { GetRenderWindow().GetWH(), GetRenderSystem() },
-        depthBuffer             { GetRenderSystem(), GetRenderWindow().GetWH() } {}
+        depthBuffer             { GetRenderSystem(), GetRenderWindow().GetWH() },
 
+        cameraObject            { &AllocateGameObject() }
+    {
+        auto cameraNode = GetZeroedNode();
+        auto& camera = cameraObject->AddView<CameraView>();
+        camera.SetCameraNode(cameraNode);
+        camera.SetCameraAspectRatio(GetRenderWindow().GetAspectRatio());
+        auto& cameraNodeView = cameraObject->AddView<SceneNodeView>(cameraNode);
+        cameraNodeView.TranslateWorld({ 0, 0, 10 });
+        activeCamera = camera;
+
+        auto test       = LoadObj(R"(assets\test.obj)");
+        auto light      = LoadObj(R"(assets\light.obj)");
+        auto room       = LoadObj(R"(assets\room.obj)");
+        auto suzanne    = LoadObj(R"(assets\suzanne.obj)");
+
+        auto defaultMaterial = materials.CreateMaterial();
+        materials.Add2Pass(defaultMaterial, GBufferStaticPassID);
+
+        auto& testObj = AllocateGameObject();
+        testObj.AddView<SceneNodeView>(GetZeroedNode());
+        testObj.AddView<MaterialView>(defaultMaterial);
+        auto& testBrush = testObj.AddView<BrushView>(test);
+        testBrush.SetMaterial(defaultMaterial);
+        scene.AddGameObject(testObj);
+
+        auto& lightObj = AllocateGameObject();
+        lightObj.AddView<SceneNodeView>(GetZeroedNode());
+        lightObj.AddView<MaterialView>(defaultMaterial);
+        auto& lightBrush = lightObj.AddView<BrushView>(light);
+        lightBrush.SetMaterial(defaultMaterial);
+        scene.AddGameObject(lightObj);
+
+        auto& roomObj = AllocateGameObject();
+        roomObj.AddView<SceneNodeView>(GetZeroedNode());
+        roomObj.AddView<MaterialView>(defaultMaterial);
+        roomObj.AddView<BrushView>(room);
+        scene.AddGameObject(roomObj);
+
+        auto& suzanneObj = AllocateGameObject();
+        suzanneObj.AddView<SceneNodeView>(GetZeroedNode());
+        suzanneObj.AddView<MaterialView>(defaultMaterial);
+        auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanne);
+        suzanneBrush.SetMaterial(defaultMaterial);
+        scene.AddGameObject(suzanneObj);
+    }
+
+    ~HighQualityRenderingState()
+    {
+        scene.ClearScene();
+        ReleaseGameObject(*cameraObject);
+    }
 
     UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) override { return nullptr; }
 
@@ -53,21 +105,23 @@ struct HighQualityRenderingState : ExampleState
             .DepthTarget    = depthBuffer,
         };
 
+        ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
         auto res = worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, GetAllocatorMT(), GetTempAllocatorMT());
 
         return nullptr;
     }
 
 
+    TextureStreamingEngine      textureStreamingEngine;
     SceneVisibilityComponent    visibilityComponent;
     SceneNodeComponent          transformComponent;
     CameraComponent             cameras;
     MaterialComponent           materials;
     ShadowMapComponent          shadowMaps;
     LightComponent              lights;
+    BrushComponent              brushes;
 
     WorldRender                 worldRender;
-    TextureStreamingEngine      textureStreamingEngine;
 
     ShadowMapper                shadowMapper;
 
@@ -76,8 +130,9 @@ struct HighQualityRenderingState : ExampleState
 
     Scene                       scene;
 
-    CameraHandle                activeCamera = InvalidHandle;
+    GameObject*                 cameraObject = nullptr;
 
+    CameraHandle                activeCamera = InvalidHandle;
 };
 
 int main()

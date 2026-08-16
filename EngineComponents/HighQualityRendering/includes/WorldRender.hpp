@@ -117,6 +117,8 @@ namespace FlexKit
 	constexpr PSOHandle ZPYRAMIDBUILDLEVEL              = PSOHandle(GetTypeGUID(ZPYRAMIDBUILDLEVEL));
 	constexpr PSOHandle DEPTHCOPY                       = PSOHandle(GetTypeGUID(DEPTHCOPY));
 
+	constexpr ConstantPropertyHandle PBRConstantsID				= ConstantPropertyHandle(GetTypeGUID(PBRConstants));
+	constexpr ConstantPropertyHandle PBRConstantsLastUpdateID	= ConstantPropertyHandle(GetTypeGUID(PBRConstantsLastUpdateID));
 	
 	/************************************************************************************************/
 
@@ -168,12 +170,10 @@ namespace FlexKit
 		DepthPass(const BrushDrawList& IN_draws) :
 			draws{ IN_draws } {}
 
-		const BrushDrawList&     draws;
-		ResourceHandle      depthPassTarget;
-		FrameResourceHandle depthBufferObject;
-
-		CBPushBuffer passConstantsBuffer;
-		CBPushBuffer entityConstantsBuffer;
+		const BrushDrawList&    draws;
+		ResourceHandle			depthPassTarget;
+		FrameResourceHandle		depthBufferObject;
+		CBPushBuffer			passConstantsBuffer;
 	};
 
 	using PointLightHandleList = Vector<LightHandle>;
@@ -205,13 +205,13 @@ namespace FlexKit
 		FrameResourceHandle	pointLightBuffer;
 		VertexBufferHandle	VertexBuffer;
 
-		CBPushBuffer passConstantsBuffer;
-		CBPushBuffer entityConstantsBuffer;
+		CBPushBuffer		passConstantsBuffer;
+		CBPushBuffer		entityConstantsBuffer;
 
 		const CBPushBuffer&         entityConstants;
 
-		const PointLightHandleList& pointLights;
-		const BrushDrawList&				brushes;
+		const PointLightHandleList&	pointLights;
+		const BrushDrawList&		brushes;
 	};
 
 
@@ -276,24 +276,7 @@ namespace FlexKit
 		float BVHConstruction	= 0;
 	};
 
-	struct BrushConstants
-	{
-		struct EntityConstantOffsets
-		{
-			static_vector<uint32_t, 16> subMaterial;
-		};
 
-		FrameGraphNodeHandle				node;
-		FrameResourceHandle					constants;
-		CreateOnceReserveBufferFunction2	getConstantBuffer;
-		GatherPassesTask&					passes;
-		Vector<uint32_t>					entityTable;
-		size_t								reservationSize = (size_t)-1;
-
-
-		CBPushBuffer&					GetConstantBuffer(size_t IN_reservationSize);
-		CBPushBuffer&					GetConstantBuffer();
-	};
 
 
 	struct DrawOutputs
@@ -342,8 +325,7 @@ namespace FlexKit
 				iAllocator*						persistent,
 				ThreadSafeAllocator&			temporary);
 
-		BrushConstants&				BuildBrushConstantsBuffer(
-				FrameGraph&						frameGraph,
+		UpdateTask&					UpdatePBRBrushConstants(
 				UpdateDispatcher&				dispatcher,
 				GatherPassesTask&				passes,
 				iAllocator&						allocator);

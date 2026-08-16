@@ -531,6 +531,7 @@ namespace FlexKit
 			pendingResults				{ { *IN_allocator }, 0 },
             threads						{ IN_threads }
 	{
+#if 0
 		PipelineInterfaceBuilder builder{ *IN_allocator };
 		builder.AllowIA = true;
 
@@ -565,7 +566,6 @@ namespace FlexKit
 			TEXTUREFEEDBACKANIMATEDPASS, { this, &TextureStreamingEngine::CreateTextureFeedbackAnimatedPassPSO });
 
 		FK_ASSERT(false);
-#if 0
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,
 			[&, textureStreamingEngine = this](ReadBackResourceHandle resource)
@@ -587,10 +587,11 @@ namespace FlexKit
 
 	TextureStreamingEngine::~TextureStreamingEngine()
 	{
+#if 0
+
 		FK_ASSERT(false);
 		updateInProgress = false;
 
-#if 0
 		renderSystem.SetReadBackEvent(
 			feedbackReturnBuffer,
 			[](ReadBackResourceHandle resource){});
@@ -649,6 +650,7 @@ namespace FlexKit
 		double							dt,
 		iAllocator&						tempAllocator)
 	{
+		return;
 		if (async)
 		{
 			if (updateInProgress)
@@ -703,7 +705,8 @@ namespace FlexKit
 			iAllocator&						tempAllocator)
 	{
 		ProfileFunctionStrName("Feedback:Pass");
-
+            
+		return;
 		auto initiateFeedbackPass = frameGraph.AddNode<TextureFeedbackPass_Data>(
 			TextureFeedbackPass_Data{
 				camera,
@@ -727,7 +730,7 @@ namespace FlexKit
 			});
 
 
-		auto getStaticPass		= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferPassID); };
+		auto getStaticPass		= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferStaticPassID); };
 		auto getAnimatedPass	= [&passTable = passes.GetData()]{ return passTable.GetPass(GBufferAnimatedPassID); };
 
 
@@ -753,7 +756,7 @@ namespace FlexKit
 		auto staticPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 		{
 			builder.AddDataDependency(passes);
-			builder.ReadConstantBuffer(brushConstants.constants); 
+			//builder.ReadConstantBuffer(brushConstants.constants); 
 
 			data.feedbackBuffer	= builder.WriteTransition(initiateFeedbackPass.feedbackBuffer, DASUAV);
 			data.feedbackDepth	= builder.WriteTransition(initiateFeedbackPass.feedbackDepth, DASDEPTHBUFFERWRITE);
@@ -768,8 +771,8 @@ namespace FlexKit
 
 			const float bias		= std::floorf(std::log2f(128.0f / renderTargetWH[0])) - 3.0f;
 			auto& materials			= MaterialComponent::GetComponent();
-			auto& constantBuffer	= brushConstants.GetConstantBuffer();
-			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
+			//auto& constantBuffer	= brushConstants.GetConstantBuffer();
+			//auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 
 			const size_t bufferSize = AlignedSize<Camera::ConstantBuffer>();
 
@@ -800,8 +803,8 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Draw entity");
 
 				auto submissionID				= itr->submissionID;
-				auto constantsBegin				= brushConstants.entityTable[submissionID];
-				const auto& material			= materials[itr->brush->material];
+				//auto constantsBegin				= brushConstants.entityTable[submissionID];
+				const MaterialComponentData& material			= materials[itr->brush->material];
 
 				for (size_t I = 0; I < itr->brush->meshes.size(); I++)
 				{
@@ -833,6 +836,9 @@ namespace FlexKit
 					if (subMeshCount == 1)
 					{
 						const auto& textureDescriptors = material.textureDescriptors;
+						const auto constants = GetProperty<DevicePointer>(material, PBRConstantsID);
+						if (!constants)
+							continue;
 
 						if (textureDescriptors.size != 0)
 						{
@@ -852,7 +858,7 @@ namespace FlexKit
 								passConstants.offsets[idx] = offset;
 							}
 
-							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
+							ctx.SetGraphicsConstantBufferView(1, constants.value());
 							ctx.SetGraphicsConstantValue(2, 17, &passConstants);
 							ctx.SetGraphicsDescriptorSet(0, textureDescriptors);
 							ctx.DrawIndexed(lod.GetIndexCount());
@@ -875,6 +881,10 @@ namespace FlexKit
 
 							if (subMaterial.textureDescriptors.size != 0)
 							{
+								const auto constants = GetProperty<DevicePointer>(subMaterial, PBRConstantsID);
+								if (!constants)
+									continue;
+
 								FeedbackPassConstants passConstants{ .bias = bias };
 
 								for (auto [idx, texture] : zip(iota(0), subMaterial.textures))
@@ -891,7 +901,7 @@ namespace FlexKit
 									passConstants.offsets[idx] = offset;
 								}
 
-								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
+								ctx.SetGraphicsConstantBufferView(1, constants.value());
 								ctx.SetGraphicsConstantValue(2, 1, &passConstants.bias, 0);
 								ctx.SetGraphicsConstantValue(2, 4, &passConstants.offsets, 1);
 								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
@@ -911,7 +921,7 @@ namespace FlexKit
 
 		auto animatedPassSetupFn = [&](FrameGraphNodeBuilder& builder, TextureFeedbackPass_Data& data)
 		{
-			builder.ReadConstantBuffer(brushConstants.constants);
+			//builder.ReadConstantBuffer(brushConstants.constants);
 			builder.AddNodeDependency(animationResources.node);
 			builder.AddDataDependency(passes);
 
@@ -925,8 +935,8 @@ namespace FlexKit
 
 			const float bias		= std::floorf(std::log2f(128.0f / renderTargetWH[0])) - 3.0f;
 			auto& materials			= MaterialComponent::GetComponent();
-			auto& constantBuffer	= brushConstants.GetConstantBuffer();
-			auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
+			//auto& constantBuffer	= brushConstants.GetConstantBuffer();
+			//auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
 			const size_t bufferSize = AlignedSize<Camera::ConstantBuffer>();
 
 			CBPushBuffer passConstantBuffer		{ resources.ReserveCB(bufferSize) };
@@ -955,10 +965,14 @@ namespace FlexKit
 				ctx.BeginEvent_DEBUG("Draw entity");
 
 				auto submissionID		= itr->submissionID;
-				auto constantsBegin		= brushConstants.entityTable[submissionID];
+				//auto constantsBegin		= brushConstants.entityTable[submissionID];
 				const auto& material	= materials[itr->brush->material];
 				auto animationPose		= resources.GetResource(animationResources.handles[std::distance(pvs.begin(), itr)]);
 				
+				const auto constants = GetProperty<DevicePointer>(material, PBRConstantsID);
+				if (!constants)
+					continue;
+
 				for (size_t I = 0; I < itr->brush->meshes.size(); I++)
 				{
 					ctx.BeginEvent_DEBUG("Draw sub-mesh");
@@ -993,6 +1007,9 @@ namespace FlexKit
 					if (subMeshCount == 1)
 					{
 						const auto& textureDescriptors = material.textureDescriptors;
+						const auto constants = GetProperty<DevicePointer>(material, PBRConstantsID);
+						if (!constants)
+							continue;
 
 						if (textureDescriptors.size != 0)
 						{
@@ -1012,7 +1029,7 @@ namespace FlexKit
 								passConstants.offsets[idx] = offset;
 							}
 
-							ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + I]);
+							ctx.SetGraphicsConstantBufferView(1, constants.value());
 							ctx.SetGraphicsConstantValue(2, 17, &passConstants);
 							ctx.SetGraphicsDescriptorSet(0, textureDescriptors);
 							ctx.DrawIndexed(lod.GetIndexCount());
@@ -1024,6 +1041,9 @@ namespace FlexKit
 						{
 							const auto subMesh		= lod.subMeshes[itr];
 							const auto& subMaterial	= materials[material.subMaterials[itr]];
+							const auto constants	= GetProperty<DevicePointer>(subMaterial, PBRConstantsID);
+							if (!constants)
+								continue;
 
 							if (subMaterial.textureDescriptors.size != 0)
 							{
@@ -1043,7 +1063,7 @@ namespace FlexKit
 									passConstants.offsets[idx] = offset;
 								}
 
-								ctx.SetGraphicsConstantBufferView(1, constants[constantsBegin + itr]);
+								ctx.SetGraphicsConstantBufferView(1, constants.value());
 								ctx.SetGraphicsConstantValue(2, 17, &passConstants);
 								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 								ctx.DrawIndexed(subMesh.IndexCount, subMesh.BaseIndex);

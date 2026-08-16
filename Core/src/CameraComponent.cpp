@@ -759,7 +759,7 @@ namespace FlexKit
 
 	void CameraComponent::SetCameraAspectRatio(CameraHandle handle, float A)
 	{
-		GetCamera(handle).AspectRatio = A;
+		GetCameraInternal(handle).AspectRatio = A;
 	}
 
 
@@ -777,7 +777,9 @@ namespace FlexKit
 
 	void CameraComponent::SetCameraNode(CameraHandle handle, NodeHandle Node)
 	{
-		GetCamera(handle).Node = Node;
+		const auto idx = handles[handle];
+	    Cameras[handles[handle]].Node = Node;
+		DirtyFlags[idx] = true;
 	}
 
 
@@ -786,13 +788,13 @@ namespace FlexKit
 
 	void CameraComponent::SetCameraFOV(CameraHandle handle, float f)
 	{
-		GetCamera(handle).FOV = f;
+		GetCameraInternal(handle).FOV = f;
 	}
 
 
 	void CameraComponent::SetCameraNear(CameraHandle handle, float f)
 	{
-		GetCamera(handle).Near = f;
+		GetCameraInternal(handle).Near = f;
 	}
 
 
@@ -801,7 +803,7 @@ namespace FlexKit
 
 	void CameraComponent::SetCameraFar(CameraHandle handle, float f)
 	{
-		GetCamera(handle).Far = f;
+		GetCameraInternal(handle).Far = f;
 	}
 
 
@@ -810,7 +812,7 @@ namespace FlexKit
 
 	float CameraComponent::GetCameraAspectRatio(CameraHandle handle)
 	{
-		return GetCamera(handle).AspectRatio;
+		return GetCameraInternal(handle).AspectRatio;
 	}
 
 
@@ -819,7 +821,7 @@ namespace FlexKit
 
 	float CameraComponent::GetCameraFar(CameraHandle handle)
 	{
-		return GetCamera(handle).Far;
+		return GetCameraInternal(handle).Far;
 	}
 
 
@@ -828,7 +830,7 @@ namespace FlexKit
 
 	float CameraComponent::GetCameraFOV(CameraHandle handle)
 	{
-		return GetCamera(handle).FOV;
+		return GetCameraInternal(handle).FOV;
 	}
 
 
@@ -837,7 +839,7 @@ namespace FlexKit
 
 	float CameraComponent::GetCameraNear(CameraHandle handle)
 	{
-		return GetCamera(handle).Near;
+		return GetCameraInternal(handle).Near;
 	}
 
 
@@ -846,7 +848,7 @@ namespace FlexKit
 
 	NodeHandle CameraComponent::GetCameraNode(CameraHandle handle)
 	{
-		return GetCamera(handle).Node;
+		return GetCameraInternal(handle).Node;
 	}
 
 
@@ -906,6 +908,12 @@ namespace FlexKit
 		return task;
 	}
 
+
+	Camera& CameraComponent::GetCameraInternal(CameraHandle handle)
+	{
+		auto idx = handles[handle];
+		return Cameras[idx];
+	}
 
 	/************************************************************************************************/
 

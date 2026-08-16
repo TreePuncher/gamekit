@@ -137,8 +137,8 @@ FlexKit::TriMeshHandle LoadObj(std::filesystem::path p)
 	};
 
 	lod0.subMeshes.push_back(sm);
-	mesh.lods.push_back(lod0);
 	lod0.state = TriMesh::LOD_Runtime::LOD_State::Loaded;
+	mesh.lods.push_back(lod0);
 
 	return meshHandle;
 }

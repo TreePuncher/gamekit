@@ -196,6 +196,12 @@ namespace FlexKit
 		    app->fkApp->Run();
 			return 0;
 		}
+		catch (std::runtime_error error)
+		{
+			std::string err = error.what();
+			std::cerr << err;
+			return -1;
+		}
 		catch (...)
 		{
 			return -1;
@@ -206,6 +212,15 @@ namespace FlexKit
 	{
 		app->exampleState->exampleState = std::move(state);
 	}
+
+	ExampleState::~ExampleState()
+    {
+		app->exampleState->objectPool.Visit(
+			[&](GameObject& gameObject)
+			{
+		        app->exampleState->objectPool.Release(gameObject);
+			});
+    }
 
 	IRenderSystem& ExampleState::GetRenderSystem()
 	{

@@ -192,7 +192,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) noexcept { return float3{ B - A }.normal(); }
+	float3 DirectionVector(float3 A, float3 B) noexcept;
 
 
 	/************************************************************************************************/

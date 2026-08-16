@@ -1554,7 +1554,7 @@ namespace FlexKit
 
 					temp.SetSIMD(c, I);
 				}
-				return *this;
+				return temp;
 			}
 			else
 			{

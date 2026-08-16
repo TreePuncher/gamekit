@@ -25,7 +25,7 @@ namespace FlexKit
 		for(auto& v : drawList)
 		{
 			auto b = v.brush;
-			auto P = FlexKit::GetPositionW( b->Node );
+			auto P = FlexKit::GetPositionW( b->node );
 
 			auto Depth = (size_t)abs(float3(CP - P).magnitudeSq() * 10000);
 			auto SortID = CreateSortingID(false, b->Textured, Depth);
@@ -51,7 +51,7 @@ namespace FlexKit
 		for( auto& v : drawList)
 		{
 			const Brush* b	= v.brush;
-			const float3 P	= GetPositionW( b->Node );
+			const float3 P	= GetPositionW( b->node );
 			const float D	= float3{ CP - P }.magnitudeSq() * (b->DrawLast ? -1.0f : 1.0f);
 			v.SortID		= (uint64_t)D;
 		}

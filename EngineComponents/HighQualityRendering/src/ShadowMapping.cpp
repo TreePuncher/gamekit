@@ -677,8 +677,8 @@ namespace FlexKit
 					BS = triMesh->bs;
 				}
 
-				const float4x4 WT   = GetWT(draw.brush->Node);
-				const float3 POS    = GetPositionW(draw.brush->Node);
+				const float4x4 WT   = GetWT(draw.brush->node);
+				const float3 POS    = GetPositionW(draw.brush->node);
 				const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
 				const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
@@ -866,8 +866,8 @@ namespace FlexKit
 			const auto lodLevel	= visible.LODlevel;
 			auto& meshes		= visible.brush->meshes;
 
-			const float4x4	WT		= GetWT(visible.brush->Node);
-			const float3	POS		= GetPositionW(visible.brush->Node);
+			const float4x4	WT		= GetWT(visible.brush->node);
+			const float3	POS		= GetPositionW(visible.brush->node);
 			const float		scale	= Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
 			struct

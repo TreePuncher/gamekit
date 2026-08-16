@@ -20,12 +20,19 @@ static bool RootSignatureDescriptorSetTest()
 [[fk::BeginRootSignatureDef(id=rootsig1)]]
 [[fk::RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
 [[fk::DescriptorSet(CBV(num=unbounded))]]
+[[fk::DescriptorSet(SRVTexture(num=unbounded))]]
 [[fk::DescriptorSet(CBV(num=10, flags=static , visibility = pixel | vertex) SRV(num=3) UAV(num=4))]]
-[[fk::DescriptorSet(SRV(num=3))]]
+[[fk::DescriptorSet(SRVTexture(num=3))]]
+[[fk::DescriptorSet(SRVTexture(num=3))]]
 
 [[fk::PushConstants(num=4)]] 
 {
     float time;
+};
+
+[[fk::CBV(binding=0)]]
+{
+	float4x4 View;
 };
 
 struct VIN
@@ -49,6 +56,7 @@ VOut VMain(VIN vin, uint vertexID : SV_VertexID)
 }
 
 [[fk::AccelerationStructure(binding=0, set=2, id=AccelerationStructure)]]
+[[fk::Texture2DArray(id=Textures, offset=0, set=3, type=float4)]]
 
 [[fk::RootSignature(id=rootsig1)]]
 float4 PMain() : SV_Target

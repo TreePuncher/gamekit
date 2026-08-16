@@ -253,17 +253,26 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(set={}, binding={}, type={})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]]+(^,\s)?/n}, set={}, binding={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 
-				auto [set, binding, type] = res->values();
-				handler.StructuredBuffer(set, binding, type, ctx);
+				auto [id, set, binding, type] = res->values();
+				handler.StructuredBuffer(id, set, binding, type, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<std::string_view, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]]+(^,\s)?/n}, binding={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id, binding, type] = res->values();
+				handler.StructuredBufferRoot(id, binding, type, ctx);
 
 				continue;
 			}
 			//else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[Texture2D(ID={:/[[:alnum:]]+(^,\s)?/n}, binding={}, set={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(ID={:/[[:alnum:]]+/n}, binding={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(id={:/[[:alnum:]]+/n}, binding={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
@@ -272,7 +281,16 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture3D(ID={}, set={}, binding={}, type={:[^)]})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2DArray(id={:/[[:alnum:]]+/n}, offset={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [ID, offset, set, type] = res->values();
+				handler.Texture2DArray(ID, set, offset, type, ctx);
+
+				continue;
+			}
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture3D(id={}, set={}, binding={}, type={:[^)]})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
@@ -281,7 +299,7 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::CBV(set={})]])"); res)
+			else if (auto res = scn::scan<uint32_t>(match, R"([[fk::CBV(binding={})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
@@ -436,6 +454,13 @@ namespace FlexKit
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
 		}
 
+		void Texture2DArray(std::string_view ID, uint32_t offset, uint32_t set, std::string_view type, PreprocessorContext& ctx)
+		{
+			auto line = std::format("Texture2D<{}> {}[] : register(s{}, space{})", type, ID, offset, set);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
 		static void RWTexture2D(uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
 		{
 			ctx.shader.replace(ctx.begin, ctx.end, "");
@@ -460,10 +485,18 @@ namespace FlexKit
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
 
-		static void StructuredBuffer(uint32_t binding, uint32_t set, std::string_view type, PreprocessorContext& ctx)
+		static void StructuredBuffer(std::string_view id, uint32_t binding, uint32_t set, std::string_view type, PreprocessorContext& ctx)
 		{
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+
+		static void StructuredBufferRoot(std::string_view id, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		{
+			FK_ASSERT(false, "Unimplemented!");
+
+			ctx.shader.replace(ctx.begin, ctx.end, "//Unimplemented!!");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin + sizeof(R"(//Unimplemented!!)"));
 		}
 
 		static void DefineDescriptorSet(int32_t set, std::vector<Tag> tags, PreprocessorContext& ctx)
@@ -568,12 +601,57 @@ namespace FlexKit
 	struct DirectXAttributeHandler
 	{
 		// push buffer
-		static void CBVPushBuffer(uint32_t binding, PreprocessorContext& ctx)
+		void CBVPushBuffer(const uint32_t binding, PreprocessorContext& ctx)
 		{
-			std::string id = fmt::format("cb_{}", rand());
-			auto line = std::format("cbuffer {} : register(b{})", id, binding);
-			ctx.shader.replace(ctx.begin, ctx.end, line);
-			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+			if (rootSignatures.size() == 0)
+				return;
+            
+			RootSignatureDefinition& definition = rootSignatures.back();
+
+			auto checkBindingIsFree = [&]() -> bool
+			    {
+					uint32_t idx = 0;
+					for (const RootSignatureEntryTypes entry : definition.entries)
+					{
+						if (entry == RootSignatureEntryTypes::CBV)
+						{
+							if (binding == idx)
+								return false;
+						    
+						    idx++;
+						}
+					}
+
+					return true;
+			    };
+
+			if (!checkBindingIsFree())
+			{
+				std::string_view error = "//Root signature binding index already in use!";
+				ctx.shader.replace(ctx.begin, ctx.end, error);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + error.size();
+			}
+			else
+			{
+			    uint32_t entrySpace = 0xfffffeff - definition.entries.size();
+
+			    while (definition.IsSpaceInUse(entrySpace))
+				    entrySpace--;
+
+			    definition.spacesInUse.push_back(entrySpace);
+			    definition.entries.push_back(RootSignatureEntryTypes::CBV);
+			    definition.entrySpace.push_back(entrySpace);
+
+			    std::string rootSignatureSection = std::format("CBV(b{0}, space={1}, visibility=SHADER_VISIBILITY_ALL, flags = DATA_STATIC_WHILE_SET_AT_EXECUTE)", binding, entrySpace);
+			    if (definition.sections.size())
+				    definition.sections += ", ";
+
+			    definition.sections += rootSignatureSection;
+
+			    std::string line = std::format("cbuffer buffer_{0}_{1} : register(b{0}, space{1})", binding, entrySpace);
+			    ctx.shader.replace(ctx.begin, ctx.end, line);
+			    ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+			}
 		}
 
 		void CBVRoot(std::string_view rootSigID, PreprocessorContext& ctx)
@@ -768,6 +846,29 @@ namespace FlexKit
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
 		}
 
+		void Texture2DArray(std::string_view ID, uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		{
+			auto& def = rootSignatures.back();
+			uint32_t space = 0xffffff00;
+
+
+			for (auto [e, s] : zip(def.entries, def.entrySpace))
+			{
+				if (e == RootSignatureEntryTypes::DescriptorHeap)
+				{
+					if (set == 0)
+					{
+						space = s;
+						break;
+					}
+					else set--;
+				}
+			}
+
+			auto line = std::format("Texture2D<{}> {}[] : register(t{}, space{});", type, ID, binding, space);
+			ctx.shader.replace(ctx.begin, ctx.end, line);
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
 
 		static void RWTexture2D(uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
 		{
@@ -797,10 +898,19 @@ namespace FlexKit
 		}
 
 
-		static void StructuredBuffer(uint32_t binding, uint32_t set, std::string_view type, PreprocessorContext& ctx)
+		static void StructuredBuffer(std::string_view id, uint32_t binding, uint32_t set, std::string_view type, PreprocessorContext& ctx)
 		{
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
+		}
+		
+
+		static void StructuredBufferRoot(std::string_view id, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		{
+			FK_ASSERT(false, "Unimplemented!");
+
+			ctx.shader.replace(ctx.begin, ctx.end, "//Unimplemented!!");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin + sizeof(R"(//Unimplemented!!)"));
 		}
 
 
@@ -1107,6 +1217,7 @@ namespace FlexKit
 			}
 
 			definition.entrySpace.push_back(space);
+			definition.spacesInUse.push_back(space);
 			definition.entries.push_back(RootSignatureEntryTypes::DescriptorHeap);
 			definition.sections += std::format(" DescriptorTable({})", sections);
 
@@ -1289,7 +1400,7 @@ namespace FlexKit
 
 				if (out.size())
 					out += ", ";
-				out += R"(StaticSampler( s0, filter = FILTER_MIN_MAG_MIP_POINT), StaticSampler(s1, filter = FILTER_MIN_MAG_POINT_MIP_LINEAR))";
+				out += R"(StaticSampler(s0, filter = FILTER_MIN_MAG_MIP_POINT), StaticSampler(s1, filter = FILTER_MIN_MAG_POINT_MIP_LINEAR))";
 
 				return out;
 			}

@@ -233,7 +233,7 @@ namespace FlexKit
 
 	struct MarkClustersPass
 	{
-		BrushConstants&					entityConstants;
+		//BrushConstants&					entityConstants;
 		CameraHandle					camera;
 		FrameResourceHandle				clustersObject;
 	};
@@ -273,8 +273,8 @@ namespace FlexKit
 	constexpr PSOHandle CLEARSHADOWRESOLUTIONBUFFER     = PSOHandle(GetTypeGUID(CLEARSHADOWRESOLUTIONBUFFER));
 	constexpr PSOHandle COMPUTETILEDSHADINGPASS         = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
 
-	constexpr PSOHandle GBUFFERPASS                     = PSOHandle(GetTypeGUID(GBUFFERPASS));
-	constexpr PSOHandle GBUFFERPASS_SKINNED             = PSOHandle(GetTypeGUID(GBUFFERPASS_SKINNED));
+	constexpr PSOHandle GBUFFERPASSSTATIC               = PSOHandle(GetTypeGUID(GBUFFERPASSSTATIC));
+	constexpr PSOHandle GBUFFERPASSSKINNED				= PSOHandle(GetTypeGUID(GBUFFERPASSSKINNED));
 	constexpr PSOHandle SHADINGPASS                     = PSOHandle(GetTypeGUID(SHADINGPASS));
 	constexpr PSOHandle SHADINGPASSCOMPUTE              = PSOHandle(GetTypeGUID(SHADINGPASSCOMPUTE));
 
@@ -309,7 +309,7 @@ namespace FlexKit
 	};
 
 
-	constexpr PassHandle GBufferPassID				= PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED) };
+	constexpr PassHandle GBufferStaticPassID		= PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_STATIC) };
 	constexpr PassHandle GBufferAnimatedPassID		= PassHandle{ GetCRCGUID(PBR_CLUSTERED_DEFERRED_ANIMATED) };
 
 
@@ -335,10 +335,10 @@ namespace FlexKit
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
 								GatherPassesTask&				passes,
+                                UpdateTask&						constantsUpdate,
 								const CameraHandle				camera,
 								GBuffer&						gbuffer,
 								ResourceHandle					depthTarget,
-								BrushConstants&					entityConstants,
 								PassHistory*					passHistory,
 								const ResourceAllocation&		animationResources,
 								iAllocator*						allocator);
@@ -374,7 +374,6 @@ namespace FlexKit
 								CameraHandle					camera,
 								ResourceHandle					renderTarget,
 								GatherPassesTask&				passes,
-								BrushConstants&					entityConstants,
 								iAllocator*						allocator);
 
 

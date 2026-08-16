@@ -67,8 +67,9 @@ namespace FlexKit
 		};
 
 		virtual ComponentID	GetID() { return -1; }
-
-		ComponentBase() {}
+		virtual ~ComponentBase(){}
+		
+	    ComponentBase() {}
 		// no moving
 		ComponentBase& operator =	(ComponentBase&& rhs)		= delete; 
 		ComponentBase				(const ComponentBase&&)		= delete;

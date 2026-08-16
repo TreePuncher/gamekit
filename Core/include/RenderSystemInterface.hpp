@@ -2216,38 +2216,59 @@ namespace FlexKit
 
 	struct IIndirectLayout
 	{
+		IIndirectLayout() {}
+
+		virtual ~IIndirectLayout(){}
+
+		virtual operator bool() const noexcept { return false; }
+
+		        IIndirectLayout				(const IIndirectLayout& rhs) noexcept {}
+		virtual IIndirectLayout& operator =	(const IIndirectLayout& rhs) noexcept { return *this; }
+
+		virtual void Clone(struct IndirectLayout& lhs, const IIndirectLayout& rhs) const noexcept {}
 	};
 
 	struct IndirectLayout
 	{
 		IndirectLayout() noexcept
 		{
-			FK_ASSERT(false);
+			new(internal) IIndirectLayout{};
 		}
 
 
 		~IndirectLayout() noexcept
 		{
-			FK_ASSERT(false);
+			GetIMPL().~IIndirectLayout();
 		}
 
 
-		IndirectLayout(const IndirectLayout& rhs)
+		IndirectLayout(const IIndirectLayout& rhs)
 		{
-			FK_ASSERT(false);
+			rhs.Clone(*this, rhs);
 		}
 
 
-		IndirectLayout& operator =	(const IndirectLayout& rhs) noexcept
+		IIndirectLayout& operator =	(const IIndirectLayout& rhs) noexcept
 		{
-			FK_ASSERT(false);
-			return (*this);
+			return GetIMPL() = rhs;
 		}
 
-		operator bool() noexcept
+
+		operator bool() const noexcept
 		{
-			FK_ASSERT(false);
-		    return false;
+		    return GetIMPL();
+		}
+
+
+		IIndirectLayout& GetIMPL() noexcept
+		{
+			return *std::launder((IIndirectLayout*)internal);
+		}
+
+
+		const IIndirectLayout& GetIMPL() const noexcept
+		{
+			return *std::launder((const IIndirectLayout*)internal);
 		}
 
 		std::byte internal[64];
@@ -2508,6 +2529,12 @@ namespace FlexKit
 		virtual void SetInputPrimitive			(EInputPrimitive primitive) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void SetGraphicsConstantValue	(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
+		
+		template<typename TY>
+	            void SetGraphicsConstantValue	(size_t idx, size_t valueCount, TY&& data_ref, size_t offset = 0) requires(!std::is_pointer_v<TY>)
+		{
+	        SetGraphicsConstantValue(idx, valueCount, (const void*)&data_ref, offset);
+		}
 
 		virtual void NullGraphicsConstantBufferView	(size_t idx) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0) IDIRECTCONTEXTDEBUGBODY;

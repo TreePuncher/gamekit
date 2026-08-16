@@ -3983,7 +3983,11 @@ namespace dx_Internal
 			return {};
 
 		if (!std::filesystem::exists(filePath))
+		{
+			std::string errMsg = std::format("DX: Failed to load shader at path: {}", file);
+			FK_LOG_ERROR(errMsg.c_str());
 			return {};
+		}
 
 		auto shaderFileSize = GetFileSize(filePath.string().c_str()) + 1;
 		std::string shaderStr;

@@ -49,12 +49,13 @@ namespace FlexKit
 		};
 
 		std::optional<GPURange> AllocBlocks(uint32_t allocationSize, uint64_t frameID);
-		uint32_t				AddressToBlockOffset(DeviceAddressRange) const;
+		uint32_t				AddressToBlockOffset(DevicePointer) const;
 		
 	    static AllocationNode* FindFreeNode(AllocationNode* node, const uint32_t blockCount, iAllocator* allocator);
 		static AllocationNode* FindSubNode(AllocationNode* node, uint32_t offset);
 
-		void Free(DeviceAddressRange addressRange);
+		void Free(DeviceAddressRange	addressRange);
+		void Free(DevicePointer			address);
 
 		uint64_t					buffer;
 		uint64_t					blockSize;

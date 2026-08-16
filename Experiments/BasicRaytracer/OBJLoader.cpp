@@ -88,7 +88,7 @@ TriMeshHandle LoadObj(std::filesystem::path p)
 
 	for (const auto& leaf : kdbTree)
 		for (auto I = leaf->begin; I < leaf->end; I++)
-			optimized.PushTri(kdbTree.mesh.tris[I], context, true);
+			optimized.PushTri(kdbTree.mesh.tris[I], context);
 
 	MeshUtilityFunctions::OptimizedBuffer optimizedBuffer{ optimized };
 

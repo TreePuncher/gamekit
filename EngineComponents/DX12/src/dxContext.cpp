@@ -13,16 +13,25 @@ namespace dx_Internal
 	    auto res = FindBufferEntry(Mesh, lod, type);
 
 	    if (!res)
-			return false;
-
-		auto&& VB = res.value();
-		out.emplace_back(
-			D3D12_VERTEX_BUFFER_VIEW{
-				.BufferLocation = VB.resource.As<ID3D12Resource>()->GetGPUVirtualAddress(),
-				.SizeInBytes	= VB.byteSize,
-				.StrideInBytes	= VB.byteStride,
-			});
-
+	    {
+			// Null buffer
+			out.emplace_back(
+				D3D12_VERTEX_BUFFER_VIEW{
+					.BufferLocation = 0,
+					.SizeInBytes	= 0,
+					.StrideInBytes	= 0,
+				});
+	    }
+		else
+		{
+			auto&& VB = res.value();
+			out.emplace_back(
+				D3D12_VERTEX_BUFFER_VIEW{
+					.BufferLocation		= VB.resource.As<ID3D12Resource>()->GetGPUVirtualAddress(),
+					.SizeInBytes		= VB.byteSize,
+					.StrideInBytes		= VB.byteStride,
+				});
+		}
 		return true;
 	}
 

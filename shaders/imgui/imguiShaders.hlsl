@@ -7,7 +7,7 @@
 	uint2 WH;
 };
 
-[[fk::Texture2D(ID=font, binding=0, set=0, type=float4)]]
+[[fk::Texture2D(id=font, binding=0, set=0, type=float4)]]
 
 sampler BiLinear : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -31,9 +31,9 @@ struct PS_Point
 PS_Point ImGui_VS(ImDrawVert vert)
 {
 	PS_Point output;
-	output.pos = float4(float2(-1, 1) + float2(vert.pos) / float2(WH) * float2(2, -2), 0, 1);
-	output.uv = vert.uv;
-	output.col = vert.col;
+	output.pos	= float4(float2(-1, 1) + float2(vert.pos) / float2(WH) * float2(2, -2), 0, 1);
+	output.uv	= vert.uv;
+	output.col	= vert.col;
 	return output;
 }
 

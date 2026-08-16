@@ -279,9 +279,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GetTranslation(const float4x4&)
+	float3 GetTranslation(const float4x4& wt)
 	{
-		return float3{ 0, 0, 0 };
+		float x = wt[3, 0];
+		float y = wt[3, 1];
+		float z = wt[3, 2];
+		return float3{ x, y, z };
 	}
 
 

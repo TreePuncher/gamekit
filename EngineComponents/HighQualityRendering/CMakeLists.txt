@@ -12,12 +12,14 @@ add_library(HighQualityRenderingComponent)
 
 target_sources(HighQualityRenderingComponent
     PRIVATE
-	"src/AnimationClusteredRendering.cpp"
-	"src/ClusteredRendering.cpp"
-	"src/OcclusionCulling.cpp"
-	"src/ParticleRendering.cpp"
-	"src/ShadowMapping.cpp"
-	"src/WorldRender.cpp"
+    "src/AnimationClusteredRendering.cpp"
+    "src/ClusteredRendering.cpp"
+    "src/OcclusionCulling.cpp"
+    "src/ParticleRendering.cpp"
+    "src/PBRConstants.cpp"
+    "src/ShadowMapping.cpp"
+    "src/WorldRender.cpp"
+	
 )
 
 target_sources(
@@ -27,11 +29,12 @@ target_sources(
     TYPE HEADERS
     FILES
     "includes/AnimationClusteredRendering.hpp"
-	"includes/ClusteredRendering.hpp"
-	"includes/OcclusionCulling.hpp"
-	"includes/ParticleRendering.hpp"
-	"includes/ShadowMapping.hpp"
-	"includes/WorldRender.hpp"
+    "includes/ClusteredRendering.hpp"
+    "includes/OcclusionCulling.hpp"
+    "includes/PBRConstants.hpp"
+    "includes/ParticleRendering.hpp"
+    "includes/ShadowMapping.hpp"
+    "includes/WorldRender.hpp"
 )
 
 target_link_libraries(HighQualityRenderingComponent PRIVATE flex)

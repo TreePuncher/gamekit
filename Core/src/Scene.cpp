@@ -107,7 +107,7 @@ namespace FlexKit
 
 		auto node = GetSceneNode(gameObject);
 
-		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
+		GetComponent()[brush].node = node != InvalidHandle ? node : GetZeroedNode();
 	}
 
 
@@ -137,7 +137,7 @@ namespace FlexKit
 		auto& meshes	= GetComponent()[brush].meshes;
 
 		GetComponent()[brush].meshes.push_back(triMesh);
-		GetComponent()[brush].Node = node != InvalidHandle ? node : GetZeroedNode();
+		GetComponent()[brush].node = node != InvalidHandle ? node : GetZeroedNode();
 	}
 
 
@@ -738,6 +738,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	Scene::Scene(iAllocator* in_allocator) :
+		allocator			{ in_allocator },
+		HandleTable			{ in_allocator },
+		sceneID				{ (size_t)rand() },
+		ownedGameObjects	{ in_allocator },
+		sceneEntities		{ in_allocator } {}
+
+	/************************************************************************************************/
+
+
+	Scene::~Scene()
+	{
+		ClearScene();
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Scene::AddGameObject(GameObject& go, NodeHandle node)
 	{
 		auto& view = go.AddView<SceneVisibilityView>(node, sceneID);
@@ -1002,7 +1021,7 @@ namespace FlexKit
 
 	ComputeLod_RES ComputeLOD(const Brush& brush, const float3 CameraPosition, const float maxZ)
 	{
-		auto brushPosition		= GetPositionW(brush.Node);
+		auto brushPosition		= GetPositionW(brush.node);
 		auto distanceFromView	= (CameraPosition - brushPosition).magnitude();
 
 		auto* mesh						= GetMeshResource(brush.meshes[0]); // TODO: Factor in all meshes
@@ -1026,7 +1045,7 @@ namespace FlexKit
 
 	void PushDraw(GameObject& gameObject, const Brush& brush, BrushDrawList& pvs, const float3 CameraPosition, float maxZ)
 	{
-		auto brushPosition      = GetPositionW(brush.Node);
+		auto brushPosition      = GetPositionW(brush.node);
 		auto distanceFromView   = (CameraPosition - brushPosition).magnitude();
 
 		static_vector<uint8_t> lodLevels;
@@ -1040,7 +1059,7 @@ namespace FlexKit
 			/*
 			// Alternate, screen space size based LOD selection
 			const auto aabb = mesh->AABB;
-			const auto WT   = GetWT(e.Node);
+			const auto WT   = GetWT(e.node);
 
 			const auto UpperRight   = WT * aabb.Max;
 			const auto LowerLeft    = WT * aabb.Min;
@@ -1158,17 +1177,17 @@ namespace FlexKit
 					passes.begin(), passes.end(), 2,
 					[&](PassDrawList& pass, iAllocator& threadAllocator)
 					{
-						const auto passID = pass.pass;
-						auto& materials = MaterialComponent::GetComponent();
+						const auto passID	= pass.pass;
+						auto& materials		= MaterialComponent::GetComponent();
 
 						pass.drawList.reserve(128);
 
-						for (auto& visable : drawList)
+						for (const BrushEntry& visibleBrush : drawList)
 						{
-							const auto passes = materials.GetPasses(visable.brush->material);
+							const auto& materialPasses = materials.GetPasses(visibleBrush.brush->material);
 
-							if (std::find(passes.begin(), passes.end(), passID) != passes.end())
-								pass.drawList.push_back(visable);
+							if (std::ranges::find(materialPasses, passID))
+								pass.drawList.push_back(visibleBrush);
 						}
 					});
 
@@ -1802,47 +1821,21 @@ namespace FlexKit
 
 	Brush::VConstantsLayout Brush::GetConstants() const
 	{
-		float4x4 WT = FlexKit::GetWT(Node);
-
 		Brush::VConstantsLayout	constants;
+
+		float4x4 WT = FlexKit::GetWT(node);
 
 		auto& materials = MaterialComponent::GetComponent();
 
-		if (material != InvalidHandle)
-		{
-			const auto albedo		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_ALBEDO),		{ 0.7f, 0.7f, 0.7f, 0.3f });
-			const auto specular		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_SPECULAR),	{ 1.0f, 1.0f, 1.0f, 1.0f });
-			const auto roughness	= materials.GetPropertyOr<float>(material,  GetCRCGUID(PBR_ROUGHNESS),	1.0f);
-			const auto metal		= materials.GetPropertyOr<float>(material,  GetCRCGUID(PBR_METAL),		1.0f);
-
-			constants.MP.albedo		= albedo.xyz();
-			constants.MP.roughness	= roughness;
-			constants.MP.kS			= specular.x;
-			constants.MP.metallic	= metal;
-		}
-		else
-		{
-			constants.MP.albedo		= float3{ 0.7f, 0.7f, 0.7f };
-			constants.MP.roughness	= 0.7f;
-			constants.MP.kS			= 1.0f;
-			constants.MP.metallic	= 0.0f;
-		}
-
+		constants.MP		= GetPBRConstants();
 		constants.Transform = WT;
 
 		if (material != InvalidHandle)
 		{
-			const auto& textures			= MaterialComponent::GetComponent()[material].textures;
-			constants.MP.textureChannels	= 0;
-			constants.MP.textureCount		= 0;
+			const auto& textures = MaterialComponent::GetComponent()[material].textures;
 
 			for (auto& texture : textures)
 				constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
-		}
-		else
-		{
-			constants.MP.textureChannels	= 0;
-			constants.MP.textureCount		= 0;
 		}
 
 		return constants;
@@ -1852,13 +1845,54 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	Brush::MaterialProperties Brush::GetPBRConstants() const
+	{
+		Brush::MaterialProperties constants;
+
+		auto& materials = MaterialComponent::GetComponent();
+
+		if (material != InvalidHandle)
+		{
+			const auto albedo		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_ALBEDO), { 0.7f, 0.7f, 0.7f, 0.3f });
+			const auto specular		= materials.GetPropertyOr<float4>(material, GetCRCGUID(PBR_SPECULAR), { 1.0f, 1.0f, 1.0f, 1.0f });
+			const auto roughness	= materials.GetPropertyOr<float>(material,	GetCRCGUID(PBR_ROUGHNESS), 1.0f);
+			const auto metal		= materials.GetPropertyOr<float>(material,	GetCRCGUID(PBR_METAL), 1.0f);
+
+			constants.albedo		= albedo.xyz();
+			constants.roughness		= roughness;
+			constants.kS			= specular.x;
+			constants.metallic		= metal;
+
+			const auto& textures		= MaterialComponent::GetComponent()[material].textures;
+			constants.textureCount		= textures.size();
+			constants.textureChannels	=
+				materials.HasTexture(material, GetTypeGUID(ALBEDO)) << 0 |
+				materials.HasTexture(material, GetTypeGUID(NORMAL)) << 1 |
+				materials.HasTexture(material, GetTypeGUID(METALLICROUGHNESS)) << 2;
+		}
+		else
+		{
+			constants.albedo			= float3{ 0.7f, 0.7f, 0.7f };
+			constants.roughness			= 0.7f;
+			constants.kS				= 1.0f;
+			constants.metallic			= 0.0f;
+			constants.textureChannels	= 0;
+			constants.textureCount		= 0;
+		}
+
+		return constants;
+	}
+
+	/************************************************************************************************/
+
+
 	void Release(PoseState* EPS, iAllocator* allocator)
 	{
 		if (EPS->Joints)		allocator->free(EPS->Joints);
 		if (EPS->CurrentPose)	allocator->free(EPS->CurrentPose);
 
-		EPS->Joints = nullptr;
-		EPS->CurrentPose = nullptr;
+		EPS->Joints			= nullptr;
+		EPS->CurrentPose	= nullptr;
 	}
 
 

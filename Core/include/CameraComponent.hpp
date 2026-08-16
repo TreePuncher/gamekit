@@ -137,6 +137,8 @@ namespace FlexKit
 		Vector<Camera>								Cameras;
 		Vector<CameraHandle>						handleRef;
 		HandleUtilities::HandleTable<CameraHandle>	handles;
+
+		Camera& GetCameraInternal(CameraHandle);
 	};
 
 
@@ -154,7 +156,6 @@ namespace FlexKit
 		NodeHandle	GetNode() const;
 		NodeHandle	GetCameraNode() const;
 		float		GetCameraFov();
-		
 
 		operator CameraHandle ();
 

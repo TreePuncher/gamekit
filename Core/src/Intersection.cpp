@@ -393,7 +393,12 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
+	float3 DirectionVector(float3 A, float3 B) noexcept
+	{
+		const float3 c = float3{ B - A };
+	    return c.normal();
+	}
+
     Frustum GetFrustum(
 		const float AspectRatio, 
 		const float FOV, 

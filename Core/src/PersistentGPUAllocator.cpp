@@ -49,9 +49,12 @@ namespace FlexKit
 		allocated	= false;
 		frameID		= lockUntil;
 
+		if (!parent)
+			return;
+
 		auto sibling = parent->GetSibling(this);
 
-		if (!sibling->allocated)
+		if (sibling && !sibling->allocated)
 		{
 			parent->Collapse(allocator);
 		    parent->SetFree(allocator, lockUntil);
@@ -176,9 +179,12 @@ namespace FlexKit
 		return nullptr;
 	}
 
-	uint32_t PersistentAllocator::AddressToBlockOffset(DeviceAddressRange range) const
+	uint32_t PersistentAllocator::AddressToBlockOffset(DevicePointer pointer) const
 	{
-		return (range.address - IRenderSystem::GetInstance().GetDevicePointer(resource)) / blockSize;
+		const auto range = IRenderSystem::GetInstance().GetDeviceRange(resource);
+		FK_ASSERT(range.address <= pointer && range.address + range.size > pointer);
+
+		return (pointer - IRenderSystem::GetInstance().GetDevicePointer(resource)) / blockSize;
 	}
 
 	PersistentAllocator::AllocationNode* PersistentAllocator::FindSubNode(AllocationNode* node, uint32_t offset)
@@ -202,10 +208,18 @@ namespace FlexKit
 
 	void PersistentAllocator::Free(DeviceAddressRange addressRange)
 	{
-		auto node_ptr = FindSubNode(&root, AddressToBlockOffset(addressRange));
+		Free(addressRange.address);
+	}
+
+	void PersistentAllocator::Free(DevicePointer address)
+	{
+		if (address == 0)
+			return;
+
+		auto node_ptr = FindSubNode(&root, AddressToBlockOffset(address));
 		const uint64_t submissionID = IRenderSystem::GetInstance().GetCurrentCounter();
 
 		if (node_ptr)
-		    node_ptr->SetFree(allocator, submissionID);
+			node_ptr->SetFree(allocator, submissionID);
 	}
 }

@@ -28,7 +28,7 @@ namespace FlexKit
 			ID		{ IN_ID },
 			value	{ IN_value } {}
 
-		using ValueVarient = std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle, DescriptorRange>;
+		using ValueVarient = std::variant<float, float2, float3, float4, uint, uint2, uint3, uint4, ResourceHandle, DescriptorRange, DevicePointer>;
 
 		uint32_t		ID = -1;
 		ValueVarient	value;
@@ -41,17 +41,25 @@ namespace FlexKit
 			{ MaterialProperty::ValueVarient{ ty } };
 		};
 
+
+	enum EMaterialFlags
+	{
+	    Clear			= 0,
+		PropertyChanged = 0x01,
+	};
+
 	struct MaterialComponentData
 	{
 		uint32_t								refCount;
 		MaterialHandle							handle;
 		MaterialHandle							parent;
 		DescriptorRange							textureDescriptors;
-		uint64_t								lastUsed = -1;
+		uint64_t								lastUsed	= -1u;
+		uint64_t								lastChanged = 0;
 
 		Vector<PassHandle, 4, uint8_t>			passes;
 		Vector<ResourceHandle, 0, uint8_t>		textures;
-		Vector<uint32_t, 0, uint32_t>			textureTags;
+		Vector<GUID_t, 0, uint8_t>				textureAssets;
 		Vector<MaterialHandle, 0, uint8_t>		subMaterials;
 		
 		Vector<uint16_t, 0, uint8_t>			propertyOffsets;
@@ -70,6 +78,34 @@ namespace FlexKit
 	};
 
 
+	template<MaterialValue TY>
+	std::optional<TY> GetProperty(const MaterialComponentData& material, const uint32_t ID)
+	{
+		const auto& propertyIDs = material.propertyIDs;
+		const auto& offsets		= material.propertyOffsets;
+		const auto& buffer		= material.propertyBuffer;
+
+		if (const uint32_t* prop =
+			std::find_if(
+				propertyIDs.begin(), propertyIDs.end(),
+				[&](const uint32_t& prop) { return prop == ID; }); prop != propertyIDs.end())
+		{
+			const auto idx = std::distance(propertyIDs.begin(), prop);
+			const size_t byteOffset = offsets[idx];
+			const size_t byteSize = (((idx + 1) == offsets.size()) ? buffer.size() : offsets[idx + 1]) - byteOffset;
+
+			if (byteSize != sizeof(TY))
+				return {};
+
+			TY out;
+			memcpy(&out, buffer.data() + byteOffset, byteSize);
+
+			return { out };
+		}
+		else
+			return {};
+	}
+
 	/************************************************************************************************/
 
 
@@ -79,7 +115,7 @@ namespace FlexKit
 
 		virtual ~MaterialComponent();
 
-		void FreeComponentView(void* _ptr) final;
+		void FreeComponentView(void* _ptr) final override;
 
 
 		MaterialComponentData operator [](const MaterialHandle handle) const;
@@ -115,15 +151,16 @@ namespace FlexKit
 
 			Vector<PassHandle, 16, uint8_t> GetPasses() const;
 
-			void SetProperty(const uint32_t ID, auto&& value) { GetComponent().SetProperty(handle, ID, value); }
+			void SetProperty(const uint32_t ID, auto&& value)		{ GetComponent().SetProperty(handle, ID, value); }
+			void SetProperty(const uint32_t ID, const auto& value)	{ GetComponent().SetProperty(handle, ID, value); }
 
 
 			template<MaterialValue TY>
 			std::optional<TY> GetProperty(const uint32_t ID) const { return GetComponent().GetProperty<TY>(handle, ID); }
 
 
-			void						PushTexture(GUID_t textureAsset, uint32_t tag = 0xffffffff, bool LoadLowest = false);
-			void						PushTexture(ResourceHandle, uint32_t tag = 0xffffffff);
+			void						PushTexture(GUID_t textureAsset, bool LoadLowest = false);
+			void						PushTexture(ResourceHandle);
 
 			void						InsertTexture(GUID_t, int idx, ReadContext& readContext, const bool loadLowest = false);
 			void						InsertTexture(ResourceHandle, int idx);
@@ -133,7 +170,7 @@ namespace FlexKit
 			void						RemoveTexture(GUID_t);
 			void						RemoveTexture(ResourceHandle);
 
-			const std::span<GUID_t>		GetTextures() const;
+			std::span<const GUID_t>		GetTextureAssets() const;
 			DescriptorRange				GetTextureDescriptors() const;
 			void						UpdateTextureDescriptors();
 
@@ -148,8 +185,8 @@ namespace FlexKit
 
 		using View = MaterialView;
 
-		void PushTexture(MaterialHandle material, GUID_t textureAsset, uint32_t tag, ReadContext& readContext,  const bool LoadLowest = false);
-		void PushTexture(MaterialHandle material, ResourceHandle texture, uint32_t tag = 0xffffffff);
+		void PushTexture(MaterialHandle material, GUID_t textureAsset, ReadContext& readContext,  const bool LoadLowest = false);
+		void PushTexture(MaterialHandle material, ResourceHandle texture);
 
 		void RemoveTexture(MaterialHandle material, GUID_t);
 		void RemoveTexture(MaterialHandle material, ResourceHandle);
@@ -162,7 +199,6 @@ namespace FlexKit
 
 		void Add2Pass(MaterialHandle& material, const PassHandle ID);
 
-		void						SetTextureCount			(MaterialHandle material, size_t size);
 		DescriptorRange				GetTextureDescriptors	(MaterialHandle material);
 		void						UpdateTextureDescriptors(MaterialHandle material);
 
@@ -172,7 +208,7 @@ namespace FlexKit
 		template<MaterialValue TY>
 		void SetProperty(MaterialHandle& materialHndl, const uint32_t ID, TY&& value)
 		{
-			if (materials[handles[materialHndl]].refCount > 1)
+			if (entries[handles[materialHndl]].refCount > 1)
 			{
 				auto newHandle = CloneMaterial(materialHndl);
 				ReleaseMaterial(materialHndl);
@@ -180,7 +216,7 @@ namespace FlexKit
 				materialHndl = newHandle;
 			}
 
-			auto& material		= materials[handles[materialHndl]];
+			auto& material		= entries[handles[materialHndl]];
 			auto& propertyIDs	= material.propertyIDs;
 			auto& offsets		= material.propertyOffsets;
 			auto& buffer		= material.propertyBuffer;
@@ -203,36 +239,16 @@ namespace FlexKit
 				buffer.resize(buffer.size() + sizeof(value));
 				memcpy(buffer.data() + byteOffset, &value, sizeof(value));
 			}
+
+			material.lastChanged = IRenderSystem::GetInstance().GetCurrentCounter();
 		}
 
 
 		template<MaterialValue TY>
 		std::optional<TY> GetProperty(MaterialHandle handle, const uint32_t ID) const
 		{
-			const auto& material	= materials[handles[handle]];
-			const auto& propertyIDs	= material.propertyIDs;
-			const auto& offsets		= material.propertyOffsets;
-			const auto& buffer		= material.propertyBuffer;
-
-			if (const uint32_t* prop =
-				std::find_if(
-					propertyIDs.begin(), propertyIDs.end(),
-					[&](const uint32_t& prop) { return prop == ID; }); prop != propertyIDs.end())
-			{
-				const auto idx			= std::distance(propertyIDs.begin(), prop);
-				const size_t byteOffset = offsets[idx];
-				const size_t byteSize	= (((idx + 1) == offsets.size()) ? buffer.size() : offsets[idx + 1]) - byteOffset;
-
-				if (byteSize != sizeof(TY))
-					return {};
-
-				TY out;
-				memcpy(&out, buffer.data() + byteOffset, byteSize);
-
-				return { out };
-			}
-			else
-				return {};
+			const auto& material = entries[handles[handle]];
+			return FlexKit::GetProperty<TY>(material, ID);
 		}
 
 
@@ -242,11 +258,13 @@ namespace FlexKit
 			return GetProperty<TY>(handle, ID).value_or(orValue);
 		}
 
+		bool HasTexture(MaterialHandle, const uint32_t id) const;
+
 
 		IRenderSystem&		renderSystem;
 		ITextureManager*	textureManager;
 
-		Vector<MaterialComponentData>					materials;
+		Vector<MaterialComponentData>					entries;
 		Vector<MaterialTextureEntry>					textures;
 		Vector<PassHandle>								activePasses;
 

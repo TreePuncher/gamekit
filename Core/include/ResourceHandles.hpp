@@ -6,6 +6,7 @@
 namespace FlexKit
 {
 	using CameraHandle					= Handle_t<32u, GetCRCGUID(CameraHandle)>;
+	using ConstantPropertyHandle		= Handle_t<32u, GetTypeGUID(ConstantPropertyHandle)>;
 	using ConstantBufferHandle			= Handle_t<32u, GetTypeGUID(ConstantBuffer)>;
 	using CopyContextHandle				= Handle_t<32u, GetTypeGUID(CopyContextHandle)>;
 	using DeviceHeapHandle				= Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>;

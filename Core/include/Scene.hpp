@@ -609,17 +609,8 @@ namespace FlexKit
 	class Scene
 	{
 	public:
-		Scene(iAllocator* in_allocator = SystemAllocator) :
-				allocator					{ in_allocator		},
-				HandleTable					{ in_allocator		},
-				sceneID						{ (size_t)rand()	},
-				ownedGameObjects			{ in_allocator		},
-				sceneEntities				{ in_allocator		} {}
-				
-		~Scene()
-		{
-			ClearScene();
-		}
+		Scene(iAllocator* in_allocator = SystemAllocator);
+		~Scene();
 
 		void				AddGameObject	(GameObject& go, NodeHandle node);
 		void				AddGameObject	(GameObject& go);

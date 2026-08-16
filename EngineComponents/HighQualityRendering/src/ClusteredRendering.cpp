@@ -18,94 +18,31 @@ namespace FlexKit
 
 	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
-		// WIP: TODO REMOVE THIS
-#if 0
-		auto& RS = static_cast<RenderSystem&>(irs);
-
-		auto DrawRectVShader = RS.LoadShader("Forward_VS",       "vs_6_0",	"assets\\shaders\\forwardRender.hlsl");
-		auto DrawRectPShader = RS.LoadShader("GBufferFill_PS",   "ps_6_0",	"assets\\shaders\\forwardRender.hlsl");
-
-
-		/*
-		typedef struct D3D12_INPUT_ELEMENT_DESC
-		{
-		LPCSTR SemanticName;
-		UINT SemanticIndex;
-		DXGI_FORMAT Format;
-		UINT InputSlot;
-		UINT AlignedByteOffset;
-		D3D12_INPUT_CLASSIFICATION InputSlotClass;
-		UINT InstanceDataStepRate;
-		} 	D3D12_INPUT_ELEMENT_DESC;
-		*/
-
-		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-			{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-
-		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-		Depth_Desc.DepthEnable		= true;
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature			= RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs)->GetAPIObject();
-			PSO_Desc.VS						= Shader2ByteCode(DrawRectVShader);
-			PSO_Desc.PS						= Shader2ByteCode(DrawRectPShader);
-			PSO_Desc.RasterizerState		= Rast_Desc;
-			PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask				= UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-			PSO_Desc.NumRenderTargets		= 3;
-			PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
-			PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
-			PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R16G16_FLOAT; // Normal
-			PSO_Desc.SampleDesc.Count		= 1;
-			PSO_Desc.SampleDesc.Quality		= 0;
-			PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout			= { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState		= Depth_Desc;
-			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-		}
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = RS.pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		FK_ASSERT(SUCCEEDED(HR));
-
-		SETDEBUGNAME(PSO, "GBufferPassPSO");
-
-		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
-#endif
-
 		return PipelineBuilder{ renderSystem, allocator }.
-	            AddVertexShader("Forward_VS", "assets\\shaders\\forwardRender.hlsl").
-	            AddPixelShader("GBufferFill_PS", "assets\\shaders\\forwardRender.hlsl").
+	            AddVertexShader("Forward_VS",		R"(assets\shaders\forward\GBuffer.hlsl)").
+	            AddPixelShader("GBufferFill_PS",	R"(assets\shaders\forward\GBuffer.hlsl)").
 			    AddInputTopology(ETopology::EIT_TRIANGLE).
                 AddInputLayout({ .inputs =
 					{	{ "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 },
                         { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT, 1, 0,	EInputClassification::PerVertex, 0 },
 			            { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT, 2, 0,	EInputClassification::PerVertex, 0 },
-			            { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 3, 0,	EInputClassification::PerVertex, 0 } },
+			            { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	  3, 0,	EInputClassification::PerVertex, 0 } },
                     .count = 4 }).
                 AddDepthStencilState({
-                    .depthEnable = true,
-					.depthFunc = EComparison::LESS
+                    .depthEnable	= true,
+					.depthFunc		= EComparison::LESS
                 }).
+		    	AddRasterizerState({ .CullMode = ECullMode::BACK }).
 	            AddRenderTargetState({
-			        .targetCount = 3,
-				    .targetFormats = {
-				    DeviceFormat::R8G8B8A8_UNORM,
-				    DeviceFormat::R8G8B8A8_UNORM,
-				    DeviceFormat::R16G16_FLOAT,
+			        .targetCount	= 3,
+				    .targetFormats	= {
+						DeviceFormat::R8G8B8A8_UNORM,
+						DeviceFormat::R8G8B8A8_UNORM,
+						DeviceFormat::R16G16_FLOAT,
 			    }}).
 	            AddBlendState({
 						.renderTarget = {
-						    {.blendEnable = false }
+						    { .blendEnable = false }
 						}
 					}).
 			    SetDebugName("GBufferPassPSO").
@@ -189,38 +126,36 @@ namespace FlexKit
 #endif
 
 		return PipelineBuilder{ renderSystem, allocator }.
-	            AddVertexShader("ForwardSkinned_VS", "assets\\shaders\\forwardRender.hlsl").
-	            AddPixelShader("GBufferFill_PS", "assets\\shaders\\forwardRender.hlsl").
+	            AddVertexShader("ForwardSkinned_VS",	R"(assets\shaders\forward\GBuffer.hlsl)").
+	            AddPixelShader("GBufferFill_PS",		R"(assets\shaders\forward\GBuffer.hlsl)").
 			    AddInputTopology(ETopology::EIT_TRIANGLE).
                 AddInputLayout({ .inputs =
-					{	{ "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 },
-                        { "NORMAL",		0, DeviceFormat::R32G32B32_FLOAT, 1, 0,	EInputClassification::PerVertex, 0 },
-			            { "TANGENT",	0, DeviceFormat::R32G32B32_FLOAT, 2, 0,	EInputClassification::PerVertex, 0 },
-			            { "TEXCOORD",	0, DeviceFormat::R32G32_FLOAT,	 3, 0,	EInputClassification::PerVertex, 0 },
+					{	{ "POSITION",		0, DeviceFormat::R32G32B32_FLOAT,	0, 0, EInputClassification::PerVertex, 0 },
+                        { "NORMAL",			0, DeviceFormat::R32G32B32_FLOAT,	1, 0, EInputClassification::PerVertex, 0 },
+			            { "TANGENT",		0, DeviceFormat::R32G32B32_FLOAT,	2, 0, EInputClassification::PerVertex, 0 },
+			            { "TEXCOORD",		0, DeviceFormat::R32G32_FLOAT,		3, 0, EInputClassification::PerVertex, 0 },
 
                         { "BLENDWEIGHT",	0, DeviceFormat::R32G32B32_FLOAT,	4, 0, EInputClassification::PerVertex, 0 },
 			            { "BLENDINDICES",	0, DeviceFormat::R16G16B16A16_UINT,	5, 0, EInputClassification::PerVertex, 0 },
 
-			            { "BLENDPOS",	0, DeviceFormat::R32G32B32_FLOAT,	6, 0, EInputClassification::PerVertex, 0 },
-			            { "BLENDNORM",	0, DeviceFormat::R32G32B32_FLOAT,	7, 0, EInputClassification::PerVertex, 0 },
-			            { "BLENDTAN",	0, DeviceFormat::R32G32B32_FLOAT,	8, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDPOS",		0, DeviceFormat::R32G32B32_FLOAT,	6, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDNORM",		0, DeviceFormat::R32G32B32_FLOAT,	7, 0, EInputClassification::PerVertex, 0 },
+			            { "BLENDTAN",		0, DeviceFormat::R32G32B32_FLOAT,	8, 0, EInputClassification::PerVertex, 0 },
 					},
                     .count = 9 }).
                 AddDepthStencilState({
-                    .depthEnable = true,
-					.depthFunc = EComparison::LESS
+                    .depthEnable	= true,
+					.depthFunc		= EComparison::LESS
                 }).
 	            AddRenderTargetState({
-			        .targetCount = 3,
-				    .targetFormats = {
-				    DeviceFormat::R8G8B8A8_UNORM,
-				    DeviceFormat::R8G8B8A8_UNORM,
-				    DeviceFormat::R16G16_FLOAT }}).
+			        .targetCount	= 3,
+				    .targetFormats	= {
+						DeviceFormat::R8G8B8A8_UNORM,
+						DeviceFormat::R8G8B8A8_UNORM,
+						DeviceFormat::R16G16_FLOAT }}).
 	            AddBlendState({
 						.renderTarget = {
-						    {
-						        .blendEnable = false
-						    }
+						    {	.blendEnable = false	}
 						}
 			    }).
 			    SetDebugName("GBufferSkinnedPassPSO").
@@ -1076,8 +1011,8 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(RESOLUTIONMATCHSHADOWMAPS,	CreateResolutionMatch_PSO);
 		renderSystem.RegisterPSOLoader(CLEARSHADOWRESOLUTIONBUFFER,	CreateClearResolutionMatch_PSO);
 
-		renderSystem.RegisterPSOLoader(GBUFFERPASS,					CreateGBufferPassPSO);
-		renderSystem.RegisterPSOLoader(GBUFFERPASS_SKINNED,			CreateGBufferSkinnedPassPSO);
+		renderSystem.RegisterPSOLoader(GBUFFERPASSSTATIC,			CreateGBufferPassPSO);
+		//renderSystem.RegisterPSOLoader(GBUFFERPASSSKINNED,			CreateGBufferSkinnedPassPSO);
 		renderSystem.RegisterPSOLoader(SHADINGPASS,					{ this, &ClusteredRender::CreateDeferredShadingPassPSO });
 		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,			CreateDeferredShadingPassComputePSO);
 
@@ -1206,16 +1141,15 @@ namespace FlexKit
 								CameraHandle					camera,
 								ResourceHandle					renderTarget,
 								GatherPassesTask&				passes,
-								BrushConstants&					entityConstants,
 								iAllocator*						allocator)
 	{
-		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(GBufferPassID); };
+		auto getStaticPass		= [&passTable = passes.GetData()] { return passTable.GetPass(GBufferStaticPassID); };
 		
 		
 		PassDescription<MarkClustersPass, const BrushEntry> staticPass =
 		{
 			.sharedData = {
-				.entityConstants 	= entityConstants,
+				//.entityConstants 	= entityConstants,
 				.camera				= camera,
 			},
 			.getPVS = getStaticPass,
@@ -1230,7 +1164,7 @@ namespace FlexKit
 					GPUResourceDesc::UAVTexture(WH, DeviceFormat::R32_UINT), 
 					DeviceAccessState::DASUAV, VirtualResourceScope::Frame);
 
-				builder.AddNodeDependency(entityConstants.node);
+				//builder.AddNodeDependency(entityConstants.node);
 			};
 
 		auto draw	=
@@ -1241,8 +1175,8 @@ namespace FlexKit
 				
 				ctx.SetRenderTargets({}, false);
 
-				auto& brushConstantBuffer	= data.entityConstants.GetConstantBuffer();
-				auto brushConstants			= CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
+				//auto& brushConstantBuffer	= data.entityConstants.GetConstantBuffer();
+				//auto brushConstants			= CreateCBIterator<Brush::VConstantsLayout>(brushConstantBuffer);
 
 				for(const auto& draw : std::span<const BrushEntry>{ begin, end })
 				{
@@ -1250,7 +1184,7 @@ namespace FlexKit
 					{
 						const auto triMesh 	= GetMeshResource(mesh);
 						auto lodLevel 		= triMesh->lods[(size_t)idx];
-						ctx.SetGraphicsConstantBufferView(0, brushConstants[draw.submissionID]);
+						//ctx.SetGraphicsConstantBufferView(0, brushConstants[draw.submissionID]);
 					}
 				}
 			};
@@ -1716,10 +1650,10 @@ namespace FlexKit
 		UpdateDispatcher&				dispatcher,
 		FrameGraph&						frameGraph,
 		GatherPassesTask&				passes,
+		UpdateTask&						constantsUpdate,
 		const CameraHandle				camera,
 		GBuffer&						gbuffer,
 		ResourceHandle					depthTarget,
-		BrushConstants&					entityConstants,
 		PassHistory*					passHistory,
 		const ResourceAllocation&		animationResources,
 		iAllocator*						allocator)
@@ -1736,21 +1670,24 @@ namespace FlexKit
 			},
 			[&](FrameGraphNodeBuilder& builder, GBufferPass& data)
 			{
+				builder.Requires(GBUFFERPASSSTATIC);
+				//builder.Requires(GBUFFERPASSSKINNED);
+
 				builder.AddDataDependency(passes);
+				builder.AddDataDependency(constantsUpdate);
 				builder.AddNodeDependency(animationResources.node);
 
-				data.entityConstants			= builder.ReadConstantBuffer(entityConstants.constants);
 				data.AlbedoTargetObject			= builder.RenderTarget(gbuffer.albedo);
 				data.MRIATargetObject			= builder.RenderTarget(gbuffer.MRIA);
 				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
 				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
 			},
-			[&entityConstants, &animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
+			[&animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
 
 				auto& passes		= data.passes.GetData().passes;
-				auto pass			= FindPass(passes.begin(), passes.end(), GBufferPassID);
+				auto pass			= FindPass(passes.begin(), passes.end(), GBufferStaticPassID);
 				auto animatedPass	= FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
 
 				if ((!pass || !pass->drawList.size()) && (!animatedPass || !animatedPass->drawList.size()))
@@ -1771,12 +1708,9 @@ namespace FlexKit
 					AlignedSize<ForwardDrawConstants>();
 
 				auto passConstantBuffer		= resources.ReserveCB(passBufferSize);
-				//auto entityConstantBuffer	= data.reserveCB(entityBufferSize);
-
 				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(data.camera), passConstantBuffer };
-				const auto passConstants	= ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
-				static auto* gpass = resources.GetPipelineState(GBUFFERPASS, allocator);
+				static auto* gpass = resources.GetPipelineState(GBUFFERPASSSTATIC, allocator);
 				ctx.SetPipelineState(gpass);
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
 
@@ -1800,29 +1734,14 @@ namespace FlexKit
 					resources.GetResource(data.depthBufferTargetObject));
 
 				// Setup Constants
-				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-				ctx.SetGraphicsConstantBufferView(3, passConstants);
+				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 16);
 
 				ctx.BeginEvent_DEBUG("G-Buffer Pass");
 
 				//ctx.TimeStamp(timeStats, 0);
 
-				DescriptorSet descriptorSet{};
-				descriptorSet.Init(
-					ctx,
-					gpass->GetDescriptorSetLayout(0u),
-					allocator);
-
-				descriptorSet.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture());
-				descriptorSet.SetSRV(ctx, 1, resources.renderSystem().DefaultTexture());
-				descriptorSet.SetSRV(ctx, 2, resources.renderSystem().DefaultTexture());
-				descriptorSet.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture());
-				descriptorSet.NullFill(ctx);
-
-
-				auto& materials			= MaterialComponent::GetComponent();
-				auto& constantBuffer	= entityConstants.GetConstantBuffer();
-				auto constants			= FlexKit::CreateCBIterator<Brush::VConstantsLayout>(constantBuffer);
+				MaterialComponent& materials			= MaterialComponent::GetComponent();
 
 				OcclusionQueries* currHistory	= nullptr;
 				OcclusionQueries* prevHistory	= nullptr;
@@ -1850,7 +1769,6 @@ namespace FlexKit
 							continue;
 
 						const auto& material		= materials[brush->material];
-						const auto beginConstants	= entityConstants.entityTable[I];
 
 						const size_t meshCount	= brush->meshes.size();
 						const auto brushID		= brush->brushID;
@@ -1869,6 +1787,9 @@ namespace FlexKit
 							else
 								ctx.SetPredicate(false);
 						}
+
+						const float4x4 wt = GetWT(brush->node);
+						ctx.SetGraphicsConstantValue(0, 16, &wt);
 
 						for (size_t J = 0; J < meshCount; J++)
 						{
@@ -1913,7 +1834,8 @@ namespace FlexKit
 								if (subMaterial.textureDescriptors.size != 0)
 									ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 
-								ctx.SetGraphicsConstantBufferView(1, constants[beginConstants + K]);
+								const DevicePointer pbrConstants = GetProperty<DevicePointer>(material, PBRConstantsID).value_or(0);
+								ctx.SetGraphicsConstantBufferView(1, pbrConstants);
 
 								ctx.DrawIndexed(
 									subMesh.IndexCount,
@@ -1930,16 +1852,15 @@ namespace FlexKit
 				}
 
 				// skinned models
-				if(animatedPass && animatedPass->drawList.size())
+				if(animatedPass && animatedPass->drawList.size() && false)
 				{
 					ctx.BeginEvent_DEBUG("Skinned Objects");
 					auto& animatedBrushes	= animatedPass->drawList;
 
-					static auto skinnedPass = resources.GetPipelineState(GBUFFERPASS_SKINNED, allocator);
+					static auto skinnedPass = resources.GetPipelineState(GBUFFERPASSSKINNED, allocator);
 					ctx.SetPipelineState(skinnedPass);
 
 					ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-					ctx.SetGraphicsConstantBufferView(1, passConstants);
 
 					TriMesh*					prevMesh	= nullptr;
 					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
@@ -1966,7 +1887,7 @@ namespace FlexKit
 						}
 
 						const auto&	material		= materials[brush->material];
-						const auto	beginConstants	= entityConstants.entityTable[brush.submissionID];
+						//const auto	beginConstants	= entityConstants.entityTable[brush.submissionID];
 
 						const size_t meshCount	= brush->meshes.size();
 						for (size_t J = 0; J < meshCount; J++)
@@ -2007,7 +1928,7 @@ namespace FlexKit
 									ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 
 								auto poseBuffer = resources.GetResource(animationResources.handles[0]);
-								ctx.SetGraphicsConstantBufferView(3, constants[beginConstants + K]);
+								//ctx.SetGraphicsConstantBufferView(3, constants[beginConstants + K]);
 								ctx.SetGraphicsShaderResourceView(0, poseBuffer);
 
 								ctx.DrawIndexed(
@@ -2103,7 +2024,7 @@ namespace FlexKit
 			.getPVS =
 				[&passes]()
 				{
-					return passes.GetData().GetPass(GBufferPassID);
+					return passes.GetData().GetPass(GBufferStaticPassID);
 				}
 		};
 
@@ -2152,7 +2073,7 @@ namespace FlexKit
 
 					const uint32_t queryID		= current.GetQueryIdx(draw.brush->brushID);
 
-					const float3		posW	= GetPositionW(draw.brush->Node);
+					const float3		posW	= GetPositionW(draw.brush->node);
 					const float3		span	= aabb.Span();
 					const float4x4_GPU	PVT		= PV * TranslationMatrix(posW) * FlexKit::ScaleMatrix(span);
 

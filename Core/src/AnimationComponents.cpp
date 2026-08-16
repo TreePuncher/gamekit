@@ -811,6 +811,9 @@ namespace FlexKit
 			{
 				ProfileFunction();
 
+				if (!AnimatorComponent::isAvailable())
+					return; 
+
 				auto& animatorComponent = AnimatorComponent::GetComponent();
 
 				if (!animatorComponent.animators.size())

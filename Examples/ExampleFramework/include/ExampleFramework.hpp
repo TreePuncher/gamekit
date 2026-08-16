@@ -9,7 +9,7 @@ namespace FlexKit
 
 	struct ExampleState : NoCopy, NoMove
 	{
-		virtual ~ExampleState() {}
+		virtual ~ExampleState();
 
 	    struct DrawExampleContext
 	    {

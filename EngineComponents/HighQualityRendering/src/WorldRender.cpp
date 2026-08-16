@@ -1,8 +1,9 @@
 #include "AnimationRendering.hpp"
 #include <CameraComponent.hpp>
+#include <Materials.hpp>
 //#include "TextureStreamingUtilities.hpp"
 #include "WorldRender.hpp"
-
+#include "PBRConstants.hpp"
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -150,7 +151,21 @@ namespace FlexKit
 
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RS6CBVs4SRVs) };
 #endif
-		return {};
+
+	    return 
+	        PipelineBuilder{ irs, allocator }.
+                AddInputTopology(ETopology::EIT_TRIANGLE).
+			    AddInputLayout({
+				    .inputs	= { 
+				        { "POSITION",	0, DeviceFormat::R32G32B32_FLOAT, 0, 0,	EInputClassification::PerVertex, 0 }, 
+				    },
+				    .count	= 1 }).
+                AddVertexShader("DepthPass_VS", "assets\\shaders\\forward\\DepthPrepass.hlsl", { .enableDebug = true, .loadRootSignature = true }).
+                AddRasterizerState({ .CullMode = ECullMode::BACK }).	
+				AddDepthStencilState({ .depthEnable = true, .depthFunc = EComparison::LESS }).
+				AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+                SetDebugName("DepthPrePass").
+	            Build(irs, allocator);
 	}
 
 
@@ -610,7 +625,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CBPushBuffer& BrushConstants::GetConstantBuffer(size_t IN_reservationSize)
+	/*
+	CBPushBuffer& UpdatePBRBrushConstants::GetConstantBuffer(size_t IN_reservationSize)
 	{
 		if (reservationSize == -1)
 			reservationSize = IN_reservationSize;
@@ -622,13 +638,14 @@ namespace FlexKit
 	}
 
 
-	CBPushBuffer& BrushConstants::GetConstantBuffer()
+	CBPushBuffer& UpdatePBRBrushConstants::GetConstantBuffer()
 	{
 		FK_ASSERT(reservationSize != -1);
 
 		const auto bufferSize = reservationSize * AlignedSize<Brush::VConstantsLayout>();
 		return getConstantBuffer(bufferSize);
 	}
+    */
 
 
 	/************************************************************************************************/
@@ -664,21 +681,9 @@ namespace FlexKit
 			clusteredRender				{ renderSystem, *persistent },
 			//transparency				{ renderSystem, *persist,ent },
 			passHistories				{ *persistent },
-		    pendingGPUTasks				{ *persistent }
+		    pendingGPUTasks				{ *persistent },
+	        persistent					{ 64 * MEGABYTE / 256, 256, *persistent }
 	{
-		DescriptorSetLayout layout{ *persistent };
-		layout.AddSRVs(2);
-		layout.AddUAVs(1);
-
-#if 0
-		RootSignatureBuilder builder{ renderSystem, persistent };
-		builder.AllowIA = true;
-		builder.SetParameterAsDescriptorTable(0, layout);
-		builder.SetParameterAsUAV(1, 0, 0, PIPELINE_DEST_ALL);
-		builder.SetParameterAsUINT(2, 16, 0, 0);
-		rootSignatureToneMapping = builder.Build(renderSystem, *persistent);
-#endif
-
 		renderSystem.RegisterPSOLoader(FORWARDDRAW,						CreateForwardDrawPSO);
 		renderSystem.RegisterPSOLoader(FORWARDDRAWINSTANCED,			CreateForwardDrawInstancedPSO);
 
@@ -697,6 +702,7 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(AVERAGELUMANANCE_GLOBAL,			{ this, &WorldRender::CreateAverageLumanceGlobal });
 		renderSystem.RegisterPSOLoader(TONEMAP,							{ this, &WorldRender::CreateToneMapping });
 
+		/*
 		renderSystem.QueuePSOLoad(GBUFFERPASS);
 		renderSystem.QueuePSOLoad(GBUFFERPASS_SKINNED);
 		renderSystem.QueuePSOLoad(DEPTHPREPASS);
@@ -717,7 +723,7 @@ namespace FlexKit
 
 		renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE1);
 		renderSystem.QueuePSOLoad(CREATELIGHTBVH_PHASE2);
-
+        */
 #if 0
 		renderSystem.SetReadBackEvent(
 			timingReadBack,
@@ -808,6 +814,7 @@ namespace FlexKit
 		auto& skinnedObjects	= GatherSkinned(dispatcher, scene, camera, temporary);
 		auto& updatedPoses		= UpdatePoses(dispatcher, skinnedObjects);
 		auto& loadMorphs		= LoadNeededMorphTargets(dispatcher, passes);
+		auto& pbrConstants		= UpdatePBRBrushConstants(dispatcher, passes, temporary);
 
 		// [skinned Objects] -> [update Poses]
 		IKUpdate.AddInput(drawSceneDesc.transformDependency);
@@ -822,6 +829,7 @@ namespace FlexKit
 		frameGraph.AddMemoryPool(RTPool);
 		frameGraph.AddMemoryPool(UAVTexturePool);
 		frameGraph.AddTaskDependency(IKUpdate);
+		frameGraph.AddOutput(depthTarget.Get());
 
 		PassData data = {
 			.passes		= passes,
@@ -834,14 +842,8 @@ namespace FlexKit
 
 		ClearGBuffer(frameGraph, gbuffer);
 
-		auto& staticConstants =
-			BuildBrushConstantsBuffer(
-				frameGraph,
-				dispatcher,
-				passes,
-				temporary);
+		//auto& depthPass = DepthPrePass(dispatcher, frameGraph, camera, passes, depthTarget.Get(), temporary);
 
-		/*
 		auto& animationResources =
 			AcquirePoseResources(
 				frameGraph,
@@ -849,6 +851,7 @@ namespace FlexKit
 				passes,
 				*UAVPool,
 				temporary);
+		/*
 
 		auto& morphTargets = BuildMorphTargets(
 				frameGraph,
@@ -857,20 +860,20 @@ namespace FlexKit
 				loadMorphs,
 				*UAVPool,
 				temporary);
-
+        */
 		auto& gbufferPass =
 			clusteredRender.FillGBuffer1(
 				dispatcher,
 				frameGraph,
 				passes,
+				pbrConstants,
 				camera,
 				gbuffer,
 				depthTarget.Get(),
-				staticConstants,
 				occlusionCulling ? passHistories.GetHistory(renderSystem, drawSceneDesc.camera) : nullptr,
 				animationResources,
 				temporary);
-
+        /*
 		if(occlusionCulling)
 		{
 			auto& occlutionResults =
@@ -1053,13 +1056,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	BrushConstants& WorldRender::BuildBrushConstantsBuffer(
-		FrameGraph&						frameGraph,
+	UpdateTask& WorldRender::UpdatePBRBrushConstants(
 		UpdateDispatcher&				dispatcher,
 		GatherPassesTask&				passes,
 		iAllocator&						allocator)
 	{
-		return frameGraph.BuildSharedConstants<BrushConstants>(
+#if 0
+		return frameGraph.BuildSharedConstants<UpdatePBRBrushConstants>(
 			[&](FrameGraphNodeBuilder& builder) -> BrushConstants
 			{
 				builder.AddDataDependency(passes);
@@ -1133,6 +1136,74 @@ namespace FlexKit
 					}
 				}
 			});
+#endif
+		
+		struct AllocateConstants
+        {};
+
+		auto& allocateConstantMemoryTask = dispatcher.Add<AllocateConstants>(
+			[&](DependencyBuilder& builder, AllocateConstants& out)
+			{
+				builder.AddInput(passes);
+			},
+			[&](AllocateConstants& data, iAllocator& tempAllocator)
+			{
+				const uint64_t currentID = IRenderSystem::GetInstance().GetCurrentCounter();
+
+				auto& renderSystem		= IRenderSystem::GetInstance(); 
+				auto copyHandle			= renderSystem.OpenUploadQueue();
+				auto& cctx				= renderSystem.GetCopyContext(copyHandle);
+				uint64_t counter		= renderSystem.GetCurrentCounter();
+
+				auto brushes = passes.GetData().GetPass(GBufferStaticPassID);
+				MaterialComponent& materials = MaterialComponent::GetComponent();
+				for (auto& brush : brushes)
+				{
+					MaterialView& materialView = *(MaterialView*)brush.gameObject->GetView(MaterialComponentID);
+					MaterialComponent& materials = MaterialComponent::GetComponent();
+
+
+					auto UploadMaterialConstants = [&](this auto& self, MaterialComponentData& material) -> void
+						{
+							for (auto subHndl : material.subMaterials)
+								self(materials.entries[subHndl]);
+
+							DevicePointer constants		= materialView.GetProperty<DevicePointer>(PBRConstantsID).value_or(0);
+							uint64_t constantsTimeStamp = materialView.GetProperty<uint64_t>(PBRConstantsLastUpdateID).value_or(-1);
+
+							if (constantsTimeStamp == 0xffffffffffffffff || material.lastChanged > constantsTimeStamp)
+							{
+							    auto constantAlloc = persistent.AllocBlocks(1, currentID);
+							    if (constantAlloc)
+							    {
+									auto&& [devicePtr, offset, size, resource] = constantAlloc.value();
+
+									persistent.Free(constants);
+								    materialView.SetProperty(PBRConstantsID, constantAlloc.value().devicePtr);
+									materialView.SetProperty(PBRConstantsLastUpdateID, counter);
+
+								    auto pbrConstants = brush->GetPBRConstants();
+									auto tmpSpace = cctx.Reserve(sizeof(pbrConstants));
+									memcpy(tmpSpace.buffer, &pbrConstants, sizeof(pbrConstants));
+								    cctx.CopyBuffer(resource, offset, tmpSpace);
+							    }
+							    else
+							    {
+								    FK_LOG_ERROR("Out of persistent constant buffer memory!");
+								    return; // out of memory!
+							    }
+							}
+
+						};
+
+				    UploadMaterialConstants(materials.entries[materialView.handle]);
+				}
+
+				renderSystem.SubmitUploadQueues(&copyHandle, 1);
+				renderSystem.SyncDirectTo(renderSystem.SyncUploadPoint());
+			});
+
+		return allocateConstantMemoryTask;
 	}
 
 
@@ -1147,20 +1218,18 @@ namespace FlexKit
 		const ResourceHandle			depthBufferTarget,
 		iAllocator*						allocator)
 	{
-		const size_t MaxEntityDrawCount = 1000;
-
 		auto& pass = frameGraph.AddNode<DepthPass>(
 			passes.GetData().solid,
 			[&, camera](FrameGraphNodeBuilder& builder, DepthPass& data)
 			{
-				const size_t localBufferSize = Max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+				const size_t localBufferSize = AlignedSize(sizeof(Camera::ConstantBuffer)) + AlignedSize(sizeof(ForwardDrawConstants));
 
-				data.entityConstantsBuffer  = builder.GetResources().ReserveCB(sizeof(ForwardDrawConstants) * MaxEntityDrawCount);
-				data.passConstantsBuffer    = builder.GetResources().ReserveCB(2048);
+				data.passConstantsBuffer    = builder.GetResources().ReserveCB(localBufferSize);
 				data.depthBufferObject      = builder.DepthTarget(depthBufferTarget);
 				data.depthPassTarget        = depthBufferTarget;
 
 				builder.AddDataDependency(passes);
+				builder.Requires(DEPTHPREPASS);
 			},
 			[=](DepthPass& data, const ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
@@ -1169,12 +1238,7 @@ namespace FlexKit
 				auto pipelineState = resources.GetPipelineState(DEPTHPREPASS, allocator);
 				auto& dsLayout = pipelineState->GetInterface()->GetDescriptorSetLayout(0);
 
-				DescriptorSet heap{
-					ctx,
-					dsLayout,
-					allocator };
-
-				heap.NullFill(ctx);
+				ctx.BeginEvent_DEBUG("Z-PrePass");
 
 				ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS, allocator));
 
@@ -1185,18 +1249,16 @@ namespace FlexKit
 					resources.GetResource(data.depthBufferObject));
 
 				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
-				ctx.SetGraphicsDescriptorSet(0, heap);
-				ctx.SetGraphicsConstantBufferView(1, cameraConstants);
-				ctx.SetGraphicsConstantBufferView(3, cameraConstants);
-				ctx.NullGraphicsConstantBufferView(6);
+				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
 
-				ctx.BeginEvent_DEBUG("Z-PrePass");
 
 				TriMesh* prevMesh = nullptr;
-				for (const auto& draw : data.draws)
+				for (const BrushEntry& draw : data.draws)
 				{
-					auto& meshes = draw->meshes;
+					const float4x4 wt = GetWT(draw->node);
+					ctx.SetGraphicsConstantValue(0, 16, wt);
 
+					const auto& meshes = draw->meshes;
 					for(size_t I = 0; I < meshes.size(); I++)
 					{
 						const uint8_t lodIdx	= draw.LODlevel[I];
@@ -1209,17 +1271,20 @@ namespace FlexKit
 
 							ctx.AddIndexBuffer(triMesh, lodIdx);
 							ctx.AddVertexBuffers(triMesh,
-								triMesh->GetHighestLoadedLodIdx(),
+								lodIdx,
 								{ VERTEXBUFFER_TYPE::POSITION });
 						}
 
-						auto constants = ConstantBufferDataSet{ draw->GetConstants(), data.entityConstantsBuffer };
-						ctx.SetGraphicsConstantBufferView(2, constants);
-						ctx.DrawIndexedInstanced(lod.GetIndexCount());
+
+                        if (lod.subMeshes.size() < 2)
+						    ctx.DrawIndexedInstanced(lod.GetIndexCount());
+						else
+						    for (auto& sm : lod.subMeshes)
+						        ctx.DrawIndexedInstanced(sm.IndexCount, sm.BaseIndex);
 					}
 				}
 
-			ctx.EndEvent_DEBUG();
+			    ctx.EndEvent_DEBUG();
 			});
 
 		return pass;

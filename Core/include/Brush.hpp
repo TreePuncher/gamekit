@@ -14,7 +14,7 @@ namespace FlexKit
 
 	struct Brush
 	{
-		NodeHandle							Node		= InvalidHandle; // 4
+		NodeHandle							node		= InvalidHandle; // 4
 		MaterialHandle						material	= InvalidHandle; // 4
 		uint32_t							brushID		= 0xffffffff; // 4
 		Vector<TriMeshHandle, 16, uint8_t>	meshes;
@@ -35,18 +35,21 @@ namespace FlexKit
 			float		roughness	= 0.5f;
 			float		anisotropic	= 0.0f;
 			float		metallic	= 0.0f;
-			uint32_t	textureCount = 0;
-			uint32_t	textureChannels = 0;
+
+			uint32_t			textureCount	= 0;
+			uint32_t			textureChannels = 0;
 		};	// 32 
 
 		struct alignas(256) VConstantsLayout
 		{
 			float4x4_GPU		Transform;
 			MaterialProperties	MP;
+			
 			uint4				textureHandles[16];
 		};
 
-		VConstantsLayout GetConstants() const;
+		VConstantsLayout	GetConstants() const;
+		MaterialProperties	GetPBRConstants() const;
 	};
 
 	constexpr const Type_t BRUSH_ID = GetTypeGUID(Brush);

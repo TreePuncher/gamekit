@@ -520,11 +520,11 @@ UpdateSBTData& RTExperimentState::UpdateSBT(FrameGraph& frameGraph, GatherPasses
 								{1, 0, 0, 0},
 								{0, 1, 0, 0},
 								{0, 0, 1, 0} },
-							.InstanceID		= (UINT)idx,
-							.InstanceMask	= flag,
-							.InstanceContributionToHitGroupIndex = (uint32_t)idx,
-							.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
-							.AccelerationStructure = resources.GetDevicePointer(blas),
+							.InstanceID								= (UINT)idx,
+							.InstanceMask							= flag,
+							.InstanceContributionToHitGroupIndex	= (uint32_t)idx,
+							.Flags									= D3D12_RAYTRACING_INSTANCE_FLAG_FORCE_OPAQUE,
+							.AccelerationStructure					= resources.GetDevicePointer(blas),
 						};
 
 						instances.push_back(instance);
@@ -570,11 +570,11 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 			D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{
 						.DestAccelerationStructureData = resources.GetDevicePointer(data.tlas),
 						.Inputs{
-							.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
-							.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
-							.NumDescs = (UINT)passes.GetData().GetPass(RTPass).size(),
-							.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY,
-							.InstanceDescs = sceneInstances
+							.Type			= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL,
+							.Flags			= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS::D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD,
+							.NumDescs		= (UINT)passes.GetData().GetPass(RTPass).size(),
+							.DescsLayout	= D3D12_ELEMENTS_LAYOUT_ARRAY,
+							.InstanceDescs	= sceneInstances
 						},
 						.ScratchAccelerationStructureData = resources.GetDevicePointer(data.scratchPad),
 			};
@@ -597,7 +597,7 @@ TracePassData& RTExperimentState::PathTracePass(FrameGraph& frameGraph, GatherPa
 								{ DeviceSyncPoint::Sync_Copy, DeviceSyncPoint::Sync_Raytracing }),
 				.tlas = builder.ReadTransition(
 					            updateTLAS.tlas, DeviceAccessState::DASACCELERATIONSTRUCTURE_READ,
-					{ DeviceSyncPoint::Sync_BuildRaytracingAccelerationStructure, DeviceSyncPoint::Sync_Raytracing }),
+					            { DeviceSyncPoint::Sync_BuildRaytracingAccelerationStructure, DeviceSyncPoint::Sync_Raytracing }),
 				.traceBuffer = builder.AcquireVirtualResource(
 								GPUResourceDesc::UAVTexture(
 								{ 800, 600 }, DeviceFormat::R16G16B16A16_FLOAT, false),	DeviceAccessState::DASUAV),
