@@ -889,7 +889,7 @@ namespace FlexKit
 
 		if(occlusionCulling)
 		{
-			auto& occlutionResults =
+			auto& occlusionResults =
 				clusteredRender.OcclusionCulling(
 					dispatcher,
 					frameGraph,
@@ -898,19 +898,15 @@ namespace FlexKit
 					passHistories,
 					depthTarget.Get(),
 					temporary);
-            if (0)
-			clusteredRender.FillGBuffer2(
+			
+		    clusteredRender.FillGBuffer2(
 					dispatcher,
 					frameGraph,
-					passes,
-					camera,
 					gbufferPass,
-					depthTarget.Get(),
-                    pbrConstants,
-					*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
-					animationResources,
+				    occlusionResults,
 					temporary);
 		}
+
 		/*
 		ExtraGBufferPassInputs extraGPassInputs{
 			.frameGraph		= frameGraph,

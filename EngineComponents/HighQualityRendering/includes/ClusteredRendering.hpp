@@ -133,11 +133,12 @@ namespace FlexKit
 
 	struct GBufferPass
 	{
-		GBuffer&							gbuffer;
-		const GatherPassesTask&				passes;
-		const CameraHandle					camera;
+		GBuffer&					gbuffer;
+		const GatherPassesTask&		passes;
+		const CameraHandle			camera;
 
-		PassHistory*						history;
+		const ResourceAllocation*	animationResources;
+		PassHistory*				history;
 
 		FrameResourceHandle entityConstants;
 
@@ -150,6 +151,11 @@ namespace FlexKit
 		FrameResourceHandle predicateBufferObject;
 	};
 
+	struct GBufferPass2
+	{
+		GBufferPass*					pass1				= nullptr;
+		struct OcclusionCullingResults*	occlusionResults	= nullptr;
+	};
 
 	struct LightBufferUpdate 
 	{
@@ -245,12 +251,14 @@ namespace FlexKit
 
 	struct OcclusionCullingResults
 	{
-		GatherPassesTask&				passes;
-		PassHistory&					occlusionHistory;
+		GatherPassesTask&	passes;
+		PassHistory&		occlusionHistory;
 
-		FrameResourceHandle				occlusionPrev;
-		FrameResourceHandle				occlusionStaging;
-		FrameResourceHandle				depthBuffer;
+		FrameResourceHandle	occlusionPrev;
+		FrameResourceHandle	occlusionStaging;
+		FrameResourceHandle	depthBuffer;
+
+		FrameResourceHandle	pass2Predicates = InvalidHandle;
 	};
 
 
@@ -356,16 +364,11 @@ namespace FlexKit
 								ThreadSafeAllocator&			temporary);
 
 
-		GBufferPass& FillGBuffer2(
+		GBufferPass2& FillGBuffer2(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
-								GatherPassesTask&				passes,
-								const CameraHandle				camera,
 								GBufferPass&					pass1,
-								ResourceHandle					depthTarget,
-			                    UpdateTask&						pbrConstants,
-								PassHistory&					passHistory,
-								const ResourceAllocation&		animationResources,
+			                    OcclusionCullingResults&		occlusionPass,
 								iAllocator*						allocator);
 
 

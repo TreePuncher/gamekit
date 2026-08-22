@@ -464,7 +464,12 @@ namespace dx_Internal
 		if (res == std::end(pendingBarriers))
 			pendingBarriers.push_back(barrier);
 		else
-			(*res) = barrier;
+		{
+			Barrier& prior = (*res);;
+			prior.accessAfter	= barrier.accessAfter;
+			prior.dst			= barrier.dst;
+			prior.type			= BarrierType::Global;
+		}
 	}
 
 
@@ -2328,11 +2333,15 @@ namespace dx_Internal
 
 	void dxDirectContext::SetPredicate(bool Enabled, ResourceHandle res, size_t Offset, PredicateOp op)
 	{
+
 		if (Enabled)
+		{
+			FlushBarriers();
 			DeviceContext->SetPredication(
 				renderSystem->GetDeviceResource(res).As<ID3D12Resource>(),
-				Offset * 8, 
+				Offset * 8,
 				op == PredicateOp::NotEqualZero ? D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
+		}
 		else
 			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 	}

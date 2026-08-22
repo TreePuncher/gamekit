@@ -111,12 +111,15 @@ struct HighQualityRenderingState : ExampleState
         ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
         auto res = worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, GetAllocatorMT(), GetTempAllocatorMT());
 
+        OutputDebugStringA("Submission Begin\n");
+
         return nullptr;
     }
 
     void PostDraw(EngineCore& core, double dt) override final
     {
         worldRender.passHistories.GetHistory(GetRenderSystem(), activeCamera)->EndFrame();
+        OutputDebugStringA("Frame End\n");
     }
 
 

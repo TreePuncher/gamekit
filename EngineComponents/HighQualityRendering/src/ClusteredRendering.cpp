@@ -1673,10 +1673,11 @@ namespace FlexKit
 
 		auto& pass = frameGraph.AddNode<GBufferPass>(
 			GBufferPass{
-				gbuffer,
-				passes,
-				camera,
-				passHistory,
+				.gbuffer			= gbuffer,
+				.passes				= passes,
+				.camera				= camera,
+				.animationResources = &animationResources,
+				.history			= passHistory,
 			},
 			[&](FrameGraphNodeBuilder& builder, GBufferPass& data)
 			{
@@ -1712,9 +1713,6 @@ namespace FlexKit
 					float t;
 					uint2 WH;
 				};
-
-				const size_t entityBufferSize =
-					AlignedSize<Brush::VConstantsLayout>();
 
 				constexpr size_t passBufferSize =
 					AlignedSize<Camera::ConstantBuffer>() +
@@ -1972,42 +1970,167 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GBufferPass& ClusteredRender::FillGBuffer2(
-		UpdateDispatcher&				dispatcher,
-		FrameGraph&						frameGraph,
-		GatherPassesTask&				passes,
-		const CameraHandle				camera,
-		GBufferPass&					gbuffer,
-		ResourceHandle					depthTarget,
-		UpdateTask&						pbrConstants,
-		PassHistory&					passHistory,
-		const ResourceAllocation&		animationResources,
-		iAllocator*						allocator)
+	GBufferPass2& ClusteredRender::FillGBuffer2(
+			UpdateDispatcher&			dispatcher,
+			FrameGraph&					frameGraph,
+			GBufferPass&				pass1,
+			OcclusionCullingResults&	occlusionPass,
+			iAllocator*					allocator)
 	{
-		struct Shared
-		{
+		PassDescription<GBufferPass2, const BrushEntry> pass{
+			.sharedData = GBufferPass2{
+				.pass1				= &pass1,
+				.occlusionResults	= &occlusionPass
 
-		} shared;
-
-		PassDescription<Shared, const BrushEntry> pass{
-			.sharedData = shared,
-			.getPVS		= []() -> std::span<const BrushEntry> { return {}; }
+			},
+			.getPVS = [&pass1]() -> std::span<const BrushEntry> { return pass1.passes.GetData().GetPass(GBufferStaticPassID); }
 		};
 
 		auto setup =
-			[&](FrameGraphNodeBuilder& builder, Shared& data)
+			[&](FrameGraphNodeBuilder& builder, GBufferPass2& data)
 			{
-				builder.AddDataDependency(pbrConstants);
+				builder.WriteTransition(pass1.depthBufferTargetObject, DASDEPTHBUFFERWRITE);
+				builder.WriteTransition(pass1.AlbedoTargetObject, DASRenderTarget);
+				builder.WriteTransition(pass1.IOR_ANISOTargetObject, DASRenderTarget);
+				builder.WriteTransition(pass1.MRIATargetObject, DASRenderTarget);
+				builder.WriteTransition(pass1.NormalTargetObject, DASRenderTarget);
+				builder.ReadTransition(occlusionPass.pass2Predicates, DASINDIRECTARGS, { Sync_Compute, Sync_ExecuteIndirect });
 			};
 
+		using iter_t = std::span<const BrushEntry>::iterator;
 		auto draw =
-			[](const auto begin, const auto end, std::span<const BrushEntry> pvs, Shared& data, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
+			[](iter_t begin, iter_t end, std::span<const BrushEntry> pvs, GBufferPass2& shared, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
+				ResourceHandle predicates = resources.GetResource(shared.occlusionResults->pass2Predicates);
+				auto& current = shared.occlusionResults->occlusionHistory.Current();
+				auto& previous = shared.occlusionResults->occlusionHistory.PreviousHistory();
+				MaterialComponent& materials = MaterialComponent::GetComponent();
+
+				struct ForwardDrawConstants
+				{
+					float LightCount;
+					float t;
+					uint2 WH;
+				};
+
+				constexpr size_t passBufferSize =
+					AlignedSize<Camera::ConstantBuffer>() +
+					AlignedSize<ForwardDrawConstants>();
+
+				auto passConstantBuffer = resources.ReserveCB(passBufferSize);
+				const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(shared.pass1->camera), passConstantBuffer };
+
+				static auto* gpass = resources.GetPipelineState(GBUFFERPASSSTATIC, allocator);
+				ctx.SetPipelineState(gpass);
+				ctx.SetInputPrimitive(INPUTPRIMITIVETRIANGLELIST);
+
+				// Setup pipeline resources
+				ctx.SetScissorAndViewports(
+					{
+						shared.pass1->gbuffer.albedo,
+						shared.pass1->gbuffer.MRIA,
+						shared.pass1->gbuffer.normal,
+					});
+
+				RenderTargetList renderTargets = {
+					shared.pass1->gbuffer.albedo,
+					shared.pass1->gbuffer.MRIA,
+					shared.pass1->gbuffer.normal,
+				};
+
+				ctx.SetRenderTargets(
+					renderTargets,
+					true,
+					resources.GetResource(shared.pass1->depthBufferTargetObject));
+
+				// Setup Constants
+				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 16);
+
+				ctx.BeginEvent_DEBUG("G-Buffer Pass");
+
+				TriMesh* prevMesh = nullptr;
+				const TriMesh::LOD_Runtime* prevLOD = nullptr;
+
+				for (auto& brush : std::span{begin, end})
+				{
+					if (!brush->meshes.size())
+						continue;
+
+					const auto brushID = brush->brushID;
+
+					if (previous.drawableOffsetMappings.find(brushID) == nullptr)
+						continue;
+
+					const auto& material	= materials[brush->material];
+					const size_t meshCount	= brush->meshes.size();
+
+					const uint32_t brushIdx		= brush.brush->brushID;
+				    const uint32_t predicateIdx = 2 * current.GetQueryIdx(brushIdx);
+
+					ctx.SetPredicate(true, predicates, predicateIdx, PredicateOp::EqualZero);
+
+					const float4x4 wt = GetWT(brush->node);
+					ctx.SetGraphicsConstantValue(0, 16, &wt);
+
+					for (size_t J = 0; J < meshCount; J++)
+					{
+						auto	mesh	= brush->meshes[J];
+						auto*	triMesh = GetMeshResource(mesh);
+						auto	lodIdx	= brush.LODlevel[J];
+						auto	lod		= &triMesh->lods[lodIdx];
+
+						if (triMesh != prevMesh || prevLOD != lod)
+						{
+							prevMesh = triMesh;
+							prevLOD = lod;
+
+							ctx.AddIndexBuffer(triMesh, lodIdx);
+							ctx.AddVertexBuffers(
+								triMesh,
+								lodIdx,
+								{
+									VERTEXBUFFER_TYPE::POSITION,
+									VERTEXBUFFER_TYPE::NORMAL,
+									VERTEXBUFFER_TYPE::TANGENT,
+									VERTEXBUFFER_TYPE::UV,
+								});
+						}
+
+						const auto&		submeshes		= lod->subMeshes;
+						const size_t	subMeshesEnd	= submeshes.size();
+
+						for (size_t K = 0; K < subMeshesEnd; K++)
+						{
+							auto GetMaterial = [&](size_t idx)
+								{
+									if (idx < material.subMaterials.size())
+										return (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
+									else
+										return material;
+								};
+
+							const auto	subMesh		= submeshes[K];
+							const auto& subMaterial = GetMaterial(K);
+
+							if (subMaterial.textureDescriptors.size != 0)
+								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
+
+							const DevicePointer pbrConstants = GetProperty<DevicePointer>(material, PBRConstantsID).value_or(0);
+							ctx.SetGraphicsConstantBufferView(1, pbrConstants);
+
+							ctx.DrawIndexed(
+								subMesh.IndexCount,
+								subMesh.BaseIndex);
+						}
+					}
+				}
+
 			};
 
-		frameGraph.AddPass(pass, setup, draw);
+		auto& passObject = frameGraph.AddPass(pass, setup, draw);
 
-		return gbuffer;
+		return passObject.shared;
 	}
 
 
@@ -2045,8 +2168,8 @@ namespace FlexKit
 				builder.Requires(OCCLUSIONQUERYPSO);
 				builder.Requires(OCCLUSIONINSTANCEDQUERYPSO);
 
-				data.occlusionPrev		= builder.IndirectArgs(history->PreviousHistory().occlusionResults);
-				data.depthBuffer		= builder.WriteTransition(builder.GetHandle(depthBuffer), DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
+				data.occlusionPrev	= builder.IndirectArgs(history->PreviousHistory().occlusionResults);
+				data.depthBuffer	= builder.WriteTransition(builder.GetHandle(depthBuffer), DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
 			};
 
 		auto drawFN =
@@ -2072,17 +2195,24 @@ namespace FlexKit
 				ctx.SetGraphicsPipelineState(OCCLUSIONQUERYPSO, threadLocalAllocator);
 				ctx.SetRenderTargets({}, true, depthBuffer);
 				ctx.SetScissorAndViewports({ depthBuffer });
+				ctx.SetPredicate(false);
+
 
 				for (auto&& [idx, draw] : enumerate(std::span(begin, end)))
 				{
 					const uint32_t brushID = draw->brushID;
+					const uint32_t queryID = current.GetQueryIdx(brushID);
+
 					uint32_t previousID;
 					if (auto res = history.QueryPrevious(brushID); !res)
+					{
+						ctx.BeginQuery(query, queryID * 2 + 1);
+						ctx.EndQuery(query, queryID * 2 + 1);
 						continue;
+					}
 					else
 						previousID = res.value();
 
-					const uint32_t queryID = current.GetQueryIdx(brushID);
 
 					AABB aabb{};
 
@@ -2122,11 +2252,15 @@ namespace FlexKit
 						FrameResourceHandle tmp;
 						FrameResourceHandle occlusionResults;
 					} staging {
-						.tmp				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE), DASCopyDest),
+						.tmp				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE), DASCopyDest, VirtualResourceScope::Frame),
 						.occlusionResults	= builder.UnorderedAccess(out),
 					};
 
+					passResults.shared.pass2Predicates = staging.tmp;
+
 					builder.DepthRead(depthBuffer);
+					builder.SetResourceOutState(staging.tmp, DASUAV);
+
 					return staging;
 			    },
 			    [&, history](const auto& staging, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
@@ -2141,6 +2275,7 @@ namespace FlexKit
 					ctx.SetComputeUnorderedAccessView(1, resources.UAV(staging.occlusionResults, ctx, DeviceSyncPoint::Sync_Copy, Sync_Compute));
 					ctx.Dispatch({ current.counter / 32 + current.counter % 32 != 0, 1, 1 });
 			    });
+
 
 		return passResults.shared;
 	}

@@ -12,5 +12,10 @@
 void Reduce(const uint3 ID : SV_DispatchThreadID)
 {
 	const uint x = ID.x;
-	dest[x] = source[x * 2 + 0] | source[x * 2 + 1];
+
+	uint64_t a = source[x * 2 + 0];
+	uint64_t b = source[x * 2 + 1];
+	
+	dest[x] = a | b;
+	source[x * 2] = !a & b;
 }

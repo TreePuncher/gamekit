@@ -1333,6 +1333,8 @@ namespace FlexKit
 
 		FrameResourceHandle	IndirectArgs		(ResourceHandle);
 
+		void SetResourceOutState(FrameResourceHandle, DeviceAccessState finalState);
+
 		FrameResourceHandle	AcquireResourceHandle(DeviceAccessState, DeviceLayout, PoolAllocatorInterface* = nullptr);
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, PoolAllocatorInterface*, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);

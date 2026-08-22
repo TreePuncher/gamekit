@@ -657,6 +657,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void FrameGraphNodeBuilder::SetResourceOutState(FrameResourceHandle resource, DeviceAccessState finalState)
+	{
+		if (resource == InvalidHandle)
+			return;
+
+		auto resObject = resources->GetResourceObject(resource);
+		resObject->access = finalState;
+	}
+
+
+	/************************************************************************************************/
+
+
 	DeviceLayout GuessLayoutFromAccess(DeviceAccessState access)
 	{
 		switch (access)
@@ -1418,8 +1431,8 @@ namespace FlexKit
 		if(barriers.size())
 			barriers.front()->JoinLocal();
 
-		renderSystem->EndFrame();
 		UpdateResourceFinalState();
+		renderSystem->EndFrame();
 	}
 
 
