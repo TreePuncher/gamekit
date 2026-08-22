@@ -113,8 +113,11 @@ namespace FlexKit
     }
 
 
-    void BaseExampleState::PostDrawUpdate(FlexKit::EngineCore& core, double dt)
+    void BaseExampleState::PostDrawUpdate(EngineCore& core, double dt)
     {
+		if (exampleState)
+			exampleState->PostDraw(core, dt);
+
 		t += dt;
 	    renderWindow->Present();
 	    core.RenderSystem->ResetVertexBuffer(vBuffer);

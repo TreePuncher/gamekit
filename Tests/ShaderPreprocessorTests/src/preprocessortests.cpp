@@ -24,6 +24,7 @@ static bool RootSignatureDescriptorSetTest()
 [[fk::DescriptorSet(CBV(num=10, flags=static , visibility = pixel | vertex) SRV(num=3) UAV(num=4))]]
 [[fk::DescriptorSet(SRVTexture(num=3))]]
 [[fk::DescriptorSet(SRVTexture(num=3))]]
+[[fk::UAVStructured(id=uav0, binding=0, type=uint64_t)]]
 
 [[fk::PushConstants(num=4)]] 
 {
@@ -34,6 +35,7 @@ static bool RootSignatureDescriptorSetTest()
 {
 	float4x4 View;
 };
+
 
 struct VIN
 {

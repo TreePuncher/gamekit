@@ -1077,12 +1077,13 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsDescriptorSet(size_t idx, const DescriptorSet& IDH)
+	void dxDirectContext::SetGraphicsDescriptorSet(size_t slot, const DescriptorSet& IDH)
 	{
 		if (!CurrentGraphicsRootSig())
 			return;
 
 		auto& impl = dxDescriptorSet::GetImpl(IDH);
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::DescriptorSet);
 		DeviceContext->SetGraphicsRootDescriptorTable((UINT)idx, impl);
 	}
 
@@ -1157,7 +1158,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetGraphicsUnorderedAccessView(size_t idx, ResourceHandle UAVresource, size_t offset)
+	void dxDirectContext::SetGraphicsUnorderedAccessView(size_t slot, ResourceHandle UAVresource, size_t offset)
 	{
 		auto resource = renderSystem->GetDeviceResource(UAVresource).As<ID3D12Resource>();
 
@@ -1165,7 +1166,7 @@ namespace dx_Internal
 		if(debugCommandList)
 			debugCommandList->AssertResourceState(resource, D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 #endif
-
+		const uint32_t idx = CurrentGraphicsRootSig()->GetIndex(slot, RootSignature::SlotType::UAV);
 		DeviceContext->SetGraphicsRootUnorderedAccessView((UINT)idx, resource->GetGPUVirtualAddress() + offset);
 	}
 
@@ -2325,11 +2326,11 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxDirectContext::SetPredicate(bool Enabled, ResourceHandle handle, size_t Offset, PredicateOp op)
+	void dxDirectContext::SetPredicate(bool Enabled, ResourceHandle res, size_t Offset, PredicateOp op)
 	{
 		if (Enabled)
 			DeviceContext->SetPredication(
-				renderSystem->GetDeviceResource(handle).As<ID3D12Resource>(),
+				renderSystem->GetDeviceResource(res).As<ID3D12Resource>(),
 				Offset * 8, 
 				op == PredicateOp::NotEqualZero ? D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO : D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 		else

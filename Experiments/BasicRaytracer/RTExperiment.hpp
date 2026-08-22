@@ -85,7 +85,7 @@ struct RTExperimentState final : FlexKit::FrameworkState
 	FlexKit::TriMeshHandle			roomMesh		= FlexKit::InvalidHandle;
 	FlexKit::TriMeshHandle			lightMesh		= FlexKit::InvalidHandle;
 
-	dx_Internal::MemoryPoolAllocator gpuAllocator;
+	dx_Internal::dxMemoryPoolAllocator gpuAllocator;
 
 	FlexKit::DepthBuffer			depthBuffer;
 	FlexKit::PersistentAllocator	persistent;

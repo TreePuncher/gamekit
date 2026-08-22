@@ -147,6 +147,7 @@ namespace FlexKit
 		FrameResourceHandle IOR_ANISOTargetObject;	// RGBA8
 
 		FrameResourceHandle depthBufferTargetObject;
+		FrameResourceHandle predicateBufferObject;
 	};
 
 
@@ -245,10 +246,10 @@ namespace FlexKit
 	struct OcclusionCullingResults
 	{
 		GatherPassesTask&				passes;
-		BrushConstants&					brushConstants;
 		PassHistory&					occlusionHistory;
 
-		FrameResourceHandle				occlussionResults;
+		FrameResourceHandle				occlusionPrev;
+		FrameResourceHandle				occlusionStaging;
 		FrameResourceHandle				depthBuffer;
 	};
 
@@ -280,6 +281,7 @@ namespace FlexKit
 
 	constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
 
+	constexpr PSOHandle OCCLUSIONQUERYREDUCEPSO			= PSOHandle(GetTypeGUID(OCCLUSIONQUERYREDUCEPSO));
 	constexpr PSOHandle OCCLUSIONQUERYPSO				= PSOHandle(GetTypeGUID(OCCLUSIONQUERYPSO));
 	constexpr PSOHandle OCCLUSIONINSTANCEDQUERYPSO		= PSOHandle(GetTypeGUID(OCCLUSIONINSTANCEDQUERYPSO));
 
@@ -347,7 +349,6 @@ namespace FlexKit
 		OcclusionCullingResults& OcclusionCulling(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
-								BrushConstants&					brushConstants,
 								GatherPassesTask&				passes,
 								CameraHandle					camera,
 								PassHistoryTable&				occlusionTable,
@@ -362,7 +363,7 @@ namespace FlexKit
 								const CameraHandle				camera,
 								GBufferPass&					pass1,
 								ResourceHandle					depthTarget,
-								BrushConstants&					entityConstants,
+			                    UpdateTask&						pbrConstants,
 								PassHistory&					passHistory,
 								const ResourceAllocation&		animationResources,
 								iAllocator*						allocator);
@@ -440,6 +441,7 @@ namespace FlexKit
 
 		static LoadPipelineStateRes CreateOcclusionQueryPSO				(IRenderSystem& RS, iAllocator&);
 		static LoadPipelineStateRes CreateOcclusionQueryInstancedPSO	(IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateOcclusionCullingReducePSO		(IRenderSystem& RS, iAllocator&);
 
 		static LoadPipelineStateRes CreateLight_DEBUGARGSVIS_PSO    (IRenderSystem& RS, iAllocator&);
 		static LoadPipelineStateRes CreateLightBVH_PHASE1_PSO       (IRenderSystem& RS, iAllocator&);

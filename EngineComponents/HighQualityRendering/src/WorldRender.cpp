@@ -666,12 +666,14 @@ namespace FlexKit
 	WorldRender::WorldRender(IRenderSystem& IN_renderSystem, iAllocator* persistent, const WorldRenderOptions& options, const PoolSizes& poolSizes) :
 			renderSystem				{ IN_renderSystem },
 
-			UAVPool						{ nullptr }, //{ renderSystem, poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent },
-			RTPool						{ nullptr }, //{ renderSystem, poolSizes.RTPoolByteSize, DefaultBlockSize,
-											//renderSystem.Features().resourceHeapTier == ResourceHeapTier::HeapTier2 ?
-											//	DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget, persistent },
+			UAVPool						{ renderSystem.CreatePoolAllocator(poolSizes.UAVPoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVBuffer, persistent) },
+			RTPool						{ renderSystem.CreatePoolAllocator(
+				                            poolSizes.RTPoolByteSize, DefaultBlockSize,
+				                                renderSystem.GetFeatures().resourceHeapTier == ResourceHeapTier::HeapTier2 ?
+											        DeviceHeapFlags::UAVTextures | DeviceHeapFlags::RenderTarget : DeviceHeapFlags::RenderTarget,
+				                                persistent) },
 
-			UAVTexturePool				{ nullptr }, // { renderSystem, poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent },
+			UAVTexturePool				{ renderSystem.CreatePoolAllocator(poolSizes.UAVTexturePoolByteSize, DefaultBlockSize, DeviceHeapFlags::UAVTextures, persistent) },
 
 			timeStats					{ renderSystem.CreateTimeStampQuery(256) },
 			timingReadBack				{ renderSystem.CreateReadBackBuffer(512) }, 
@@ -776,12 +778,23 @@ namespace FlexKit
 
 	void WorldRender::Release()
 	{
+		
+		UAVPool->Release();
+	    RTPool->Release();
+		UAVTexturePool->Release();
+
 		if(clusterBuffer != InvalidHandle)
 			renderSystem.ReleaseResource(clusterBuffer);
 	}
 
 
-	DrawOutputs WorldRender::DrawScene(UpdateDispatcher& dispatcher, FrameGraph& frameGraph, DrawSceneDescription& drawSceneDesc, WorldRender_Targets targets, iAllocator* persistent, ThreadSafeAllocator& temporary)
+	DrawOutputs WorldRender::DrawScene(
+		UpdateDispatcher&		dispatcher,
+		FrameGraph&				frameGraph,
+		DrawSceneDescription&	drawSceneDesc,
+		WorldRender_Targets		targets,
+		iAllocator*				persistent,
+		ThreadSafeAllocator&	temporary)
 	{
 		ProfileFunction();
 
@@ -873,20 +886,19 @@ namespace FlexKit
 				occlusionCulling ? passHistories.GetHistory(renderSystem, drawSceneDesc.camera) : nullptr,
 				animationResources,
 				temporary);
-        /*
+
 		if(occlusionCulling)
 		{
 			auto& occlutionResults =
 				clusteredRender.OcclusionCulling(
 					dispatcher,
 					frameGraph,
-					staticConstants,
 					passes,
 					camera,
 					passHistories,
 					depthTarget.Get(),
 					temporary);
-
+            if (0)
 			clusteredRender.FillGBuffer2(
 					dispatcher,
 					frameGraph,
@@ -894,11 +906,12 @@ namespace FlexKit
 					camera,
 					gbufferPass,
 					depthTarget.Get(),
-					staticConstants,
+                    pbrConstants,
 					*passHistories.GetHistory(renderSystem, drawSceneDesc.camera),
 					animationResources,
 					temporary);
 		}
+		/*
 		ExtraGBufferPassInputs extraGPassInputs{
 			.frameGraph		= frameGraph,
 			.dispatcher		= dispatcher,

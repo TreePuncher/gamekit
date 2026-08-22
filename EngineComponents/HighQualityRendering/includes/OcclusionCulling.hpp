@@ -12,27 +12,16 @@ namespace FlexKit
 		OcclusionQueries(
 			QueryHandle			IN_occlusionQueries,
 			ResourceHandle		IN_occlusionResults,
-			iAllocator&			allocator	) :
-				occlusionQueries		{ IN_occlusionQueries },
-				occlusionResults		{ IN_occlusionResults },
-				drawableOffsetMappings	{ allocator } {}
+			iAllocator&			IN_allocator);
 
 		~OcclusionQueries();
 
 							OcclusionQueries	(const OcclusionQueries&)	= delete;
 		OcclusionQueries&	operator =			(OcclusionQueries& rhs)		= delete;
 
-		OcclusionQueries(OcclusionQueries&& rhs) :
-			counter				{ std::exchange(rhs.counter, 0) },
-			occlusionQueries	{ std::exchange(rhs.occlusionQueries, InvalidHandle) },
-			occlusionResults	{ std::exchange(rhs.occlusionResults, InvalidHandle) } {}
+		OcclusionQueries(OcclusionQueries&& rhs) noexcept;
 
-		OcclusionQueries& operator = (OcclusionQueries&& rhs)
-		{
-			counter				= std::exchange(rhs.counter, 0);
-			occlusionQueries	= std::exchange(rhs.occlusionQueries, InvalidHandle);
-			occlusionResults	= std::exchange(rhs.occlusionResults, InvalidHandle);
-		}
+		OcclusionQueries& operator = (OcclusionQueries&& rhs) noexcept;
 
 		uint32_t GetQueryIdx(uint32_t);
 
@@ -67,7 +56,7 @@ namespace FlexKit
 		void ResetAll();
 
 		HashTable<PassHistory, uint32_t>	passState;
-		iAllocator& allocator;
+		iAllocator&							allocator;
 	};
 }
 

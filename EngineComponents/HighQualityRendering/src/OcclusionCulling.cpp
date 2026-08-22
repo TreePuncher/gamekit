@@ -3,6 +3,18 @@
 
 namespace FlexKit
 {
+	OcclusionQueries::OcclusionQueries(
+		QueryHandle			IN_occlusionQueries,
+		ResourceHandle		IN_occlusionResults,
+		iAllocator&			allocator) :
+		occlusionQueries{ IN_occlusionQueries },
+		occlusionResults{ IN_occlusionResults },
+		drawableOffsetMappings{ allocator }
+	{
+		IRenderSystem::GetInstance().SetDebugName(IN_occlusionResults, "OcclusionResultsBuffer");
+	}
+
+
 	OcclusionQueries::~OcclusionQueries()
 	{
 		if (occlusionQueries != InvalidHandle)
@@ -13,29 +25,58 @@ namespace FlexKit
 		occlusionQueries = InvalidHandle;
 	}
 
+
+	OcclusionQueries::OcclusionQueries(OcclusionQueries&& rhs) noexcept :
+		counter{ std::exchange(rhs.counter, 0) },
+		occlusionQueries{ std::exchange(rhs.occlusionQueries, InvalidHandle) },
+		occlusionResults{ std::exchange(rhs.occlusionResults, InvalidHandle) } {}
+
+
+	OcclusionQueries& OcclusionQueries::operator = (OcclusionQueries&& rhs) noexcept
+	{
+		counter				= std::exchange(rhs.counter, 0);
+		occlusionQueries	= std::exchange(rhs.occlusionQueries, InvalidHandle);
+		occlusionResults	= std::exchange(rhs.occlusionResults, InvalidHandle);
+
+		return *this;
+	}
+
+
 	uint32_t OcclusionQueries::GetQueryIdx(uint32_t id)
 	{
 		std::scoped_lock sl{ m };
 
-		return *drawableOffsetMappings.Find_Or(id, counter++);
+		auto res = drawableOffsetMappings.find(id);
+		if (res)
+			return *res;
+		else
+		{
+			const uint32_t idx = counter++;
+			drawableOffsetMappings.emplace(id, idx);
+			return idx;
+		}
 	}
+
 
 	void PassHistory::EndFrame()
 	{
-		Current().counter = 0;
 		idx = (idx + 1) % 3;
 		Current().drawableOffsetMappings.clear();
+		Current().counter = 0;
 	}
+
 
 	OcclusionQueries& PassHistory::PreviousHistory()
 	{
 		return occlusionQueryHistory[idx + 2];
 	}
 
+
 	OcclusionQueries& PassHistory::Current()
 	{
 		return occlusionQueryHistory[idx];
 	}
+
 
 	std::optional<uint32_t> PassHistory::QueryPrevious(uint32_t id) const
 	{
@@ -75,6 +116,7 @@ namespace FlexKit
 
 		return res;
 	}
+
 
 	void PassHistoryTable::ResetAll()
 	{

@@ -1,7 +1,9 @@
-#define RS1		"RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT),"		\
-				"RootConstants(num32BitConstants = 16, b0)"
+[[fk::BeginRootSignatureDef(id=rootsig)]]
+[[fk::RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
+[[fk::DescriptorSet(SRVTexture(num=unbounded))]]
+[[fk::UAVStructured(id=occlusionState, binding=0, type=uint)]]
 
-cbuffer vertex : register(b0)
+[[fk::PushConstants(num=16)]] 
 {
 	float4x4 transform;
 };
@@ -10,7 +12,7 @@ float3 GetCubeVert(in const uint vertexID)
 {
 	const int tri	= vertexID / 3;
 	const int idx	= vertexID % 3;
-	const int face = tri / 2;
+	const int face	= tri / 2;
 	const int top	= tri % 2;
 
 	const int dir = face % 3;
@@ -33,7 +35,7 @@ float3 GetCubeVert(in const uint vertexID)
 	return xyz;
 }
 
-[RootSignature(RS1)]
+[[fk::RootSignature(id=rootsig)]]
 float4 VMain(uint vertexID : SV_VertexID) : SV_POSITION
 {
 	return mul(transform, float4(GetCubeVert(vertexID), 1.0f));
@@ -45,7 +47,7 @@ struct InstancedTarget
 	float4 position : SV_POSITION;
 };
 
-[RootSignature(RS1)]
+[[fk::RootSignature(id=rootsig)]]
 InstancedTarget VMainInstanced(uint vertexID : SV_VertexID, float3 pos : POSITION, uint target : TARGET)
 {
 	InstancedTarget OUT;
@@ -56,6 +58,7 @@ InstancedTarget VMainInstanced(uint vertexID : SV_VertexID, float3 pos : POSITIO
 }
 
 [earlydepthstencil]
-void PMain()
+void PMain(const uint target : TARGET)
 {
+	//occlusionState[target * 2] = 0x01;
 }

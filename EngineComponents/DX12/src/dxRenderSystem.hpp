@@ -2058,6 +2058,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual bool						CreatePipelineInterfaceBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) final;
 		[[nodiscard]] virtual void						CreateDescriptorSet(std::byte*, size_t) final;
 		[[nodiscard]] IVertexBufferSet&					CreateVertexBufferSet() final;
+		[[nodiscard]] virtual PoolAllocatorInterface*	CreatePoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) final;
+
 
 		[[nodiscard]] virtual DeviceHeapHandle			CreateHeap(const size_t heapSize, const uint32_t flags);
 		[[nodiscard]] virtual ConstantBufferHandle		CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
@@ -2384,14 +2386,14 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	/************************************************************************************************/
 
 
-	class MemoryPoolAllocator : public PoolAllocatorInterface
+	class dxMemoryPoolAllocator : public PoolAllocatorInterface
 	{
 	public:
-		MemoryPoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
-		MemoryPoolAllocator(const MemoryPoolAllocator& rhs)             = delete;
-		MemoryPoolAllocator& operator =(const MemoryPoolAllocator& rhs) = delete;
+		dxMemoryPoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator);
+		dxMemoryPoolAllocator(const dxMemoryPoolAllocator& rhs)             = delete;
+		dxMemoryPoolAllocator& operator =(const dxMemoryPoolAllocator& rhs) = delete;
 
-		~MemoryPoolAllocator() override;
+		~dxMemoryPoolAllocator() override;
 
 		enum NodeFlags
 		{
@@ -2411,6 +2413,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		uint32_t Flags() const final override;
 
 		void Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) final override;
+		void Release() final override;
+
 		void LockRange(uint64_t begin, uint64_t end);
 
 		void Coalesce();

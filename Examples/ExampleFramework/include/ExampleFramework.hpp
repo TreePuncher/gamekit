@@ -20,6 +20,7 @@ namespace FlexKit
 		virtual struct UpdateTask*	Update(struct EngineCore& core, struct UpdateDispatcher& dispatcher, double dt) { return nullptr; }
 	    virtual void				DrawUI() {}
 		virtual struct UpdateTask*	Draw(class UpdateTask*, EngineCore& core, class UpdateDispatcher& dispatcher, double dt, class FrameGraph& frameGraph) { return nullptr; }
+		virtual void				PostDraw(EngineCore& core, double dt) {}
 		
 	    virtual bool				EventHandler(struct Event& evt) { return false; }
 

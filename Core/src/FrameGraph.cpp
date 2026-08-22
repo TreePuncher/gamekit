@@ -191,6 +191,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FrameGraph::FrameGraph(IRenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
+		resources			{ RS, Temp },
+		threads				{ IN_threads },
+		globalDependencies	{ Temp },
+		computeStateContext	{ resources, IN_threads, RS, Temp },
+		directStateContext	{ resources, IN_threads, RS, Temp },
+		memory				{ Temp },
+		nodes				{ Temp },
+		pendingDirectNodes	{ Temp },
+		pendingComputeNodes	{ Temp },
+		submissions			{ Temp },
+		acquiredResources	{ Temp },
+		pendingAcquire		{ Temp }
+	{
+		nodes.reserve(64);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void FrameGraph::AddMemoryPool(PoolAllocatorInterface& poolAllocator)
 	{
 		resources.AddMemoryPool(&poolAllocator);
@@ -612,6 +633,21 @@ namespace FlexKit
 		{
 			resources->AddResource(handle);
 			return DepthTarget(handle, finalAccessState);
+		}
+		else
+			return frameObject;
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::IndirectArgs(ResourceHandle handle)
+	{
+		if (auto frameObject = AddReadableResource(handle, DeviceAccessState::DASINDIRECTARGS, DeviceLayout::Common); frameObject == InvalidHandle)
+		{
+			resources->AddResource(handle);
+			return IndirectArgs(handle);
 		}
 		else
 			return frameObject;

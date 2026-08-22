@@ -46,30 +46,33 @@ struct HighQualityRenderingState : ExampleState
 
         auto& testObj = AllocateGameObject();
         testObj.AddView<SceneNodeView>(GetZeroedNode());
-        testObj.AddView<MaterialView>(defaultMaterial);
+        auto& testObjMat = testObj.AddView<MaterialView>(defaultMaterial);
         auto& testBrush = testObj.AddView<BrushView>(test);
-        testBrush.SetMaterial(defaultMaterial);
+        testBrush.SetMaterial(testObjMat);
         scene.AddGameObject(testObj);
 
         auto& lightObj = AllocateGameObject();
         lightObj.AddView<SceneNodeView>(GetZeroedNode());
-        lightObj.AddView<MaterialView>(defaultMaterial);
+        auto& lightObjMat = lightObj.AddView<MaterialView>(defaultMaterial);
         auto& lightBrush = lightObj.AddView<BrushView>(light);
-        lightBrush.SetMaterial(defaultMaterial);
+        lightBrush.SetMaterial(lightObjMat);
         scene.AddGameObject(lightObj);
 
         auto& roomObj = AllocateGameObject();
         roomObj.AddView<SceneNodeView>(GetZeroedNode());
-        roomObj.AddView<MaterialView>(defaultMaterial);
-        roomObj.AddView<BrushView>(room);
+        auto& roomObjMat = roomObj.AddView<MaterialView>(defaultMaterial);
+        auto& roomBrush = roomObj.AddView<BrushView>(room);
+        roomBrush.SetMaterial(roomObjMat);
         scene.AddGameObject(roomObj);
 
         auto& suzanneObj = AllocateGameObject();
         suzanneObj.AddView<SceneNodeView>(GetZeroedNode());
-        suzanneObj.AddView<MaterialView>(defaultMaterial);
+        auto& suzanneMat = suzanneObj.AddView<MaterialView>(defaultMaterial);
         auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanne);
-        suzanneBrush.SetMaterial(defaultMaterial);
+        suzanneBrush.SetMaterial(suzanneMat);
         scene.AddGameObject(suzanneObj);
+
+        worldRender.occlusionCulling = true;
     }
 
     ~HighQualityRenderingState()
@@ -109,6 +112,11 @@ struct HighQualityRenderingState : ExampleState
         auto res = worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, GetAllocatorMT(), GetTempAllocatorMT());
 
         return nullptr;
+    }
+
+    void PostDraw(EngineCore& core, double dt) override final
+    {
+        worldRender.passHistories.GetHistory(GetRenderSystem(), activeCamera)->EndFrame();
     }
 
 

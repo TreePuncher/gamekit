@@ -392,10 +392,9 @@ namespace FlexKit
 
 
 	MaterialComponent::MaterialView::MaterialView(GameObject& gameObject, MaterialHandle IN_handle) noexcept :
-		handle{ IN_handle }
+		handle{ GetComponent().CloneMaterial(IN_handle) }
 	{
-		GetComponent().AddRef(handle);
-
+		GetComponent().AddRef(IN_handle);
 		SetMaterialHandle(gameObject, handle);
 	}
 

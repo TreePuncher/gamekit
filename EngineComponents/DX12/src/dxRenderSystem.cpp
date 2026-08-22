@@ -2645,6 +2645,15 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
+	PoolAllocatorInterface* dxRenderSystem::CreatePoolAllocator(size_t heapSize, size_t blockSize, uint32_t flags, iAllocator* allocator)
+	{
+	    return &allocator->allocate<dxMemoryPoolAllocator>(heapSize, blockSize, flags, allocator);
+	}
+
+
+	/************************************************************************************************/
+
+
 	[[nodiscard]] IVertexBufferSet& dxRenderSystem::CreateVertexBufferSet()
 	{
 		return allocator->allocate<dxVertexBufferSet>();
@@ -7495,7 +7504,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	MemoryPoolAllocator::MemoryPoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
+	dxMemoryPoolAllocator::dxMemoryPoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) :
 		blockCount		{ IN_heapSize / IN_blockSize },
 		blockSize		{ IN_blockSize },
 		allocator		{ IN_allocator },
@@ -7513,7 +7522,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	MemoryPoolAllocator::~MemoryPoolAllocator()
+	dxMemoryPoolAllocator::~dxMemoryPoolAllocator()
 	{
 		dxRenderSystem::_GetInstance().ReleaseHeap(heap);
 	}
@@ -7522,7 +7531,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	GPUHeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
+	GPUHeapAllocation dxMemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
 	{
 		ProfileFunction();
 		FK_ASSERT(requestBlockCount < std::numeric_limits<uint32_t>::max());
@@ -7590,7 +7599,7 @@ namespace dx_Internal
 	}
 
 
-	void MemoryPoolAllocator::Coalesce()
+	void dxMemoryPoolAllocator::Coalesce()
 	{
 		const uint64_t completedID = dxRenderSystem::_GetInstance().directFence->GetCompletedValue();
 
@@ -7621,7 +7630,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	AcquireResult MemoryPoolAllocator::Acquire(GPUResourceDesc desc, bool temporary)
+	AcquireResult dxMemoryPoolAllocator::Acquire(GPUResourceDesc desc, bool temporary)
 	{
 		ProfileFunction();
 
@@ -7686,7 +7695,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	AcquireDeferredRes MemoryPoolAllocator::AcquireDeferred(GPUResourceDesc desc, bool temporary)
+	AcquireDeferredRes dxMemoryPoolAllocator::AcquireDeferred(GPUResourceDesc desc, bool temporary)
 	{
 		ProfileFunction();
 
@@ -7748,7 +7757,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	AcquireResult MemoryPoolAllocator::Recycle(ResourceHandle resourceToRecycle, GPUResourceDesc desc)
+	AcquireResult dxMemoryPoolAllocator::Recycle(ResourceHandle resourceToRecycle, GPUResourceDesc desc)
 	{
 		ProfileFunction();
 
@@ -7819,7 +7828,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	uint32_t MemoryPoolAllocator::Flags() const
+	uint32_t dxMemoryPoolAllocator::Flags() const
 	{
 		return flags;
 	}
@@ -7828,7 +7837,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void MemoryPoolAllocator::Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate, const bool allowImmediateReuse)
+	void dxMemoryPoolAllocator::Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate, const bool allowImmediateReuse)
 	{
 		std::scoped_lock localLock{ m };
 
@@ -7861,13 +7870,34 @@ namespace dx_Internal
 
 			allocations.remove_unstable(res);
 		}
+		
+		
 	}
 
 
 	/************************************************************************************************/
 
 
-	void MemoryPoolAllocator::LockRange(uint64_t begin, uint64_t end)
+	void dxMemoryPoolAllocator::Release()
+	{
+		m.lock();
+
+		dxRenderSystem::GetInstance().ReleaseHeap(heap);
+
+		freeRanges.Release();
+		allocations.Release();
+
+		m.unlock();
+
+		auto tmp = allocator;
+		tmp->release(*this);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void dxMemoryPoolAllocator::LockRange(uint64_t begin, uint64_t end)
 	{
 		for (auto& range : freeRanges)
 		{

@@ -2058,6 +2058,8 @@ namespace FlexKit
 
 		virtual AcquireResult		Recycle(ResourceHandle resource, GPUResourceDesc desc) = 0;
 		virtual void				Release(ResourceHandle handle, uint64_t submissionID, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+		virtual void				Release() = 0;
+
 
 		virtual void				LockRange(uint64_t begin, uint64_t end) = 0;
 
@@ -2559,6 +2561,11 @@ namespace FlexKit
 		virtual void SetComputeUnorderedAccessView	(size_t idx, ResourceHandle resource, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void SetComputeConstantValue		(size_t idx, size_t valueCount, const void* data_ptr, size_t offset = 0) IDIRECTCONTEXTDEBUGBODY;
 
+		template<typename TY>
+		void SetComputeConstantValue(size_t idx, size_t valueCount, TY&& data_ref, size_t offset = 0) requires(!std::is_pointer_v<TY>)
+		{
+			SetComputeConstantValue(idx, valueCount, (const void*)&data_ref, offset);
+		}
 
 		virtual void BeginQuery	(QueryHandle query, size_t idx) IDIRECTCONTEXTDEBUGBODY;
 		virtual void EndQuery	(QueryHandle query, size_t idx) IDIRECTCONTEXTDEBUGBODY;
@@ -2646,8 +2653,8 @@ namespace FlexKit
 		virtual void DrawIndexedInstanced	(const size_t IndexCount, const size_t IndexOffet = 0, const size_t BaseVertex = 0, const size_t InstanceCount = 1, const size_t InstanceOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 		virtual void Clear					() IDIRECTCONTEXTDEBUGBODY;
 
-		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset) IDIRECTCONTEXTDEBUGBODY;
-		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset) IDIRECTCONTEXTDEBUGBODY;
+		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, ResourceHandle destination, size_t destOffset = 0) IDIRECTCONTEXTDEBUGBODY;
+		virtual void ResolveQuery			(QueryHandle query, size_t begin, size_t end, DeviceResource_ptr destination, size_t destOffset = 0) IDIRECTCONTEXTDEBUGBODY;
 
 		virtual void ExecuteIndirect		(ResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1) IDIRECTCONTEXTDEBUGBODY;
 		virtual void Dispatch				(const uint3) IDIRECTCONTEXTDEBUGBODY;
@@ -3039,6 +3046,7 @@ namespace FlexKit
 		[[nodiscard]] virtual bool								CreatePipelineInterfaceBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
 	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
 					  virtual void								CreateDescriptorSet(std::byte*, size_t) = 0;
+					  virtual PoolAllocatorInterface*			CreatePoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) { return nullptr; }
 
 					  virtual void								SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler) {}
 	    [[nodiscard]] virtual std::pair<void*, size_t>			OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize = -1) { return {nullptr, 0}; }

@@ -1303,7 +1303,7 @@ namespace FlexKit
 		void AddNodeDependency(FrameGraphNodeHandle node);
 
 
-		FrameGraphNodeHandle	GetNodeHandle() const;
+		FrameGraphNodeHandle GetNodeHandle() const;
 
 		FrameResourceHandle GetHandle(ResourceHandle) const;
 
@@ -1330,6 +1330,8 @@ namespace FlexKit
 
 		FrameResourceHandle	DepthRead			(ResourceHandle);
 		FrameResourceHandle	DepthTarget			(ResourceHandle, DeviceAccessState finalState = DeviceAccessState::DASDEPTHBUFFERWRITE);
+
+		FrameResourceHandle	IndirectArgs		(ResourceHandle);
 
 		FrameResourceHandle	AcquireResourceHandle(DeviceAccessState, DeviceLayout, PoolAllocatorInterface* = nullptr);
 		FrameResourceHandle	AcquireVirtualResource(const GPUResourceDesc& desc, DeviceAccessState, VirtualResourceScope lifeSpan = VirtualResourceScope::Temporary);
@@ -1580,22 +1582,7 @@ namespace FlexKit
 	class FrameGraph
 	{
 	public:
-		FrameGraph(IRenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp) :
-			resources{ RS, Temp },
-			threads{ IN_threads },
-			globalDependencies{ Temp },
-			computeStateContext{ resources, IN_threads, RS, Temp },
-			directStateContext{ resources, IN_threads, RS, Temp },
-			memory{ Temp },
-			nodes{ Temp },
-			pendingDirectNodes{ Temp },
-			pendingComputeNodes{ Temp },
-			submissions{ Temp },
-			acquiredResources{ Temp },
-			pendingAcquire{ Temp }
-		{
-			nodes.reserve(64);
-		}
+		FrameGraph(IRenderSystem& RS, ThreadManager& IN_threads, iAllocator& Temp);
 
 		FrameGraph(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;

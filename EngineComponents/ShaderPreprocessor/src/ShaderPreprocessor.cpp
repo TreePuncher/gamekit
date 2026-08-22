@@ -217,6 +217,16 @@ namespace FlexKit
 
 				continue;
 			}
+			
+			else if (auto res = scn::scan<std::string_view, uint32_t, std::string_view>(match, R"([[fk::UAVStructured(id={:/[[:alnum:]_]+(^,\s)?/n}, binding={}, type={:/[[:alnum:]_]+(^,\s)?/n})]])"); res)
+			{
+				ctx.shaderOffset = endres;
+
+				auto [id, binding, type] = res->values();
+				handler.UAVStructuredRoot(id, binding, type, ctx);
+
+				continue;
+			}
 			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredRW(set={}, binding={}, type={})]])"); res)
 			{
 				ctx.shaderOffset = endres;
@@ -253,7 +263,7 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]]+(^,\s)?/n}, set={}, binding={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]_]+(^,\s)?/n}, set={}, binding={}, type={:/[[:alnum:]_]+(^,\s)?/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 
@@ -262,7 +272,7 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]]+(^,\s)?/n}, binding={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, std::string_view>(match, R"([[fk::StructuredBuffer(id={:/[[:alnum:]_]+(^,\s)?/n}, binding={}, type={:/[[:alnum:]_]+(^,\s)?/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 
@@ -271,8 +281,8 @@ namespace FlexKit
 
 				continue;
 			}
-			//else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[Texture2D(ID={:/[[:alnum:]]+(^,\s)?/n}, binding={}, set={}, type={:/[[:alnum:]]+(^,\s)?/n})]])"); res)
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(id={:/[[:alnum:]]+/n}, binding={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
+			//else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[Texture2D(ID={:/[[:alnum:]_]+(^,\s)?/n}, binding={}, set={}, type={:/[[:alnum:]_]+(^,\s)?/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2D(id={:/[[:alnum:]_]+/n}, binding={}, set={}, type={:/[[:alnum:]_]+/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 				
@@ -281,7 +291,7 @@ namespace FlexKit
 
 				continue;
 			}
-			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2DArray(id={:/[[:alnum:]]+/n}, offset={}, set={}, type={:/[[:alnum:]]+/n})]])"); res)
+			else if (auto res = scn::scan<std::string_view, uint32_t, uint32_t, std::string_view>(match, R"([[fk::Texture2DArray(id={:/[[:alnum:]_]+/n}, offset={}, set={}, type={:/[[:alnum:]_]+/n})]])"); res)
 			{
 				ctx.shaderOffset = endres;
 
@@ -361,7 +371,7 @@ namespace FlexKit
 				handler.LocalRootSignature(id, ctx);
 
 				continue;
-				}
+			}
 			else if (auto res = scn::scan<uint32_t, uint32_t, std::string_view>(match, R"([[fk::AccelerationStructure(binding={}, set={}, id={:[^)]})]])"))
 			{
 				ctx.shaderOffset = endres;
@@ -431,6 +441,12 @@ namespace FlexKit
 			auto line = std::format("cbuffer constants_{0}_{1} : register(b{0}, space{1})", set, binding);
 			ctx.shader.replace(ctx.begin, ctx.end, line);
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+		}
+
+		static void UAVStructuredRoot(std::string_view id, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		{
+			ctx.shader.replace(ctx.begin, ctx.end, "");
+			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
 
 		static void Texture2D(uint32_t set, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
@@ -695,6 +711,59 @@ namespace FlexKit
 			}
 		}
 
+		void UAVStructuredRoot(std::string_view id, uint32_t binding, std::string_view type, PreprocessorContext& ctx)
+		{
+			if (rootSignatures.size() == 0)
+				return;
+
+			RootSignatureDefinition& definition = rootSignatures.back();
+
+			auto checkBindingIsFree = [&]() -> bool
+				{
+					uint32_t idx = 0;
+					for (const RootSignatureEntryTypes entry : definition.entries)
+					{
+						if (entry == RootSignatureEntryTypes::UAV)
+						{
+							if (binding == idx)
+								return false;
+
+							idx++;
+						}
+					}
+
+					return true;
+				};
+
+			if (!checkBindingIsFree())
+			{
+				std::string_view error = "//Root signature binding index already in use!";
+				ctx.shader.replace(ctx.begin, ctx.end, error);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + error.size();
+			}
+			else
+			{
+				uint32_t entrySpace = 0xfffffeff - definition.entries.size();
+
+				while (definition.IsSpaceInUse(entrySpace))
+					entrySpace--;
+
+				definition.spacesInUse.push_back(entrySpace);
+				definition.entries.push_back(RootSignatureEntryTypes::CBV);
+				definition.entrySpace.push_back(entrySpace);
+
+				std::string rootSignatureSection = std::format("UAV(u{0}, space={1}, visibility=SHADER_VISIBILITY_ALL, flags = DATA_STATIC_WHILE_SET_AT_EXECUTE)", binding, entrySpace);
+				if (definition.sections.size())
+					definition.sections += ", ";
+
+				definition.sections += rootSignatureSection;
+
+				std::string line = std::format("RWStructuredBuffer<{2}> {3} : register(u{0}, space{1});", binding, entrySpace, type, id);
+				ctx.shader.replace(ctx.begin, ctx.end, line);
+				ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin) + line.size();
+			}
+		}
+
 		// cbv in descriptor heap
 		static void CBVBinding(uint32_t set, uint32_t binding, PreprocessorContext& ctx)
 		{
@@ -771,6 +840,7 @@ namespace FlexKit
 			ctx.shader.replace(ctx.begin, ctx.end, "");
 			ctx.shaderOffset = std::distance(ctx.shader.begin(), ctx.begin);
 		}
+
 
 		void LocalRootValues(uint32_t numValues, std::string_view rootSigID, PreprocessorContext& ctx)
 		{
