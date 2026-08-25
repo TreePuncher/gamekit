@@ -88,10 +88,10 @@ namespace dx_Internal
 
 #if USING(DEBUGGRAPHICS)
 		DeviceContext->QueryInterface(IID_PPV_ARGS(&debugCommandList));
-#endif
 
 		SETDEBUGNAME(DeviceContext, "GraphicsContext");
 		SETDEBUGNAME(DeviceContext, "GraphicsContextAllocator");
+#endif
 
 #if USING(AFTERMATH)
 		auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
@@ -122,8 +122,10 @@ namespace dx_Internal
 
 		DSV_CPU = RHS.DSV_CPU;
 
-		descHeapRTV = RHS.descHeapRTV;
-		descHeapDSV = RHS.descHeapDSV;
+		descHeapRTV		= RHS.descHeapRTV;
+		descHeapDSV		= RHS.descHeapDSV;
+		SRV_LOCAL_CPU	= RHS.SRV_LOCAL_CPU;
+		descHeapSRVLocal = RHS.descHeapSRVLocal;
 
 		RenderTargetCount		= RHS.RenderTargetCount;
 		DepthStencilEnabled		= RHS.DepthStencilEnabled;
@@ -152,6 +154,7 @@ namespace dx_Internal
 		RHS.pendingBarriers.clear();
 
 		RHS.RTV_CPU = { 0 };
+		RHS.SRV_LOCAL_CPU = { 0 };
 
 		RHS.shaderResources = {};
 		RHS.heapUsed		= 0;
@@ -159,6 +162,7 @@ namespace dx_Internal
 		RHS.DSV_CPU = { 0 };
 		RHS.descHeapRTV = nullptr;
 		RHS.descHeapDSV = nullptr;
+		RHS.descHeapSRVLocal = nullptr;
 
 #if USING(AFTERMATH)
 		AFTERMATH_context       = RHS.AFTERMATH_context;
@@ -181,7 +185,7 @@ namespace dx_Internal
 		debugCommandList		= RHS.debugCommandList;
 #endif
 
-		
+		descHeapSRVLocal = RHS.descHeapSRVLocal;
 		shaderResources = RHS.shaderResources;
 		heapUsed		= RHS.heapUsed;
 
@@ -225,7 +229,7 @@ namespace dx_Internal
 
 		RHS.descHeapRTV = nullptr;
 		RHS.descHeapDSV = nullptr;
-
+		RHS.descHeapSRVLocal = nullptr;
 
 #if USING(AFTERMATH)
 		AFTERMATH_context       = RHS.AFTERMATH_context;

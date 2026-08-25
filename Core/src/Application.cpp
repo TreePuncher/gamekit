@@ -61,7 +61,7 @@ namespace FlexKit
 			const auto frameStart = std::chrono::high_resolution_clock::now();
 			FPSTimer += dT;
 
-			framework.DrawFrame(Min(dT, 1.0 / 60.0));
+			framework.DrawFrame(dT);
 
 			const auto frameEnd				= std::chrono::high_resolution_clock::now();
 			const auto updateDuration		= frameEnd - frameStart;

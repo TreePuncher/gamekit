@@ -5,6 +5,7 @@
 #include <Transforms.hpp>
 #include "CameraComponent.hpp"
 #include <objloader.hpp>
+#include <imgui.h>
 
 using namespace FlexKit;
 
@@ -33,7 +34,7 @@ struct HighQualityRenderingState : ExampleState
         camera.SetCameraNode(cameraNode);
         camera.SetCameraAspectRatio(GetRenderWindow().GetAspectRatio());
         auto& cameraNodeView = cameraObject->AddView<SceneNodeView>(cameraNode);
-        cameraNodeView.TranslateWorld({ 0, 0, 10 });
+        cameraNodeView.TranslateWorld({ 0, 5, 10 });
         activeCamera = camera;
 
         auto test       = LoadObj(R"(assets\test.obj)");
@@ -72,6 +73,30 @@ struct HighQualityRenderingState : ExampleState
         suzanneBrush.SetMaterial(suzanneMat);
         scene.AddGameObject(suzanneObj);
 
+
+        const uint32_t end = 20;
+        const float3 start  { -1 * 1.5 * float(end) / 2.0f, -25, -50};
+        const float3 step   { 1.5, 1.5f, -1.5};
+        for (uint32_t y = 0; y < end; y++)
+        {
+            for (uint32_t x = 0; x < end; x++)
+            {
+                for (uint32_t z = 0; z < end; z++)
+                {
+                    auto& suzanneObj1       = AllocateGameObject();
+                    auto& sceneNodeView1    = suzanneObj1.AddView<SceneNodeView>(GetZeroedNode());
+                    auto& suzanneMat1       = suzanneObj1.AddView<MaterialView>(defaultMaterial);
+                    auto& suzanneBrush1     = suzanneObj1.AddView<BrushView>(suzanne);
+
+                    suzanneBrush1->node = sceneNodeView1;
+                    sceneNodeView1.SetPosition(start + step * float3{ x, y, z });
+                    suzanneBrush1.SetMaterial(suzanneMat1);
+
+                    scene.AddGameObject(suzanneObj1, sceneNodeView1);
+                }
+            }
+        }
+
         worldRender.occlusionCulling = true;
     }
 
@@ -81,7 +106,27 @@ struct HighQualityRenderingState : ExampleState
         ReleaseGameObject(*cameraObject);
     }
 
-    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) override { return nullptr; }
+    UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) override
+    {
+        a = Clock.now();
+
+        return nullptr;
+    }
+
+
+    void DrawUI() override final
+    {
+        ImGui::SetNextWindowPos({ 0, 0 });
+        ImGui::SetNextWindowSize({ 500, 200 });
+        if (ImGui::Begin("FPS Counter"))
+        {
+            ImGui::Text("FPS: %u", GetFPS());
+            ImGui::Text("FPS Time: %f ms", 1000.0f / GetFPS());
+            ImGui::Text("CPU Time: %f ms", (float)d.count() / 1000.0f);
+        }   ImGui::End();
+        
+    }
+
 
     UpdateTask* Draw(UpdateTask* updateTask, EngineCore& core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph) override
     {
@@ -111,15 +156,14 @@ struct HighQualityRenderingState : ExampleState
         ClearDepthBuffer(frameGraph, depthBuffer.Get(), 1.0f);
         auto res = worldRender.DrawScene(dispatcher, frameGraph, sceneDesc, targets, GetAllocatorMT(), GetTempAllocatorMT());
 
-        OutputDebugStringA("Submission Begin\n");
-
         return nullptr;
     }
 
     void PostDraw(EngineCore& core, double dt) override final
     {
         worldRender.passHistories.GetHistory(GetRenderSystem(), activeCamera)->EndFrame();
-        OutputDebugStringA("Frame End\n");
+        b = Clock.now();
+        d = std::chrono::duration_cast<std::chrono::microseconds>(b - a);
     }
 
 
@@ -144,7 +188,15 @@ struct HighQualityRenderingState : ExampleState
     GameObject*                 cameraObject = nullptr;
 
     CameraHandle                activeCamera = InvalidHandle;
+
+    
+    static const std::chrono::high_resolution_clock Clock;
+    std::chrono::high_resolution_clock::time_point a;
+    std::chrono::high_resolution_clock::time_point b;
+    std::chrono::microseconds d;
 };
+
+struct Blank : ExampleState{};
 
 int main()
 {

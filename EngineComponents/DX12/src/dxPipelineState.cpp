@@ -552,7 +552,8 @@ namespace dx_Internal
 
 	void dxShaderLoadTask::Release()
 	{
-		allocator->free(this);
+		auto temp = allocator;
+		temp->free(this);
 	}
 
 

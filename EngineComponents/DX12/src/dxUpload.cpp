@@ -7,11 +7,13 @@ namespace dx_Internal
 
 
 	dxUploadBuffer::dxUploadBuffer(ID3D12Device* pDevice) :
-		parentDevice{ pDevice },
-		size{ MEGABYTE * 64 }
+		parentDevice	{ pDevice },
+		size			{ MEGABYTE * 16 }
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(size);
 		D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+		ID3D12Resource* temp = nullptr;
 
 		HRESULT HR = pDevice->CreateCommittedResource(
 			&HEAP_Props,
@@ -19,9 +21,13 @@ namespace dx_Internal
 			&Resource_DESC,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&deviceBuffer));
+			IID_PPV_ARGS(&temp));
+
+		if (FAILED(HR))
+			FK_LOG_ERROR("Failed to create upload buffer!");
 
 		SETDEBUGNAME(deviceBuffer, __func__);
+		deviceBuffer = temp;
 
 		CD3DX12_RANGE Range(0, 0);
 		HR = deviceBuffer->Map(0, &Range, (void**)&buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));

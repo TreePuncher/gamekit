@@ -2,8 +2,6 @@
 
 project(HighQualityRendering)
 
-find_package(zlib-ng CONFIG REQUIRED)
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

@@ -310,7 +310,7 @@ namespace FlexKit
 					{
 						const TYSize end = RHS.size();
 						for (TYSize I = 0; I < end; I++)
-							A[I] = std::move(RHS[I]);
+							new(A + I) Ty{ std::move(RHS[I]) };
 
 						Size		= RHS.size();
 						RHS.Max		= (rhsSize > 0) ? (TYSize)RHS.internalBuffer.size() : 0;
@@ -620,6 +620,9 @@ namespace FlexKit
 #else
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
 #endif
+				if (NewMem == A)
+					DebugBreak();
+
 				const TYSize End = Size;
 				for (TYSize itr = 0; itr < End; ++itr)
 					new(NewMem + itr) Ty();
@@ -627,6 +630,7 @@ namespace FlexKit
 #ifdef _DEBUG
 				FK_ASSERT(NewMem != nullptr);
 				if (Size)
+					
 					FK_ASSERT(NewMem != A);
 #endif
 
@@ -668,6 +672,9 @@ namespace FlexKit
 #else
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
 #endif
+				if (NewMem == A)
+					DebugBreak();
+
 				TYSize itr = 0;
 				TYSize End = Size;
 				for (; itr < End; ++itr)
@@ -715,7 +722,11 @@ namespace FlexKit
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				if (Size)
+				{
+					if(NewMem == A)
+					    DebugBreak();
 					FK_ASSERT(NewMem != A);
+				}
 #endif
 
 				if (A)
@@ -3108,7 +3119,10 @@ namespace FlexKit
 			for (; keys[idx] != (TY_key)0xffffffffffffffff && idx < end; idx++);
 		
 			if (idx >= end)
-				return nullptr;
+			{
+				reserve(max * 2);
+				return emplace(key, std::forward<TY_params>(args)...);
+			}
 			else
 			{
 				used++;
@@ -3157,7 +3171,7 @@ namespace FlexKit
 			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 					uint64_t idx	= hash % max;
 
-			for (uint64_t i = 0; keys[idx] != key && i < max; idx = (idx + 1) % max, i++);
+			for (uint64_t i = 0; keys[idx] != key && i < 4; idx = (idx + 1) % max, i++);
 
 			if (keys[idx] == key)
 				return (values + idx);
@@ -3171,7 +3185,7 @@ namespace FlexKit
 			const	uint64_t hash	= FNVa62((const char*)&key, sizeof(TY_key));
 					uint64_t idx	= hash % max;
 
-			for (uint64_t i = 0; keys[idx] != key && i < max; idx = (idx + 1) % max, i++);
+			for (uint64_t i = 0; keys[idx] != key && i < 12; idx = (idx + 1) % max, i++);
 		
 			if (keys[idx] == key)
 			{

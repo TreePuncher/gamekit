@@ -40,9 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <utility>
 
-#define MAXTHREADCOUNT 8
-
-
 namespace FlexKit
 {
 	using std::atomic;

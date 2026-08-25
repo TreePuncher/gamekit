@@ -24,11 +24,15 @@ namespace FlexKit
 
 		~GBuffer();
 
-		void Resize(const uint2 WH);
+		void			Resize(const uint2 WH);
+		uint32_t		GetBufferedIdx() const noexcept;
+		DescriptorRange	GetView() const noexcept;
 
 		ResourceHandle albedo;	 // rgba_UNORM, Albedo + Metal
 		ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
 		ResourceHandle normal;	 // float16_RGBA
+
+		DescriptorRange descriptors[3];
 	};
 
 
@@ -134,21 +138,21 @@ namespace FlexKit
 	struct GBufferPass
 	{
 		GBuffer&					gbuffer;
-		const GatherPassesTask&		passes;
-		const CameraHandle			camera;
+		GatherPassesTask&			passes;
+		UpdateTask*					occlusionIDUpdate = nullptr;
+	    CameraHandle				camera;
 
 		const ResourceAllocation*	animationResources;
 		PassHistory*				history;
 
-		FrameResourceHandle entityConstants;
-
 		FrameResourceHandle AlbedoTargetObject;		// RGBA8
 		FrameResourceHandle NormalTargetObject;		// RGBA16Float
 		FrameResourceHandle MRIATargetObject;
-		FrameResourceHandle IOR_ANISOTargetObject;	// RGBA8
 
 		FrameResourceHandle depthBufferTargetObject;
 		FrameResourceHandle predicateBufferObject;
+
+		FrameGraphNodeHandle nodeHandle;
 	};
 
 	struct GBufferPass2
@@ -251,14 +255,15 @@ namespace FlexKit
 
 	struct OcclusionCullingResults
 	{
-		GatherPassesTask&	passes;
-		PassHistory&		occlusionHistory;
+		const GatherPassesTask&	passes;
+		PassHistory&			occlusionHistory;
 
 		FrameResourceHandle	occlusionPrev;
 		FrameResourceHandle	occlusionStaging;
 		FrameResourceHandle	depthBuffer;
 
-		FrameResourceHandle	pass2Predicates = InvalidHandle;
+		FrameResourceHandle		pass2Predicates = InvalidHandle;
+		FrameGraphNodeHandle	nodeHandle;
 	};
 
 
@@ -287,7 +292,8 @@ namespace FlexKit
 	constexpr PSOHandle SHADINGPASS                     = PSOHandle(GetTypeGUID(SHADINGPASS));
 	constexpr PSOHandle SHADINGPASSCOMPUTE              = PSOHandle(GetTypeGUID(SHADINGPASSCOMPUTE));
 
-	constexpr PSOHandle DEBUG_DrawBVH                   = PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+	constexpr PSOHandle DEBUG_DrawBVH					= PSOHandle(GetTypeGUID(DEBUG_DrawBVH1));
+	constexpr PSOHandle DEBUG_GBuffer					= PSOHandle(GetTypeGUID(DEBUG_GBuffer));
 
 	constexpr PSOHandle OCCLUSIONQUERYREDUCEPSO			= PSOHandle(GetTypeGUID(OCCLUSIONQUERYREDUCEPSO));
 	constexpr PSOHandle OCCLUSIONQUERYPSO				= PSOHandle(GetTypeGUID(OCCLUSIONQUERYPSO));
@@ -316,6 +322,14 @@ namespace FlexKit
 		Disabled,
 		ClusterVIS,
 		BVHVIS
+	};
+
+	enum class GBufferDebugVisMode
+	{
+		Disabled,
+		Normals,
+		Position,
+		Clusters
 	};
 
 
@@ -357,8 +371,7 @@ namespace FlexKit
 		OcclusionCullingResults& OcclusionCulling(
 								UpdateDispatcher&				dispatcher,
 								FrameGraph&						frameGraph,
-								GatherPassesTask&				passes,
-								CameraHandle					camera,
+			                    GBufferPass&					gbufferPass,
 								PassHistoryTable&				occlusionTable,
 								ResourceHandle					depthBuffer,
 								ThreadSafeAllocator&			temporary);
@@ -425,6 +438,15 @@ namespace FlexKit
 								iAllocator*						allocator);
 
 
+		void DEBUGVIS_GBuffer(
+			                    UpdateDispatcher&	dispatcher,
+			                    FrameGraph&			frameGraph,
+			                    GBuffer&			gbuffer,
+			                    ResourceHandle		renderTarget,
+			                    const struct DepthBuffer& depthTarget,
+			                    GBufferDebugVisMode	mode,
+			                    iAllocator&			allocator);
+
 	private:
 		const IPipelineInterface*	rootSignature;
 		const IPipelineInterface* 	markClustersSignature;
@@ -460,7 +482,9 @@ namespace FlexKit
 		static LoadPipelineStateRes CreateClustersPSO               (IRenderSystem& RS, iAllocator&);
 		static LoadPipelineStateRes CreateClusterBufferPSO          (IRenderSystem& RS, iAllocator&);
 		static LoadPipelineStateRes CreateClearClusterCountersPSO   (IRenderSystem& RS, iAllocator&);
-		static LoadPipelineStateRes CreateDEBUGBVHVIS               (IRenderSystem& RS, iAllocator&);
+
+		static LoadPipelineStateRes CreateBVHDEBUG					(IRenderSystem& RS, iAllocator&);
+		static LoadPipelineStateRes CreateGBufferDEBUG              (IRenderSystem& RS, iAllocator&);
 	};
 }
 

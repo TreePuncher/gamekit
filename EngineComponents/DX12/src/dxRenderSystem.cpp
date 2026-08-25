@@ -1243,7 +1243,9 @@ namespace dx_Internal
 		copyQueue_Desc.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		copyQueue_Desc.Type  = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY;
 
-		auto HR = Device->CreateCommandQueue(&copyQueue_Desc, IID_PPV_ARGS(&copyQueue));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COPY QUEUE!");
+		auto HR = Device->CreateCommandQueue(&copyQueue_Desc, IID_PPV_ARGS(&copyQueue));	
+		if (FAILED(HR))
+			FK_LOG_ERROR("FAILED TO CREATE COPY QUEUE!");
 
 		SETDEBUGNAME(copyQueue, "UPLOAD QUEUE");
 
@@ -1518,8 +1520,8 @@ namespace dx_Internal
 		Settings.AASamples	= 1;
 		UINT DeviceFlags	= 0;
 
-		ID3D12Device10* Device = nullptr;
-		ID3D12Debug1* Debug = nullptr;
+		ID3D12Device10*		Device = nullptr;
+		ID3D12Debug1*		Debug = nullptr;
 		ID3D12DebugDevice* DebugDevice = nullptr;
 
 
@@ -1556,8 +1558,8 @@ namespace dx_Internal
 		}
 
 		bool InitiateComplete = false;
-
-		if(FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&Device))))
+		ID3D12Device10* IN_Device = nullptr;
+		if(FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&IN_Device))))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
 
@@ -1568,6 +1570,7 @@ namespace dx_Internal
 			}
 		}
 
+		Device = IN_Device;
 #if USING(ENABLEDRED)
 		if (auto HR = Device->QueryInterface(IID_PPV_ARGS(&dred)); FAILED(HR))
 			FK_LOG_ERROR("Failed to enable Dred!");
@@ -1829,7 +1832,7 @@ namespace dx_Internal
 		heaps.Init(features.resourceHeapTier, pDevice);
 		copyEngine.Initiate(Device, uint32_t((threads.GetThreadCount() + 1) * 1.5), ObjectsCreated, in.Memory);
 
-		for (size_t I = 0; I < 3 * (1 + threads.GetThreadCount()); ++I)
+		for (size_t I = 0; I < 3 * (2 + threads.GetThreadCount()); ++I)
 			Contexts.emplace_back(this, allocator);
 
 		InitiateComplete = true;
@@ -2486,6 +2489,11 @@ namespace dx_Internal
 	}
 
 
+	uint8_t dxRenderSystem::GetBufferedIndex(ResourceHandle Handle) const
+	{
+		return Textures.GetBufferedIdx(Handle);
+	}
+
 	/************************************************************************************************/
 
 
@@ -2812,9 +2820,12 @@ namespace dx_Internal
 
 					ProfileFunctionLabeled(Placed);
 					D3D12_RESOURCE_DESC1 Resource_DESC = GetD3D12ResourceDesc1(desc);
+					auto heap = desc.placed.heap != InvalidHandle ? 
+				        GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : 
+				        desc.placed.customHeap.As<ID3D12Heap>();
 
 					HRESULT HR = pDevice15->CreatePlacedResource2(
-						desc.placed.heap != InvalidHandle ? GetDeviceResource(desc.placed.heap).As<ID3D12Heap>() : desc.placed.customHeap.As<ID3D12Heap>(),
+						heap,
 						desc.placed.offset,
 						&Resource_DESC,
 						initialLayout,
@@ -3351,10 +3362,15 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	void dxRenderSystem::CreateTextureView(ResourceHandle resource, DescHeapPOS pos)
+	void dxRenderSystem::CreateTextureView(ResourceHandle resource, DescHeapPOS pos, ViewOptions options)
 	{
-		auto dxgiFormat = GetResourceDeviceFormat(resource);
-		PushTextureToDescHeap(*this, dxgiFormat, resource, pos);
+		DXGI_FORMAT dxgiFormat =
+			options.format.transform([](DeviceFormat format)
+		    {
+                return TextureFormat2DXGIFormat(format);
+		    }).value_or(GetResourceDeviceFormat(resource));
+
+		PushTextureToDescHeap(*this, dxgiFormat, resource, pos, options.idx);
 	}
 
 
@@ -3520,7 +3536,7 @@ namespace dx_Internal
 	DeviceResource_ptr dxRenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
 		if (handle != InvalidHandle)
-			return Textures.GetResource(handle, pDevice);
+			return Textures.GetResource(handle);
 		else
 			return nullptr;
 	}
@@ -4000,7 +4016,7 @@ namespace dx_Internal
 
 		auto shaderFileSize = GetFileSize(filePath.string().c_str()) + 1;
 		std::string shaderStr;
-		shaderStr.resize(shaderFileSize);
+		shaderStr.resize(shaderFileSize + 1);
 
 		memset(shaderStr.data(), 0, shaderFileSize);
 		LoadFileIntoBuffer(filePath.string().c_str(), (std::byte*)shaderStr.data(), shaderFileSize);
@@ -4650,16 +4666,16 @@ namespace dx_Internal
 
 		ResourceEntry newEntry = 
 		{	
-			desc.bufferCount,
-			0,
-			{ nullptr, nullptr, nullptr },
-			{ 0, 0, 0 },
-			{ layout, layout, layout },
-			TextureFormat2DXGIFormat(desc.format),
-			desc.mipLevels,
-			desc.WH,
-			Handle,
-			{ { desc.placed.offset, 0 }, {}, {} }
+			.ResourceCount		= desc.bufferCount,
+			.Resources			= { nullptr, nullptr, nullptr },
+			.FrameLocks			= { 0, 0, 0 },
+			.layouts			= { layout, layout, layout },
+			.Format				= TextureFormat2DXGIFormat(desc.format),
+			.mipCount			= desc.mipLevels,
+			.CurrentResource	= 0,
+			.WH					= desc.WH,
+			.owner				= Handle,
+			.heapRange			= { { desc.placed.offset, 0 }, {}, {} }
 		};
 
 		for (size_t I = 0; I < desc.bufferCount; ++I) {
@@ -4711,16 +4727,16 @@ namespace dx_Internal
 
 		ResourceEntry newEntry = 
 		{	
-			desc.bufferCount,
-			0,
-			{ nullptr, nullptr, nullptr },
-			{ 0, 0, 0 },
-			{ layout, layout , layout },
-			TextureFormat2DXGIFormat(desc.format),
-			desc.mipLevels,
-			desc.WH,
-			handle,
-			{ { desc.placed.offset, 0 }, {}, {} }
+			.ResourceCount		= desc.bufferCount,
+			.Resources			= { nullptr, nullptr, nullptr },
+			.FrameLocks			= { 0, 0, 0 },
+			.layouts			= { layout, layout, layout },
+			.Format				= TextureFormat2DXGIFormat(desc.format),
+			.mipCount			= desc.mipLevels,
+			.CurrentResource	= 0,
+			.WH					= desc.WH,
+			.owner				= handle,
+			.heapRange			= { { desc.placed.offset, 0 }, {}, {} }
 		};
 
 		for (size_t I = 0; I < desc.bufferCount; ++I) {
@@ -4875,6 +4891,20 @@ namespace dx_Internal
 
 		auto UserIdx                    = Handles[handle];
 		UserEntries[UserIdx].userString = string;
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint8_t ResourceStateTable::GetBufferedIdx(ResourceHandle handle) const
+	{
+		FK_ASSERT(handle >= Handles.size(), "Invalid Handle Detected");
+
+		auto UserIdx	= Handles[handle];
+		auto Residx		= UserEntries[UserIdx].ResourceIdx;
+
+		return Resources[Residx].CurrentResource;
 	}
 
 
@@ -5352,7 +5382,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	ID3D12Resource* ResourceStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
+	ID3D12Resource* ResourceStateTable::GetResource(ResourceHandle Handle) const
 	{
 		if (Handle >= Handles.size())
 			return nullptr;
@@ -6391,9 +6421,10 @@ namespace dx_Internal
 
 		HRESULT HR = D3D12SerializeVersionedRootSignature(
 			&rootSignatureDesc,
-			&SignatureBlob,		&ErrorBlob);
+			&SignatureBlob,
+			&ErrorBlob);
 
-		if (!SUCCEEDED(HR))
+		if (FAILED(HR))
 		{
 			std::cout << (char*)ErrorBlob->GetBufferPointer() << '\n';
 			ErrorBlob->Release();
@@ -7152,7 +7183,7 @@ namespace dx_Internal
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS, uint32_t bufferedResIndex)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {}; 
 		viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -7214,8 +7245,20 @@ namespace dx_Internal
 			break;
         };
 
+		auto internalResource = dimension != ResourceDimension::AccelerationStructure ? 
+			[&]
+			{
+				if (bufferedResIndex == 0)
+					return RS->GetDeviceResource(handle).As<ID3D12Resource>();
+				else
+				{
+					auto internalResources = RS->Textures.GetResources(handle);
+					return internalResources[bufferedResIndex];
+				}
+			}()	: nullptr;
+
 		RS->pDevice->CreateShaderResourceView(
-			dimension != ResourceDimension::AccelerationStructure ? RS->GetDeviceResource(handle).As<ID3D12Resource>() : nullptr,
+			internalResource,
     		&viewDesc, D3D12_CPU_DESCRIPTOR_HANDLE{ POS.V1 });
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);

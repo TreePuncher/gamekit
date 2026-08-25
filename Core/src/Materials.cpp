@@ -21,6 +21,11 @@ namespace FlexKit
 		return entries[handles[handle]];
 	}
 
+	const MaterialComponentData& MaterialComponent::GetRef(const MaterialHandle handle) const
+	{
+		return entries[handles[handle]];
+	}
+
 
 	/************************************************************************************************/
 
@@ -236,7 +241,11 @@ namespace FlexKit
 
 	MaterialHandle MaterialComponent::CloneMaterial(MaterialHandle sourceMaterial)
 	{
-		const auto clone = (index_t)entries.push_back(entries[handles[sourceMaterial]]);
+		auto sourceIdx = handles[sourceMaterial];
+		if (sourceIdx > entries.size())
+			DebugBreak();
+
+		const auto clone = (index_t)entries.push_back(entries[sourceIdx]);
 
 		auto& material = entries[clone];
 		material.refCount = 0;

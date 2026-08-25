@@ -8,8 +8,10 @@
 #include <numeric>
 #include <ranges>
 #include <bit>
+#include <print>
 
 #include "../include/RenderSystemInterface.hpp"
+#include "directx/d3d12.h"
 
 namespace FlexKit
 {   /************************************************************************************************/
@@ -709,7 +711,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LoadPipelineStateRes ClusteredRender::CreateDEBUGBVHVIS(IRenderSystem& renderSystem, iAllocator& allocator)
+	LoadPipelineStateRes ClusteredRender::CreateBVHDEBUG(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 #if 0
 		auto& RS = static_cast<RenderSystem&>(irs);
@@ -724,27 +726,27 @@ namespace FlexKit
 			{ "COLOR", 0,   DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 
-		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
-		Depth_Desc.DepthEnable	= false;
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
-			PSO_Desc.VS                    = Shader2ByteCode(VShader);
-			PSO_Desc.PS                    = Shader2ByteCode(PShader);
-			PSO_Desc.GS                    = Shader2ByteCode(GShader);
-			PSO_Desc.RasterizerState       = Rast_Desc;
-			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.pRootSignature = RS.Library(ROOTLIBRARYSIG::RSDefault)->GetAPIObject();
+			PSO_Desc.VS = Shader2ByteCode(VShader);
+			PSO_Desc.PS = Shader2ByteCode(PShader);
+			PSO_Desc.GS = Shader2ByteCode(GShader);
+			PSO_Desc.RasterizerState = Rast_Desc;
+			PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
-			PSO_Desc.SampleDesc.Count      = 1;
-			PSO_Desc.SampleDesc.Quality    = 0;
-			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
-			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.NumRenderTargets = 1;
+			PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT; // swapChain
+			PSO_Desc.SampleDesc.Count = 1;
+			PSO_Desc.SampleDesc.Quality = 0;
+			PSO_Desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState = Depth_Desc;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -756,20 +758,41 @@ namespace FlexKit
 		return { PSO, RS.Library(ROOTLIBRARYSIG::RSDefault) };
 #endif
 		return PipelineBuilder{ renderSystem, allocator }.
-			    AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
-			    AddGeometryShader("GMain2", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
-			    AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
-			    AddInputTopology(ETopology::EIT_POINT).
+			AddVertexShader("VMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddGeometryShader("GMain2", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddPixelShader("PMain", "assets\\shaders\\ClusteredShading\\lightBVH_DEBUGVIS.hlsl").
+			AddInputTopology(ETopology::EIT_POINT).
+			AddDepthStencilState({
+					.depthEnable = false,
+				}).
+				AddRenderTargetState({
+						.targetCount = 1,
+						.targetFormats = {
+							DeviceFormat::R16G16B16A16_FLOAT} }).
+							SetDebugName("CreateClusters").
+			AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
+			Build(renderSystem, allocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadPipelineStateRes ClusteredRender::CreateGBufferDEBUG(IRenderSystem& RS, iAllocator& allocator)
+	{
+		return PipelineBuilder{ RS, allocator }.
+			    AddVertexShader("FullscreenQuad",	R"(assets\shaders\FullscreenQuad.hlsl)").
+			    AddPixelShader(	"GBufferDebug",		R"(assets\shaders\ClusteredShading\GBufferDebugVis.hlsl)").
+			    AddInputTopology(ETopology::EIT_TRIANGLE).
 			    AddDepthStencilState({
 					    .depthEnable = false,
 				    }).
 			    AddRenderTargetState({
-					    .targetCount = 1,
-					    .targetFormats = {
+					    .targetCount	= 1,
+					    .targetFormats	= {
 						    DeviceFormat::R16G16B16A16_FLOAT} }).
-	            SetDebugName("CreateClusters").
-			    AddDepthStencilFormat(DeviceFormat::D32_FLOAT).
-			    Build(renderSystem, allocator);
+	            SetDebugName("GBufferDebug").
+			    Build(RS, allocator);
 	}
 
 
@@ -922,6 +945,19 @@ namespace FlexKit
 		RS_IN.SetDebugName(albedo,	"Albedo");
 		RS_IN.SetDebugName(MRIA,	"MRIA");
 		RS_IN.SetDebugName(normal,	"Normal");
+
+		for (auto&& [idx, dSet] : enumerate(descriptors))
+		{
+			auto descriptorAllocation = RS_IN.CreateDescriptorRange(3);
+			if (!descriptorAllocation.has_value())
+				throw std::runtime_error{ "Failed to allocate descriptor set!" };
+
+			dSet = descriptorAllocation.value();
+
+			RS_IN.CreateTextureView(albedo, dSet[0], { .idx = (uint8_t)idx });
+			RS_IN.CreateTextureView(MRIA,	dSet[1], { .idx = (uint8_t)idx });
+			RS_IN.CreateTextureView(normal, dSet[2], { .idx = (uint8_t)idx });
+		}
 	}
 
 
@@ -959,6 +995,18 @@ namespace FlexKit
 		RS.SetDebugName(albedo,	"Albedo");
 		RS.SetDebugName(MRIA,	"MRIA");
 		RS.SetDebugName(normal,	"Normal");
+	}
+
+	uint32_t GBuffer::GetBufferedIdx() const noexcept
+	{
+		auto& RS = IRenderSystem::GetInstance();
+		return RS.GetBufferedIndex(albedo);
+	}
+
+	DescriptorRange	GBuffer::GetView() const noexcept
+	{
+		auto idx = GetBufferedIdx();
+		return descriptors[idx];
 	}
 
 
@@ -1028,7 +1076,8 @@ namespace FlexKit
 		renderSystem.RegisterPSOLoader(SHADINGPASS,					{ this, &ClusteredRender::CreateDeferredShadingPassPSO });
 		renderSystem.RegisterPSOLoader(SHADINGPASSCOMPUTE,			CreateDeferredShadingPassComputePSO);
 
-		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,				CreateDEBUGBVHVIS);
+		renderSystem.RegisterPSOLoader(DEBUG_DrawBVH,				CreateBVHDEBUG);
+		renderSystem.RegisterPSOLoader(DEBUG_GBuffer,				CreateGBufferDEBUG);
 
 		renderSystem.RegisterPSOLoader(OCCLUSIONQUERYPSO,			CreateOcclusionQueryPSO);
 		renderSystem.RegisterPSOLoader(OCCLUSIONINSTANCEDQUERYPSO,	CreateOcclusionQueryInstancedPSO);
@@ -1671,41 +1720,80 @@ namespace FlexKit
 		using std::views::zip;
 		using std::views::iota;
 
-		auto& pass = frameGraph.AddNode<GBufferPass>(
-			GBufferPass{
-				.gbuffer			= gbuffer,
-				.passes				= passes,
-				.camera				= camera,
-				.animationResources = &animationResources,
-				.history			= passHistory,
-			},
+
+		UpdateTask* occlusionIDUpdate = nullptr;
+		if (passHistory)
+		{
+			struct GetQueryIds
+			{
+				PassHistory* history;
+			};
+			occlusionIDUpdate = dispatcher.Add<GetQueryIds>(
+				[&](DependencyBuilder& builder, GetQueryIds& data)
+				{
+					builder.AddInput(passes);
+					data.history = passHistory;
+				},
+				[&passes](GetQueryIds& data, iAllocator& temporary)
+				{
+					OcclusionQueries& currHistory = data.history->Current();
+
+					auto pass = passes.GetData().GetPass(GBufferStaticPassID);
+
+					for (auto& object : pass)
+						currHistory.GetQueryIdx(object->brushID);
+				});
+		}
+
+		PassDescription<GBufferPass, const BrushEntry> pass{
+			.sharedData{
+				    .gbuffer	= gbuffer,
+					.passes		= passes,
+					.history	= passHistory
+				},
+			.getPVS =
+				[&passes]()
+				{
+					return passes.GetData().GetPass(GBufferStaticPassID);
+				}
+		};
+
+		auto setup =
 			[&](FrameGraphNodeBuilder& builder, GBufferPass& data)
 			{
 				builder.Requires(GBUFFERPASSSTATIC);
-				//builder.Requires(GBUFFERPASSSKINNED);
 
+				if (occlusionIDUpdate)
+					builder.AddDataDependency(*occlusionIDUpdate);
 				builder.AddDataDependency(passes);
 				builder.AddDataDependency(constantsUpdate);
 				builder.AddNodeDependency(animationResources.node);
 
-				data.AlbedoTargetObject			= builder.RenderTarget(gbuffer.albedo);
-				data.MRIATargetObject			= builder.RenderTarget(gbuffer.MRIA);
-				data.NormalTargetObject			= builder.RenderTarget(gbuffer.normal);
-				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
+				data.occlusionIDUpdate	= occlusionIDUpdate;
+				data.camera				= camera;
+				data.animationResources = &animationResources;
+				data.history			= passHistory;
 
-				if (passHistory)
-				    data.predicateBufferObject = builder.IndirectArgs(passHistory->PreviousHistory().occlusionResults);
-			},
-			[&animationResources, &gbuffer](GBufferPass& data, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
+				data.AlbedoTargetObject = builder.RenderTarget(gbuffer.albedo);
+				data.NormalTargetObject = builder.RenderTarget(gbuffer.normal);
+				data.MRIATargetObject	= builder.RenderTarget(gbuffer.MRIA);
+
+				data.depthBufferTargetObject	= builder.DepthTarget(depthTarget);
+				data.predicateBufferObject		= passHistory ? builder.IndirectArgs(passHistory->PreviousHistory().occlusionResults) : InvalidHandle;
+			    data.nodeHandle					= builder.GetNodeHandle();
+			};
+
+
+		using iter_t = std::span<const BrushEntry>::iterator;
+		auto draw =
+			[](iter_t begin, iter_t end, std::span<const BrushEntry> pvs, GBufferPass& shared, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
 				ProfileFunction();
+			    static const std::chrono::high_resolution_clock Clock;
+				const auto Before = Clock.now();
 
-				auto& passes		= data.passes.GetData().passes;
-				auto pass			= FindPass(passes.begin(), passes.end(), GBufferStaticPassID);
-				auto animatedPass	= FindPass(passes.begin(), passes.end(), GBufferAnimatedPassID);
-
-				if ((!pass || !pass->drawList.size()) && (!animatedPass || !animatedPass->drawList.size()))
-					return;
+				ProfileFunction();
+				EXITSCOPE(ctx.SetPredicate(false));
 
 				struct ForwardDrawConstants
 				{
@@ -1719,7 +1807,7 @@ namespace FlexKit
 					AlignedSize<ForwardDrawConstants>();
 
 				auto passConstantBuffer		= resources.ReserveCB(passBufferSize);
-				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(data.camera), passConstantBuffer };
+				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(shared.camera), passConstantBuffer };
 
 				static auto* gpass = resources.GetPipelineState(GBUFFERPASSSTATIC, allocator);
 				ctx.SetPipelineState(gpass);
@@ -1728,21 +1816,21 @@ namespace FlexKit
 				// Setup pipeline resources
 				ctx.SetScissorAndViewports(
 					{
-						data.gbuffer.albedo,
-						data.gbuffer.MRIA,
-						data.gbuffer.normal,
+						shared.gbuffer.albedo,
+						shared.gbuffer.MRIA,
+						shared.gbuffer.normal,
 					});
 
 				RenderTargetList renderTargets = {
-					gbuffer.albedo,
-					gbuffer.MRIA,
-					gbuffer.normal,
+					shared.gbuffer.albedo,
+					shared.gbuffer.MRIA,
+					shared.gbuffer.normal,
 				};
 
 				ctx.SetRenderTargets(
 					renderTargets,
 					true,
-					resources.GetResource(data.depthBufferTargetObject));
+					resources.GetResource(shared.depthBufferTargetObject));
 
 				// Setup Constants
 				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
@@ -1752,218 +1840,116 @@ namespace FlexKit
 
 				//ctx.TimeStamp(timeStats, 0);
 
-				MaterialComponent& materials			= MaterialComponent::GetComponent();
+				MaterialComponent& materials = MaterialComponent::GetComponent();
 
-				OcclusionQueries* currHistory	= nullptr;
-				OcclusionQueries* prevHistory	= nullptr;
+				OcclusionQueries* currHistory = nullptr;
+				OcclusionQueries* prevHistory = nullptr;
 
-				if (data.history)
+				if (shared.history)
 				{
-					currHistory		= &data.history->Current();
-					prevHistory		= &data.history->PreviousHistory();
+					currHistory = &shared.history->Current();
+					prevHistory = &shared.history->PreviousHistory();
 				}
-				else 
+				else
 					ctx.SetPredicate(false);
 
-				if(pass && pass->drawList.size())
+				ctx.BeginEvent_DEBUG("Static Objects");
+
+				TriMesh* prevMesh = nullptr;
+				const TriMesh::LOD_Runtime* prevLOD = nullptr;
+
+
+				for (auto&& [I, brush] : enumerate(std::span{ begin, end }))
 				{
-					ctx.BeginEvent_DEBUG("Static Objects");
+					if (!brush->meshes.size())
+						continue;
 
-					TriMesh*					prevMesh	= nullptr;
-					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
+					const auto& material = materials.GetRef(brush->material);
+					const size_t meshCount = brush->meshes.size();
+					const auto brushID = brush->brushID;
 
+					uint32_t queryIdx;
 
-					if(currHistory && currHistory->drawableOffsetMappings.max < pass->drawList.size())
-						currHistory->drawableOffsetMappings.reserve((uint32_t)(pass->drawList.size() + pass->drawList.size() / 4));
-
-					for (auto&& [I, brush] : enumerate(pass->drawList))
+					if (currHistory)
 					{
-						if (!brush->meshes.size())
-							continue;
+						auto prev = prevHistory->occlusionResults;
+						auto occlusionIDRes = prevHistory->drawableOffsetMappings.find(brushID);
+						queryIdx = currHistory->GetQueryIdx(brushID);
 
-						const auto& material	= materials[brush->material];
-						const size_t meshCount	= brush->meshes.size();
-						const auto brushID		= brush->brushID;
+						ctx.BeginQuery(currHistory->occlusionQueries, queryIdx * 2);
 
-						uint32_t queryIdx;
-
-						if(currHistory)
-						{
-							auto prev				= prevHistory->occlusionResults;
-							auto occlusionIDRes		= prevHistory->drawableOffsetMappings.find(brushID);
-							queryIdx				= currHistory->GetQueryIdx(brushID);
-
-							ctx.BeginQuery(currHistory->occlusionQueries, queryIdx * 2);
-
-							if (occlusionIDRes)
-								ctx.SetPredicate(true, prevHistory->occlusionResults, *occlusionIDRes, PredicateOp::EqualZero);
-							else
-								ctx.SetPredicate(false);
-						}
-
-						const float4x4 wt = GetWT(brush->node);
-						ctx.SetGraphicsConstantValue(0, 16, &wt);
-
-						for (size_t J = 0; J < meshCount; J++)
-						{
-							auto mesh		= brush->meshes[J];
-							auto* triMesh	= GetMeshResource(mesh);
-							auto  lodIdx	= brush.LODlevel[J];
-							auto  lod		= &triMesh->lods[lodIdx];
-
-							if (triMesh != prevMesh || prevLOD != lod)
-							{
-								prevMesh	= triMesh;
-								prevLOD		= lod;
-
-								ctx.AddIndexBuffer(triMesh, lodIdx);
-								ctx.AddVertexBuffers(
-									triMesh,
-									lodIdx,
-									{
-										VERTEXBUFFER_TYPE::POSITION,
-										VERTEXBUFFER_TYPE::NORMAL,
-										VERTEXBUFFER_TYPE::TANGENT,
-										VERTEXBUFFER_TYPE::UV,
-									});
-							}
-
-							auto&			submeshes		= lod->subMeshes;
-							const size_t	subMeshesEnd	= submeshes.size();
-
-							for (size_t K = 0; K < subMeshesEnd; K++)
-							{
-								auto GetMaterial = [&](size_t idx)
-									{
-										if (idx < material.subMaterials.size())
-											return (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
-										else
-											return material;
-									};
-
-								const auto	subMesh		= submeshes[K];
-								const auto& subMaterial	= GetMaterial(K);
-
-								if (subMaterial.textureDescriptors.size != 0)
-									ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
-
-								const DevicePointer pbrConstants = GetProperty<DevicePointer>(material, PBRConstantsID).value_or(0);
-								ctx.SetGraphicsConstantBufferView(1, pbrConstants);
-
-								ctx.DrawIndexed(
-									subMesh.IndexCount,
-									subMesh.BaseIndex);
-							}
-						}
-
-						if (currHistory)
-							ctx.EndQuery(currHistory->occlusionQueries, queryIdx * 2);
+						if (occlusionIDRes)
+							ctx.SetPredicate(true, prevHistory->occlusionResults, *occlusionIDRes, PredicateOp::EqualZero);
+						else
+							ctx.SetPredicate(false);
 					}
 
-					ctx.SetPredicate(false);
-					ctx.EndEvent_DEBUG();
-				}
+					const float4x4_GPU wt = GetWT(brush->node);
+					ctx.SetGraphicsConstantValue(0, 16, &wt);
 
-				// skinned models
-				if(animatedPass && animatedPass->drawList.size() && false)
-				{
-					ctx.BeginEvent_DEBUG("Skinned Objects");
-					auto& animatedBrushes	= animatedPass->drawList;
-
-					static auto skinnedPass = resources.GetPipelineState(GBUFFERPASSSKINNED, allocator);
-					ctx.SetPipelineState(skinnedPass);
-
-					ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-
-					TriMesh*					prevMesh	= nullptr;
-					const TriMesh::LOD_Runtime* prevLOD		= nullptr;
-
-					for (auto&& [idx, brush] : enumerate(animatedBrushes))
+					for (size_t J = 0; J < meshCount; J++)
 					{
-						if (!brush->meshes.size())
-							continue;
+						auto mesh = brush->meshes[J];
+						auto* triMesh = GetMeshResource(mesh);
+						auto  lodIdx = brush.LODlevel[J];
+						auto  lod = &triMesh->lods[lodIdx];
 
-						uint32_t		queryIdx	= 0;
-						const uint32_t	brushID		= brush->brushID;
-
-						if(currHistory)
+						if (triMesh != prevMesh || prevLOD != lod)
 						{
-							queryIdx			= currHistory->GetQueryIdx(brushID);
-							auto occlusionIDRes = prevHistory->drawableOffsetMappings.find(brushID);
+							prevMesh = triMesh;
+							prevLOD = lod;
 
-							ctx.BeginQuery(currHistory->occlusionQueries, queryIdx);
-
-							if (occlusionIDRes)
-								ctx.SetPredicate(true, prevHistory->occlusionResults, *occlusionIDRes);
-							else
-								ctx.SetPredicate(false);
+							ctx.AddIndexBuffer(triMesh, lodIdx);
+							ctx.AddVertexBuffers(
+								triMesh,
+								lodIdx,
+								{
+									VERTEXBUFFER_TYPE::POSITION,
+									VERTEXBUFFER_TYPE::NORMAL,
+									VERTEXBUFFER_TYPE::TANGENT,
+									VERTEXBUFFER_TYPE::UV,
+								});
 						}
 
-						const auto&	material		= materials[brush->material];
-						//const auto	beginConstants	= entityConstants.entityTable[brush.submissionID];
+						auto& submeshes = lod->subMeshes;
+						const size_t	subMeshesEnd = submeshes.size();
 
-						const size_t meshCount	= brush->meshes.size();
-						for (size_t J = 0; J < meshCount; J++)
+						for (size_t K = 0; K < subMeshesEnd; K++)
 						{
-							auto mesh		= brush->meshes[J];
-							auto* triMesh	= GetMeshResource(mesh);
-							auto  lodIdx	= brush.LODlevel[J];
-							auto  lod		= &triMesh->lods[lodIdx];
+							auto GetMaterial = [&](size_t idx) -> const MaterialComponentData&
+								{
+									if (idx < material.subMaterials.size())
+										return (subMeshesEnd == 1) ? material : materials.GetRef(material.subMaterials[K]);
+									else
+										return material;
+								};
 
-							if (triMesh != prevMesh || prevLOD != lod)
-							{
-								prevMesh	= triMesh;
-								prevLOD		= lod;
+							const auto	subMesh		= submeshes[K];
+							const auto& subMaterial = GetMaterial(K);
 
-								ctx.AddIndexBuffer(triMesh, lodIdx);
-								ctx.AddVertexBuffers(
-									triMesh,
-									lodIdx,
-									{
-										VERTEXBUFFER_TYPE::POSITION,
-										VERTEXBUFFER_TYPE::NORMAL,
-										VERTEXBUFFER_TYPE::TANGENT,
-										VERTEXBUFFER_TYPE::UV,
-										VERTEXBUFFER_TYPE::ANIMATION1,
-										VERTEXBUFFER_TYPE::ANIMATION2,
-									});
-							}
+							if (subMaterial.textureDescriptors.size != 0)
+								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
 
-							auto&			submeshes		= lod->subMeshes;
-							const size_t	subMeshesEnd	= submeshes.size();
+							const DevicePointer pbrConstants = GetProperty<DevicePointer>(material, PBRConstantsID).value_or(0);
+							ctx.SetGraphicsConstantBufferView(1, pbrConstants);
 
-							for (size_t K = 0; K < subMeshesEnd; K++)
-							{
-								const auto	subMesh		= submeshes[K];
-								const auto& subMaterial	= (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
-
-								if (subMaterial.textureDescriptors.size != 0)
-									ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
-
-								auto poseBuffer = resources.GetResource(animationResources.handles[0]);
-								//ctx.SetGraphicsConstantBufferView(3, constants[beginConstants + K]);
-								ctx.SetGraphicsShaderResourceView(0, poseBuffer);
-
-								ctx.DrawIndexed(
-									subMesh.IndexCount,
-									subMesh.BaseIndex);
-							}
+							ctx.DrawIndexed(
+								subMesh.IndexCount,
+								subMesh.BaseIndex);
 						}
-
-						if(currHistory)
-							ctx.EndQuery(currHistory->occlusionQueries, queryIdx);
 					}
 
-					ctx.SetPredicate(false);
-					ctx.EndEvent_DEBUG();
+					if (currHistory)
+						ctx.EndQuery(currHistory->occlusionQueries, queryIdx * 2);
 				}
 
+				ctx.SetPredicate(false);
 				ctx.EndEvent_DEBUG();
-				//ctx.TimeStamp(timeStats, 1u);
-			}
-			);
+			
+			};
 
-		return pass;
+        auto& passObject = frameGraph.AddPass(pass, setup, draw);
+		return passObject.shared;
 	}
 
 
@@ -1981,7 +1967,6 @@ namespace FlexKit
 			.sharedData = GBufferPass2{
 				.pass1				= &pass1,
 				.occlusionResults	= &occlusionPass
-
 			},
 			.getPVS = [&pass1]() -> std::span<const BrushEntry> { return pass1.passes.GetData().GetPass(GBufferStaticPassID); }
 		};
@@ -1989,9 +1974,9 @@ namespace FlexKit
 		auto setup =
 			[&](FrameGraphNodeBuilder& builder, GBufferPass2& data)
 			{
+				builder.AddDataDependency(*pass1.occlusionIDUpdate);
 				builder.WriteTransition(pass1.depthBufferTargetObject, DASDEPTHBUFFERWRITE);
 				builder.WriteTransition(pass1.AlbedoTargetObject, DASRenderTarget);
-				builder.WriteTransition(pass1.IOR_ANISOTargetObject, DASRenderTarget);
 				builder.WriteTransition(pass1.MRIATargetObject, DASRenderTarget);
 				builder.WriteTransition(pass1.NormalTargetObject, DASRenderTarget);
 				builder.ReadTransition(occlusionPass.pass2Predicates, DASINDIRECTARGS, { Sync_Compute, Sync_ExecuteIndirect });
@@ -2001,6 +1986,10 @@ namespace FlexKit
 		auto draw =
 			[](iter_t begin, iter_t end, std::span<const BrushEntry> pvs, GBufferPass2& shared, FrameResources& resources, IDirectContext& ctx, iAllocator& allocator)
 			{
+				EXITSCOPE(
+					ctx.SetPredicate(false);
+				);
+
 				ResourceHandle predicates = resources.GetResource(shared.occlusionResults->pass2Predicates);
 				auto& current = shared.occlusionResults->occlusionHistory.Current();
 				auto& previous = shared.occlusionResults->occlusionHistory.PreviousHistory();
@@ -2062,7 +2051,7 @@ namespace FlexKit
 					if (previous.drawableOffsetMappings.find(brushID) == nullptr)
 						continue;
 
-					const auto& material	= materials[brush->material];
+					const auto& material	= materials.GetRef(brush->material);
 					const size_t meshCount	= brush->meshes.size();
 
 					const uint32_t brushIdx		= brush.brush->brushID;
@@ -2070,7 +2059,7 @@ namespace FlexKit
 
 					ctx.SetPredicate(true, predicates, predicateIdx, PredicateOp::EqualZero);
 
-					const float4x4 wt = GetWT(brush->node);
+					const float4x4_GPU wt = GetWT(brush->node);
 					ctx.SetGraphicsConstantValue(0, 16, &wt);
 
 					for (size_t J = 0; J < meshCount; J++)
@@ -2102,10 +2091,11 @@ namespace FlexKit
 
 						for (size_t K = 0; K < subMeshesEnd; K++)
 						{
-							auto GetMaterial = [&](size_t idx)
+
+							auto GetMaterial = [&](size_t idx) -> const MaterialComponentData&
 								{
 									if (idx < material.subMaterials.size())
-										return (subMeshesEnd == 1) ? material : materials[material.subMaterials[K]];
+										return (subMeshesEnd == 1) ? material : materials.GetRef(material.subMaterials[K]);
 									else
 										return material;
 								};
@@ -2125,7 +2115,6 @@ namespace FlexKit
 						}
 					}
 				}
-
 			};
 
 		auto& passObject = frameGraph.AddPass(pass, setup, draw);
@@ -2140,25 +2129,24 @@ namespace FlexKit
 	OcclusionCullingResults& ClusteredRender::OcclusionCulling(
 				UpdateDispatcher&				dispatcher,
 				FrameGraph&						frameGraph,
-				GatherPassesTask&				passes,
-				CameraHandle					camera,
+				GBufferPass&					gbufferPass,
 				PassHistoryTable&				occlusionTable,
 				ResourceHandle					depthBuffer,
 				ThreadSafeAllocator&			temporary)
 	{
-		auto* history = occlusionTable.GetHistory(frameGraph.GetRenderSystem(), camera);
+		auto* history = occlusionTable.GetHistory(frameGraph.GetRenderSystem(), gbufferPass.camera);
 		FK_ASSERT(history != nullptr);
 
 		PassDescription<OcclusionCullingResults, const BrushEntry> pass{
 			.sharedData =
 				{
-					.passes				= passes,
-					.occlusionHistory	= *occlusionTable.GetHistory(frameGraph.GetRenderSystem(),	camera),
+					.passes				= gbufferPass.passes,
+					.occlusionHistory	= *occlusionTable.GetHistory(frameGraph.GetRenderSystem(),	gbufferPass.camera),
 				},
 			.getPVS =
-				[&passes]()
+				[&gbufferPass]()
 				{
-					return passes.GetData().GetPass(GBufferStaticPassID);
+					return gbufferPass.passes.GetData().GetPass(GBufferStaticPassID);
 				}
 		};
 
@@ -2167,22 +2155,25 @@ namespace FlexKit
 			{
 				builder.Requires(OCCLUSIONQUERYPSO);
 				builder.Requires(OCCLUSIONINSTANCEDQUERYPSO);
+				builder.AddNodeDependency(gbufferPass.nodeHandle);
+				builder.AddDataDependency(*gbufferPass.occlusionIDUpdate);
 
 				data.occlusionPrev	= builder.IndirectArgs(history->PreviousHistory().occlusionResults);
 				data.depthBuffer	= builder.WriteTransition(builder.GetHandle(depthBuffer), DASDEPTHBUFFER, { Sync_DepthStencil, Sync_DepthStencil });
+				data.nodeHandle		= builder.GetNodeHandle();
 			};
 
 		auto drawFN =
-			[camera](
+			[camera = gbufferPass.camera](
 				const auto								begin,
 				const auto								end,
 				std::span<const BrushEntry>				pvs,
-				OcclusionCullingResults&				data,
-				[[maybe_unused]] const FrameResources&	resources,
-				IDirectContext&							ctx,
-				iAllocator&								threadLocalAllocator)
+				OcclusionCullingResults& data,
+				[[maybe_unused]] const FrameResources& resources,
+				IDirectContext& ctx,
+				iAllocator& threadLocalAllocator)
 			{
-				ProfileFunctionStrName("OCCLUSIONCULLING");
+				ctx.SetPredicate(false);
 
 				auto&					history		= data.occlusionHistory;
 				OcclusionQueries&		current		= history.Current();
@@ -2252,12 +2243,13 @@ namespace FlexKit
 						FrameResourceHandle tmp;
 						FrameResourceHandle occlusionResults;
 					} staging {
-						.tmp				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE), DASCopyDest, VirtualResourceScope::Frame),
+						.tmp				= builder.AcquireVirtualResource(GPUResourceDesc::UAVResource(MEGABYTE * 4), DASCopyDest, VirtualResourceScope::Frame),
 						.occlusionResults	= builder.UnorderedAccess(out),
 					};
 
 					passResults.shared.pass2Predicates = staging.tmp;
 
+					builder.AddNodeDependency(passResults.shared.nodeHandle);
 					builder.DepthRead(depthBuffer);
 					builder.SetResourceOutState(staging.tmp, DASUAV);
 
@@ -2273,7 +2265,9 @@ namespace FlexKit
 					ctx.SetComputeConstantValue(0, 1, current.counter);
 					ctx.SetComputeUnorderedAccessView(0, resources.UAV(staging.tmp, ctx, DeviceSyncPoint::Sync_Copy, Sync_Compute));
 					ctx.SetComputeUnorderedAccessView(1, resources.UAV(staging.occlusionResults, ctx, DeviceSyncPoint::Sync_Copy, Sync_Compute));
-					ctx.Dispatch({ current.counter / 32 + current.counter % 32 != 0, 1, 1 });
+
+					uint32_t x = (current.counter / 32) + (current.counter % 32 != 0);
+					ctx.Dispatch({ x, 1, 1 });
 			    });
 
 
@@ -2308,7 +2302,7 @@ namespace FlexKit
 				builder.AddNodeDependency(lightShadowMaps.multiPass);
 				builder.AddDataDependency(lightGather);
 
-				auto& renderSystem				= frameGraph.GetRenderSystem();
+				auto& renderSystem = frameGraph.GetRenderSystem();
 
 				for (const auto shadowMap : lightShadowMaps.acquireMaps)
 					builder.ReadTransition(shadowMap, DASPixelShaderResource, { Sync_All, Sync_PixelShader });
@@ -2707,6 +2701,52 @@ namespace FlexKit
 				ctx.Draw(verts.size());
 			});
 	}
+
+
+	/************************************************************************************************/
+
+
+	void  ClusteredRender::DEBUGVIS_GBuffer(
+		UpdateDispatcher&	dispatcher,
+		FrameGraph&			frameGraph,
+		GBuffer&			gbuffer,
+		ResourceHandle		renderTarget,
+		const DepthBuffer&	depthTarget,
+		GBufferDebugVisMode	mode,
+		iAllocator&			allocator)
+	{
+		frameGraph.AddNode2(
+			[&](FrameGraphNodeBuilder& builder)
+			{
+				builder.Requires(DEBUG_GBuffer);
+
+				struct 
+				{
+				} argsOut{};
+
+				builder.RenderTarget(renderTarget);
+				builder.PixelShaderResource(gbuffer.MRIA);
+				builder.PixelShaderResource(gbuffer.albedo);
+				builder.PixelShaderResource(gbuffer.normal);
+				builder.PixelShaderResource(depthTarget.Get());
+
+				return argsOut;
+			},
+			[=, &gbuffer, &depthTarget](auto& args, ResourceHandler& resources, IDirectContext& ctx, iAllocator& allocator)
+			{
+				static auto debugState = resources.GetPipelineState(DEBUG_GBuffer, allocator);
+
+				ctx.FlushBarriers(); // makes some warnings go away 
+				ctx.SetPipelineState(debugState);
+				ctx.SetRenderTargets({ renderTarget }, false);
+				ctx.SetScissorAndViewports({ renderTarget });
+				ctx.SetGraphicsDescriptorSet(0, gbuffer.GetView());
+				ctx.SetGraphicsDescriptorSet(1, depthTarget.GetView());
+
+				ctx.Draw(6);
+			});
+	}
+
 
 }   /************************************************************************************************/
 

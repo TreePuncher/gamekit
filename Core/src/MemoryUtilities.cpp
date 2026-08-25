@@ -10,6 +10,7 @@
 
 #include <format>
 #include <print>
+#include <filesystem>
 
 namespace FlexKit
 {
@@ -22,8 +23,6 @@ namespace FlexKit
 		used   = 0;
 		size   = s;
 		Buffer = _ptr;
-
-		new(&AllocatorInterface) AllocatorAdapter(this);
 	}
 
 	
@@ -141,7 +140,12 @@ namespace FlexKit
 
 	size_t GetFileSize(const char* strLoc)
 	{
-		std::fstream File(strLoc);
+		if (std::filesystem::exists(strLoc))
+			return std::filesystem::file_size(strLoc);
+		else
+			return 0;
+	    
+	    std::fstream File(strLoc);
 		if (File.is_open())
 		{
 			File.seekg(std::ios::beg);
@@ -211,7 +215,7 @@ namespace FlexKit
 					(DebugMetaData ? BlockData::DebugMD : 0);
 
 				blocksAllocated++;
-				return (std::byte*)&blocks[i];
+				return blocks[i].data;
 			}
 
 		throw(std::bad_alloc());
@@ -439,9 +443,9 @@ namespace FlexKit
 
 		buffer_ptr = (std::byte*)in._ptr;
 
-		smallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
-		mediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + smallBufferSize);
-		largeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + smallBufferSize + mediumBufferSize);
+		//smallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr + 0);
+		//mediumBlockAlloc.Initialise	(in.MediumBlock,	in._ptr + smallBufferSize);
+		//largeBlockAlloc.Initialise	(in.LargeBlock,		in._ptr + smallBufferSize + mediumBufferSize);
 
 		new(&AllocatorInterface) iBlockAllocator(this);
 	}
@@ -452,12 +456,15 @@ namespace FlexKit
 
 	std::byte* BlockAllocator::malloc(const size_t size, bool MarkAligned, bool MarkDebugMetaData)
 	{
+		return (std::byte*)::_aligned_malloc(size, 16);
 		std::unique_lock ul{ mu };
 
 		std::byte* ret = nullptr;
 
 		if (size <= SmallBlockAllocator::MaxAllocationSize())
+		{
 			ret = smallBlockAlloc.malloc(size, MarkAligned);
+		}
 		if (size <=  (MediumBlockAllocator::MaxBlockSize() - 64) && !ret)
 		{
 #if USING(STACKTRACEMALLOC)
@@ -469,10 +476,10 @@ namespace FlexKit
 			for (auto frame : currentTrace)
 				*traceStr += std::format("File: {}, line: {}, Description: {}\n", frame.source_file(), frame.source_line(), frame.description());
 #else
+			return (std::byte*)::_aligned_malloc(size, 64);
+
 			ret = mediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
 #endif
-
-			ret += 64;
 		}
 		if (!ret)
 		{
@@ -505,6 +512,10 @@ namespace FlexKit
 	// Debug String Must be below 64 Bytes
 	std::byte* BlockAllocator::malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
 	{
+		return (std::byte*)::_aligned_malloc(size, 64);
+
+		//return (std::byte*)::_aligned_malloc(size, 64);
+
 		if (Debug == nullptr || DebugSize > 64)
 		{
 			FK_LOG_ERROR("Invalid Debug Section Header passed into allocator!");
@@ -515,9 +526,12 @@ namespace FlexKit
 		const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
 
 		if (size <= SmallBlockAllocator::MaxAllocationSize())
-			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
+			return (std::byte*)::_aligned_malloc(size, 64);
+		    //ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
 		if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
-			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40, true);
+			return (std::byte*)::_aligned_malloc(size, 64);
+
+			//ret = _aligned_malloc(size + MetaDataSectionSize, 0x40, true);
 		if (!ret)
 			ret = _aligned_malloc(size + MetaDataSectionSize, 0x40);
 
@@ -538,11 +552,11 @@ namespace FlexKit
 
 	std::byte* BlockAllocator::_aligned_malloc(size_t s, size_t alignment, bool MarkDebugMetaData)
 	{
-		std::byte* NewBuffer		= (std::byte*)malloc(s + alignment, true, MarkDebugMetaData);
+		std::byte* NewBuffer		= (std::byte*)malloc(AlignedSize(s, alignment), true, MarkDebugMetaData);
 		const size_t alignoffset	= (size_t)(NewBuffer) % alignment;
-		const size_t Offset			= alignment - alignoffset;
+		const size_t Offset			= (alignment - alignoffset);
 
-		return NewBuffer + Offset;
+		return NewBuffer + 0;
 	}
 
 
@@ -551,6 +565,9 @@ namespace FlexKit
 		
 	void BlockAllocator::free(void* _ptr)
 	{
+		::_aligned_free(_ptr);
+		return;
+
 		if (_ptr == nullptr)
 			return;
 

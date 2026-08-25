@@ -1,4 +1,4 @@
-const float4 Vertices[] = 
+static const float4 Vertices[] = 
  {
     float4(-1,  1, 0, 1),
     float4( 1,  1, 0, 1),

@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include <ranges>
+#include <print>
 
 using std::ranges::sort;
 
@@ -1098,42 +1099,44 @@ namespace FlexKit
 	{
 		ProfileFunction();
 
-		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
-		FK_ASSERT(SM		!= nullptr);
-		FK_ASSERT(&solid	!= nullptr);
+		FK_ASSERT(Camera != CameraHandle{ (unsigned int)INVALIDHANDLE });
+		FK_ASSERT(SM != nullptr);
+		FK_ASSERT(&solid != nullptr);
 
 
 		auto& cameraComponent = CameraComponent::GetComponent();
 
-		const auto CameraNode	= cameraComponent.GetCameraNode(Camera);
-		const float3	POS		= GetPositionW(CameraNode);
+		const auto CameraNode = cameraComponent.GetCameraNode(Camera);
+		const float3	POS = GetPositionW(CameraNode);
 
-		const auto F			= GetFrustum(Camera);
-		const auto& Visibles	= SceneVisibilityComponent::GetComponent();
+		const Frustum F = GetFrustum(Camera);
+		const auto& Visibles = SceneVisibilityComponent::GetComponent();
 
-		for(auto handle : SM->sceneEntities)
+
+		for (auto handle : SM->sceneEntities)
 		{
 			const auto potentialVisible = Visibles[handle];
 
-			if(	potentialVisible.visable &&
+			if (potentialVisible.visable &&
 				potentialVisible.entity->hasView(BrushComponent::GetComponentID()))
 			{
-				auto Ls	= GetLocalScale		(potentialVisible.node).x;
-				auto Pw	= GetPositionW		(potentialVisible.node);
-				auto Lq	= GetOrientation	(potentialVisible.node);
+				auto Ls = GetLocalScale(potentialVisible.node).x;
+				auto Pw = GetPositionW(potentialVisible.node);
+				auto Lq = GetOrientation(potentialVisible.node);
 				auto BS = BoundingSphere{
 					Lq * potentialVisible.boundingSphere.xyz() + Pw,
 					Ls * potentialVisible.boundingSphere.w };
 
-				if (Intersects(F, BS))
-				    Apply(*potentialVisible.entity,
-					    [&](BrushView& view)
-					    {
+//					if (Intersects(F, BS))
+					Apply(*potentialVisible.entity,
+						[&](BrushView& view)
+						{
 							const auto& brush = view.GetBrush();
 							PushDraw(*potentialVisible.entity, brush, solid, POS);
-					    });
+						});
 			}
 		}
+
 	}
 
 
@@ -1158,7 +1161,7 @@ namespace FlexKit
 				ProfileFunction();
 
 				BrushDrawList drawList{ &threadAllocator };
-
+				drawList.reserve(10000);
 				auto activePasses = MaterialComponent::GetComponent().GetActivePasses(threadAllocator);
 
 				GatherScene(data.scene, data.camera, drawList);

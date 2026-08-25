@@ -34,6 +34,7 @@ namespace FlexKit
 		static		  uint2					GetWH();
 		static struct MouseInputState&		GetMouseState();
 		static		  double				GetRunningTime();
+		static		  uint32_t				GetFPS();
 
 		static void						ToggleMouse(bool);
 

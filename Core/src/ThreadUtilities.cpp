@@ -128,11 +128,7 @@ namespace FlexKit
 
 		while (true)
 		{
-			#if X64
-			size_t waitTime = 4000;
-			#else
-			auto waitTime = std::chrono::microseconds{4};
-			#endif
+			auto waitTime = std::chrono::microseconds{1};
 			
 			for(size_t I = 0; I < 10; I++)
 			{
@@ -151,30 +147,11 @@ namespace FlexKit
 
 					hasJob.store(false, std::memory_order_release);
 				}
-				else if(I > 1) // Reduce thread contention a little
-				{
-					auto GetTime = []()
-						{
-							#if X64
-								return __rdtsc();
-							#else
-								return std::chrono::high_resolution_clock::now();
-							#endif
-						};
-
-					const auto begin = GetTime(); 
-					while (true)
-					{
-						const auto current	= GetTime();
-						const auto duration = current - begin;
-
-						if (duration >= waitTime)
-						{
-							waitTime *= 2;
-							break;
-						}
-					}
-				}
+				//else if(I > 1) // Reduce thread contention a little
+				//{
+                //    std::this_thread::sleep_for(waitTime);
+				//	waitTime = 2 * waitTime;
+				//}
 			}
 
 			Manager->WaitForWork();

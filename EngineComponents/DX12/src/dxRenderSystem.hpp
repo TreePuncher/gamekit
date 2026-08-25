@@ -1564,6 +1564,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		void				SetExtra(ResourceHandle handle, GPUResourceExtra_t);
 		GPUResourceExtra_t	GetExtra(ResourceHandle handle) const;
 
+		uint8_t				GetBufferedIdx(ResourceHandle handle) const;
 		void				SetBufferedIdx(ResourceHandle handle, uint32_t idx);
 		void				SetDebugName(ResourceHandle handle, const char* str);
 
@@ -1575,7 +1576,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 		DeviceLayout		GetLayout		(ResourceHandle Handle) const;
 
-		ID3D12Resource*				GetResource	(ResourceHandle Handle, ID3D12Device* device) const;
+		ID3D12Resource*				GetResource	(ResourceHandle Handle) const;
 		std::span<ID3D12Resource*>	GetResources(ResourceHandle Handle);
 
 		size_t				GetResourceSize	(ResourceHandle Handle) const;
@@ -1621,12 +1622,12 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 			void			IncreaseIdx()					{ CurrentResource = ++CurrentResource % 3;	}
 
 			size_t				ResourceCount   = 0;
-			size_t				CurrentResource = 0;
 			ID3D12Resource*		Resources[3];
 			size_t				FrameLocks[3];
 			DeviceLayout		layouts[3];
 			DXGI_FORMAT			Format;
 			uint8_t				mipCount;
+			uint8_t				CurrentResource = 0;
 			uint2				WH;
 			ResourceHandle		owner			= InvalidHandle;
 			uint2				heapRange[3]	= { { 0, 0 }, { 0, 0 }, { 0, 0 } };
@@ -2030,6 +2031,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		virtual uint2			GetTextureTilingWH	(ResourceHandle Handle, const uint mipLevel) const;
 		virtual uint2			GetHeapOffset		(ResourceHandle Handle, uint subResourceID = 0) const;
 
+		virtual uint8_t			GetBufferedIndex(ResourceHandle Handle) const;
+
 				DXGI_FORMAT		GetResourceDeviceFormat(ResourceHandle Handle) const;
 
 		virtual void				SubmitTileMappings(std::span<ResourceHandle> resources, iAllocator* allocator);
@@ -2075,7 +2078,7 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 		[[nodiscard]] virtual QueryHandle				CreateTimeStampQuery(size_t count);
 		[[nodiscard]]		  IndirectLayout			CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator, const IPipelineInterface* signature = nullptr);
 		[[nodiscard]] virtual ReadBackResourceHandle	CreateReadBackBuffer(const size_t bufferSize);
-		              virtual void						CreateTextureView(ResourceHandle, DescHeapPOS) final;
+		              virtual void						CreateTextureView(ResourceHandle, DescHeapPOS, ViewOptions options = {}) final;
 
 		virtual SubAllocation		ReserveConstantBuffer(ConstantBufferHandle CB, size_t reserveSize)	noexcept final;
 		virtual SubAllocation		ReserveVertexBuffer(VertexBufferHandle CB, size_t reserveSize)		noexcept final;
@@ -2525,7 +2528,8 @@ FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 	[[deprecated]]
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS, uint32_t bufferedResIndex = 0);
+
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t highestMipLevel, ResourceHandle handle, DescHeapPOS POS);
 
 	FLEXKITAPI DescHeapPOS PushTexture3DToDescHeap		(dxRenderSystem* RS, DXGI_FORMAT format, uint32_t mipCount, uint32_t highestDetailMip, uint32_t minLODClamp, ResourceHandle handle, DescHeapPOS POS);

@@ -1041,7 +1041,7 @@ namespace FlexKit
 	class FrameGraphNode
 	{
 	public:
-		typedef void (*FN_NodeGetWorkItems)	(FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& OUT_workItem, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator);
+		typedef void (*FN_NodeGetWorkItems)	(FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& OUT_workItem, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator);
 
 		FrameGraphNode(FrameGraphNodeHandle handle, FN_NodeGetWorkItems IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr);
 
@@ -1610,7 +1610,7 @@ namespace FlexKit
 
 			auto idx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
 					newWorkItem.node = &node;
@@ -1673,7 +1673,7 @@ namespace FlexKit
 
 			nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
 					newWorkItem.node = &node;
@@ -1737,7 +1737,7 @@ namespace FlexKit
 
 			auto idx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					FrameGraphNodeWorkItem newWorkItem;
 					newWorkItem.node = &node;
@@ -1791,7 +1791,7 @@ namespace FlexKit
 			};
 
 			auto nodeTask =
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					NodeData* data = reinterpret_cast<NodeData*>(node.nodeData);
 					auto& threadedTask = CreateWorkItem(
@@ -1843,7 +1843,7 @@ namespace FlexKit
 
 			auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					PassData* passData = reinterpret_cast<PassData*>(node.nodeData);
 
@@ -1975,7 +1975,7 @@ namespace FlexKit
 
 			const auto startNodeIdx = nodes.emplace_back(
 				FrameGraphNodeHandle{ nodes.size() },
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					PassData* passData	= reinterpret_cast<PassData*>(node.nodeData);
 					passData->passes	= passData->getPasses(tempAllocator);
@@ -2291,7 +2291,7 @@ namespace FlexKit
 
 			auto nodeIdx	= nodes.emplace_back(
 				nodeHandle,
-				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
+				[](FrameGraphNode& node, Vector<FrameGraphNodeWorkItem, 64>& tasks_out, FlexKit::WorkBarrier& barrier, FrameResources& resources, iAllocator& tempAllocator)
 				{
 					NodeData* nodeData = reinterpret_cast<NodeData*>(node.nodeData);
 

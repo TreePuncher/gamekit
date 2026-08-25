@@ -2890,6 +2890,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct ViewOptions
+	{
+		uint8_t						idx = 0;
+		std::optional<DeviceFormat> format;
+	};
+
 	struct IRenderSystem
 	{
 		IRenderSystem()
@@ -2988,8 +2994,9 @@ namespace FlexKit
 		virtual uint8_t					GetTextureMipCount		(ResourceHandle Handle) const = 0;
 		virtual uint2					GetTextureTilingWH		(ResourceHandle Handle, const uint mipLevel) const = 0;
 		virtual uint2					GetHeapOffset			(ResourceHandle Handle, uint subResourceID = 0) const = 0;
+		virtual uint8_t					GetBufferedIndex		(ResourceHandle Handle) const { return 0; }
 
-		virtual ResourceDimension		GetResourceDimension		(ResourceHandle handle) const = 0;
+		virtual ResourceDimension		GetResourceDimension	(ResourceHandle handle) const = 0;
 		virtual	size_t					GetTextureArraySize		(ResourceHandle handle) const = 0;
 
 		virtual	DeviceHeap_ptr			GetDeviceResource		(const DeviceHeapHandle			handle) const = 0;
@@ -3044,7 +3051,7 @@ namespace FlexKit
 		[[nodiscard]] virtual ReadBackResourceHandle			CreateReadBackBuffer(const size_t bufferSize) = 0;
 		[[nodiscard]] virtual bool								CreatePipelineBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
 		[[nodiscard]] virtual bool								CreatePipelineInterfaceBuilder(std::byte* _ptr, size_t bufferSize, iAllocator& tempAllocator) = 0;
-	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS) = 0;
+	                  virtual void								CreateTextureView(ResourceHandle, DescHeapPOS, ViewOptions options = {}) = 0;
 					  virtual void								CreateDescriptorSet(std::byte*, size_t) = 0;
 					  virtual PoolAllocatorInterface*			CreatePoolAllocator(size_t IN_heapSize, size_t IN_blockSize, uint32_t IN_flags, iAllocator* IN_allocator) { return nullptr; }
 

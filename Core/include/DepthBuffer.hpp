@@ -21,6 +21,12 @@ namespace FlexKit
 			renderSystem.SetDebugName(buffers[0], "DepthBuffer0");
 			renderSystem.SetDebugName(buffers[1], "DepthBuffer1");
 			renderSystem.SetDebugName(buffers[2], "DepthBuffer2");
+
+			for (auto&& [idx, descriptor] : enumerate(descriptors))
+			{
+				descriptor = renderSystem.CreateDescriptorRange().value();
+				renderSystem.CreateTextureView(buffers[idx], descriptor, { .format = DeviceFormat::R32_FLOAT });
+			}
 		}
 
 		~DepthBuffer()
@@ -71,11 +77,18 @@ namespace FlexKit
 			idx = (idx + 1) % 3;
 		}
 
+
+		DescriptorRange GetView() const noexcept
+		{
+			return descriptors[idx];
+		}
+
 		IRenderSystem&						renderSystem;
 		uint								idx = 0;
 		bool								floatingPoint;
 		uint2								WH;
 		CircularBuffer<ResourceHandle, 3>	buffers;
+		DescriptorRange						descriptors[3];
 	};
 
 }

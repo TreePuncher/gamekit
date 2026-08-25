@@ -119,6 +119,9 @@ namespace FlexKit
 
 
 		MaterialComponentData operator [](const MaterialHandle handle) const;
+
+		const MaterialComponentData& GetRef(const MaterialHandle handle) const;
+		
 		MaterialHandle CreateMaterial(MaterialHandle IN_parent = InvalidHandle);
 
 		void AddRef(MaterialHandle material) noexcept;

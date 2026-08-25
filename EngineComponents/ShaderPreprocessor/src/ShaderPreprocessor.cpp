@@ -1289,6 +1289,9 @@ namespace FlexKit
 			definition.entrySpace.push_back(space);
 			definition.spacesInUse.push_back(space);
 			definition.entries.push_back(RootSignatureEntryTypes::DescriptorHeap);
+			if (definition.sections.size())
+				definition.sections += ", ";
+
 			definition.sections += std::format(" DescriptorTable({})", sections);
 
 			ctx.shader.replace(ctx.begin, ctx.end, "");

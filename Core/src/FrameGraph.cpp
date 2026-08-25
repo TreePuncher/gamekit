@@ -1237,7 +1237,7 @@ namespace FlexKit
 		}
 
 		FlexKit::WorkBarrier barrier{ threads, &threadLocalAllocator };
-		Vector<FrameGraphNodeWorkItem> workList{ threadLocalAllocator };
+		Vector<FrameGraphNodeWorkItem, 64> workList{ threadLocalAllocator };
 
 		for (auto node : orderedWorkList)
 			node->nodeAction(*node, workList, barrier, resources, threadLocalAllocator);
@@ -1256,7 +1256,7 @@ namespace FlexKit
 
 		struct SubmissionContext
 		{
-			static_vector<IDirectContext*, 16>	contexts;
+			static_vector<IDirectContext*, 32>	contexts;
 			SyncPoint							prev;
 			SyncPoint							sync;
 		};
@@ -1272,14 +1272,14 @@ namespace FlexKit
 			{
 			case Submission::Queue::Direct:
 			{
-				static_vector<IDirectContext*, 16> contexts{};
+				static_vector<IDirectContext*, 32> contexts{};
 
 				struct SubmissionWorkRange
 				{
 					Vector<FrameGraphNodeWorkItem> workList;
 				};
 
-				static_vector<SubmissionWorkRange, 64> workerTaskList;
+				Vector<SubmissionWorkRange, 64> workerTaskList{ threadLocalAllocator };
 
 				for (auto& workItem : workList)
 				{
@@ -1288,14 +1288,22 @@ namespace FlexKit
 				}
 
 				size_t workBlockSize = 0;
-				Vector<FrameGraphNodeWorkItem> workList{ threadLocalAllocator };
-				workList.reserve(16);
+				size_t totalWork = 0;
+
+				Vector<FrameGraphNodeWorkItem, 16> workList{ threadLocalAllocator };
 
 				for (auto itr = submissionNodes.begin(); itr < submissionNodes.end(); itr++)
 				{
 					auto& workItem = *itr;
+					totalWork += workItem->workWeight;
+				}
 
-					if (workBlockSize >= 1000)
+				const size_t blockMaxSize = Max(1000, totalWork / threads.GetThreadCount());
+				for (auto itr = submissionNodes.begin(); itr < submissionNodes.end(); itr++)
+				{
+					auto& workItem = *itr;
+
+					if (workBlockSize >= blockMaxSize)
 					{
 						workerTaskList.emplace_back(std::move(workList));
 						workBlockSize	= 0;
@@ -1305,7 +1313,7 @@ namespace FlexKit
 					workBlockSize += workItem->workWeight;
 				}
 
-				if(workBlockSize < 1000)
+				if(workBlockSize < blockMaxSize)
 					workerTaskList.emplace_back(std::move(workList));
 
 				std::atomic_uint workerCount = 0;
@@ -1343,7 +1351,7 @@ namespace FlexKit
 					FrameResources&		resources;
 				};
 
-				static_vector<RenderWorker*, 64> workers;
+				Vector<RenderWorker*, 128> workers{ threadLocalAllocator };
 
 				auto& submissionBarrier = threadLocalAllocator.allocate<WorkBarrier>(threads, &threadLocalAllocator);
 				barriers.push_back(&submissionBarrier);

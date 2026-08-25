@@ -22,8 +22,13 @@ namespace FlexKit
 		void PostDrawUpdate(EngineCore& core, double dt) final;
 		bool EventHandler(Event evt) final;
 
-		uint2					WH;
+
 		double					t				= 0.0;
+		double					fpsT			= 0.0;
+		uint32_t				fpsCounter		= 0;
+		uint32_t				fps				= 0;
+
+		uint2					WH;
 		IRenderWindow*			renderWindow	= nullptr;
 		VertexBufferHandle		vBuffer			= InvalidHandle;
 		ConstantBufferHandle	cBuffer			= InvalidHandle;
@@ -40,7 +45,7 @@ namespace FlexKit
     BaseExampleState::BaseExampleState(GameFramework& IN_framework, const ExampleDescription& desc) :
 	    FrameworkState	{ IN_framework },
 	    triggers		{ GetAllocatorMT(), GetAllocatorMT() },
-	    objectPool		{ GetAllocatorMT(), 1024 }, 
+	    objectPool		{ GetAllocatorMT(), 1024 * 70 }, 
         WH				{ desc.WH }
     {
 	    Win32RenderWindowDesc windowDesc = DefaultWindowDesc(desc.WH, DeviceFormat::R16G16B16A16_FLOAT);
@@ -89,6 +94,16 @@ namespace FlexKit
 	    
         ImGui::EndFrame();
 	    ImGui::Render();
+
+		if (fpsT > 1.0)
+		{
+			fpsT		= 0;
+			fps			= fpsCounter;
+			fpsCounter	= 0;
+		}
+
+		fpsT += dt;
+		fpsCounter++;
 
 	    return out;
     }
@@ -160,8 +175,8 @@ namespace FlexKit
 				}) }
 		{
 			fkApp->GetCore().FPSLimit	= 144;
-			fkApp->GetCore().FrameLock	= true;
-			fkApp->GetCore().vSync		= true;
+			fkApp->GetCore().FrameLock	= false;
+			fkApp->GetCore().vSync		= false;
 
 			exampleState = &fkApp->PushState<BaseExampleState>(desc);
 		}
@@ -273,6 +288,11 @@ namespace FlexKit
 	double ExampleState::GetRunningTime()
     {
 		return app->exampleState->t;
+    }
+
+	uint32_t ExampleState::GetFPS()
+    {
+		return app->exampleState->fps;
     }
 
 	void ExampleState::ToggleMouse(bool b)

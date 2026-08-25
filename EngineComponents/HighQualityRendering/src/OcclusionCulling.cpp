@@ -12,6 +12,7 @@ namespace FlexKit
 		drawableOffsetMappings{ allocator }
 	{
 		IRenderSystem::GetInstance().SetDebugName(IN_occlusionResults, "OcclusionResultsBuffer");
+		drawableOffsetMappings.reserve(4096);
 	}
 
 
@@ -44,10 +45,7 @@ namespace FlexKit
 
 	uint32_t OcclusionQueries::GetQueryIdx(uint32_t id)
 	{
-		std::scoped_lock sl{ m };
-
-		auto res = drawableOffsetMappings.find(id);
-		if (res)
+		if (auto res = drawableOffsetMappings.find(id); res)
 			return *res;
 		else
 		{
@@ -99,18 +97,18 @@ namespace FlexKit
 				PassHistory{});
 
 			res->occlusionQueryHistory.emplace_back(
-				renderSystem.CreateOcclusionBuffer(4096),
-				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				renderSystem.CreateOcclusionBuffer(MEGABYTE / 8),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(MEGABYTE)),
 				allocator);
 
 			res->occlusionQueryHistory.emplace_back(
-				renderSystem.CreateOcclusionBuffer(4096),
-				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				renderSystem.CreateOcclusionBuffer(MEGABYTE / 8),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(MEGABYTE)),
 				allocator);
 
 			res->occlusionQueryHistory.emplace_back(
-				renderSystem.CreateOcclusionBuffer(4096),
-				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(4096 * 8)),
+				renderSystem.CreateOcclusionBuffer(MEGABYTE / 8),
+				renderSystem.CreateGPUResource(GPUResourceDesc::UAVResource(MEGABYTE)),
 				allocator);
 		}
 

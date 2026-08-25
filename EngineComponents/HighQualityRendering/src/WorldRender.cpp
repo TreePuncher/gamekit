@@ -816,8 +816,10 @@ namespace FlexKit
 		auto& visableLights		= scene.GetVisableLights(dispatcher, camera, sceneBVH, temporary);
 		auto& lightUpdate		= scene.UpdateLights(dispatcher, sceneBVH, visableLights, temporary, persistent);
 
+
 		LoadLodLevels(dispatcher, passes, drawSceneDesc.camera, renderSystem, *persistent);
 
+		passes.AddInput(sceneBVH);
 		lightGather.AddInput(drawSceneDesc.transformDependency);
 		lightGather.AddInput(drawSceneDesc.cameraDependency);
 
@@ -893,8 +895,7 @@ namespace FlexKit
 				clusteredRender.OcclusionCulling(
 					dispatcher,
 					frameGraph,
-					passes,
-					camera,
+					gbufferPass,
 					passHistories,
 					depthTarget.Get(),
 					temporary);
@@ -906,6 +907,14 @@ namespace FlexKit
 				    occlusionResults,
 					temporary);
 		}
+
+		clusteredRender.DEBUGVIS_GBuffer(
+			dispatcher, frameGraph,
+            gbuffer,
+            renderTarget,
+            depthTarget,
+			GBufferDebugVisMode::Normals,
+			temporary);
 
 		/*
 		ExtraGBufferPassInputs extraGPassInputs{

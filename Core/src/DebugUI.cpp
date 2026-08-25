@@ -6,7 +6,7 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-	inline ImTextureID TextreHandleToIM(ResourceHandle texture)
+	inline ImTextureID TextureHandleToIM(ResourceHandle texture)
 	{
 		return (ImTextureID)texture.INDEX;
 	}
@@ -117,12 +117,8 @@ namespace FlexKit
 
 		//ImPlot::GetStyle().AntiAliasedLines = true;
 
-		CopyContextHandle	uploadQueue = renderSystem.GetImmediateCopyQueue();
 		ImGuiIO& io                     = ImGui::GetIO();
 		io.FontGlobalScale              = 1.5f;
-
-		renderSystem.RegisterPSOLoader(DRAW_imgui, Create_DrawImGUI);
-		renderSystem.QueuePSOLoad(DRAW_imgui);
 
 		unsigned char* tex_pixels = nullptr;
 		int             tex_w;
@@ -131,7 +127,7 @@ namespace FlexKit
 		io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
 		TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (std::byte*)tex_pixels, 4 };
 
-
+		CopyContextHandle	uploadQueue = renderSystem.GetImmediateCopyQueue();
 		imGuiFont = MoveTextureBuffersToVRAM(
 			renderSystem,
 			uploadQueue,
@@ -139,7 +135,10 @@ namespace FlexKit
 			1,
 			DeviceFormat::R8G8B8A8_UNORM);
 
-		io.Fonts->TexID = TextreHandleToIM(imGuiFont);
+		io.Fonts->TexID = TextureHandleToIM(imGuiFont);
+
+		renderSystem.RegisterPSOLoader(DRAW_imgui, Create_DrawImGUI);
+		renderSystem.QueuePSOLoad(DRAW_imgui);
 	}
 
 
