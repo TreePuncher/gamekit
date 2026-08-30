@@ -11,7 +11,11 @@
 	float4x4 Proj;
 	float4x4 PV;				// Projection x View
 	float4x4 PVI;				
-	float4   CameraPOS;
+	
+    float4   CameraPOS;
+	float4	 POSu;
+    float4	 POSl;
+
 	float  	 MinZ;
 	float  	 MaxZ;
 	float    AspectRatio;

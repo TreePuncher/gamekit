@@ -677,7 +677,7 @@ namespace FlexKit
 					BS = triMesh->bs;
 				}
 
-				const float4x4 WT   = GetWT(draw.brush->node);
+				const float4x4 WT   = (float4x4)GetWT(draw.brush->node);
 				const float3 POS    = GetPositionW(draw.brush->node);
 				const float4 POS_WT = POS + (WT * float4(BS.xyz(), 0)).xyz();
 				const float scale   = Max(WT[0][0], Max(WT[1][1], WT[2][2]));
@@ -768,7 +768,7 @@ namespace FlexKit
 
 							const auto poseConstants = ConstantBufferDataSet{ poseTemp, animatedConstantBuffer };
 
-							const float4x4 WT			= nodeView.GetWT();
+							const float4x4 WT			= (float4x4)nodeView.GetWT();
 							const float4 brushPOS_WT	= WT * float4(triMesh->bs.xyz(), 1);
 
 							ctx.SetGraphicsConstantValue(2, 16, float4x4{ WT });
@@ -866,7 +866,7 @@ namespace FlexKit
 			const auto lodLevel	= visible.LODlevel;
 			auto& meshes		= visible.brush->meshes;
 
-			const float4x4	WT		= GetWT(visible.brush->node);
+			const float4x4	WT		= (float4x4)GetWT(visible.brush->node);
 			const float3	POS		= GetPositionW(visible.brush->node);
 			const float		scale	= Max(WT[0][0], Max(WT[1][1], WT[2][2]));
 
@@ -942,7 +942,7 @@ namespace FlexKit
 						for (size_t I = 0; I < end; ++I)
 							poseTemp.M[I] = skeleton.IPose[I] * pose.CurrentPose[I];
 
-						const float4x4 WT			= nodeView.GetWT();
+						const float4x4 WT = (float4x4)nodeView.GetWT();
 
 						struct 
 						{

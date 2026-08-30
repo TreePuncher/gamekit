@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
+add_subdirectory(MathUtilities)
 add_subdirectory(BackendShared)
 add_subdirectory(ShaderPreprocessor)
 add_subdirectory(OBJLoader)

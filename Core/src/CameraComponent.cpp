@@ -219,21 +219,22 @@ namespace FlexKit
 
 	void Camera::UpdateMatrices()
 	{
-		float4x4 updatedView;
-		float4x4 updatedWT;
+		float4x4	updatedView;
+		double4x4	updatedWT;
 		float4x4 updatedPV;
 		float4x4 updatedIV;
 		float4x4 updatedProj;
 
+		auto t = GetWT(Node);
 		if (Node != InvalidHandle)
-			updatedWT = GetWT(Node);
+			updatedWT = (double4x4)t;
 		else
-			updatedWT  = float4x4::Identity();
+			updatedWT  = double4x4::Identity();
 
-		updatedView	= Inverse(updatedWT);
+		updatedView	= (float4x4)Inverse(updatedWT);
 		updatedProj	= CreatePerspectiveRH(*this, invert);
 		updatedPV	= updatedProj;
-		updatedIV	= updatedWT;
+		updatedIV	= (float4x4)updatedWT;
 
 		previous.WT     = WT;
 		previous.View   = View;
@@ -252,24 +253,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT)
+	Camera::ConstantBuffer CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const double4x4& WT)
 	{
-		const float4x4 view	= Inverse(WT);
-		const float4x4 proj	= PerspectiveRH(FOV, aspectRatio, minZ, maxZ);
+		const double3 xyz				= GetTranslation(WT);
+		const float4x4 scaleRotation	= (float4x4)ExtractScaleRotationMatrix(WT);
+
+		const float4x4 view		= float4x4{ scaleRotation }.Transpose();
+		const float4x4 proj		= PerspectiveRH(FOV, aspectRatio, minZ, maxZ);
 
 		Camera::ConstantBuffer NewData;
 		NewData.Proj			= proj;
 		NewData.View			= view;
-		NewData.ViewI			= WT;
+		NewData.ViewI			= scaleRotation;
 		NewData.PV				= proj;
 		NewData.PVI				= Inverse(NewData.PV);
 		NewData.MinZ			= minZ;
 		NewData.MaxZ			= maxZ;
 
-		NewData.WPOS[0]			= WT[0][3];
-		NewData.WPOS[1]			= WT[1][3];
-		NewData.WPOS[2]			= WT[2][3];
-		NewData.WPOS[3]			= 0;
+		NewData.CameraPOS[0]	= (float)WT[0][3];
+		NewData.CameraPOS[1]	= (float)WT[1][3];
+		NewData.CameraPOS[2]	= (float)WT[2][3];
+		NewData.CameraPOS[3]	= 0;
 
 		const float Y = tan(FOV / 2) * maxZ;
 		const float X = Y * aspectRatio;
@@ -292,23 +296,30 @@ namespace FlexKit
 
 	Camera::ConstantBuffer Camera::GetConstants() const
 	{
-		const float4x4 view = Inverse(WT);
-		const float4x4 PV	= Proj * view;
+		const double3 xyz = GetTranslation(WT);
+		const double4x4 scaleRotationd = ExtractScaleRotationMatrix(WT);
+		const float4x4 scaleRotation = (float4x4)scaleRotationd;
+
+		const float4x4 PV	= Proj * scaleRotation;
 		const float4x4 PVI	= Inverse(PV);
 
 		Camera::ConstantBuffer constants;
 		constants.Proj		= Proj;
-		constants.View		= View;
-		constants.ViewI		= WT;
+		constants.View		= scaleRotation;
+		constants.ViewI		= Inverse(scaleRotation);
 		constants.PV		= PV;
 		constants.PVI		= PVI;
 		constants.MinZ		= Near;
 		constants.MaxZ		= Far;
 
-		constants.WPOS[0]	= WT[0][3];
-		constants.WPOS[1]	= WT[1][3];
-		constants.WPOS[2]	= WT[2][3];
-		constants.WPOS[3]	= 0;
+		constants.CameraPOS[0]	= (float)xyz[0];
+		constants.CameraPOS[1]	= (float)xyz[1];
+		constants.CameraPOS[2]	= (float)xyz[2];
+		constants.CameraPOS[3]	= 0;
+
+		auto posDF = GetDF(xyz);
+		constants.POSh = posDF.high;
+		constants.POSl = posDF.low;
 
 		const float y = tan(FOV / 2) * Far;
 		const float x = y * AspectRatio; 
@@ -331,22 +342,22 @@ namespace FlexKit
 
 	Camera::ConstantBuffer Camera::GetCameraPreviousConstants() const
 	{
-		const float4x4 prevWT   = previous.WT;
+		const float4x4 prevWT   = (float4x4)previous.WT;
 		const float4x4 prevView = Inverse(prevWT);
 
 		Camera::ConstantBuffer NewData;
 		NewData.Proj			= previous.Proj;
 		NewData.View			= previous.View;
-		NewData.ViewI			= previous.WT;
+		NewData.ViewI			= (float4x4)previous.WT;
 		NewData.PV				= previous.Proj * prevView;
 		NewData.PVI				= Inverse(previous.Proj) * prevView;
 		NewData.MinZ			= previous.nearClip;
 		NewData.MaxZ			= previous.farClip;
 
-		NewData.WPOS[0]			= prevWT[0][3];
-		NewData.WPOS[1]			= prevWT[1][3];
-		NewData.WPOS[2]			= prevWT[2][3];
-		NewData.WPOS[3]			= 0;
+		NewData.CameraPOS[0]	= prevWT[0][3];
+		NewData.CameraPOS[1]	= prevWT[1][3];
+		NewData.CameraPOS[2]	= prevWT[2][3];
+		NewData.CameraPOS[3]	= 0;
 
 		const float Y = tan(previous.FOV / 2) * Far;
 		const float X = Y * previous.aspectRatio;
@@ -1030,7 +1041,7 @@ namespace FlexKit
 		const auto cameraOrientation	= GetOrientation(GetCameraNode(camera));
 
 		const float3 v_dir	= cameraOrientation * (Inverse(cameraConstants.Proj) * float4{ UV.x, UV.y,  1.0f, 1.0f }).xyz().normal();
-		const float3 v_o	= cameraConstants.WPOS.xyz();
+		const float3 v_o	= cameraConstants.CameraPOS.xyz();
 
 		return { .D = v_dir, .O = v_o };
 	}

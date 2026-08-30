@@ -29,53 +29,60 @@ struct HighQualityRenderingState : ExampleState
 
         cameraObject            { &AllocateGameObject() }
     {
+        const double offset = 123'123'123;
+        //const double offset = 0;
         auto cameraNode = GetZeroedNode();
         auto& camera = cameraObject->AddView<CameraView>();
         camera.SetCameraNode(cameraNode);
         camera.SetCameraAspectRatio(GetRenderWindow().GetAspectRatio());
         auto& cameraNodeView = cameraObject->AddView<SceneNodeView>(cameraNode);
-        cameraNodeView.TranslateWorld({ 0, 5, 10 });
+        cameraNodeView.TranslateWorld({ offset, offset + 4, 10 });
         activeCamera = camera;
 
         auto test       = LoadObj(R"(assets\test.obj)");
         auto light      = LoadObj(R"(assets\light.obj)");
         auto room       = LoadObj(R"(assets\room.obj)");
-        auto suzanne    = LoadObj(R"(assets\suzanne.obj)");
+        auto suzanne    = LoadObj(R"(assets\goober.obj)");
 
         auto defaultMaterial = materials.CreateMaterial();
         materials.Add2Pass(defaultMaterial, GBufferStaticPassID);
 
-        auto& testObj = AllocateGameObject();
-        testObj.AddView<SceneNodeView>(GetZeroedNode());
-        auto& testObjMat = testObj.AddView<MaterialView>(defaultMaterial);
-        auto& testBrush = testObj.AddView<BrushView>(test);
+        auto& testObj       = AllocateGameObject();
+        auto& testNode      = testObj.AddView<SceneNodeView>(GetZeroedNode());
+        auto& testObjMat    = testObj.AddView<MaterialView>(defaultMaterial);
+        auto& testBrush     = testObj.AddView<BrushView>(test);
         testBrush.SetMaterial(testObjMat);
+        testNode.SetPosition({ offset, offset, 0 });
         scene.AddGameObject(testObj);
 
-        auto& lightObj = AllocateGameObject();
-        lightObj.AddView<SceneNodeView>(GetZeroedNode());
-        auto& lightObjMat = lightObj.AddView<MaterialView>(defaultMaterial);
-        auto& lightBrush = lightObj.AddView<BrushView>(light);
+        auto& lightObj      = AllocateGameObject();
+        auto& lightNode     = lightObj.AddView<SceneNodeView>(GetZeroedNode());
+        auto& lightObjMat   = lightObj.AddView<MaterialView>(defaultMaterial);
+        auto& lightBrush    = lightObj.AddView<BrushView>(light);
         lightBrush.SetMaterial(lightObjMat);
+        lightNode.SetPosition({ offset, offset, 0 });
         scene.AddGameObject(lightObj);
 
-        auto& roomObj = AllocateGameObject();
-        roomObj.AddView<SceneNodeView>(GetZeroedNode());
-        auto& roomObjMat = roomObj.AddView<MaterialView>(defaultMaterial);
-        auto& roomBrush = roomObj.AddView<BrushView>(room);
+        auto& roomObj       = AllocateGameObject();
+        auto& roomNode      = roomObj.AddView<SceneNodeView>(GetZeroedNode());
+        auto& roomObjMat    = roomObj.AddView<MaterialView>(defaultMaterial);
+        auto& roomBrush     = roomObj.AddView<BrushView>(room);
         roomBrush.SetMaterial(roomObjMat);
+        roomNode.SetPosition({ offset, offset, 0 });
         scene.AddGameObject(roomObj);
 
-        auto& suzanneObj = AllocateGameObject();
-        suzanneObj.AddView<SceneNodeView>(GetZeroedNode());
-        auto& suzanneMat = suzanneObj.AddView<MaterialView>(defaultMaterial);
-        auto& suzanneBrush = suzanneObj.AddView<BrushView>(suzanne);
+        auto& suzanneObj    = AllocateGameObject();
+        auto& suzanneNode   = suzanneObj.AddView<SceneNodeView>(GetZeroedNode());
+        auto& suzanneMat    = suzanneObj.AddView<MaterialView>(defaultMaterial);
+        auto& suzanneBrush  = suzanneObj.AddView<BrushView>(suzanne);
         suzanneBrush.SetMaterial(suzanneMat);
+        suzanneNode.SetPosition({ offset, offset, 0 });
         scene.AddGameObject(suzanneObj);
+        
+        obj1 = &suzanneObj;
 
-
-        const uint32_t end = 20;
-        const float3 start  { -1 * 1.5 * float(end) / 2.0f, -25, -50};
+        const uint32_t end = 00;
+        const float3 start  { offset + -1 * 1.5 * float(end) / 2.0f, offset, -20 };
         const float3 step   { 1.5, 1.5f, -1.5};
         for (uint32_t y = 0; y < end; y++)
         {
@@ -109,6 +116,7 @@ struct HighQualityRenderingState : ExampleState
     UpdateTask* Update(EngineCore& core, UpdateDispatcher& dispatcher, double dt) override
     {
         a = Clock.now();
+        Yaw(*obj1, -pi * dt);
 
         return nullptr;
     }
@@ -116,13 +124,16 @@ struct HighQualityRenderingState : ExampleState
 
     void DrawUI() override final
     {
+        double3 xyz = GetWorldPosition(*cameraObject);
+
         ImGui::SetNextWindowPos({ 0, 0 });
-        ImGui::SetNextWindowSize({ 500, 200 });
+        ImGui::SetNextWindowSize({ 800, 200 });
         if (ImGui::Begin("FPS Counter"))
         {
             ImGui::Text("FPS: %u", GetFPS());
             ImGui::Text("FPS Time: %f ms", 1000.0f / GetFPS());
             ImGui::Text("CPU Time: %f ms", (float)d.count() / 1000.0f);
+            ImGui::Text("Camera Position : %f, %f, %f", xyz.x, xyz.y, xyz.z);
         }   ImGui::End();
         
     }
@@ -186,6 +197,7 @@ struct HighQualityRenderingState : ExampleState
     Scene                       scene;
 
     GameObject*                 cameraObject = nullptr;
+    GameObject*                 obj1    = nullptr;
 
     CameraHandle                activeCamera = InvalidHandle;
 

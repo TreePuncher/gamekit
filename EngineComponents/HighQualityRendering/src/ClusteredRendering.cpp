@@ -21,7 +21,7 @@ namespace FlexKit
 	LoadPipelineStateRes ClusteredRender::CreateGBufferPassPSO(IRenderSystem& renderSystem, iAllocator& allocator)
 	{
 		return PipelineBuilder{ renderSystem, allocator }.
-	            AddVertexShader("Forward_VS",		R"(assets\shaders\forward\GBuffer.hlsl)").
+	            AddVertexShader("Forward_VS",		R"(assets\shaders\forward\GBuffer.hlsl)", { .hlsl2021 = true, .enableDebug = true }).
 	            AddPixelShader("GBufferFill_PS",	R"(assets\shaders\forward\GBuffer.hlsl)").
 			    AddInputTopology(ETopology::EIT_TRIANGLE).
                 AddInputLayout({ .inputs =
@@ -1807,7 +1807,8 @@ namespace FlexKit
 					AlignedSize<ForwardDrawConstants>();
 
 				auto passConstantBuffer		= resources.ReserveCB(passBufferSize);
-				const auto cameraConstants	= ConstantBufferDataSet{ GetCameraConstants(shared.camera), passConstantBuffer };
+				auto t = GetCameraConstants(shared.camera);
+				const auto cameraConstants	= ConstantBufferDataSet{ t, passConstantBuffer };
 
 				static auto* gpass = resources.GetPipelineState(GBUFFERPASSSTATIC, allocator);
 				ctx.SetPipelineState(gpass);
@@ -1834,7 +1835,7 @@ namespace FlexKit
 
 				// Setup Constants
 				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 16);
+				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 22);
 
 				ctx.BeginEvent_DEBUG("G-Buffer Pass");
 
@@ -1884,8 +1885,19 @@ namespace FlexKit
 							ctx.SetPredicate(false);
 					}
 
-					const float4x4_GPU wt = GetWT(brush->node);
-					ctx.SetGraphicsConstantValue(0, 16, &wt);
+					const double4x4		wt		= GetWT(brush->node);
+					const double3		pos		= ExtractTranslationVector(wt);
+					const float4x4_GPU	wtf		= (float4x4)ExtractScaleRotationMatrix(wt);
+					const DF			posDF	= GetDF(pos);
+
+					float3 high = posDF.high - t.POSh;
+					float3 low = posDF.low - t.POSl;
+
+					float3 o = high + low;
+
+					ctx.SetGraphicsConstantValue(0, 16, &wtf);
+					ctx.SetGraphicsConstantValue(0, 3, &posDF.high, 16);
+					ctx.SetGraphicsConstantValue(0, 3, &posDF.low, 20);
 
 					for (size_t J = 0; J < meshCount; J++)
 					{
@@ -1925,7 +1937,7 @@ namespace FlexKit
 								};
 
 							const auto	subMesh		= submeshes[K];
-							const auto& subMaterial = GetMaterial(K);
+							const auto& subMaterial = GetMaterial(subMesh.materialIndex);
 
 							if (subMaterial.textureDescriptors.size != 0)
 								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
@@ -1968,7 +1980,10 @@ namespace FlexKit
 				.pass1				= &pass1,
 				.occlusionResults	= &occlusionPass
 			},
-			.getPVS = [&pass1]() -> std::span<const BrushEntry> { return pass1.passes.GetData().GetPass(GBufferStaticPassID); }
+			.getPVS = [&pass1]() -> std::span<const BrushEntry>
+			{
+				return pass1.passes.GetData().GetPass(GBufferStaticPassID);
+			}
 		};
 
 		auto setup =
@@ -2034,7 +2049,7 @@ namespace FlexKit
 
 				// Setup Constants
 				ctx.SetGraphicsConstantBufferView(0, cameraConstants);
-				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 16);
+				ctx.SetGraphicsConstantValue(0, 4, ForwardDrawConstants{ 1, 1, { 800, 600 } }, 22);
 
 				ctx.BeginEvent_DEBUG("G-Buffer Pass");
 
@@ -2059,8 +2074,14 @@ namespace FlexKit
 
 					ctx.SetPredicate(true, predicates, predicateIdx, PredicateOp::EqualZero);
 
-					const float4x4_GPU wt = GetWT(brush->node);
-					ctx.SetGraphicsConstantValue(0, 16, &wt);
+					const double4x4 wt		= GetWT(brush->node);
+					const double3 pos		= ExtractTranslationVector(wt);
+					const float4x4_GPU wtf	= (float4x4)ExtractScaleRotationMatrix(wt);
+					const DF posDF			= GetDF(pos);
+
+					ctx.SetGraphicsConstantValue(0, 16, &wtf);
+					ctx.SetGraphicsConstantValue(0, 3, &posDF.high, 16);
+					ctx.SetGraphicsConstantValue(0, 3, &posDF.low, 20);
 
 					for (size_t J = 0; J < meshCount; J++)
 					{
@@ -2101,7 +2122,7 @@ namespace FlexKit
 								};
 
 							const auto	subMesh		= submeshes[K];
-							const auto& subMaterial = GetMaterial(K);
+							const auto& subMaterial = GetMaterial(subMesh.materialIndex);
 
 							if (subMaterial.textureDescriptors.size != 0)
 								ctx.SetGraphicsDescriptorSet(0, subMaterial.textureDescriptors);
@@ -2181,6 +2202,7 @@ namespace FlexKit
 				QueryHandle				query		= current.occlusionQueries;
 
 				const float4x4			PV			= GetCameraConstants(camera).PV;
+				const double3			camPOS		= GetPositionW(GetCameraNode(camera));
 				const ResourceHandle	depthBuffer	= resources.GetResource(data.depthBuffer);
 
 				ctx.SetGraphicsPipelineState(OCCLUSIONQUERYPSO, threadLocalAllocator);
@@ -2213,10 +2235,10 @@ namespace FlexKit
 						aabb += meshResource->aabb;
 					}
 
-					const float3		posW	= GetPositionW(draw.brush->node);
+					const double3		posW	= GetPositionW(draw.brush->node);
 					const float3		span	= aabb.Span();
 					const float3		mp		= aabb.MidPoint();
-					const float4x4_GPU	PVT		= PV * TranslationMatrix(posW + mp) * ScaleMatrix(span * 0.5f);
+					const float4x4_GPU	PVT		= (PV * TranslationMatrix(mp + (float3)(posW - camPOS)) * ScaleMatrix(span * 0.5f));
 
 					ctx.SetGraphicsConstantValue(0, 16, &PVT);
 					ctx.SetPredicate(true, prev.occlusionResults, previousID, PredicateOp::NotEqualZero);

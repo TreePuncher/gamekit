@@ -1826,12 +1826,12 @@ namespace FlexKit
 	{
 		Brush::VConstantsLayout	constants;
 
-		float4x4 WT = FlexKit::GetWT(node);
+		double4x4 WT = FlexKit::GetWT(node);
 
 		auto& materials = MaterialComponent::GetComponent();
 
 		constants.MP		= GetPBRConstants();
-		constants.Transform = WT;
+		constants.Transform = (float4x4)WT;
 
 		if (material != InvalidHandle)
 		{

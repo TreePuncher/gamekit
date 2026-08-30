@@ -9,9 +9,10 @@ namespace FlexKit
 
 	float4x4 GetPoseTransform(JointPose P)
 	{
-		const auto rotation		= Quaternion2Matrix(P.r);
-		const auto scaling		= ScaleMatrix({ P.ts[3], P.ts[3], P.ts[3] });
-		const auto translation	= TranslationMatrix(P.ts.Slice<0, 3>());
+		const float3   pos			= P.ts.Slice<0, 3>();
+		const float4x4 rotation		= Quaternion2Matrix(P.r);
+		const float4x4 scaling		= ScaleMatrix({ P.ts[3], P.ts[3], P.ts[3] });
+		const float4x4 translation  = TranslationMatrix(pos);
 
 		return translation * (rotation * scaling);
 	}

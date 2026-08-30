@@ -4059,6 +4059,11 @@ namespace dx_Internal
 		if (options.hlsl2021)
 			arguments.push_back(L"-HV 2021");
 
+
+		arguments.push_back(L"-Gis");
+		arguments.push_back(L"-Od");
+		arguments.push_back(L"-Ges");
+
 		DxcBuffer buffer{
 			blob->GetBufferPointer(),
 			blob->GetBufferSize(),

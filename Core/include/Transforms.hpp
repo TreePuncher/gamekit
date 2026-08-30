@@ -12,41 +12,30 @@ namespace FlexKit
 
 	struct Node
 	{
-		NodeHandle	handle; //?
-		NodeHandle	Parent;
-		NodeHandle	ChildrenList;
-		bool		Scaleflag;// Calculates Scale only when set to on, Off By default
+		NodeHandle	handle			= InvalidHandle; //?
+		NodeHandle	parent			= InvalidHandle;
+		NodeHandle	childrenFirst	= InvalidHandle;
+		NodeHandle	childrenLast	= InvalidHandle;
+		NodeHandle	next			= InvalidHandle;
+		bool		Scaleflag		= false;// Calculates Scale only when set to on, Off By default
 	};
 
 	
-	struct alignas(16) LT_Entry
+	struct alignas(32) LT_Entry
 	{
-		float4		T;
+		double4		T;
 		Quaternion	R;
 		float3		S;
 
-		static LT_Entry Zero()
-		{
-			LT_Entry zero;
-			zero.T = float4::Zero();
-		    zero.R = Quaternion::Identity();
-			zero.S = float3{ 1, 1, 1 };
-
-			return zero;
-		}
+		static LT_Entry Zero();
 	};
 
 
 	struct WT_Entry
 	{
-		//LT_Entry			World;
-		float4x4	m4x4;// Cached
+		double4x4 m4x4; // Cached
 
-		void SetToIdentity()	
-		{	
-			m4x4  = float4x4::Identity(); 
-			//World = LT_Entry::Zero();
-		}
+		void SetToIdentity();
 	};
 	
 
@@ -66,41 +55,17 @@ namespace FlexKit
 		Vector<LT_Entry>	    LT;
 		Vector<WT_Entry>        WT;
 		Vector<char>            Flags;
-		Vector<ChildrenVector>  Children;
 
 		NodeHandle  root;
 
 		HandleUtilities::HandleTable<NodeHandle> Indexes;
 
-		~SceneNodes()
-		{
-			Release();
-		}
+		~SceneNodes();
+		void Release();
 
-		void Release()
-		{
-			Nodes.Release();
-			LT.Release();
-			WT.Release();
-			Flags.Release();
-			Children.Release();
-			Indexes.Release();
-		}
+		size_t _AddNode();
 
-		size_t _AddNode()
-		{
-			const auto idx0 = Nodes.emplace_back();
-			const auto idx1 = LT.emplace_back();
-			const auto idx2 = WT.emplace_back(WT_Entry{ float4x4::Identity() });
-			const auto idx3 = Flags.emplace_back();
-			const auto idx4 = Children.emplace_back();
-
-			FK_ASSERT((idx0 == idx1) && (idx2 == idx3) && (idx1 == idx2) && (idx3 == idx4));
-
-			return idx0;
-		}
-
-		size_t size() const { return Nodes.size(); }
+		size_t size() const;
 	}inline SceneNodeTable;
 
 
@@ -114,16 +79,16 @@ namespace FlexKit
 	void			SortNodes					(StackAllocator* Temp);
 	void			ReleaseNode					(NodeHandle Node);
 
-	float3			LocalToGlobal				(NodeHandle Node, float3 POS);
+	double3			LocalToGlobal				(NodeHandle Node, float3 POS);
 
 	LT_Entry		GetLocal					(NodeHandle Node);
 	float3			GetLocalScale				(NodeHandle Node);
-	float4x4		GetWT						(NodeHandle Node);
-	float4x4		GetLT						(NodeHandle Node);
+	double4x4		GetWT						(NodeHandle Node);
+	double4x4		GetLT						(NodeHandle Node);
 	Quaternion		GetOrientation				(NodeHandle Node);
 	Quaternion		GetOrientationLocal			(NodeHandle Node);
-	float3			GetPositionW				(NodeHandle Node);
-	float3			GetPositionL				(NodeHandle Node);
+	double3			GetPositionW				(NodeHandle Node);
+	double3			GetPositionL				(NodeHandle Node);
 	NodeHandle		GetNewNode					();
 	NodeHandle		GetZeroedNode				();
 	bool			GetFlag						(NodeHandle Node, size_t f);
@@ -135,14 +100,14 @@ namespace FlexKit
 	void			SetOrientation				(NodeHandle Node,	const Quaternion& In);	// Sets World Orientation
 	void			SetOrientationL				(NodeHandle Node,	const Quaternion& In);	// Sets World Orientation
 	void			SetParentNode				(NodeHandle Parent, NodeHandle Node);
-	void			SetPositionW				(NodeHandle Node,	float3 in);
-	void			SetPositionL				(NodeHandle Node,	float3 in);
-	void			SetWT						(NodeHandle Node,	const float4x4& in); // Set World Transform
+	void			SetPositionW				(NodeHandle Node,	double3 in);
+	void			SetPositionL				(NodeHandle Node,	double3 in);
+	void			SetWT						(NodeHandle Node,	const double4x4& in); // Set World Transform
 	void			SetScale					(NodeHandle Node,	float3 In);
 
 	void			Scale						(NodeHandle Node,	float3 In);
-	void			TranslateLocal				(NodeHandle Node,	float3 In);
-	void			TranslateWorld				(NodeHandle Node,	float3 In);
+	void			TranslateLocal				(NodeHandle Node,	double3 In);
+	void			TranslateWorld				(NodeHandle Node,	double3 In);
 	NodeHandle		ZeroNode					(NodeHandle Node );
 
 
@@ -155,7 +120,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Yaw		(NodeHandle Node,	float r );
+	void Yaw	(NodeHandle Node,	float r );
 	void Roll	(NodeHandle Node,	float r );
 	void Pitch	(NodeHandle Node,	float r );
 
@@ -170,26 +135,12 @@ namespace FlexKit
 		public Component<SceneNodeComponent, TransformComponentID>
 	{
 	public:
-		~SceneNodeComponent()
-		{
-			SceneNodeTable.Release();
-		}
+		~SceneNodeComponent();
 		void FreeComponentView(void* _ptr) final;
 
-		NodeHandle CreateZeroedNode()
-		{
-			return FlexKit::GetZeroedNode();
-		}
-
-		NodeHandle CreateNode()
-		{
-			return FlexKit::GetNewNode();
-		}
-
-		NodeHandle GetRoot() 
-		{
-			return NodeHandle{ 0 };
-		}
+		NodeHandle CreateZeroedNode();
+	    NodeHandle CreateNode();
+        NodeHandle GetRoot();
 	};
 
 
@@ -251,24 +202,24 @@ namespace FlexKit
 
 		void Scale(float3 xyz) noexcept;
 
-		void TranslateLocal(float3 xyz) noexcept;
-		void TranslateWorld(float3 xyz) noexcept;
+		void TranslateLocal(double3 xyz) noexcept;
+		void TranslateWorld(double3 xyz) noexcept;
 
 		void ToggleScaling(bool scalable) noexcept;
 
-		float3		GetPosition() const noexcept;
-		float3		GetPositionL() const noexcept;
+		double3		GetPosition() const noexcept;
+		double3		GetPositionL() const noexcept;
 		float3		GetScale() const noexcept;
 		Quaternion	GetOrientation() const noexcept;
 		Quaternion	GetOrientationL() const noexcept;
-		float4x4	GetWT() const noexcept;
+		double4x4	GetWT() const noexcept;
 
 		void SetScale(float3 scale) noexcept;
-		void SetPosition(const float3 xyz) noexcept;
-		void SetPositionL(const float3 xyz) noexcept;
+		void SetPosition(const double3 xyz) noexcept;
+		void SetPositionL(const double3 xyz) noexcept;
 		void SetOrientation(const Quaternion q) noexcept;
 		void SetOrientationL(const Quaternion q) noexcept;
-		void SetWT(const float4x4& wt) noexcept;
+		void SetWT(const double4x4& wt) noexcept;
 
 		NodeHandle		node;
 		TriggerHandle	triggers;
@@ -277,8 +228,8 @@ namespace FlexKit
 
 
 	void		Translate(GameObject& go, const float3 xyz);
-	float3		GetLocalPosition(GameObject& go);
-	float3		GetWorldPosition(GameObject& go);
+	double3		GetLocalPosition(GameObject& go);
+	double3		GetWorldPosition(GameObject& go);
 
 
 	void		ClearParent(GameObject& go);
@@ -296,13 +247,13 @@ namespace FlexKit
 	Quaternion	GetOrientation(GameObject& go);
 	Quaternion	GetOrientationLocal(GameObject& go);
 	NodeHandle	GetSceneNode(GameObject& go);
-	float4x4	GetWT(GameObject& go);
+	double4x4	GetWT(GameObject& go);
 
 	void		SetLocalPosition(GameObject& go, const float3 pos);
 	void		SetWorldPosition(GameObject& go, const float3 pos);
 	void		SetScale(GameObject& go, float3 scale);
 
-	void		SetWT(GameObject& go, const float4x4 newMatrix);
+	void		SetWT(GameObject& go, const double4x4 newMatrix);
 	void		SetOrientation(GameObject& go, const Quaternion q);
 	void		SetOrientationLocal(GameObject& go, const Quaternion q);
 

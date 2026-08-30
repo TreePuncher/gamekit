@@ -1110,7 +1110,7 @@ namespace FlexKit
 							};
 
 
-						const float4x4  WT              = GetWT(*IKController.gameObject);
+						const float4x4  WT              = (float4x4)GetWT(*IKController.gameObject);
 						const float4x4  IT              = Inverse(WT);
 						const float3    targetPosition  = (IT * float4{ GetPositionW(IKController.targets.front().target), 1 }).xyz();
 						const float3    rootPosition    = GetRootPosition();

@@ -1,9 +1,8 @@
 #pragma once
 #pragma warning(disable : 4201)
+#include <BuildSettings.hpp>
 
 // Includes
-
-#include "BuildSettings.hpp"
 
 #include <bit>
 #include <bitset>
@@ -12,6 +11,7 @@
 #include <limits>
 #include <cmath>
 #include <ostream>
+#include <random>
 #include <ranges>
 #include <tuple>
 #include <type_traits>
@@ -79,6 +79,13 @@ namespace FlexKit
 	{
 		{ v.GetSIMD(0) } -> std::convertible_to<simde__m128>;
 	}	&& Vector_t<TY_V>;
+
+
+	template<typename TY_V>
+	concept VectorSIMDDouble_t = requires(TY_V v)
+	{
+		{ v.GetSIMD256(0) } -> std::convertible_to<simde__m256d>;
+	}&& Vector_t<TY_V>;
 
 	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Floor		(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
 	template<Scaler_t TY_1, Scaler_t TY_2> [[nodiscard]] constexpr auto Min			(const TY_1 x, const TY_2 y) noexcept { return (((TY_1)x > (TY_1)y) ? y : x);   }
@@ -294,43 +301,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float DotProduct2(const float* lhs, float* rhs) noexcept
+	inline float DotProduct2(const float* lhs, const float* rhs) noexcept
 	{
-#if USING(FASTMATH)
-		// Windows
 		simde__m128 l = simde_mm_loadr_ps(lhs);
 		simde__m128 r = simde_mm_loadr_ps(rhs);
 		simde__m128 res = simde_mm_dp_ps(l, r, 0x06);
 		return GetFirst(res);
-#else
-#if WIN32
-		return (lhs.m128_f32[0] * rhs.m128_f32[0]) + (lhs.m128_f32[1] * rhs.m128_f32[1]) + (lhs.m128_f32[2] * rhs.m128_f32[2]);
-#else
-		static_assert(false, "Not Implemented!");
-		// Slow Path Not Implmented
-#endif
-#endif
 	}
 
 	inline float DotProduct3(const simde__m128& lhs, const simde__m128& rhs) noexcept
 	{
-#if USING(FASTMATH)
 		simde__m128 res = simde_mm_dp_ps(lhs, rhs, 0x77);
 		return simde_mm_cvtss_f32(res);
-
-#else
-		return (lhs.m128_f32[0] * rhs.m128_f32[0]) + (lhs.m128_f32[1] * rhs.m128_f32[1]) + (lhs.m128_f32[2] * rhs.m128_f32[2]);
-#endif
 	}
 
 	inline float DotProduct4(const simde__m128& lhs, const simde__m128& rhs) noexcept
 	{
-#if USING(FASTMATH)
 		simde__m128 res = simde_mm_dp_ps(lhs, rhs, 0xFF);
 		return GetFirst(res);
-#else
-		return (lhs.m128_f32[0] * rhs.m128_f32[0]) + (lhs.m128_f32[1] * rhs.m128_f32[1]) + (lhs.m128_f32[2] * rhs.m128_f32[2]);
-#endif
 	}
 
 	inline simde__m128 CrossProductSlow(const simde__m128 lhs, const simde__m128 rhs) noexcept
@@ -494,7 +482,8 @@ namespace FlexKit
 		}
 
 
-		constexpr operator float* () noexcept { return &x; }
+		constexpr operator float* ()			 noexcept { return &x; }
+		constexpr operator const float* () const noexcept { return &x; }
 
 
 		constexpr float Product()	const noexcept { return x * y; }
@@ -559,6 +548,8 @@ namespace FlexKit
 			return { 0, 0 };
 		}
 
+		const float* data() const noexcept { return &x; }
+
 		float x, y;
 
 		constexpr static size_t Size() { return 2; }
@@ -616,15 +607,16 @@ namespace FlexKit
 		
 		static constexpr size_t GetElementCount() noexcept
 		{
-			return SIZE * sizeof(TY) + GetPadding<sizeof(TY), 16>();
+			return SIZE + GetPadding<sizeof(TY), 16>();
 		}
 
 		VectorData() = default;
 		VectorData() requires(GetPadding() == 0) = default;
 
 
-		using simd128container = ConditionalType_t<std::is_floating_point_v<TY>, simde__m128, simde__m128i>;
-		using simd256container = ConditionalType_t<std::is_floating_point_v<TY>, simde__m256, simde__m256i>;
+		using simd256FloatContainer = ConditionalType_t<std::is_same_v<TY, double>, simde__m256d, simde__m256>;
+		using simd128container		= ConditionalType_t<std::is_floating_point_v<TY>, simde__m128, simde__m128i>;
+		using simd256container		= ConditionalType_t<std::is_floating_point_v<TY>, simd256FloatContainer, simde__m256i>;
 
 		constexpr static bool	simd128Enabled	= ((sizeof(TY) * GetElementCount()) % 16 == 0);
 		constexpr static size_t	simd128Count	= ((sizeof(TY) * (GetElementCount())) / sizeof(simd128container));
@@ -637,14 +629,29 @@ namespace FlexKit
 
 		union
 		{
-			TY		vector[GetElementCount()];
-			simd128	m128[simd128Enabled ? simd128Count : 1];
-			//simd256	m256[simd256Enabled ? simd256Count : 1];
+			TY				vector[GetElementCount()];
+			simd128			m128[simd128Enabled ? simd128Count : 1];
+			simd256			m256[simd256Enabled ? simd256Count : 1];
 		};
 
-		auto GetSIMD(size_t idx = 0) const
+		constexpr static size_t GetSIMDWidth() noexcept
+        {
+		    return sizeof(simd128) / sizeof(TY);
+		}
+
+		constexpr static size_t GetSIMDB128locks() noexcept
 		{
-			if constexpr (std::is_floating_point_v<TY> && !simd128Enabled)
+			return sizeof(simd128) / sizeof(simd128);
+		}
+
+		constexpr static size_t GetSIMD256Blocks() noexcept
+		{
+			return sizeof(simd256) / sizeof(simd128);
+		}
+
+		auto GetSIMD(const size_t idx = 0) const
+		{
+			if constexpr (std::is_same_v<TY, float> && !simd128Enabled)
 			{
 				auto r = (SIZE - 4 * idx);
 				switch (r)
@@ -668,7 +675,31 @@ namespace FlexKit
 					return simde_mm_load_ps(vector + 4 * idx);
 				}
 			}
-			else if constexpr (std::is_floating_point_v<TY> && simd128Enabled)
+			else if constexpr (std::is_same_v<TY, double> && !simd128Enabled)
+			{
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				case 1:
+				{
+					auto load = simde_mm_load_ps(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1110);
+				}
+				case 2:
+				{
+					auto load = simde_mm_load_ps(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1100);
+				}
+				case 3:
+				{
+					auto load = simde_mm_load_ps(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1000);
+				}
+				default:
+					return simde_mm_load_pd(vector + 4 * idx);
+				}
+			}
+			else if constexpr (std::is_same_v<TY, float> && simd128Enabled)
 			{
 				if constexpr (PAD)
 					return m128[idx];
@@ -690,6 +721,33 @@ namespace FlexKit
 				{
 					auto load = simde_mm_load_ps(vector + 4 * idx);
 					return simde_mm_blend_ps(load, simde_mm_set1_ps(0.0f), 0b1000);
+				}
+				default:
+					return m128[idx];
+				}
+			}
+			else if constexpr (std::is_same_v<TY, double> && simd128Enabled)
+			{
+				if constexpr (PAD)
+					return m128[idx];
+
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				case 1:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1110);
+				}
+				case 2:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1100);
+				}
+				case 3:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm_set1_pd(0.0f), 0b1000);
 				}
 				default:
 					return m128[idx];
@@ -750,12 +808,193 @@ namespace FlexKit
 			}
 		}
 
+		auto GetSIMD256(const size_t idx = 0) const noexcept requires(sizeof(vector) >= 32 && PAD)
+		{
+			if constexpr (std::is_same_v<TY, float> && !simd256Enabled)
+			{
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				case 1:
+				{
+					auto load = simde_mm256_load_ps(vector + 8 * idx);
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), 0b1110);
+				}
+				case 2:
+				{
+					auto load = simde_mm256_load_ps(vector + 8 * idx);
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), 0b1100);
+				}
+				case 3:
+				{
+					auto load = simde_mm256_load_ps(vector + 8 * idx);
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), 0b1000);
+				}
+				default:
+					return simde_mm256_load_ps(vector + 8 * idx);
+				}
+			}
+			else if constexpr (std::is_same_v<TY, double> && !simd256Enabled)
+			{
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				case 1:
+				{
+					auto load = simde_mm256_load_pd(vector + 4 * idx);
+					return simde_mm256_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1110);
+				}
+				case 2:
+				{
+					auto load = simde_mm256_load_ps(vector + 4 * idx);
+					return simde_mm256_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1100);
+				}
+				case 3:
+				{
+					auto load = simde_mm256_load_ps(vector + 4 * idx);
+					return simde_mm256_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1000);
+				}
+				default:
+					return simde_mm256_load_pd(vector + 4 * idx);
+				}
+			}
+			else if constexpr (std::is_same_v<TY, float> && simd256Enabled)
+			{
+				if constexpr (PAD)
+					return m128[idx];
+
+				auto getMask = [&](constexpr uint32_t i) {	return 0xff << i; };
+
+				auto r = (SIZE - 4 * idx);
+				if (r == 0)
+					return m128[idx];
+
+				auto load = simde_mm256_load_ps(vector + 8 * idx);
+				switch (r)
+				{
+				case 1:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(1));
+				case 2:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(2));
+				case 3:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(3));
+				case 4:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(4));
+				case 5:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(5));
+				case 6:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(6));
+				case 7:
+					return simde_mm256_blend_ps(load, simde_mm256_set1_ps(0.0f), getMask(7));
+				default:
+				}
+			}
+			else if constexpr (std::is_same_v<TY, double> && simd256Enabled)
+			{
+				if constexpr (PAD)
+					return m128[idx];
+
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				case 1:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1110);
+				}
+				case 2:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1100);
+				}
+				case 3:
+				{
+					auto load = simde_mm_load_pd(vector + 4 * idx);
+					return simde_mm_blend_pd(load, simde_mm256_set1_pd(0.0f), 0b1000);
+				}
+				default:
+					return m128[idx];
+				}
+			}
+			else if constexpr (std::is_integral_v<TY> && !simd256Enabled)
+			{
+				auto r = (SIZE - 4 * idx);
+				switch (r)
+				{
+				default:
+					return simde_mm_loadu_epi32(vector + 4 * idx);
+				case 1:
+				{
+					auto load = simde_mm_loadu_epi32(vector + 4 * idx);
+					return simde_mm_blend_epi32(load, simde_mm_set1_epi32(0), 0b1110);
+				}	break;
+				case 2:
+				{
+					auto load = simde_mm_loadu_epi32(vector + 4 * idx);
+					return simde_mm_blend_epi32(load, simde_mm_set1_epi32(0), 0b1100);
+				}
+				break;
+				case 3:
+				{
+					auto load = simde_mm_loadu_epi32(vector + 4 * idx);
+					return simde_mm_blend_epi32(load, simde_mm_set1_epi32(0), 0b1000);
+				}
+				}
+			}
+			else if constexpr (std::is_integral_v<TY> && simd256Enabled)
+			{
+				if constexpr (PAD)
+					return m128[idx];
+
+				auto getMask = [&](constexpr uint32_t i) {	return 0xff << i; };
+
+				auto r = (SIZE - 4 * idx);
+				if (r == 0)
+					return m128[idx];
+
+				auto load = simde_mm256_load_epi32(vector + 8 * idx);
+				switch (r)
+				{
+				case 1:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(1));
+				case 2:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(2));
+				case 3:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(3));
+				case 4:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(4));
+				case 5:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(5));
+				case 6:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(6));
+				case 7:
+					return simde_mm256_blend_epi32(load, simde_mm256_set1_epi32(0.0f), getMask(7));
+				}
+			}
+		}
+
 		auto SetSIMD(const simde__m128& v, size_t idx = 0)
 		{
 			if (PAD)
 				memcpy(vector + 4 * idx, &v, sizeof(TY) * 4);
 			else
 				memcpy(vector + 4 * idx, &v, sizeof(TY) * Max(SIZE - 4 * idx, 4));
+		}
+
+		auto SetSIMD256(const simde__m256& v, size_t idx = 0)
+		{
+			if (PAD)
+				memcpy(vector + (sizeof(m256) / sizeof(TY)) * idx, &v, sizeof(m256));
+			else
+				memcpy(vector + (sizeof(m256) / sizeof(TY)) * idx, &v, sizeof(TY) * Max(SIZE - 4 * idx, 4));
+		}
+
+		auto SetSIMD256d(const simde__m256d& v, size_t idx = 0)
+		{
+			if (PAD)
+				memcpy(vector + (sizeof(m256) / sizeof(TY)) * idx, &v, sizeof(m256));
+			else
+				memcpy(vector + (sizeof(m256) / sizeof(TY)) * idx, &v, sizeof(TY) * Max(SIZE - 4 * idx, 4));
 		}
 
 		/*
@@ -840,6 +1079,20 @@ namespace FlexKit
 
 		VectorData() = default;
 
+		constexpr static size_t GetSIMDWidth()
+		{
+			return sizeof(vector) / sizeof(TY);
+		}
+
+		constexpr static size_t GetSIMD128Blocks()
+		{
+			return 0;
+		}
+
+		constexpr static size_t GetSIMD256Blocks()
+		{
+			return 0;
+		}
 
 		auto GetSIMD(size_t idx = 0) const noexcept
 		{
@@ -879,7 +1132,7 @@ namespace FlexKit
 	{
 		union
 		{
-			TY vector[PAD ? 4 : 2];
+			TY vector[PAD ? (16 / (sizeof(TY))): 2];
 
 			struct {
 				TY x, y;
@@ -890,17 +1143,46 @@ namespace FlexKit
 			};
 		};
 
+		constexpr static size_t GetSIMDWidth()
+		{
+			return sizeof(vector) / sizeof(TY);
+		}
 
-		auto GetSIMD(size_t idx = 0) const noexcept
+		constexpr static size_t GetSIMD128Blocks()
+		{
+			return 0;
+		}
+
+		constexpr static size_t GetSIMD256Blocks()
+		{
+			return 0;
+		}
+
+
+		auto GetSIMD(size_t idx = 0) const noexcept requires(!std::is_same_v<TY, double>)
  		{
 			TY temp[16 / (sizeof(TY))];
-			memset(&temp, 0, sizeof(vector));
+			memset(&temp, 0, sizeof(temp));
 			memcpy(&temp, &vector, sizeof(vector));
 
-			return simde_mm_loadr_ps((float*)&temp);
+			return simde_mm_load_ps((float*)&temp);
+		}
+
+		auto GetSIMD(size_t idx = 0) const noexcept requires(std::is_same_v<TY, double>)
+		{
+			TY temp[16 / (sizeof(TY))];
+			memset(&temp, 0, sizeof(temp));
+			memcpy(&temp, &vector, sizeof(vector));
+
+			return simde_mm_load_pd((double*)&temp);
 		}
 
 		auto SetSIMD(const simde__m128& vin, size_t idx = 0) noexcept
+		{
+			memcpy(&vector, &vin, sizeof(TY) * 2);
+		}
+
+		auto SetSIMD(const simde__m128d& vin, size_t idx = 0) noexcept
 		{
 			memcpy(&vector, &vin, sizeof(TY) * 2);
 		}
@@ -922,37 +1204,78 @@ namespace FlexKit
 	template<typename TY, bool PAD>
 	struct VectorData<TY, 3, PAD>
 	{
-		using SIMD_TY = ConditionalType_t<PAD, simde__m128, Empty>;
+		using V_TY		= ConditionalType_t<std::is_same_v<double, TY>, simde__m128d, simde__m128>;
+
+		using V128_TY = ConditionalType_t<PAD, V_TY, Empty>;
+		using V256_TY =
+			ConditionalType_t<PAD, 
+	            ConditionalType_t<std::is_same_v<double, TY>, simde__m256d, simde__m128>, 
+	            Empty>;
+
+		using SIMD_TY	= ConditionalType_t<PAD, V_TY, Empty>;
 
 		union
 		{
-			TY vector[PAD ? 4 : 1];
-			
-			NO_UNIQUE_ADDRESS SIMD_TY m128;
+			NO_UNIQUE_ADDRESS TY		vector[PAD ? 4 : 1];
+			NO_UNIQUE_ADDRESS V128_TY	vector128[2];
+			NO_UNIQUE_ADDRESS V256_TY	vector256[1];
 
 			struct {
-				TY x, y, z;
+				NO_UNIQUE_ADDRESS TY x, y, z;
 			};
 
 			struct {
-				TY r, g, b;
+				NO_UNIQUE_ADDRESS TY r, g, b;
 			};
 		};
 
 		VectorData() = default;
 
+		constexpr static size_t GetSIMDWidth()
+		{
+			return sizeof(SIMD_TY) / sizeof(TY);
+		}
+
+		constexpr static size_t GetSIMD128Blocks()
+		{
+			return PAD ? 2 : 0;
+		}
+
+		constexpr static size_t GetSIMD256Blocks()
+		{
+			return PAD ? 1 : 0;
+		}
+
 		auto GetSIMD(size_t idx = 0) const noexcept
 		{
 			if constexpr (PAD)
-				return m128;
+				return vector128[idx];
 			else
 				return simde_mm_loadr_ps((float*)&vector);
 		}
 
-		auto SetSIMD(simde__m128 vin, size_t idx = 0) noexcept
+		auto GetSIMD256(size_t idx = 0) const noexcept requires(std::is_same_v<double, TY> && PAD)
+		{
+			if constexpr (PAD)
+				return vector256[idx];
+			else
+				return simde_mm_loadr_pd((float*)&vector);
+		}
+
+		auto SetSIMD(const V_TY& vin, size_t idx = 0) noexcept
 		{
 			if constexpr(PAD)
-				m128 = vin;
+				vector128[idx] = vin;
+			else
+			{
+				memcpy(&vector, &vin, sizeof(TY) * 3);
+			}
+		}
+
+		auto SetSIMD256(const V256_TY& vin, size_t idx = 0) const noexcept requires(std::is_same_v<double, TY>&& PAD)
+		{
+			if constexpr (PAD)
+				vector256[idx] = vin;
 			else
 			{
 				memcpy(&vector, &vin, sizeof(TY) * 3);
@@ -976,11 +1299,19 @@ namespace FlexKit
 	template<typename TY, bool PAD>
 	struct VectorData<TY, 4, PAD>
 	{
+		using V_TY = ConditionalType_t<std::is_same_v<double, TY>, simde__m128d, simde__m128>;
+		using V256_TY =
+			ConditionalType_t<PAD,
+			ConditionalType_t<std::is_same_v<double, TY>, simde__m256d, simde__m128>,
+			Empty>;
+
+		using SIMD_TY = ConditionalType_t<PAD, V_TY, Empty>;
+
 		union
 		{
 			TY			vector[4];
-			simde__m128 m128;
-
+			SIMD_TY		m128[sizeof(vector) / sizeof(simde__m128)];
+			V256_TY		m256[1];
 			struct {
 				TY x, y, z, w;
 			};
@@ -992,14 +1323,38 @@ namespace FlexKit
 
 		VectorData() = default;
 
-		auto GetSIMD(size_t idx = 0) const noexcept requires(std::is_floating_point_v<TY>)
+		constexpr static size_t GetSIMDWidth()
 		{
-			return m128;
+			return sizeof(SIMD_TY) / sizeof(TY);
 		}
 
-		auto SetSIMD(const simde__m128& vin, size_t idx = 0) noexcept requires(std::is_floating_point_v<TY>)
+		constexpr static size_t GetSIMD128Blocks()
 		{
-			m128 = vin;
+			return 2;
+		}
+
+		constexpr static size_t GetSIMD256Blocks()
+		{
+			return 1;
+		}
+
+		auto GetSIMD(size_t idx = 0) const noexcept 
+		{
+			return m128[idx];
+		}
+
+		auto GetSIMD256(size_t idx = 0) const noexcept requires(sizeof(V256_TY) > sizeof(Empty))
+		{
+			return m256[idx];
+		}
+
+		auto SetSIMD(const auto& vin, size_t idx = 0) noexcept
+		{
+			if constexpr(std::is_same_v<decltype(vin), const SIMD_TY&>)
+			    m128[idx] = vin;
+
+			if constexpr (std::is_same_v<decltype(vin), const V256_TY&>)
+				m256[idx] = vin;
 		}
 
 		template<size_t idx>
@@ -1047,6 +1402,7 @@ namespace FlexKit
 			return std::forward_as_tuple(vect[ints]...);
 		}
 
+
 		template<typename T>
 		constexpr static auto BuildTuple(const T& vectorValue) noexcept requires(Vector_t<T>)
 		{
@@ -1059,22 +1415,26 @@ namespace FlexKit
 			return extractElements(std::make_index_sequence<T::size()>());
 		}
 
+
 		template<typename T>
 		constexpr static auto BuildTuple(const T& value) noexcept requires(Scaler_t<T>)
 		{
 			return std::forward_as_tuple(value);
 		}
 
+
 		constexpr static auto BuildTuple(const float2& f2) noexcept
 		{
 			return std::forward_as_tuple(f2.x, f2.y);
 		}
+
 
 		template<size_t vectorSize>
 		constexpr static auto BuildTuple(const Vect<vectorSize, TY>& vect)
 		{
 			return ExtractVect(vect, std::make_integer_sequence<int, vectorSize>());
 		}
+
 
 		template<typename ... TY_args>
 		constexpr static auto BuildTuple(const TY_args& ... args) noexcept
@@ -1138,6 +1498,7 @@ namespace FlexKit
 				vector[I] = 0;
 		}
 
+
 		template<Scaler_t TY>
 		constexpr Vect(const std::initializer_list<TY> in) noexcept
 		{
@@ -1148,6 +1509,7 @@ namespace FlexKit
 				vector[I] = static_cast<Type>(0);
 		}
 
+
 		template<Vector_t TY_V>
 		constexpr Vect(const TY_V in) noexcept
 		{
@@ -1157,6 +1519,7 @@ namespace FlexKit
 			for (size_t I = in.size(); I < SIZE; ++I)
 				vector[I] = static_cast<Type>(0);
 		}
+
 
 		template<typename ... TY_ARGS>
 		constexpr Vect(TY_ARGS ... args) noexcept requires(sizeof ... (TY_ARGS) > 1)
@@ -1182,6 +1545,7 @@ namespace FlexKit
 			return vector + SIZE;
 		}
 
+
 		constexpr const TY* begin() const noexcept
 		{
 			return vector;
@@ -1198,9 +1562,43 @@ namespace FlexKit
 		{
 			simde__m128 sum = [&]
 				{
+					auto GetRHSVector = [&]
+						{
+							if constexpr (std::is_same_v<float, TY_i>)
+							{
+								return rhs.GetSIMD(0);
+							}
+							else if constexpr (std::is_same_v<double, TY_i>)
+							{
+								const simde__m128 a = simde_mm_cvtpd_ps(rhs.GetSIMD(0));
+								const simde__m128 b = simde_mm_cvtpd_ps(rhs.GetSIMD(1));
+
+								return 
+									simde_mm_shuffle_ps(
+										a,
+										b,
+										0b01000100);
+							}
+						};
+
+					constexpr auto mask = []
+						{
+							switch (SIZE)
+							{
+							case 1:
+								return 0x1F;
+							case 2:
+								return 0x3F;
+							case 3:
+								return 0x7F;
+							case 4:
+								return 0xFF;
+							}
+						}();
+
 					simde__m128 l = GetSIMD(0);
-					simde__m128 r = rhs.GetSIMD(0);
-					return simde_mm_dp_ps(l, r, 0xfF);
+					simde__m128 r = GetRHSVector();
+					return simde_mm_dp_ps(l, r, mask);
 				}();
 			
 			auto helper_internal = []<int ... ints>(const std::index_sequence<ints...>&, const auto& action) noexcept
@@ -1238,11 +1636,6 @@ namespace FlexKit
 			if (SIZE > 4)
 				helper(dp);
 
-			//for (size_t i = 1; i * 4 < SIZE; i++)
-			//{
-			//	
-			//}
-
 			return simde_mm_cvtss_f32(sum);
 		}
 
@@ -1270,6 +1663,50 @@ namespace FlexKit
 
 			return simde_mm_cvtss_f32(simde_mm_dp_ps(lhs, rhs, mask));
 		}
+
+
+		template<typename RHS_TY, bool RHS_PAD, size_t RHS_SIZE>
+		[[nodiscard]] constexpr TY Dot(const Vect<RHS_SIZE, RHS_TY, RHS_PAD>& rhs_v) const noexcept requires (std::is_same_v<double, RHS_TY> && std::is_same_v<double, TY>&& SIZE <= 4)
+		{
+			auto product = *this* rhs_v;
+			auto s = product.Sum();
+
+			return s;
+		}
+
+
+		template<typename RHS_TY, bool RHS_PAD, size_t RHS_SIZE>
+		[[nodiscard]] constexpr TY Dot(const Vect<RHS_SIZE, RHS_TY, RHS_PAD>& rhs_v) const noexcept requires (std::is_same_v<double, TY> && std::is_same_v<float, RHS_TY> && SIZE <= 4)
+		{
+			simde__m256d a = this->GetSIMD256();
+			simde__m256d b = simde_mm256_cvtps_pd(rhs_v.GetSIMD());
+			simde__m256d c = simde_mm256_mul_pd(a, b);
+
+			// TODO: go through the effort of shuffling with a zero vector instead of this
+			switch (SIZE)
+			{
+			case 1:
+				//simde_mm256_blend_pd
+                c = simde_mm256_mul_pd(c, simde_mm256_set_pd(0, 0, 0, 1));
+				break;
+			case 2:
+				c = simde_mm256_mul_pd(c, simde_mm256_set_pd(0, 0, 1, 1));
+				break;
+			case 3:
+				c = simde_mm256_mul_pd(c, simde_mm256_set_pd(0, 1, 1, 1));
+				break;
+			}
+
+			simde__m256d d			= simde_mm256_hadd_pd(c, c);
+		    simde__m256d shuffled	= simde_mm256_permute4x64_pd(d, 0b00001000);
+			simde__m256d dp			= simde_mm256_hadd_pd(shuffled, shuffled);
+			
+		    return simde_mm256_cvtsd_f64(dp);
+
+
+
+		}
+
 
 		template<typename RHS_TY, bool RHS_PAD, size_t RHS_SIZE>
 		[[nodiscard]] constexpr TY Dot(const Vect<RHS_SIZE, RHS_TY, RHS_PAD>& rhs_v) const noexcept requires (std::is_integral_v<RHS_TY> && std::is_integral_v<TY>)
@@ -1302,10 +1739,12 @@ namespace FlexKit
 			}
 		}
 
+
 		decltype(auto) cross(const auto& rhs) const noexcept
 		{
 			return Cross(rhs);
 		}
+
 
 		THISTYPE distance(const THISTYPE& b) const noexcept
 		{
@@ -1411,15 +1850,46 @@ namespace FlexKit
 		{
 			if (PAD)
 			{
-				auto vsum = GetSIMD(0);
-				const size_t end = SIZE / 4 + ((SIZE % 4 == 0) ? 0 : 1);
-				for (auto i = 1; i < end; i++)
-					vsum = simde_mm_add_ps(vsum, GetSIMD(i));
+				if constexpr (std::is_same_v<TY, float>)
+				{
+				    auto vsum = GetSIMD(0);
+				    const size_t end = SIZE / 4 + ((SIZE % 4 == 0) ? 0 : 1);
+				    for (auto i = 1; i < end; i++)
+					    vsum = simde_mm_add_ps(vsum, GetSIMD(i));
 
-				auto a = simde_mm_hadd_ps(vsum, vsum);
-				auto b = simde_mm_hadd_ps(a, a);
+				    auto a = simde_mm_hadd_ps(vsum, vsum);
+				    auto b = simde_mm_hadd_ps(a, a);
 
-				return simde_mm_cvtss_f32(b);
+				    return simde_mm_cvtss_f32(b);
+				}
+				if constexpr (std::is_same_v<TY, double>)
+				{
+					if constexpr (this->GetSIMD256Blocks())
+					{
+						auto vsum = this->GetSIMD256(0);
+						const size_t end = this->GetSIMD256Blocks();
+						for (auto i = 1; i < end; i++)
+							vsum = simde_mm256_add_pd(vsum, this->GetSIMD256(i));
+
+						auto a = simde_mm256_hadd_pd(vsum, vsum);
+						auto b = simde_mm256_permute4x64_pd(a, 0b1000);
+						auto c = simde_mm256_hadd_pd(b, b);
+
+						return simde_mm256_cvtsd_f64(c);
+					}
+
+					if constexpr (this->GetSIMD128Blocks())
+					{
+						auto vsum = GetSIMD(0);
+						const size_t end = this->GetSIMD128Blocks();
+						for (auto i = 1; i < end; i++)
+							vsum = simde_mm_add_pd(vsum, GetSIMD(i));
+
+						auto a = simde_mm_hadd_pd(vsum, vsum);
+
+						return simde_mm_cvtsd_f64(vsum);
+					}
+				}
 			}
 			else
 			{
@@ -1460,6 +1930,7 @@ namespace FlexKit
 			return _floor_helper(indexes);
 		}
 
+
 		bool isNaN() const noexcept
 		{
 			bool nan = false;
@@ -1468,6 +1939,7 @@ namespace FlexKit
 
 			return nan;
 		}
+
 
 		[[nodiscard]] constexpr auto Min() const noexcept
 		{
@@ -1548,11 +2020,37 @@ namespace FlexKit
 				const size_t end = SIZE / 4 + ((SIZE % 4 == 0) ? 0 : 1);
 				for (auto I = 0; I < end; ++I)
 				{
-					auto a = temp.GetSIMD(I);
-					auto b = rhs.GetSIMD(I);
-					auto c = simde_mm_add_ps(a, b);
+					if constexpr(std::is_same_v<TY, TY_2> && std::is_same_v<TY, float>)
+					{
+						auto a = temp.GetSIMD(I);
+						auto b = rhs.GetSIMD(I);
+					    auto c = simde_mm_add_ps(a, b);
+					    temp.SetSIMD(c, I);
+					}
 
-					temp.SetSIMD(c, I);
+					if constexpr (std::is_same_v<TY, TY_2> && std::is_same_v<TY, double>)
+					{
+						auto a = temp.GetSIMD256(I);
+						auto b = rhs.GetSIMD256(I);
+						auto c = simde_mm256_add_pd(a, b);
+						temp.SetSIMD(c, I);
+					}
+
+					if constexpr (std::is_same_v<TY, float> && std::is_same_v<TY_2, double>)
+					{
+						auto a = temp.GetSIMD(I);
+						auto b = simde_mm256_cvtpd_ps(rhs.GetSIMD256(I));
+						auto c = simde_mm_add_ps(a, b);
+						temp.SetSIMD(c, I);
+					}
+
+					if constexpr (std::is_same_v<TY, double> && std::is_same_v<TY_2, float>)
+					{
+						auto a = temp.GetSIMD256(I);
+						auto b = simde_mm256_cvtps_pd(rhs.GetSIMD256(I));
+						auto c = simde_mm256_add_pd(a, b);
+						temp.SetSIMD(c, I);
+					}
 				}
 				return temp;
 			}
@@ -1578,7 +2076,7 @@ namespace FlexKit
 		}
 
 
-		THISTYPE& operator += (const Vector_t auto& rhs) noexcept requires(rhs.size() == SIZE)
+		THISTYPE& operator += (const Vector_t auto& rhs) noexcept requires((rhs.size() == SIZE))
 		{
 			if ((PAD || (SIZE % 4 == 0)) && VectorSIMD_t<decltype(rhs)>)
 			{
@@ -1587,9 +2085,17 @@ namespace FlexKit
 				{
 					auto a = GetSIMD(I);
 					auto b = rhs.GetSIMD(I);
-					auto c = simde_mm_add_ps(a, b);
 
-					SetSIMD(c, I);
+					if constexpr(std::is_same_v<float, TY>)
+					{
+					    auto c = simde_mm_add_ps(a, b);
+					    SetSIMD(c, I);
+					}
+					else if constexpr (std::is_same_v<double, TY>)
+					{
+						auto c = simde_mm_add_pd(a, b);
+						SetSIMD(c, I);
+					}
 				}
 				return *this;
 			}
@@ -1601,6 +2107,7 @@ namespace FlexKit
 				return *this;
 			}
 		}
+
 
 		THISTYPE& operator -= (const Vector_t auto& rhs) noexcept requires(rhs.size() == SIZE)
 		{
@@ -1625,6 +2132,7 @@ namespace FlexKit
 				return *this;
 			}
 		}
+
 
 		THISTYPE& operator += (const Scaler_t auto rhs) noexcept
 		{
@@ -1651,6 +2159,7 @@ namespace FlexKit
 			}
 		}
 
+
 		THISTYPE& operator -= (const Scaler_t auto rhs) noexcept
 		{
 			if ((PAD || (SIZE % 4 == 0)))
@@ -1675,6 +2184,7 @@ namespace FlexKit
 				return *this;
 			}
 		}
+
 
 		THISTYPE& MAdd (const VectorSIMD_t auto& V_a, const VectorSIMD_t auto& V_b) noexcept
 		{
@@ -1701,6 +2211,33 @@ namespace FlexKit
 			}
 		}
 
+
+		THISTYPE& MAdd(const VectorSIMDDouble_t auto& V_a, const VectorSIMDDouble_t auto& V_b) noexcept
+		{
+			if (PAD || (SIZE % 4 == 0))
+			{
+				const size_t end = SIZE / 4 + ((SIZE % 4 == 0) ? 0 : 1);
+				for (auto I = 0; I < end; ++I)
+				{
+					simde__m256d v = THISTYPE::GetSIMD256(I);
+					simde__m256d a = V_a.GetSIMD256(I);
+					simde__m256d b = V_b.GetSIMD256(I);
+					auto c = simde_mm256_fmadd_pd(a, b, v);
+
+					SetSIMD(c, I);
+				}
+				return *this;
+			}
+			else
+			{
+				for (size_t i = 0; i < SIZE; i++)
+					vector[i] += V_a[i] * V_b[i];
+
+				return *this;
+			}
+		}
+		
+
 		constexpr THISTYPE& MAdd(const Vector_t auto& V_a, const Vector_t auto& V_b) noexcept
 		{
 			for (size_t i = 0; i < SIZE; i++)
@@ -1709,12 +2246,28 @@ namespace FlexKit
 			return *this;
 		}
 
+		constexpr THISTYPE& MAdd(const VectorSIMD_t auto& V_a, const VectorSIMD_t auto& V_b) noexcept requires (VectorSIMD_t<THISTYPE>)
+		{
+			SetSIMD(simde_mm_fmadd_ps(V_a.GetSIMD(), V_b.GetSIMD(), this->GetSIMD()), 0);
+
+			return *this;
+		}
+
+		constexpr THISTYPE& MAdd(const VectorSIMD_t auto& V_a, const VectorSIMDDouble_t auto& V_b) noexcept requires (VectorSIMDDouble_t<THISTYPE>)
+		{
+			SetSIMD(simde_mm256_fmadd_pd(simde_mm256_cvtps_pd(V_a.GetSIMD()), V_b.GetSIMD256(), this->GetSIMD256()), 0);
+
+			return *this;
+		}
+
+
 		constexpr THISTYPE operator - () const noexcept
 		{
 			THISTYPE temp = *this * THISTYPE(-1);
 
 			return temp;
 		}
+
 
 		constexpr THISTYPE operator - (const Vector_t auto& in) const noexcept
 		{
@@ -1789,21 +2342,47 @@ namespace FlexKit
 			return rhs * lhs;
 		}
 
-
-		constexpr THISTYPE operator * (const Vector_t auto& rhs) const noexcept
+		template<Scaler_t TY_2, bool Packed>
+		constexpr THISTYPE operator * (const Vect<SIZE, TY_2, Packed>& rhs) const noexcept
 		{
 			if (PAD || (SIZE % 4 == 0))
 			{
-				THISTYPE result;
+				THISTYPE result = *this;
 
 				const size_t end = SIZE / 4 + ((SIZE % 4 == 0) ? 0 : 1);
 				for (auto I = 0; I < end; ++I)
 				{
-					auto a = GetSIMD(I);
-					auto b = rhs.GetSIMD(I);
-					auto c = simde_mm_mul_ps(a, b);
+					if constexpr (std::is_same_v<TY, TY_2> && std::is_same_v<TY, float>)
+					{
+						auto a = result.GetSIMD(I);
+						auto b = rhs.GetSIMD(I);
+						auto c = simde_mm_mul_ps(a, b);
+						result.SetSIMD(c, I);
+					}
 
-					result.SetSIMD(c, I);
+					if constexpr (std::is_same_v<TY, TY_2> && std::is_same_v<TY, double>)
+					{
+						auto a = result.GetSIMD256(I);
+						auto b = rhs.GetSIMD256(I);
+						auto c = simde_mm256_mul_pd(a, b);
+						result.SetSIMD(c, I);
+					}
+
+					if constexpr (std::is_same_v<TY, float> && std::is_same_v<TY_2, double>)
+					{
+						auto a = result.GetSIMD(I);
+						auto b = simde_mm256_cvtpd_ps(rhs.GetSIMD256(I));
+						auto c = simde_mm_mul_ps(a, b);
+						result.SetSIMD(c, I);
+					}
+
+					if constexpr (std::is_same_v<TY, double> && std::is_same_v<TY_2, float>)
+					{
+						auto a = result.GetSIMD256(I);
+						auto b = simde_mm256_cvtps_pd(rhs.GetSIMD256(I));
+						auto c = simde_mm256_mul_pd(a, b);
+						result.SetSIMD(c, I);
+					}
 				}
 				return result;
 			}
@@ -2132,29 +2711,91 @@ namespace FlexKit
 			(action.template operator() < ints > (), ...);
 		}
 
-		template<size_t OutSize>
+		template<size_t OutSize, size_t Width>
 		static constexpr void bchelper(const auto& action) noexcept
 		{
-			constexpr size_t end = OutSize / 4 + (PAD && (OutSize % 4 != 0) ? 1 : 0);
+			constexpr size_t end = OutSize / Width + (PAD && (OutSize % Width != 0) ? 1 : 0);
 			bc_helper_internal(std::make_index_sequence<end>(), action);
 		}
 
 		template<uint32_t idx, uint32_t OutSize>
 		auto BroadcastElement() const noexcept requires(std::is_floating_point_v<TY>)
 		{
-			if (PAD || SIZE % 4 == 0)
+			if (PAD || SIZE % this->GetSIMDWidth() == 0)
 			{
+				auto shuffle = [&](auto& a)
+				    {
+						if constexpr (std::is_same_v < simde__m128, std::decay_t<decltype(a)>>)
+						{
+							constexpr auto m = SIMDE_MM_SHUFFLE(idx % 4, idx % 4, idx % 4, idx % 4);
+							a = simde_mm_shuffle_ps(a, a, m);
+						}
+						else if constexpr (std::is_same_v<simde__m128d, std::decay_t<decltype(a)>>)
+						{
+							constexpr uint32_t m = (idx & 0x1) | ((idx & 0x1) << 1);
+							a = simde_mm_shuffle_pd(a, a, m);
+						}
+						else if constexpr (std::is_same_v<simde__m256d, std::decay_t<decltype(a)>>)
+						{
+							constexpr auto m = SIMDE_MM_SHUFFLE(idx % 4, idx % 4, idx % 4, idx % 4);
+							a = simde_mm256_shuffle_pd(a, a, m);
+						}
+					};
 
 				Vect<OutSize, TY, PAD> result;
-				const auto a		= GetSIMD(idx / 4);
-				constexpr auto m	= _MM_SHUFFLE(idx % 4, idx % 4, idx % 4, idx % 4);
-				auto shuffled		= simde_mm_shuffle_ps(a, a, m);
+				auto a	= GetSIMD(idx / this->GetSIMDWidth());
+				shuffle(a);
 
 				auto helper = 
 					[&]<int i>() 
 					{
-						result.SetSIMD(shuffled, i);
+						 result.SetSIMD(a, i);
 					};
+
+				bchelper<OutSize, this->GetSIMDWidth()>(helper);
+
+				return result;
+			}
+			else
+			{
+				auto x = at(idx);
+				Vect<OutSize, TY, PAD> out;
+
+				for (auto& e : out)
+					e = x;
+
+				return out;
+			}
+		}
+
+		template<uint32_t idx, uint32_t OutSize>
+		auto BroadcastElement256() const noexcept requires(std::is_floating_point_v<TY> && VectorData::simd256Enabled)
+		{
+			if (PAD || SIZE % 8 == 0)
+			{
+				auto shuffle = [&](const auto& a)
+					{
+						constexpr auto m = ((idx & 3) << 0) | ((idx & 3) << 2) | ((idx & 3) << 4) | ((idx & 3) << 6);
+
+						if constexpr (std::is_same_v<float, TY>)
+						{
+							return simde_mm256_permute_x8x32_ps(a, m);
+						}
+						else if constexpr (std::is_same_v<double, TY>)
+						{
+							return simde_mm256_permute4x64_pd(a, m);
+						}
+					};
+
+				Vect<OutSize, TY, PAD> result;
+				const auto a	= this->GetSIMD256(idx / 4);
+				auto shuffled	= shuffle(a);
+
+				auto helper =
+					[&]<int i>()
+				{
+					result.SetSIMD(shuffled, i);
+				};
 
 				bchelper<OutSize>(helper);
 
@@ -2203,7 +2844,7 @@ namespace FlexKit
 					result.SetSIMD(blended, i);
 				};
 
-				bchelper<SIZE>(helper);
+				bchelper<SIZE, this->GetSIMDWidth()>(helper);
 
 				return result;
 			}
@@ -2249,7 +2890,7 @@ namespace FlexKit
 					}
 				};
 
-				bchelper<SIZE>(helper);
+				bchelper<SIZE, this->GetSIMDWidth()>(helper);
 
 				return result;
 			}
@@ -2286,11 +2927,23 @@ namespace FlexKit
 			return out;
 		}
 
+		auto xyz() const noexcept requires (std::is_same_v<THISTYPE, Vect<4, double, true>>)
+		{
+			Vect<3, double, true> out;
+			out.SetSIMD(GetSIMD(0), 0);
+			out.SetSIMD(GetSIMD(1), 1);
+			return out;
+		}
 
 		operator TY* () noexcept { return vector; }
 
 
-		operator simde__m128 () const noexcept
+		operator simde__m128 () const noexcept requires(std::is_same_v<decltype(GetSIMD()), simde__m128> && PAD)
+		{
+			return GetSIMD();
+		}
+
+		operator simde__m128d () const noexcept requires(std::is_same_v<decltype(GetSIMD()), simde__m128d> && PAD)
 		{
 			return GetSIMD();
 		}
@@ -2374,8 +3027,9 @@ namespace FlexKit
 	typedef Vect<3, float, true>	Vect3;
 	typedef Vect<4>					Vect4;
 	
-	typedef Vect<3, double> double3;
-	typedef Vect<4, double> double4;
+	typedef Vect<2, double, true>	double2;
+	typedef Vect<3, double, true>	double3;
+	typedef Vect<4, double, true>	double4;
 	
 	typedef Vect<2, uint32_t>	uint2;
 	typedef Vect<2, uint64_t>	uint2_64;
@@ -2822,57 +3476,110 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	template<typename TY, size_t size>
+
+	template<typename TY, size_t Size>
 	union MatrixOptionalVectorData
 	{
 		static inline constexpr bool Enabled = false;
+		static inline constexpr bool SIMDEnabled = false;
+		static inline constexpr bool SIMD256Enabled = false;
+
+
+
+		const auto	At128(size_t idx)const noexcept
+		{
+			if constexpr (std::is_same_v<float, TY>)
+			{
+				return simde_mm_blend_ps(
+					simde_mm_set1_ps(0.0),
+					simde_mm_load_ps(this + idx),
+					(0b1111) << Size);
+			}
+			if constexpr (std::is_same_v<double, TY>)
+			{
+				return simde_mm_blend_ps(
+					simde_mm_set1_pd(0.0),
+					simde_mm_load_pd(this + idx),
+					(0b1111) << Size);
+			}
+		}
+
+		//auto			At256(size_t idx)		noexcept { return simde__m256{}; }
+		//const	auto	At256(size_t idx) const	noexcept { return simde__m256{}; }
+
+		auto			At(size_t idx)			noexcept { return At128(idx); }
+		const	auto	At(size_t idx) const	noexcept { return At128(idx); }
+
+		constexpr size_t size()		const noexcept { return 0; }
+		constexpr size_t size256()	const noexcept { return 0; }
 	};
 
 	template<std::size_t Size>
 	union MatrixOptionalVectorData<int, Size>
 	{
 		static inline constexpr bool Enabled = false;
+		static inline constexpr bool SIMDEnabled = false;
+		static inline constexpr bool SIMD256Enabled = false;
+
+		constexpr size_t size()		const noexcept { return 0; }
+		constexpr size_t size256()	const noexcept { return 0; }
 	};
 
-	template<size_t Size> requires (Size % 4 == 0 && Size % 8 != 0)
-	union MatrixOptionalVectorData<float, Size>
+	template<size_t Size> requires (Size > 4 && Size % 8 == 0)
+    union MatrixOptionalVectorData<float, Size>
 	{
-		static inline constexpr bool Enabled = true;
-
-
-		const	simde__m128& V128At (size_t idx)		noexcept { return vectors[idx]; }
-				simde__m128& V128At (size_t idx) const	noexcept { return vectors[idx]; }
-
 		simde__m128 vectors[Size / 4];
+		simde__m256 vectors256[Size / 8];
+
+		static inline constexpr bool Enabled = true;
+		static inline constexpr bool SIMDEnabled = true;
+		static inline constexpr bool SIMD256Enabled = true;
+
+		        simde__m128& F128At(size_t idx)			noexcept { return vectors[idx]; }
+		const	simde__m128& F128At(size_t idx) const	noexcept { return vectors[idx]; }
+
+		        simde__m256& F256At(size_t idx)			noexcept { return vectors256[idx]; }
+		const	simde__m256& F256At(size_t idx) const	noexcept { return vectors256[idx]; }
+
+		auto&			At(size_t idx)			noexcept { return At128(idx); }
+		const	auto&	At(size_t idx) const	noexcept { return At128(idx); }
+
+		auto&			At128(size_t idx)		noexcept { return vectors[idx]; }
+		const	auto&	At128(size_t idx) const	noexcept { return vectors[idx]; }
+
+		        auto& At256(size_t idx)			noexcept { return vectors256[idx]; }
+		const	auto& At256(size_t idx) const	noexcept { return vectors256[idx]; }
+
+
+		constexpr size_t size()		const noexcept { return Size / 4; }
+		constexpr size_t size256()	const noexcept { return Size / 8; }
 	};
 
-	template<size_t Size> requires (Size % 4 == 0 && Size % 8 == 0)
-	union MatrixOptionalVectorData<float, Size>
+	template<size_t Size> requires (Size >= 4 && Size % 4 == 0)
+    union MatrixOptionalVectorData<double, Size>
 	{
 		static inline constexpr bool Enabled = true;
+		static inline constexpr bool SIMDEnabled = true;
+		static inline constexpr bool SIMD256Enabled = true;
 
-				simde__m128& V128At (size_t idx)		noexcept { return vector128[idx]; }
-		const	simde__m128& V128At (size_t idx) const	noexcept { return vector128[idx]; }
+		simde__m128d vectors[Size / 2];
+		simde__m256d vectors256[Size / 4];
+
+		        simde__m256d& D256At(size_t idx)		noexcept { return vectors256[idx]; }
+		const	simde__m256d& D256At(size_t idx) const	noexcept { return vectors256[idx]; }
+
+		auto&			At128(size_t idx)		noexcept { return vectors[idx]; }
+		const	auto&	At128(size_t idx) const	noexcept { return vectors[idx]; }
+
+		auto&			At256(size_t idx)		noexcept { return vectors[idx]; }
+		const	auto&	At256(size_t idx) const	noexcept { return vectors[idx]; }
 
 
-				simde__m256& V256At(size_t idx)			noexcept { return vector256[idx]; }
-		const 	simde__m256& V256At(size_t idx) const	noexcept { return vector256[idx]; }
 
-
-		simde__m128 vector128[Size / 4];
-		simde__m256 vector256[Size / 8];
-
-#if defined(__x86_64__) || defined(_M_X64)
-				__m128&	V128AtX64(size_t idx)		noexcept { return vector128X64[idx]; }
-		const	__m128&	V128AtX64(size_t idx) const	noexcept { return vector128X64[idx]; }
-
-				__m256&	V256AtX64(size_t idx)		noexcept { return vector256X64[idx]; }
-		const	__m256&	V256AtX64(size_t idx) const	noexcept { return vector256X64[idx]; }
-
-		__m128 vector128X64[Size / 4];
-		__m256 vector256X64[Size / 8];
-#endif
+		constexpr size_t size()		const noexcept { return Size / 2; }
+		constexpr size_t size256()	const noexcept { return Size / 4; }
 	};
+
 
 #pragma warning(push)
 #pragma warning(disable : 4324)
@@ -2892,7 +3599,6 @@ namespace FlexKit
 					SetAt(x, y, s);
 				};
 
-			//(setScaler(seq, std::get<seq>(tuple)), ...);
 			(setScaler(seq, std::get<seq>(tuple)), ...);
 		}
 
@@ -2927,7 +3633,6 @@ namespace FlexKit
 			return extractVect(vect, std::make_integer_sequence<int, vectorSize>());
 		}
 
-
 		constexpr static auto BuildTuple(const float2& vect) noexcept
 		{
 			return std::forward_as_tuple(vect[0], vect[1]);
@@ -2946,6 +3651,36 @@ namespace FlexKit
 		}
 
 
+		constexpr static auto BuildTuple(const double2& vect) noexcept
+		{
+			return std::forward_as_tuple(vect[0], vect[1]);
+		}
+
+
+		constexpr static auto BuildTuple(const double3& vect) noexcept
+		{
+			return std::forward_as_tuple(vect[0], vect[1], vect[2]);
+		}
+
+		constexpr static auto BuildTuple(const double4& vect) noexcept
+		{
+			return std::forward_as_tuple(vect[0], vect[1], vect[2], vect[4]);
+		}
+
+
+		template<typename TY, size_t C, bool pad>
+		constexpr static auto BuildTuple(const Vect<C, TY, pad>& vect) noexcept requires(C == 3)
+		{
+			return std::forward_as_tuple(vect[0], vect[1], vect[2]);
+		}
+
+		template<typename TY, size_t C, bool pad>
+		constexpr static auto BuildTuple(const Vect<C, TY, pad>& vect) noexcept requires(C == 4)
+		{
+			return std::forward_as_tuple(vect[0], vect[1], vect[2], vect[3]);
+		}
+
+
 		template<typename ... TY_args>
 		constexpr static auto BuildTuple(const TY_args& ... args) noexcept
 		{
@@ -2954,9 +3689,23 @@ namespace FlexKit
 
 
 	public:
-		using THIS_TYPE = Matrix<Columns, Rows, Ty, Pad>;
 		using VectorType = Vect<Columns, Ty, Pad>;
-		using VectorView = MatrixOptionalVectorData<Ty, Columns * Rows>;
+
+		static constexpr size_t PaddingSize() noexcept
+		{
+			if (Pad)
+			{
+				return (sizeof(VectorType) == (sizeof(Ty) * Columns)) ?
+					0 :
+					(sizeof(VectorType) - (sizeof(Ty) * Columns)) / sizeof(Ty);
+			}
+			else
+				return 0;
+		}
+
+		constexpr static size_t PadSize = PaddingSize();
+		using THIS_TYPE		= Matrix<Columns, Rows, Ty, Pad>;
+		using VectorView	= MatrixOptionalVectorData<Ty, Columns * Rows + PadSize>;
 
 		constexpr Matrix() = default;
 		constexpr Matrix(const THIS_TYPE& initial) = default;
@@ -3000,6 +3749,33 @@ namespace FlexKit
 			helper_V(forwarded_args, std::make_integer_sequence<int, sizeof ... (TY_ARGS)>());
 		}
 
+		template<Scaler_t TY_RHS, bool Pad_RHS>
+		constexpr explicit Matrix(const Matrix<Columns, Rows, TY_RHS, Pad_RHS>& rhs) noexcept
+		{
+			if constexpr (std::is_same_v<TY_RHS, Ty>)
+			{
+				memcpy(Data(), rhs.Data(), sizeof(THIS_TYPE));
+			}
+			if constexpr (std::is_same_v<double, Ty> && std::is_same_v<float, TY_RHS>)
+			{
+				for (size_t i = 0; i < vectorView.size256(); i++)
+					vectorView.D256At(i) = simde_mm256_cvtps_pd(rhs.vectorView.At(i));
+			}
+			if constexpr (std::is_same_v<float, Ty> && std::is_same_v<double, TY_RHS>)
+			{
+				for (size_t i = 0; i < vectorView.size(); i++)
+				{
+					auto a = simde_mm_cvtpd_ps(rhs.vectorView.At128(i * 2 + 0));
+					auto b = simde_mm_cvtpd_ps(rhs.vectorView.At128(i * 2 + 1));
+					const auto t = simde_mm_shuffle_ps(
+						a, b,
+						0b00000000 | 0b00000100 | 0b00000000 | 0b01000000);
+					
+				    vectorView.At(i) = t;
+				}
+			}
+		}
+
 		constexpr explicit Matrix(Scaler_t auto s) noexcept
 		{
 			for (auto& r : matrix)
@@ -3017,8 +3793,49 @@ namespace FlexKit
 			return out;
 		}
 
+
 		template<const int RHS_Columns, const int RHS_Rows, bool RHS_Pad, typename RHS_TY>
-		constexpr auto operator * (const Matrix<RHS_Columns, RHS_Rows, RHS_TY, RHS_Pad>& rhs) const noexcept
+		constexpr auto operator * (const Matrix<RHS_Columns, RHS_Rows, RHS_TY, RHS_Pad>& rhs) const noexcept 
+		{
+			static_assert(Columns == RHS_Rows, "Columns and Rows incompatible");
+			Matrix<RHS_Columns, Rows, Ty, RHS_Pad | Pad> out;
+
+			auto helper_internal = []<int ... ints>(const std::index_sequence<ints...>&, const auto& action) noexcept
+			{
+				(action.template operator() < ints > (), ...);
+			};
+
+			auto helper = [&](const auto& action) noexcept
+				{
+					constexpr size_t end = Columns;
+					helper_internal(std::make_index_sequence<end>(), action);
+				};
+
+			for (size_t i = 0; i < Rows; ++i)
+			{
+				auto v = Vect<RHS_Columns, Ty, RHS_Pad | Pad>::Zero();
+				const auto& r = Row(i);
+
+				auto calculateRow = [&]<uint32_t i2>
+				{
+					auto asdf = i2;
+					const auto& t = rhs.Row(i2);
+					auto rb = r.template BroadcastElement<i2, RHS_Columns>();
+
+					v.MAdd(t, rb);
+				};
+
+				helper(calculateRow);
+
+				out[i] = v;
+				int x = 0;
+			}
+
+			return out;
+		}
+
+		template<const int RHS_Columns, const int RHS_Rows, bool RHS_Pad, typename RHS_TY>
+		constexpr auto operator * (const Matrix<RHS_Columns, RHS_Rows, RHS_TY, RHS_Pad>& rhs) const noexcept requires(VectorView::SIMD256Enabled && decltype(rhs)::VectorView::SIMD256Enabled)
 		{
 			static_assert(Columns == RHS_Rows, "Columns and Rows incompatible");
 			Matrix<RHS_Columns, Rows, Ty, RHS_Pad | Pad> out;
@@ -3042,8 +3859,7 @@ namespace FlexKit
 				auto calculateRow = [&]<uint32_t i2>
 				{
 					const auto& t = rhs.Row(i2);
-					//auto rp = Vect<RHS_Columns, Ty, RHS_Pad | Pad>{ r[i2] };
-					auto rp = r.template BroadcastElement<i2, RHS_Columns>();
+					auto rp = r.template BroadcastElement256<i2, RHS_Columns>();
 
 					v.MAdd(t, rp);
 				};
@@ -3055,6 +3871,7 @@ namespace FlexKit
 
 			return out;
 		}
+
 
 		friend constexpr THIS_TYPE operator * (const Scaler_t auto lhs, const THIS_TYPE& rhs) noexcept
 		{
@@ -3082,11 +3899,11 @@ namespace FlexKit
 		constexpr const	Ty& operator() (const size_t c, const size_t r) const	noexcept { return At(c, r); }
 
 
-		constexpr VectorType& operator[] (const int r)				{ return rows[r]; }
-		constexpr const VectorType& operator[] (const int r) const	{ return rows[r]; }
+		constexpr		VectorType& operator[] (const int r)			{ return rows[r]; }
+		constexpr const VectorType& operator[] (const int r) const		{ return rows[r]; }
 
-		constexpr VectorType& operator[] (const size_t r) { return rows[r]; }
-		constexpr const VectorType& operator[] (const size_t r) const { return rows[r]; }
+		constexpr		VectorType& operator[] (const size_t r)			{ return rows[r]; }
+		constexpr const VectorType& operator[] (const size_t r) const	{ return rows[r]; }
 
 		operator Ty* ()			noexcept { return (Ty*)matrix; }
 		operator const  Ty* () const	noexcept { return (Ty*)matrix; }
@@ -3118,9 +3935,8 @@ namespace FlexKit
 			}
 			else
 			{
-				int zero_val = std::bit_cast<int, Ty>(static_cast<Ty>(0));
 				THIS_TYPE m;
-				memset(&m, zero_val, sizeof(m));
+				memset(&m, 0, sizeof(m));
 
 				return m;
 			}
@@ -3184,8 +4000,9 @@ namespace FlexKit
 		template<uint2 xy1, uint2 xy2>
 		constexpr auto Slice() const noexcept
 		{
-			constexpr uint2 wh = xy2 - xy1 + uint2{ 1, 1 };
-			Matrix<wh[0], wh[1], Ty, Pad> out;
+			static constexpr uint2 wh = (xy2 - xy1 + uint2{ 1, 1 });
+			constexpr bool PAD = (bool)(sizeof(Ty) * wh[0] >= 16u ? Pad : false);
+			Matrix<wh[0], wh[1], Ty, PAD> out;
 
 			for (uint32_t y = 0; y < wh[1]; y++)
 			{
@@ -3262,8 +4079,8 @@ namespace FlexKit
 			return Rows;
 		}
 
-		NO_UNIQUE_ADDRESS Ty				matrix[Rows][sizeof(VectorType) / sizeof(Ty)];	// Row Major
-		NO_UNIQUE_ADDRESS VectorType		rows[Columns];
+		NO_UNIQUE_ADDRESS Ty				matrix[Rows][Columns + PaddingSize()];	// Row Major
+		NO_UNIQUE_ADDRESS VectorType		rows[Rows];
 		NO_UNIQUE_ADDRESS VectorView		vectorView;	// Optionally Exists, SIMD View
 	};
 
@@ -3315,7 +4132,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float2 Mul(Matrix<2, 2, float>& LHS, float2& RHS)
+	inline float2 Mul(const Matrix<2, 2, float>& LHS, const float2& RHS)
 	{
 		float2 Out;
 
@@ -3326,7 +4143,7 @@ namespace FlexKit
 	}
 
 
-	inline float3 Mul(Matrix<3, 3, float>& LHS, float3& RHS)
+	inline float3 Mul(const Matrix<3, 3, float>& LHS, const float3& RHS)
 	{
 		float3 Out;
 		simde__m128 Temp;
@@ -3350,41 +4167,43 @@ namespace FlexKit
 	using float3x3 = Matrix<3,3>;
 	using float4x4 = Matrix<4,4, float, true>;
 
+	using double2x2 = Matrix<2, 2, double, true>;
+	using double3x3 = Matrix<3, 3, double, true>;
+	using double4x4 = Matrix<4, 4, double, true>;
+
 	using float3x3_GPU = Matrix_GPU<float3x3>;
 	using float4x4_GPU = Matrix_GPU<float4x4>;
 
 
-	inline float4x4 TranslationMatrix(float3 POS)
-	{
-		float4x4 Out = float4x4::Identity();
+	double4x4	TranslationMatrix(const double3& POS);
+	double4x4	TranslationMatrix(const double4& POS);
+	float4x4	TranslationMatrix(const float3& POS);
+	float4x4	ScaleMatrix(float3 POS);
 
-		for (const auto [i, v] : enumerate(POS))
-			Out(3, i) = v;
+	double4x4	ExtractScaleRotationMatrix(const double4x4&);
+	float3		ExtractTranslationVector(const float4x4& m);
+	double3		ExtractTranslationVector(const double4x4& m);
 
-		return Out;
-	}
-
-
-	inline float4x4 ScaleMatrix(float3 POS)
-	{
-		float4x4 Out = float4x4::Identity();
-		Out(0, 0) = POS.x;
-		Out(1, 1) = POS.y;
-		Out(2, 2) = POS.z;
-
-		return Out;
-	}
+	float4x4	Quaternion2Matrix(const Quaternion q);
+	Quaternion	Matrix2Quat(const float4x4& M);
+	float4x4	Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3& Right);
+	Quaternion	Vector2Quaternion(const float3& Forward, const float3& Up, const float3& Right);
+	Quaternion	PointAt(float3 A, float3 B, const float3 UpV = { 0.0f, 1.0f, 0.0f });
+	float4x4	PerspectiveRH(const float FOV, const float minZ, const float maxZ, const float aspectRatio);
 
 
-	inline float3 ExtractTranslationVector(const float4x4& m)
-	{
-		float3 out;
-		out.x = m[0][3];
-		out.y = m[1][3];
-		out.z = m[2][3];
 
-		return out;
-	}
+	/************************************************************************************************/
+
+
+	float2x2 Inverse(const float2x2& m) noexcept;
+	float4x4 Inverse(const float4x4& m) noexcept;
+
+	double2x2 Inverse(const double2x2& m) noexcept;
+	double4x4 Inverse(const double4x4& m) noexcept;
+
+	float4x4 FastInverseNoScale(const float4x4 m);
+	double4x4 FastInverseNoScale(const double4x4 m);
 
 
 	/************************************************************************************************/
@@ -3400,20 +4219,14 @@ namespace FlexKit
 	}
 
 
-	inline float4x4 FastInverseNoScale(const float4x4 m)
+
+	struct DF
 	{
-		float4x4 inverseRotation = m;
-		inverseRotation[0][3]   = 0.0f;
-		inverseRotation[1][3]   = 0.0f;
-		inverseRotation[2][3]   = 0.0f;
-		inverseRotation[3]      = Vect4{ -m[0][3], -m[1][3], -m[2][3], 1};
-		inverseRotation         = inverseRotation.Transpose();
+		float3 high;
+		float3 low;
+	};
 
-		return inverseRotation;
-	}
-
-
-	float4x4 Inverse(const float4x4& m);
+	DF GetDF(double3 xyz);
 
 
 	/************************************************************************************************/
@@ -3437,6 +4250,40 @@ namespace FlexKit
 
 		template<typename TY>
 		float2 Vect2TOfloat2(Vect<2, TY> Convert) { return float2{ (float)Convert[0], (float)Convert[1] }; }
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<const int Columns, const int Rows, bool Pad, typename TY>
+	Matrix<Columns, Rows, TY, Pad> operator - (const Matrix<Columns, Rows, TY, Pad>& lhs, const Matrix<Columns, Rows, TY, Pad>& rhs) noexcept
+	{
+		static_assert(Columns == Rows, "Columns and Rows incompatible");
+		Matrix<Columns, Rows, TY, Pad> out;
+
+		auto helper_internal = []<int ... ints>(const std::index_sequence<ints...>&, const auto& action) noexcept
+		{
+			(action.template operator() < ints > (), ...);
+		};
+
+		auto helper = [&](const auto& action) noexcept
+			{
+				constexpr size_t end = Columns;
+				helper_internal(std::make_index_sequence<end>(), action);
+			};
+
+		for (size_t i = 0; i < Rows; ++i)
+		{
+			auto v = Vect<Columns, TY, Pad>::Zero();
+
+			const auto& r = lhs.Row(i);
+			const auto& l = rhs.Row(i);
+
+			out[i] = r - l;
+		}
+
+		return out;
 	}
 
 
@@ -3469,11 +4316,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	inline auto operator * (const double4x4& lhs, const Vector_t auto& rhs)
+	{
+		double4 out{ 0, 0, 0, 0 };
+
+		for (size_t i = 0; i < rhs.size(); i++)
+			out[i] = rhs.Dot(lhs[i]);
+
+		return out;
+	}
+
+	/************************************************************************************************/
+
+
 	int			Exp( int32_t Number, uint32_t exp );
 	Quaternion	MatrixToQuat(const float4x4& );
 
 
 	float3	GetTranslation(const float4x4&);
+	double3	GetTranslation(const double4x4&);
 	float	dot(const float3 lhs, const float3 rhs);
 	float	dot(const float4 lhs, const float4 rhs);
 
@@ -3481,17 +4342,6 @@ namespace FlexKit
 	{
 		return a * b;
 	}
-
-
-	/************************************************************************************************/
-
-
-	float4x4	Quaternion2Matrix		(const Quaternion q);
-	Quaternion	Matrix2Quat				(const float4x4& M);
-	float4x4	Vector2RotationMatrix	(const float3& Forward, const float3& Up, const float3& Right);
-	Quaternion	Vector2Quaternion		(const float3& Forward, const float3& Up, const float3& Right);
-	Quaternion	PointAt					(float3 A, float3 B, const float3 UpV = { 0.0f, 1.0f, 0.0f });
-	float4x4	PerspectiveRH			(const float FOV, const float minZ, const float maxZ, const float aspectRatio);
 
 
 	/************************************************************************************************/

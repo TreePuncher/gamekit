@@ -1273,7 +1273,7 @@ namespace FlexKit
 				TriMesh* prevMesh = nullptr;
 				for (const BrushEntry& draw : data.draws)
 				{
-					const float4x4 wt = GetWT(draw->node);
+					const float4x4 wt = (float4x4)GetWT(draw->node);
 					ctx.SetGraphicsConstantValue(0, 16, wt);
 
 					const auto& meshes = draw->meshes;

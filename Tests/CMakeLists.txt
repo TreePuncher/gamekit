@@ -1,2 +1,3 @@
 add_subdirectory(ShaderPreprocessorTests)
 add_subdirectory(FontLoadingTests)
+add_subdirectory(DoubleMathTests)

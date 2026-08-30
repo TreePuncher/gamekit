@@ -16,7 +16,11 @@
 	float4x4 Proj;
 	float4x4 PV; // Projection x View
 	float4x4 PVI;
-	float4 CameraPOS;
+    
+    float4 CameraPOS;
+    float4 CameraPOSh;
+    float4 CameraPOSl;
+
 	float MinZ;
 	float MaxZ;
 	float AspectRatio;
@@ -221,9 +225,11 @@ void GetWorldSpacePositionAndViewDir(float2 UV, float D, out float3 POS_WS, out 
 	uint     textureChannels;
 }
 
-[[fk::PushConstants(num=20)]] 
+[[fk::PushConstants(num=26)]] 
 {
 	float4x4	WT;
+    float3		posHigh;
+    float3		posLow;
 	float		LightCount;
 	float		t;
 	uint2		WH;
@@ -254,14 +260,25 @@ struct Forward_VS_OUT
 	float3 Bitangent : BITANGENT;
 };
 
+
+float3 SubtractDemote(float3 lhs_low, float3 lhs_high, float3 rhs_low, float3 rhs_high)
+{
+	precise float3 high = lhs_high - rhs_high;
+	precise float3 low	= lhs_low - rhs_low;
+
+	return high + low;
+}
+
 Forward_VS_OUT Forward_VS(Vertex In, uint ID : SV_VertexID)
 {
+	precise float3 o = SubtractDemote(posLow, posHigh, CameraPOSl, CameraPOSh);
+
 	const float3 POS_WS = mul(WT, float4(In.POS, 1));
-	const float3 POS_VS = mul(View, float4(POS_WS, 1));
+	const float3 POS_RS = float4(POS_WS + o, 1);
 
 	Forward_VS_OUT Out;
-	Out.depth		= -POS_VS.z / MaxZ;
-	Out.POS			= mul(PV, float4(POS_WS, 1));
+	Out.depth		= -POS_RS.z / MaxZ;
+	Out.POS			= mul(PV, float4(POS_RS, 1));
 	Out.Normal		= normalize(mul(View, mul(WT, float4(In.Normal, 0.0f))));
 	Out.Tangent		= normalize(mul(View, mul(WT, float4(In.Tangent, 0.0f))));
 	Out.Bitangent	= cross(Out.Tangent, Out.Normal);

@@ -18,7 +18,11 @@ namespace FlexKit
 			float4x4_GPU	Proj;
 			float4x4_GPU	PV;			//  Projection x View
 			float4x4_GPU	PVI;		// (Projection x View)^-1
-			float4			WPOS;
+			
+		    float4 CameraPOS;
+			float4 POSh	= 0;
+			float4 POSl	= 0;
+
 			float			MinZ;
 			float			MaxZ;
 			float			AspectRatio;
@@ -38,8 +42,8 @@ namespace FlexKit
 		};
 
 
-		static ConstantBuffer	CalculateCameraConstants(const float aspectRation, const float FOV, const float minZ, const float maxZ, const float4x4& WT, const float4x4& View);
-		Camera::ConstantBuffer	CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const float4x4& WT);
+		static ConstantBuffer	CalculateCameraConstants(const float aspectRation, const float FOV, const float minZ, const float maxZ, const double4x4& WT, const double4x4& View);
+		Camera::ConstantBuffer	CalculateCameraConstants(const float aspectRatio, const float FOV, const float minZ, const float maxZ, const double4x4& WT);
 
 		FustrumPoints	GetFrustumPoints(float3 XYZ, Quaternion Q);
 		ConstantBuffer	GetConstants() const;
@@ -58,7 +62,7 @@ namespace FlexKit
 
 		float4x4 View;
 		float4x4 Proj;
-		float4x4 WT;	// World Transform
+		double4x4 WT;	// World Transform
 		float4x4 PV;	// Projection x View
 		float4x4 IV;	// Inverse Transform
 
@@ -67,7 +71,7 @@ namespace FlexKit
 		{
 			float4x4 View	= float4x4::Identity();
 			float4x4 Proj	= float4x4::Identity();
-			float4x4 WT		= float4x4::Identity();	// World Transform
+			double4x4 WT	= double4x4::Identity();	// World Transform
 			float4x4 PV		= float4x4::Identity();	// Projection x View
 			float4x4 IV		= float4x4::Identity();	// Inverse Transform
 

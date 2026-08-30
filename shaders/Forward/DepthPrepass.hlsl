@@ -1,17 +1,24 @@
 [[fk::BeginRootSignatureDef(id=rootsig1)]]
 [[fk::RootFlags(ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)]]
 
-[[fk::PushConstants(num=16)]] 
+[[fk::PushConstants(num=25)]] 
 {
 	float4x4 WT;
+    float3 posUpper;
+    float3 posLower;
 };
 
 [[fk::CBV(id=rootsig1)]]
 {
-	float4x4 View;
-	float4x4 ViewI;
-	float4x4 Proj;
-	float4x4 PV;
+    float4x4 View;
+    float4x4 ViewI;
+    float4x4 Proj;
+    float4x4 PV; // Projection x View
+    float4x4 PVI;
+        
+    float4 CameraPOS;
+    float4 POSu;
+    float4 POSl;
 };
 
 [[fk::RootSignature(id=rootsig1)]]

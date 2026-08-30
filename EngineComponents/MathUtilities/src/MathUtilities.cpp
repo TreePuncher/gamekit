@@ -1,4 +1,3 @@
-#include "BuildSettings.hpp"
 #include "MathUtilities.hpp"
 
 #include <bit>
@@ -130,57 +129,53 @@ namespace FlexKit
 
 	Matrix<4, 4> InverseFast(const Matrix<4, 4>& m) noexcept
 	{
-#ifdef WIN32
 		constexpr static float f = std::bit_cast<float>(0xffffffff);
-		constexpr static __m256 fmask{
+		constexpr static simde__m256 fmask{ .f32{
 							 f, f, f, 0,
-							 f, f, f, 0 };
+							 f, f, f, 0 } };
 
-		constexpr static __m256i fIndex0{ .m256i_i32 = {
+		constexpr static simde__m256i fIndex0{ .i32 = {
 					0, 4, 8, 12,
 					1, 5, 9, 13  } };
 
-		constexpr static __m256i fIndex1{ .m256i_i32 = {
+		constexpr static simde__m256i fIndex1{ .i32 = {
 					2, 6, 10, 14,
 					3, 7, 11, 15 } };
 
-		constexpr static __m128 _x{ -1,  0, 0, 0 };
-		constexpr static __m128 _y{ 0, -1, 0, 0 };
-		constexpr static __m128 _z{ 0,  0,-1, 0 };
-		constexpr static __m128 _w{ 0,  0, 0, 1 };
+		constexpr static simde__m128 _x{ -1,  0, 0, 0 };
+		constexpr static simde__m128 _y{ 0, -1, 0, 0 };
+		constexpr static simde__m128 _z{ 0,  0,-1, 0 };
+		constexpr static simde__m128 _w{ 0,  0, 0, 1 };
 
-		__m256 v256m0 = _mm256_mask_i32gather_ps(_mm256_set1_ps(0), m.Data(), fIndex0, fmask, 4);
-		__m256 v256m1 = _mm256_mask_i32gather_ps(_mm256_set1_ps(0), m.Data(), fIndex1, fmask, 4);
+		simde__m256 v256m0 = simde_mm256_mask_i32gather_ps(simde_mm256_set1_ps(0), m.Data(), fIndex0, fmask, 4);
+		simde__m256 v256m1 = simde_mm256_mask_i32gather_ps(simde_mm256_set1_ps(0), m.Data(), fIndex1, fmask, 4);
 
-		auto temp0 = _mm256_dp_ps(v256m0, v256m0, 0xff);
-		auto temp1 = _mm256_dp_ps(v256m1, v256m1, 0xff);
+		auto temp0 = simde_mm256_dp_ps(v256m0, v256m0, 0xff);
+		auto temp1 = simde_mm256_dp_ps(v256m1, v256m1, 0xff);
 
-		auto scale0 = _mm256_shuffle_f32x4(temp0, temp0, 0x02);
-		auto scale1 = _mm256_shuffle_f32x4(temp1, temp1, 0x00);
+		auto scale0 = simde_mm256_shuffle_ps(temp0, temp0, 0x02);
+		auto scale1 = simde_mm256_shuffle_ps(temp1, temp1, 0x00);
 
-		v256m0 = _mm256_div_ps(v256m0, scale0);
-		v256m1 = _mm256_div_ps(v256m1, scale1);
+		v256m0 = simde_mm256_div_ps(v256m0, scale0);
+		v256m1 = simde_mm256_div_ps(v256m1, scale1);
 
-		__m128 v0_128 = _mm256_extractf128_ps(v256m0, 0);
-		__m128 v1_128 = _mm256_extractf128_ps(v256m0, 1);
-		__m128 v2_128 = _mm256_extractf128_ps(v256m1, 0);
-		__m128 M_R_3  = m.vectorView.V128AtX64(3);
+		__m128 v0_128 = simde_mm256_extractf128_ps(v256m0, 0);
+		__m128 v1_128 = simde_mm256_extractf128_ps(v256m0, 1);
+		__m128 v2_128 = simde_mm256_extractf128_ps(v256m1, 0);
+		__m128 M_R_3  = m.vectorView.At128(3);
 
-		auto t		= _mm_mul_ps(	_mm_dp_ps(v0_128, M_R_3, 0x77), _x);
-		t			= _mm_fmadd_ps(	_mm_dp_ps(v1_128, M_R_3, 0x77), _y, t);
-		t			= _mm_fmadd_ps(	_mm_dp_ps(v2_128, M_R_3, 0x77), _z, t);
-		t			= _mm_add_ps(t, _w);
+		auto t		= simde_mm_mul_ps(_mm_dp_ps(v0_128, M_R_3, 0x77), _x);
+		t			= simde_mm_fmadd_ps(_mm_dp_ps(v1_128, M_R_3, 0x77), _y, t);
+		t			= simde_mm_fmadd_ps(_mm_dp_ps(v2_128, M_R_3, 0x77), _z, t);
+		t			= simde_mm_add_ps(t, _w);
 
-		v256m1 = _mm256_insertf128_ps(v256m1, t, 1);
+		v256m1 = simde_mm256_insertf128_ps(v256m1, t, 1);
 
 		Matrix<4, 4> out;
-		out.vectorView.V256AtX64(0) = v256m0;
-		out.vectorView.V256AtX64(1) = v256m1;
+		out.vectorView.F256At(0) = v256m0;
+		out.vectorView.F256At(1) = v256m1;
 
 		return out;
-#else
-		return {};
-#endif
 	}
 
 
@@ -287,6 +282,14 @@ namespace FlexKit
 		return float3{ x, y, z };
 	}
 
+	double3 GetTranslation(const double4x4& wt)
+	{
+		double x = wt[3, 0];
+		double y = wt[3, 1];
+		double z = wt[3, 2];
+		return double3{ x, y, z };
+	}
+
 
 	float dot(const float3 lhs, const float3 rhs)
 	{
@@ -385,6 +388,247 @@ namespace FlexKit
 		return m;
 	}
 
+
+	/************************************************************************************************/
+
+
+	double4x4 TranslationMatrix(const double3& POS)
+	{
+		double4x4 Out = double4x4::Identity();
+
+		for (const auto [i, v] : enumerate(POS))
+			Out(3, i) = v;
+
+		return Out;
+	}
+
+	double4x4 TranslationMatrix(const double4& POS)
+	{
+		double4x4 Out = double4x4::Identity();
+
+		for (size_t i = 0; i < 3; i++)
+			Out(3, i) = POS[i];
+
+		return Out;
+	}
+
+	float4x4 TranslationMatrix(const float3& POS)
+	{
+		float4x4 Out = float4x4::Identity();
+
+		for (const auto [i, v] : enumerate(POS))
+			Out(3, i) = v;
+
+		return Out;
+	}
+
+
+	float4x4 ScaleMatrix(float3 POS)
+	{
+		float4x4 Out = float4x4::Identity();
+		Out(0, 0) = POS.x;
+		Out(1, 1) = POS.y;
+		Out(2, 2) = POS.z;
+
+		return Out;
+	}
+
+
+	double4x4 ExtractScaleRotationMatrix(const double4x4& m)
+	{
+		double4x4 out = m;
+		out[3, 0] = 0;
+		out[3, 1] = 0;
+		out[3, 2] = 0;
+	    return out;
+	}
+
+
+	float3 ExtractTranslationVector(const float4x4& m)
+	{
+		float3 out;
+		out.x = m[0][3];
+		out.y = m[1][3];
+		out.z = m[2][3];
+
+		return out;
+	}
+
+	double3		ExtractTranslationVector(const double4x4& m)
+	{
+		double3 out;
+		out.x = m[0][3];
+		out.y = m[1][3];
+		out.z = m[2][3];
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	float2x2 Adjugate(const float2x2& m)
+	{
+		return float2x2{
+			m[1, 1],	-m[1, 0],
+			-m[0, 1],	 m[0, 0],
+		};
+	}
+
+
+	double2x2 Adjugate(const double2x2& m)
+	{
+		return double2x2{
+			m[1, 1],	-m[1, 0],
+			-m[0, 1],	 m[0, 0],
+		};
+	}
+
+
+	/************************************************************************************************/
+
+	
+	float Det(const float2x2& m)
+	{
+		return m[0, 0] * m[1, 1] - m[1, 0] * m[0, 1];
+	}
+
+
+	float Det(const float2x2& a, const float2x2& b, const float2x2& c, const float2x2& d)
+	{
+		return Det(a * d - b * c);
+	}
+
+	float Det(const float4x4& m)
+	{
+		const float2x2 a = m.Slice<{0, 0}, { 1, 1 }>();
+		const float2x2 b = m.Slice<{2, 0}, { 3, 1 }>();
+		const float2x2 c = m.Slice<{0, 2}, { 1, 3 }>();
+		const float2x2 d = m.Slice<{2, 2}, { 3, 3 }>();
+
+		return Det(a, b, c, d);
+	}
+
+
+	/************************************************************************************************/
+
+
+	double2x2 Inverse(const double2x2& m) noexcept
+	{
+		const auto t = 1.0 / (m[0, 0] * m[1, 1] - m[1, 0] * m[0, 1]);
+
+		return t * Adjugate(m);
+	}
+
+	double4x4 Inverse(const double4x4& m) noexcept
+	{
+		const double2x2 a = m.Slice<{0, 0}, { 1, 1 }>();
+		const double2x2 b = m.Slice<{2, 0}, { 3, 1 }>();
+		const double2x2 c = m.Slice<{0, 2}, { 1, 3 }>();
+		const double2x2 d = m.Slice<{2, 2}, { 3, 3 }>();
+
+		const double2x2 a_i = Inverse(a);
+		const double2x2 d_i = Inverse(d);
+
+		const double2x2 t = Inverse(a - b * Inverse(d) * c);
+		const double2x2 u = Inverse(d - c * a_i * b);
+
+		auto asdf = t * b;
+
+		const double2x2 A_i = t;
+		const double2x2 B_i = -1 * t * b * d_i;
+		const double2x2 C_i = -1 * u * c * a_i;
+		const double2x2 D_i = u;
+
+		return double4x4{
+			A_i[0], B_i[0],
+			A_i[1], B_i[1],
+			C_i[0], D_i[0],
+			C_i[1], D_i[1],
+		};
+	}
+
+
+	/************************************************************************************************/
+
+
+	float2x2 Inverse(const float2x2& m) noexcept
+	{
+		const auto t = 1.0 / (m[0, 0] * m[1, 1] - m[1, 0] * m[0, 1]);
+
+		return t * Adjugate(m);
+	}
+
+
+	float4x4 Inverse(const float4x4& m) noexcept
+	{	// TODO: Optimize this!
+		const float2x2 a = m.Slice<{0, 0}, { 1, 1 }>();
+		const float2x2 b = m.Slice<{2, 0}, { 3, 1 }>();
+		const float2x2 c = m.Slice<{0, 2}, { 1, 3 }>();
+		const float2x2 d = m.Slice<{2, 2}, { 3, 3 }>();
+		
+		const float2x2 a_i = Inverse(a);
+	    const float2x2 d_i = Inverse(d);
+		
+	    const float2x2 t = Inverse(a - b * Inverse(d) * c);
+		const float2x2 u = Inverse(d - c * a_i * b);
+
+	    const float2x2 A_i = t;
+		const float2x2 B_i = -1 * t * b * d_i;
+		const float2x2 C_i = -1 * u * c * a_i;
+		const float2x2 D_i = u;
+
+		return float4x4{
+			A_i[0], B_i[0],
+			A_i[1], B_i[1],
+			C_i[0], D_i[0],
+			C_i[1], D_i[1],
+		};
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 FastInverseNoScale(const float4x4& m)
+	{
+		float4x4 inverseRotation = m;
+		inverseRotation[0][3]	= 0.0f;
+		inverseRotation[1][3]	= 0.0f;
+		inverseRotation[2][3]	= 0.0f;
+		inverseRotation[3]		= Vect4{ -m[0][3], -m[1][3], -m[2][3], 1 };
+		inverseRotation			= inverseRotation.Transpose();
+
+		return inverseRotation;
+	}
+
+
+	/************************************************************************************************/
+
+	double4x4 FastInverseNoScale(const double4x4& m)
+	{
+		double4x4 inverseRotation = m;
+		inverseRotation[0][3]	= 0.0f;
+		inverseRotation[1][3]	= 0.0f;
+		inverseRotation[2][3]	= 0.0f;
+		inverseRotation[3]		= Vect<4, double, true>{ -m[0][3], -m[1][3], -m[2][3], 1 };
+		inverseRotation			= inverseRotation.Transpose();
+
+		return inverseRotation;
+	}
+
+
+	DF GetDF(double3 xyz)
+	{
+		float3 xyz_high = (float3)xyz;
+		float3 xyz_low	= (float3)(xyz - double3{ xyz_high });
+
+		return {
+		    .high = xyz_high,
+			.low = xyz_low
+		};
+	}
 
 	/************************************************************************************************/
 

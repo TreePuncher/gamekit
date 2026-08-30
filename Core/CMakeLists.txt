@@ -55,7 +55,6 @@ add_library(flex
     "src/Intersection.cpp"
     "src/Level.cpp"
     "src/Logging.cpp"
-    "src/MathUtilities.cpp"
     "src/Materials.cpp"
     "src/MemoryUtilities.cpp"
     "src/MeshUtilities.cpp"
@@ -119,7 +118,6 @@ target_sources(
     "include/Level.hpp"
     "include/Logging.hpp"
     "include/Materials.hpp"
-    "include/MathUtilities.hpp"
     "include/MemoryUtilities.hpp"
     "include/MeshUtilities.hpp"
     "include/ModifiableShape.hpp"
@@ -155,6 +153,7 @@ target_include_directories(flex
     )
 
 
+target_link_libraries(flex PUBLIC MathUtilities)
 target_link_libraries(flex PUBLIC fmt::fmt-header-only)
 target_link_libraries(flex PUBLIC range-v3::meta range-v3::concepts range-v3::range-v3)
 #target_link_libraries(flex PRIVATE AngelScriptComponents)
@@ -166,16 +165,13 @@ target_link_libraries(flex PRIVATE loguru::loguru)
 target_link_libraries(flex PRIVATE scn::scn)
 target_link_libraries(flex PUBLIC RmlUi::Core RmlUi::Debugger)
 
-find_path(SIMDE_INCLUDE_DIRS "simde")
-target_include_directories(flex PUBLIC ${SIMDE_INCLUDE_DIRS})
-
 if(WIN32)
     #find_package(directx-headers CONFIG REQUIRED)
     #find_package(directx12-agility CONFIG REQUIRED)
 
     message(${SIMDE_INCLUDE_DIRS})
 
-	ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
+    ADD_LIBRARY(ZLIB-NG SHARED IMPORTED)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_IMPLIB    ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/lib/zlib-ng.lib)
     SET_PROPERTY(TARGET ZLIB-NG PROPERTY IMPORTED_LOCATION  ${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/zlib-ng2.dll)
     target_link_libraries(flex PUBLIC ZLIB-NG)

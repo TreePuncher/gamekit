@@ -190,7 +190,7 @@ namespace FlexKit
 
 	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, PoseState* DPS)
 	{
-		const float4x4 WT = GetWT(Node);
+		const float4x4 WT = (float4x4)GetWT(Node);
 		const float4x4 JT = DPS->CurrentPose[Joint];
 
 		return	JT * WT;
@@ -238,7 +238,7 @@ namespace FlexKit
 		LineSegments lines{ allocator };
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 
-		float4x4 WT         = GetWT(Node);
+		float4x4 WT         = (float4x4)GetWT(Node);
 		Vector<float4x4> M( allocator, S->JointCount, float4x4::Identity() );
 
 		const float4 debugLines[] =
@@ -300,7 +300,7 @@ namespace FlexKit
 		constexpr float4 Zero{ 0.0f, 0.0f, 0.0f, 1.0f };
 
 		const Skeleton* S = poseState.Sk;
-		const float4x4 WT = GetWT(node);
+		const float4x4 WT = (float4x4)GetWT(node);
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
